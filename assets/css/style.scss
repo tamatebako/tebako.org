@@ -1,0 +1,59 @@
+---
+---
+@import url('https://fonts.googleapis.com/css?family=Quicksand:400,500,700');
+
+$font-family: Quicksand, Verdana, sans-serif;
+$hero-title-font-weight: 500;
+
+$primary-color: #233329;
+$accent-color: #63d471;
+$warning-color: #97523B;
+$important-color: #BD7724;
+
+$main-background: linear-gradient(135deg, $primary-color 0%, $accent-color 100%);
+
+@import 'open-project-mixins';
+@import 'jekyll-theme-open-project';
+
+@import 'tebako';
+
+// body.layout--home > .underlay > .hero {
+//   .illustration {
+//     bottom: -100px !important;
+
+//     svg {
+//       height: 200px;
+//     }
+//   }
+
+//   > .text {
+//     > .title {
+//       font-weight: normal;
+//     }
+//   }
+// }
+
+
+// body.layout--home {
+//   > main .custom-intro .summary {
+//     ul.supported-bibliographies {
+//       li {
+//         .label {
+//           margin-right: 1en;
+//         }
+//         .source, .gem {
+//           white-space: nowrap;
+//         }
+//         .source {
+//           &:after {
+//             content: ", ";
+//           }
+
+//           &:last-child:after {
+//             content: unset;
+//           }
+//         }
+//       }
+//     }
+//   }
+// }

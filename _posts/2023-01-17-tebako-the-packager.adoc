@@ -1,0 +1,132 @@
+---
+layout: post
+title:  "Challenges in distributing Ruby applications"
+date:   2023-01-17 00:00:00 +0800
+categories: update
+categories: award
+author:
+  name: Maxim Samsonov
+  email: m.samsonov@computer.org
+  use_picture: assets
+  social_links:
+    - https://github.com/maxirmx
+excerpt: >-
+    The distribution of Ruby applications can be considered an unsolved problem.
+    By itself, Ruby does not provide a consistent and easy method for setting up
+    and running a running application.
+---
+
+= Challenges in distributing Ruby applications
+
+== Distribution of Ruby applications
+
+The distribution of Ruby applications can be considered an unsolved problem. By
+itself, Ruby does not provide a consistent and easy method for setting up and
+running a running application. Distributing Ruby applications to inexperienced
+end users or end users who are not Ruby programmers is problematic. Users must
+first install Ruby, use RubyGems, and set up an environment to create their own
+extensions. Even if they already have everything installed, they can still run
+into problems, for example due to the wrong version of Ruby. Developers can
+handle all these issues by providing great documentation that purports to handle
+cases, but unfortunately there are an infinite number of ways to break things
+down.
+
+Straightforward approach is to create installation packages for all target
+operating systems and environments. While this approach normally works, it has
+at least two disadvantages:
+
+* It requires a lot of work. You not only have to build separate packages for
+each OS, but also some operating systems require separate packages for each OS
+major version. And in the context of Linux, you have to treat each distribution
+as another OS, further increasing the number of combinations.
+
+* Because you typically cannot build an OS-specific installation package using
+anything but that OS, you need heavyweight tooling like a fleet of virtual
+machines.
+
+
+== Legacy tools and techniques
+
+Several tools, described in the sections below, have been developed to address
+the challenges described above.
+
+
+=== Traveling Ruby
+
+https://github.com/phusion/traveling-Ruby[Traveling Ruby] provides a standalone
+`tar.gz`/`zip` package for each platform (Linux, MacOS, Windows), which already
+includes a pre-compiled platform-specific Ruby interpreter (provided by the
+traveling Ruby project), as well as all the gems that the application depends
+on.
+
+While traveling Ruby provides a much easier way to build distribution packages,
+it still has significant drawbacks:
+
+* The application developer is not free to use either the version of Ruby of
+their choice, or Gems with native extensions of his/her choice but must rely on
+the selection and versions supported by traveling Ruby.
+
+* Set-up of application packaging still requires a lot of manual work.
+
+=== OCRA (One-Click Ruby Application)
+
+https://github.com/larsch/ocra[OCRA (One-Click Ruby Application)] is a tool that
+builds Windows executables from Ruby source code. The executable is a
+self-extracting executable (package) that contains the Ruby interpreter,
+application source code and any additionally needed Ruby libraries or
+components.  When package is started Ruby and application files are extracted to
+pristine environment which is used for the execution.
+
+OCRA is very similar in spirit to traveling Ruby but is free from its drawbacks.
+It can, at least theoretically, package any version of Ruby and any selection of
+Gems with native extensions and the packaging process is fully automated.
+
+However, OCRA has significant limitation: it is Windows-only tool and underlying technology is not portable (although can be replaced with similar albeit not equal Linux features)
+
+=== ruby-packer
+
+https://github.com/pmq20/ruby-packer[ruby-packer] is a tool that is capable to package Ruby applications for Linux, macOS and Windows platform. The package created by ruby-packer is a patched, statically linked Ruby interpreter with embedded squashfs  filesystem that contains application source code including pre-build native extensions and other gem dependencies. Ruby patches implement direct squashfs access layer that eliminates the need for fuse drivers or any other support from the operating system.
+
+While ruby-packer supports multiple operating systems and can be ported to any platform that has Ruby, it has its own limitation: application developer has to use the version of Ruby bundled with Ruby packer.
+
+=== Development and support status
+
+While Ruby packaging technologies were in active development several years ago all three projects mentioned above (traveling Ruby, OCRA, ruby-packer) are not supported anymore.
+
+
+== Consideration regarding container environments
+
+Nowadays, it is increasingly popular to distribute applications as
+self-contained container environments like Docker images.  It may explain while
+development of customized packaging products was abandoned.
+
+Although container environments provide unified and standardized approach for
+application distributions, custom packages may have advantages in certain
+environments:
+
+* Tools like OCRA or ruby-packer will almost certainly produce a smaller
+distribution than container-based applications. This is because normally
+containers contain a lot of extra content that isn't needed by the executables
+within.
+
+* An executable packager also does not require a container execution
+environment. Not every user has the capability to run certain container formats.
+However, nearly every user can run an executable.
+
+* A packaged application is a native binary and doesn't have to go through any
+additional execution layers. Contrast this with Docker, which uses HTTP requests
+to create containers, set up temporary file systems and networks for the
+container, etc. Spawning a process in a new Docker container can take hundreds
+of milliseconds or more. This overhead can be prohibitive for low latency
+applications like CLI tools. This overhead does not exist for packaged
+application.
+
+== Conclusions
+
+While the distribution of Ruby applications is a challenge there no product in
+active development targeting this problem. Several promising technologies has
+been developed in the past but none of them is currently supported.
+
+The only viable solution is Docker or similar container technology which can be
+applied to Ruby application but have some disadvantages comparing to custom
+packagers.
