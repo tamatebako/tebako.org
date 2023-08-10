@@ -71,27 +71,50 @@ the selection and versions supported by traveling Ruby.
 === OCRA (One-Click Ruby Application)
 
 https://github.com/larsch/ocra[OCRA (One-Click Ruby Application)] is a tool that
-builds Windows executables from Ruby source code. The executable is a
-self-extracting executable (package) that contains the Ruby interpreter,
-application source code and any additionally needed Ruby libraries or
-components.  When package is started Ruby and application files are extracted to
+builds Windows executables from Ruby source code.
+
+The executable is a self-extracting executable (package) that contains the Ruby
+interpreter, application source code and any additionally needed Ruby libraries
+or components.
+
+When executable package is started, Ruby and application files are extracted to
 pristine environment which is used for the execution.
 
-OCRA is very similar in spirit to traveling Ruby but is free from its drawbacks.
-It can, at least theoretically, package any version of Ruby and any selection of
-Gems with native extensions and the packaging process is fully automated.
+OCRA is very similar in spirit to traveling Ruby, but is free from its
+drawbacks. It can, at least theoretically, package any version of Ruby and any
+selection of Gems with native extensions and the packaging process is fully
+automated.
 
-However, OCRA has significant limitation: it is Windows-only tool and underlying technology is not portable (although can be replaced with similar albeit not equal Linux features)
+However, OCRA has a significant limitation:
+
+* it is Windows-only tool and underlying technology is not portable (although
+can be replaced with similar albeit not equal Linux features)
 
 === ruby-packer
 
-https://github.com/pmq20/ruby-packer[ruby-packer] is a tool that is capable to package Ruby applications for Linux, macOS and Windows platform. The package created by ruby-packer is a patched, statically linked Ruby interpreter with embedded squashfs  filesystem that contains application source code including pre-build native extensions and other gem dependencies. Ruby patches implement direct squashfs access layer that eliminates the need for fuse drivers or any other support from the operating system.
+https://github.com/pmq20/ruby-packer[ruby-packer]
+(https://www.youtube.com/watch?v=1mme7HiLqzA[video]) is a tool that is capable
+to package Ruby applications for Linux, macOS and Windows platform.
 
-While ruby-packer supports multiple operating systems and can be ported to any platform that has Ruby, it has its own limitation: application developer has to use the version of Ruby bundled with Ruby packer.
+The package created by ruby-packer is a patched, statically linked Ruby
+interpreter with embedded https://www.squashfs-lzma.org[squashfs] filesystem
+that contains application source code including pre-build native extensions and
+other gem dependencies.
+
+Ruby patches implements direct squashfs access layer that eliminates the need
+for FUSE drivers or any other support from the operating system.
+
+While ruby-packer supports multiple operating systems and can be ported to any
+platform that has Ruby, it has its own limitation:
+
+* application developer has to use the version of Ruby bundled with ruby-packer.
+
 
 === Development and support status
 
-While Ruby packaging technologies were in active development several years ago all three projects mentioned above (traveling Ruby, OCRA, ruby-packer) are not supported anymore.
+While Ruby packaging technologies were in active development several years ago
+all three projects mentioned above (traveling Ruby, OCRA, ruby-packer) are not
+supported anymore.
 
 
 == Consideration regarding container environments

@@ -1,0 +1,158 @@
+---
+layout: post
+title:  "Tebako technology and data flow"
+date:   2023-02-25 00:00:00 +0800
+categories: update
+categories: award
+author:
+  name: Maxim Samsonov
+  email: m.samsonov@computer.org
+  use_picture: assets
+  social_links:
+    - https://github.com/maxirmx
+excerpt: >-
+    The distribution of Ruby applications can be considered an unsolved problem.
+    By itself, Ruby does not provide a consistent and easy method for setting up
+    and running a running application.
+---
+
+= Tebako technology and data flow
+
+== General
+
+Tebako is an executable packager. It packages a set of files into a single
+executable binary that allows a user to run a selected file from the packaged
+software as if it is a mounted filesystem.
+
+Tebako is capable of packaging Ruby applications for Linux
+(https://www.gnu.org/software/libc/[glibc] the GNU C Library, and
+https://www.musl-libc.org[musl libc]),
+macOS, and Windows (MSys) platforms.
+
+NOTE: Tebako 0.4.0 provides limited Windows support. It can only package
+dependency gems without native extensions.
+
+The package created by Tebako is a patched, statically linked Ruby interpreter
+with embedded https://github.com/mhx/dwarfs[DwarFS] -- a fast high-compression
+read-only filesystem. The embedded filesystem contains application source code,
+including pre-build native extensions and other gem dependencies.
+
+Tebako's Ruby patches reroute IO calls to the DwarFS access library --
+https://github.com/tamatebako/libdwarfs[libdwarfs].
+
+This library is an integral part of the Tebako project that implements a direct
+DwarFS access layer, thus eliminating a need for fuse drivers or any other
+additional support from the operating system.
+
+
+== Tebako packaging data flow
+
+Building the Tebako package is a complex procedure that consists of 6 steps, as
+shown in the flowchart below.
+
+.Tebako packaging steps
+image::/assets/blog/20230225-01.png[]
+
+Recurring packaging runs allow the reuse of some artifacts, but it is not
+described here for simplicity.
+
+
+== Packaging data flow description
+
+=== Build 1
+
+Build Ruby with a static Ruby library and static extensions ("target Ruby").
+In terms of Ruby configuration, this build implies two options:
+
+[source]
+----
+--with-static-linked-ext
+--disable-shared
+----
+
+It is worth mentioning that this configuration requires some minor patching of
+the Ruby source to compile without errors.
+
+=== Install
+
+Install the solution to be packaged into a pristine environment ("source
+filesystem").
+
+Depending on the configuration files in the project folder, Tebako packager
+supports several scenarios with different installation procedures.
+
+[cols="a,a,a,a",options="header"]
+|===
+|Scenario | `*.gemspec`| `Gemfile`| `*.gem`
+
+| 1| No| No| No
+| 2| No| No| One
+| 3| One| No| Any
+| 4| One| One| Any
+| 5| No| One| Any
+| Error| No| No| Two or more
+| Error| Two or more| Any| Any
+
+|===
+
+Of course, the real value comes with scenario 5, but the table below describes other options for completeness.
+
+[cols="a,a,3a",options="header"]
+|===
+| Scenario| Description| Installation procedure
+| 1| Simple Ruby script|
+* Copy project root with all sub-folders
+
+| 2| Packaged gem|
+* Install the gem with `gem install`
+
+| 3| Gem source |
+* Build the gem using `gem build` command
+* Install it with `gem install`
+
+| 4| Bundled gem source
+|
+* Collect dependencies with bundle install
+* Build the gem using `gem build` command.
+* Install it with `gem install`
+
+| 5| Bundled solution|
+* Install solution with `bundle install`
+
+|===
+
+=== Package
+
+Create highly compressed, read-only file systems in the DwarFS format ("packaged filesystem") from the directory structure built on the previous step.
+
+This step is performed using the
+https://github.com/mhx/dwarfs/blob/main/doc/mkdwarfs.md[mkdwarfs] utility or its
+https://github.com/tamatebako/dwarfs[ports] to other operating systems developed
+as a part of the Tebako project.
+
+=== Embed
+
+Encode DwarFS filesystem image into C++ source file using https://github.com/graphitemaster/incbin[INCBIN macro].
+
+
+=== Patch
+
+Patch the target Ruby source to redefine calls to IO functions to calls to DwarFS access layer.
+
+The packager injects simple preprocessor statements like:
+
+[source,c]
+----
+#define read(...)   tebako_read(__VA_ARGS__)
+----
+
+Where `tebako_read` is a function implemented by the
+https://github.com/tamatebako/libdwarfs[libdwarfs] library. The library routes
+the call either to the host (calls read) or serves it from the DwarFS image.
+
+=== Build 2
+
+In the last step, the patched Ruby source is compiled and linked with the
+embedded DwarFS filesystem and libdwarfs. The output binary is the target Tebako
+package - a single executable binary that runs the embedded image.
+
