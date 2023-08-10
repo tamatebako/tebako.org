@@ -1,0 +1,36 @@
+= Tebako Open Project Site
+
+== Introduction
+
+This is the Tebako project site,
+part of Ribose Open Project network,
+located at https://www.Tebako.com.
+
+It is a https://jekyllrb.com[Jekyll]-based site
+created with the Open Project Jekyll theme.
+
+Refer to their respective docs for details.
+
+
+== Content management
+
+
+== Development
+
+=== Getting started
+
+* Ensure you have reasonable Ruby version
+* Run `bundle` from within site directory to install Ruby dependencies
+
+=== Serving site preview
+
+* Run `jekyll serve` from within site directory
+
+
+== Workflow
+
+. Ensure tests pass
+. Create your feature branch (`git checkout -b my-new-feature`)
+. Commit your changes (`git commit -am 'Add some feature'`)
+. Push to the branch (`git push origin my-new-feature`)
+. Make a pull request

@@ -24,7 +24,7 @@ description: >- # this means to ignore newlines until "baseurl:"
   Official website for Tebako, the executable packager.
 # baseurl: "" # the subpath of your site, e.g. /blog
 url: "https://www.tebako.org"
-github_repo_url: https://github.com/tamatebako/tebako.org
+github_repo_url: https://github.com/tamatebako/tamatebako.github.io
 github_repo_branch: main
 permalink: /blog/:year-:month-:day-:title/
 
@@ -56,13 +56,10 @@ permalink: /blog/:year-:month-:day-:title/
 
 theme: jekyll-theme-open-project
 
-relaton:
-  supported_bibliographies:
-  - id: iso
-    label: ISO
-    gem: relaton-iso
-    sources:
-      - { url: "https://iso.org/", label: "ISO.org website" }
+landing_priority: [custom_intro, blog, specs, software]
+
+tagline: >-
+  Packaging&nbsp;cross-platform&nbsp;Ruby&nbsp;executables
 
 author:
   name: Ribose Inc.
@@ -84,7 +81,7 @@ includes_dir: '.'
 social:
   links:
     - https://twitter.com/RiboseUS
-    - https://github.com/relaton/relaton
+    - https://github.com/tamatebako/tebako
 
 legal:
   name: Ribose Group Inc.
@@ -92,18 +89,17 @@ legal:
   privacy_policy_link: https://www.ribose.com/privacy
 
 home_calls_to_action:
-  - { url: "/software/relaton/docs/README/", title: "Using the gem" }
-  #- { url: "/software/relaton-cli/docs/README/", title: "Using the CLI" }
+  - { url: "/blog/", title: "Blog" }
 
 collections:
-  projects:
-    output: false
-  software:
-    output: true
-    permalink: /software/:path/
-  specs:
-    output: true
-    permalink: /specs/:path/
+  # projects:
+  #   output: false
+  # software:
+  #   output: true
+  #   permalink: /software/:path/
+  # specs:
+  #   output: true
+  #   permalink: /specs/:path/
   posts:
     output: true
     permalink: /blog/:year-:month-:day-:title/
@@ -149,6 +145,10 @@ tag_namespaces:
   specs:
     audience: "Audience"
     completion_status: "Status"
+
+include:
+  - "index.adoc"
+  - "404.html"
 
 exclude:
   - .git

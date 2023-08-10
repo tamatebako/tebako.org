@@ -1,0 +1,283 @@
+.site-logo {
+  svg {
+    path {
+      fill: white;
+    }
+  }
+}
+
+.hero .illustration {
+  svg path {
+    fill: white;
+  }
+}
+
+.main-section {
+  > .title {
+    font-weight: 500;
+  }
+}
+
+// TODO: These should be generalized to open project site level
+main .body {
+  .imageblock .content img {
+    max-width: 100%;
+  }
+}
+
+.learn-more {
+  font-weight: bold;
+}
+
+body.overview,
+body.getting-started {
+  section.documentation {
+    margin-bottom: 100px;
+  }
+}
+
+body.overview section.documentation {
+  ul.feature-list {
+    display: flex;
+    flex-flow: column nowrap;
+
+    li.feature p {
+      padding-bottom: 1em;
+    }
+
+    @media screen and (min-width: $bigscreen-breakpoint) {
+      flex-flow: row wrap;
+      li {
+        flex-basis: 50%;
+        flex: 1 1 auto;
+      }
+    }
+  }
+  .cta .button {
+    @include cta-button(transparent, $primary-dark-color);
+    border-radius: 25px;
+    border: 1px solid $primary-color;
+  }
+}
+
+.web-build-ui {
+  &.conditional {
+    opacity: 0;
+    position: absolute;
+    top: 1em;
+    right: 1em;
+    bottom: 1em;
+    left: 1em;
+    z-index: 10;
+
+    transform: translateY(-100%);
+    transition: transform .5s linear, opacity .2s linear;
+    background: white;
+  }
+  &.conditional.shown {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.software {
+  body > .underlay > header > .top-menu > & {
+    display: none;
+  }
+}
+
+.site--project.layout--home {
+  > .underlay.header {
+    color: white;
+
+    > .hero > .text {
+      > .title {
+        font-weight: 500;
+        @media screen and (min-width: $bigscreen-breakpoint) {
+          margin-right: 100px;
+        }
+      }
+      > .cta {
+        .button {
+          border-radius: 25px;
+          padding-left: 32px;
+          padding-right: 32px;
+
+          &:first-child {
+            &, &:link, &:visited {
+              color: white;
+              background-color: $accent-color;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  > main > .underlay > .software,
+  > main > .featured-posts,
+  > main > .underlay > .specs {
+    > .title {
+      align-self: flex-start;
+    }
+  }
+
+  > main .flavors {
+    margin-bottom: 1em;
+    color: white;
+
+    @media screen and (min-width: $bigscreen-breakpoint) {
+      padding-right: 10vw;
+    }
+
+    h2 {
+      font-weight: 500;
+    }
+
+    &.with-switcher {
+      section h3 {
+        display: none;
+      }
+    }
+
+    .items {
+      display: flex;
+      flex-wrap: wrap;
+      margin: -0.5em;
+      align-items: stretch;
+
+      > a:link, > a:visited {
+        color: $primary-color;
+      }
+
+      > * {
+        display: flex;
+        flex-flow: column nowrap;
+        justify-content: center;
+
+        margin: 0.5em;
+        max-width: 20em;
+
+        border-radius: .5em;
+        box-shadow: 0 9px 20px rgba(black, 0.1);
+        background-image: linear-gradient(25deg, rgb(255, 215, 127), rgb(255, 243, 163));
+
+        &.experimental {
+          position: relative;
+          overflow: hidden;
+
+          &:after {
+            content: "Beta";
+            position: absolute;
+            right: 0;
+            top: 0;
+            left: 0;
+            bottom: 0;
+
+            transform: rotate(-1deg);
+            background: linear-gradient(rgb(255, 215, 127) 0px, rgb(255, 215, 127) 13px, rgba(black, 0.2) 14px, rgba(black, 0.2) 80%, rgb(255, 215, 127) 81%, rgb(255, 215, 127) 100%);
+
+            font-size: 10px;
+            font-weight: bold;
+            letter-spacing: .04em;
+            padding-left: 1em;
+          }
+        }
+
+        > article {
+          padding: 1em 1.5em;
+        }
+
+        header {
+          font-size: 140%;
+          font-weight: 700;
+        }
+
+        p {
+          margin: .25em 0 0 0;
+        }
+      }
+    }
+  }
+  > main > .specs > .items .item header > .title {
+    font-weight: 500;
+  }
+}
+
+body > .underlay > header {
+  align-items: center;
+
+  .site-logo {
+    margin-right: 40px;
+
+    svg {
+      height: 48px;
+      margin-right: -4px;
+    }
+    .title {
+      position: relative;
+      top: 4px;
+    }
+  }
+  > .top-menu {
+    font-size: 16px;
+
+    a {
+      &:link, &:visited, &:hover {
+        color: white;
+      }
+    }
+
+    > :not(.search-widget) {
+      font-weight: 700;
+      border-radius: 16px;
+      padding-left: 8px;
+      padding-right: 8px;
+      margin-right: 2px;
+    }
+    input[type=search] {
+      padding-left: 18px;
+      padding-right: 18px;
+    }
+    > .active {
+      &:link, &:hover, &:visited {
+        background-color: white;
+        color: $primary-color;
+      }
+    }
+  }
+}
+
+/* Style the samples page */
+.layout--sample-index > main {
+  > .items {
+    @extend .index-item-grid;
+
+    .item {
+      @extend .item-card;
+      @include hoverable-card(2px, 10px, rgba(desaturate($primary-color, 50), 0.08));
+
+      padding: 30px 32px;
+      text-align: left;
+      margin-bottom: 20px;
+
+      header > .title {
+        margin: 0;
+        font-size: 20px;
+      }
+      .body {
+        font-size: 16px;
+      }
+    }
+  }
+}
+.layout--sample-index > main {
+  padding-bottom: 100px;
+}
+.layout--spec-sample > main {
+  padding-bottom: 100px;
+
+  > .documentation:only-child {
+    @include docs-page($primary-dark-color);
+  }
+}
