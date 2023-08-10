@@ -18,21 +18,21 @@
 # You can create any custom variable you would like, and they will be accessible
 # in the templates via {{ site.myvariable }}.
 
-title: Your awesome title
-email: your-email@example.com
+title: Tebako
+# email: your-email@example.com
 description: >- # this means to ignore newlines until "baseurl:"
-  Write an awesome description for your new site here. You can edit this
-  line in _config.yml. It will appear in your document head meta (for
-  Google search results) and in your feed.xml site description.
-baseurl: "" # the subpath of your site, e.g. /blog
-url: "" # the base hostname & protocol for your site, e.g. http://example.com
-twitter_username: jekyllrb
-github_username:  jekyll
+  Official website for Tebako, the executable packager.
+# baseurl: "" # the subpath of your site, e.g. /blog
+url: "https://www.tebako.org"
+github_repo_url: https://github.com/tamatebako/tebako.org
+github_repo_branch: main
+permalink: /blog/:year-:month-:day-:title/
 
 # Build settings
-theme: minima
-plugins:
-  - jekyll-feed
+
+# theme: minima
+# plugins:
+#   - jekyll-feed
 
 # Exclude from processing.
 # The following items will not be processed, by default.
@@ -53,3 +53,109 @@ plugins:
 #   - vendor/cache/
 #   - vendor/gems/
 #   - vendor/ruby/
+
+theme: jekyll-theme-open-project
+
+relaton:
+  supported_bibliographies:
+  - id: iso
+    label: ISO
+    gem: relaton-iso
+    sources:
+      - { url: "https://iso.org/", label: "ISO.org website" }
+
+author:
+  name: Ribose Inc.
+  url: https://www.ribose.com
+
+authors:
+  - name: Ribose Inc.
+    email: open.source@ribose.com
+
+contact_email: open.source@ribose.com
+
+# parent_hub:
+#   git_repo_url: https://github.com/riboseinc/open.ribose.com
+#   git_repo_branch: main
+#   home_url: https://open.ribose.com/
+
+includes_dir: '.'
+
+social:
+  links:
+    - https://twitter.com/RiboseUS
+    - https://github.com/relaton/relaton
+
+legal:
+  name: Ribose Group Inc.
+  tos_link: https://www.ribose.com/tos
+  privacy_policy_link: https://www.ribose.com/privacy
+
+home_calls_to_action:
+  - { url: "/software/relaton/docs/README/", title: "Using the gem" }
+  #- { url: "/software/relaton-cli/docs/README/", title: "Using the CLI" }
+
+collections:
+  projects:
+    output: false
+  software:
+    output: true
+    permalink: /software/:path/
+  specs:
+    output: true
+    permalink: /specs/:path/
+  posts:
+    output: true
+    permalink: /blog/:year-:month-:day-:title/
+  pages:
+    output: true
+    permalink: /:name/
+
+
+defaults:
+  # Theme defaults.
+  # MUST be duplicated from theme’s _config.yml
+  # (does not get inherited, unlike the collections hash)
+  - scope:
+      path: ""
+    values:
+      layout: default
+  - scope:
+      path: _posts
+      type: posts
+    values:
+      layout: post
+  - scope:
+      path: _software
+      type: software
+    values:
+      layout: product
+  - scope:
+      path: _specs
+      type: specs
+    values:
+      layout: spec
+
+plugins:
+  - jekyll-seo-tag
+  - jekyll-sitemap
+
+tag_namespaces:
+  software:
+    writtenin: "Written in"
+    bindingsfor: "Bindings for"
+    user: "Target user"
+    interface: "Interface"
+  specs:
+    audience: "Audience"
+    completion_status: "Status"
+
+exclude:
+  - .git
+  - .lycheeignore
+  - "*/.git"
+  - Gemfile*
+  - Makefile
+  - Rakefile
+  - README.adoc
+  - vendor # for deployment
