@@ -15,7 +15,7 @@ gem "jekyll"
 # If you have any plugins, put them here!
 group :jekyll_plugins do
   gem "jekyll-feed", "~> 0.15.1"
-  gem "github-pages", "~> 228"
+  # gem "github-pages", "~> 228"
   gem "jekyll-seo-tag"
   gem "jekyll-sitemap"
   gem "jekyll-data"
@@ -42,4 +42,4 @@ gem "wdm", "~> 0.1.1", :platforms => [:mingw, :x64_mingw, :mswin]
 gem "http_parser.rb", "~> 0.6.0", :platforms => [:jruby]
 gem "webrick", "~> 1.7"
 
-gem "jekyll-theme-open-project"
+gem "jekyll-theme-open-project", "~> 2.1.5"
