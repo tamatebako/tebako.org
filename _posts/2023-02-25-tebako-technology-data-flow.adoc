@@ -35,7 +35,7 @@ dependency gems without native extensions.
 The package created by Tebako is a patched, statically linked Ruby interpreter
 with embedded https://github.com/mhx/dwarfs[DwarFS] -- a fast high-compression
 read-only filesystem. The embedded filesystem contains application source code,
-including pre-build native extensions and other gem dependencies.
+including pre-built native extensions and other gem dependencies.
 
 Tebako's Ruby patches reroute IO calls to the DwarFS access library --
 https://github.com/tamatebako/libdwarfs[libdwarfs].
@@ -62,6 +62,7 @@ described here for simplicity.
 === Build 1
 
 Build Ruby with a static Ruby library and static extensions ("target Ruby").
+
 In terms of Ruby configuration, this build implies two options:
 
 [source]
@@ -78,7 +79,7 @@ the Ruby source to compile without errors.
 Install the solution to be packaged into a pristine environment ("source
 filesystem").
 
-Depending on the configuration files in the project folder, Tebako packager
+Depending on the configuration files in the project folder, the Tebako packager
 supports several scenarios with different installation procedures.
 
 [cols="a,a,a,a",options="header"]
@@ -95,35 +96,47 @@ supports several scenarios with different installation procedures.
 
 |===
 
-Of course, the real value comes with scenario 5, but the table below describes other options for completeness.
+Of course, the real value comes with scenario 5, but the table below describes
+other options for completeness.
 
 [cols="a,a,3a",options="header"]
 |===
 | Scenario| Description| Installation procedure
-| 1| Simple Ruby script|
+
+| 1
+| Simple Ruby script
+|
 * Copy project root with all sub-folders
 
-| 2| Packaged gem|
+| 2
+| Packaged gem
+|
 * Install the gem with `gem install`
 
-| 3| Gem source |
+| 3
+| Gem source
+|
 * Build the gem using `gem build` command
 * Install it with `gem install`
 
-| 4| Bundled gem source
+| 4
+| Bundled gem source
 |
-* Collect dependencies with bundle install
+* Collect dependencies with `bundle install`
 * Build the gem using `gem build` command.
 * Install it with `gem install`
 
-| 5| Bundled solution|
+| 5
+| Bundled solution
+|
 * Install solution with `bundle install`
 
 |===
 
 === Package
 
-Create highly compressed, read-only file systems in the DwarFS format ("packaged filesystem") from the directory structure built on the previous step.
+Create highly compressed, read-only file systems in the DwarFS format ("packaged
+filesystem") from the directory structure built on the previous step.
 
 This step is performed using the
 https://github.com/mhx/dwarfs/blob/main/doc/mkdwarfs.md[mkdwarfs] utility or its
@@ -132,12 +145,14 @@ as a part of the Tebako project.
 
 === Embed
 
-Encode DwarFS filesystem image into C++ source file using https://github.com/graphitemaster/incbin[INCBIN macro].
+Encode DwarFS filesystem image into a C++ source file using
+https://github.com/graphitemaster/incbin[INCBIN macro].
 
 
 === Patch
 
-Patch the target Ruby source to redefine calls to IO functions to calls to DwarFS access layer.
+Patch the target Ruby source to redefine calls to IO functions to calls to
+the DwarFS access layer.
 
 The packager injects simple preprocessor statements like:
 
@@ -147,12 +162,16 @@ The packager injects simple preprocessor statements like:
 ----
 
 Where `tebako_read` is a function implemented by the
-https://github.com/tamatebako/libdwarfs[libdwarfs] library. The library routes
-the call either to the host (calls read) or serves it from the DwarFS image.
+https://github.com/tamatebako/libdwarfs[libdwarfs] library.
+
+The library routes the call either to:
+
+* the host (calls read); or
+* serves it from the DwarFS image.
 
 === Build 2
 
 In the last step, the patched Ruby source is compiled and linked with the
 embedded DwarFS filesystem and libdwarfs. The output binary is the target Tebako
-package - a single executable binary that runs the embedded image.
+package -- a single executable binary that runs the embedded image.
 
