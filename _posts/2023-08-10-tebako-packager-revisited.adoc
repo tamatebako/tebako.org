@@ -54,9 +54,10 @@ libraries, their names, dependencies, and packaging differ, and not always in a
 predictable and stable way.
 
 Moreover, "_with minimal dependencies_" implies the use of static libraries,
-which is contrary to the current trend of preferring shared, dynamic libraries. For some
-packages, distributions only provide shared libraries, which means that the
-static version of the libraries need to be installed separately or from source.
+which is contrary to the current trend of preferring shared, dynamic libraries.
+For some packages, distributions only provide shared libraries, which means that
+the static version of the libraries need to be installed separately or from
+source.
 
 
 These functions are split across three Tebako components:
