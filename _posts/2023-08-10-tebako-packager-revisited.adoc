@@ -60,13 +60,13 @@ the static version of the libraries need to be installed separately or from
 source.
 
 
-These functions are split across three Tebako components:
+These functions are split across five Tebako components and sub-components:
 
 [cols="a,a,3a",options="header"]
 |===
 | Component	| Sub-component | Functions
 
-.2+| `tebako` gem
+.4+| https://rubygems.org/gems/tebako[tebako gem]
 
 | CLI
 |
@@ -76,19 +76,17 @@ These functions are split across three Tebako components:
 |
 * Patches Ruby (task 4, partially)
 
-.2+| Tebako CMake script
-
-| Setup
+| CMake Setup script 
 |
 . Builds static versions of dependencies if missing (task 1)
 . Builds Ruby and Dwarfs access layer with minimal external dependencies (task 2)
 
-| Press
+| CMake Press script
 |
 . Deploys a Ruby solution with all dependencies on the filesystem image (task 3)
 . Builds final executable (task 5)
 
-| `tebako-runtime` gem
+| https://rubygems.org/gems/tebako-runtime[tebako-runtime gem]
 |
 |
 * Implements runtime adapters (decorators) for certain known Ruby gems that
