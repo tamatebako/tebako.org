@@ -1,0 +1,131 @@
+---
+layout: post
+title:  "Tebako packager revisited"
+date:   2023-08-10 00:00:00 +0800
+categories:
+  - tebako
+  - packaging
+author:
+  name: Maxim Samsonov
+  email: m.samsonov@computer.org
+  use_picture: assets
+  social_links:
+    - https://github.com/maxirmx
+excerpt: >-
+    The distribution of Ruby applications can be considered an unsolved problem.
+    By itself, Ruby does not provide a consistent and easy method for setting up
+    and running a running application.
+---
+
+= Tebako packager revisited
+
+Tebako is an executable packager. It packages a https://www.ruby-lang.org/[Ruby]
+solution with the key idea:
+
+[quote]
+____
+one Ruby application => one Tebako image
+____
+
+Every image contains all the files the application needs to run and has no
+dependencies other than what is included in the targeted operating system.
+
+In fact, the Tebako algorithm is very simple.
+To create an executable package, Tebako execute four tasks:
+
+. Create an access layer for DwarFS file system with minimal dependencies on
+external libraries.
+
+. Build target version of Ruby with minimal dependencies on external libraries.
+
+. Deploy a Ruby solution with all dependencies on the filesystem image.
+
+. Patch Ruby so that it transparently uses the in-memory DwarFS image.
+
+. Combine all together in a single executable.
+
+The main complexity is related to the fulfillment of the
+"_with minimal dependencies_" condition for different operating systems.
+
+Although GNU Linux (systems that use the https://www.gnu.org/software/libc/[GNU C Library `glibc`]),
+musl Linux (systems that use https://www.musl-libc.org[musl libc]),
+and macOS (which is BSD based) provide very similar sets of
+libraries, their names, dependencies, and packaging differ, and not always in a
+predictable and stable way.
+
+Moreover, "_with minimal dependencies_" implies the use of static libraries,
+which is contrary to the current trend of preferring shared, dynamic libraries.
+For some packages, distributions only provide shared libraries, which means that
+the static version of the libraries need to be installed separately or from
+source.
+
+
+These functions are split across five Tebako components and sub-components:
+
+[cols="a,a,3a",options="header"]
+|===
+| Component	| Sub-component | Functions
+
+.4+| https://rubygems.org/gems/tebako[tebako gem]
+
+| CLI
+|
+* Processes command-line parameters
+
+| Packager
+|
+* Patches Ruby (task 4, partially)
+
+| CMake Setup script 
+|
+. Builds static versions of dependencies if missing (task 1)
+. Builds Ruby and Dwarfs access layer with minimal external dependencies (task 2)
+
+| CMake Press script
+|
+. Deploys a Ruby solution with all dependencies on the filesystem image (task 3)
+. Builds final executable (task 5)
+
+| https://rubygems.org/gems/tebako-runtime[tebako-runtime gem]
+|
+|
+* Implements runtime adapters (decorators) for certain known Ruby gems that
+require modification when running in Tebako environment (task 4, partially)
+
+|===
+
+The description above shows that two copies of Ruby are used when creating the
+Tebako image:
+
+* The host Ruby that must be pre-installed to run the Tebako gem.
+
+* The target Ruby that Tebako loads sources for, patches, builds and transforms
+to Tebako image.
+
+Version requirements for host Ruby are minimal. Tebako shall run on all 2.7 and
+3.x versions.
+
+In contrast, requirements for target Ruby are strict. Tebako 0.5.4 supports
+packaging of 2.7.7; 3.0.6; 3.1.4 and 3.2.2.
+
+As mentioned above, the most complex Tebako tasks (tasks 1,2) are implemented by
+the setup subcomponent. As a prerequisite, they require the installation of
+distribution packages, which may be different for GNU Linux, musl Linux, and
+MacOS.  Setup is a lengthy task that can take significant time, up to 2 hours.
+
+The good news is that setup task only needs to be done once and it does not
+depend on solution being packaged.
+
+Tebako offers an explicit `tebako setup` command or executes setup implicitly on
+the first attempt to create Tebako image.
+
+Once setup has been completed, packaging of any bundle, gem, or simple Ruby
+script requires no additional configuration or preparation and can be done with
+a single `tebako press` command, which takes several minutes even for large
+packages.
+
+In conclusion, I would like to emphasize once again that the most difficult task
+solved by Tebako is building a Ruby interpreter and an access layer for an
+in-memory file system with minimal dependencies on external libraries. This task
+is performed once, after which Tebako provides a one-line command to package any
+arbitrary complex Ruby application.
