@@ -2,8 +2,9 @@
 layout: post
 title:  "Challenges in distributing Ruby applications"
 date:   2023-01-17 00:00:00 +0800
-categories: update
-categories: award
+categories:
+  - tebako
+  - packaging
 author:
   name: Maxim Samsonov
   email: m.samsonov@computer.org
