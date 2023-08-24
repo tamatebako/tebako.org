@@ -23,7 +23,7 @@ title: Tebako
 description: >- # this means to ignore newlines until "baseurl:"
   Official website for Tebako, the executable packager.
 # baseurl: "" # the subpath of your site, e.g. /blog
-url: "https://www.tebako.org"
+
 github_repo_url: https://github.com/tamatebako/tamatebako.github.io
 github_repo_branch: main
 permalink: /blog/:year-:month-:day-:title/
