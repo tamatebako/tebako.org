@@ -1,0 +1,30 @@
+---
+layout: post
+title:  "Aibiko gem release and migration from Ocra"
+date:   2023-08-25 00:00:00 +0800
+categories:
+  - aibika
+  - packaging
+author:
+  name: Maxim Samsonov
+  email: m.samsonov@computer.org
+  use_picture: assets
+  social_links:
+    - https://github.com/maxirmx
+excerpt: >-
+    Aibika gem to support users of Ocra (One-Click Ruby Application) in a modern environment
+---
+
+= Aibika gem
+
+The https://github.com/larsch/ocra[Ocra (One-Click Ruby Application)] tool used to be an excellent solution for distributing Ruby applications on the Windows platform. With OCRA, you could create a self-extracting, self-running executable that contained the Ruby interpreter, application source code, and any additional Ruby libraries or DLLs needed.
+However, the authors of OCRA have not supported or updated it since 2020. This has caused numerous issues with newer versions of Ruby and modern anti-virus software.
+Although our team is committed to creating a full-fledged Windows port of the https://github.com/tamatebako/tebako[Tebako packager], which provides a user-space mounted-disk experience with minimal intervention, we have decided to publish our enhanced fork of Ocra in the meantime.
+
+Aibika is direct descendant of Ocra and provides the same feature set and parameters.
+We have adopted Aibika for Ruby 2.7 through 3.2 and tested it on Windows 2019 and 2022 in https://docs.github.com/actions[GHA environment]
+
+Since our major objective is to support development of https://www.metanorma.org/[Metanorma]  Aibika is now used to build https://github.com/metanorma/packed-mn[Metanorma single binary for Windows].
+Migration did not require any changes other then replacemen of call to _ocra_ to calls to _aibika_ in the build scipts.
+
+Ocra did not work with Ruby 3.x and placed restrictions on the version of _rubygems_ that could be used. Aibika released these restrictions without any changes to the packaging script.
