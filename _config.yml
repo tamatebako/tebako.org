@@ -88,8 +88,6 @@ legal:
   tos_link: https://www.ribose.com/tos
   privacy_policy_link: https://www.ribose.com/privacy
 
-time: "Aug 10, 2023"
-
 home_calls_to_action:
   - { url: "/blog/", title: "Blog" }
 
