@@ -5,12 +5,20 @@ date:   2023-08-25 00:00:00 +0800
 categories:
   - aibika
   - packaging
-author:
-  name: Maxim Samsonov
-  email: m.samsonov@computer.org
-  use_picture: assets
-  social_links:
-    - https://github.com/maxirmx
+authors:
+  -
+    name: Maxim Samsonov
+    email: m.samsonov@computer.org
+    use_picture: assets
+    social_links:
+      - https://github.com/maxirmx
+  -
+    name: Ronald Tse
+    email: tse@ribose.com
+    social_links:
+      - https://www.linkedin.com/in/rhtse/
+      - https://github.com/ronaldtse
+
 excerpt: >-
   Aibika is a modernized version of the Ocra Ruby executable packager on
   Windows.
@@ -86,13 +94,18 @@ fibers not scattered evenly.
 
 === General
 
-Let's look at how Aibika can be used to create a single executable for a Ruby
+Aibika supports multiple ways of creating a single executable for a Ruby
 program on Windows.
+
+In this post we will described the most typical cases, but if your use case is
+more complex, please check out the
+https://github.com/tamatebako/aibika#readme[README] for other options.
 
 
 === Single file
 
-Let's package a simple Ruby application that uses an external gem.
+If your Ruby application is a single file that references installed gems, this
+is how you package it.
 
 Our sample application will check validity of a PNG file using the
 https://github.com/metanorma/pngcheck-ruby/tags[pngcheck] gem.
