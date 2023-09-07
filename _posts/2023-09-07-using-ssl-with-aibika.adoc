@@ -23,12 +23,11 @@ excerpt: >-
 
 == Introduction
 
-Aibika is a renewed tool that creates a self-extracting, self-running executable that
-contained the Ruby interpreter, application source code, and any additional Ruby
-libraries or dynamically-linked libraries (DLLs) needed.
+Aibika is a renewed tool that creates a self-extracting, self-running executable containing the Ruby interpreter,
+application source code, and any additional Ruby libraries or dynamic link libraries (DLLs) needed.
 
-While Aibika has facilities to select files that need to be included to the package either
-automatically or statically some resources require additional handling.
+Although Aibika has the ability to select files to be included in the package automatically or statically,
+some resources require additional processing.
 
 == The issue of SSL certificates
 
@@ -67,22 +66,23 @@ OpenSSL error: SSL_connect returned=1 errno=0 peeraddr=140.82.121.4:443 state=er
 (unable to get local issuer certificate)
 ----
 
-It happens because the package created by aibika runs in a virtual environment that is isolated from the 'normal'
-host environment. SSL root certificates are in the normal environment and openssl gem in the Aibika package does
-not know how to find these certificates.
+This is because the package created by Aibika runs in a virtual environment, isolated from the "normal" host environment.
+The SSL root certificates are in the host environment and the openssl gem is in the Aibika package doesn't know how to find
+these certificates.
 
 == The options to support SSL certificates
 
-Two approaches are possoble to deal with the issue described above:
+To solve the problem described above, two approaches are possible:
 
-* deploy an Aibika package with root certificates included
-* have the package program look for local root certificates
+* deploy Aibika package with root certificates included
+* let the packaged program look for local root certificates
 
-Since the objective of packaging is to create a program that does not have external dependencies we normally follow
-the first option.
+Since the purpose of packaging is to create a program that has no external dependencies, we usually follow
+first option.
 
-Let's use https://curl.se/docs/caextract.html[mozilla certificates bundle]  provided by cUrl site, put cacert.pem aside of the ruby script,
-and package them together (download.rb is the script from the example above):
+Let's use https://curl.se/docs/caextract.html[the Mozilla certificate package] provided by the cUrl site,
+put cacert.pem to the side of the Ruby script, and pack them together (download.rb is the script from the
+example above):
 
 [source, shell]
 ----
@@ -126,12 +126,12 @@ File.open(filename, "wb") do |file|
 end
 ----
 
-We intercept evaluation of Net::HTTP class and alter its behavior. The other, 'conventional',
-option would be to create OpenSSL configuration (an instance of OpenSSL::Config class) and
-find a way to pass it through OpenURI, URI, Net::HTTP down to OpenSSL instance.
+We intercept the evaluation of the Net::HTTP class and change its behavior. Another, "traditional"
+option would be to create an OpenSSL configuration (an instance of the OpenSSL::Config class) and
+find a way to pass it through OpenURI, URI, Net::HTTP down to the OpenSSL instance.
 
 == Final notes
 
-While Aibika does its best to put in every image contains all the files the application needs to run
-there are non-trivial circumstances when external artifacts require additional handling diuring
-packaging and/or execution. SSL certificates are one of such artifacts.
+Although Aibika does its best to ensure that each image contains all the files needed to run the application.
+There are non-trivial circumstances where external artifacts require additional processing during operation.
+packaging and/or execution. SSL certificates are one such artifact.
