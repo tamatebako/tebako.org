@@ -1,0 +1,137 @@
+---
+layout: post
+title:  "Using SSL-powered features with Aibika"
+date:   2023-09-07 00:00:00 +0800
+categories:
+  - aibika
+  - packaging
+  - ssl
+  - https
+authors:
+  -
+    name: Maxim Samsonov
+    email: m.samsonov@computer.org
+    use_picture: assets
+    social_links:
+      - https://github.com/maxirmx
+
+excerpt: >-
+  Using SSL-powered features with Aibika may require additional handling of SLL certificates.
+---
+
+= Additional handling of SSL certificate used by Aibika packaged application
+
+== Introduction
+
+Aibika is a renewed tool that creates a self-extracting, self-running executable that
+contained the Ruby interpreter, application source code, and any additional Ruby
+libraries or dynamically-linked libraries (DLLs) needed.
+
+While Aibika has facilities to select files that need to be included to the package either
+automatically or statically some resources require additional handling.
+
+== The issue of SSL certificates
+
+Let's consider a simple example of downloading a file from the Internet
+
+[source,ruby]
+----
+# frozen_string_literal: true
+require 'open-uri'
+
+base_url = 'https://github.com/oneclick/rubyinstaller2/releases/download/RubyInstaller-3.1.4-1'
+fn = 'rubyinstaller-3.1.4-1-x64.exe'
+url = "#{base_url}/#{fn}"
+filename = "D:/Projects/#{fn}"
+
+puts "Downloading #{url} to #{filename} ..."
+
+File.open(filename, "wb") do |file|
+    begin
+        URI.open(url, "rb") do |url_file|
+            file.write(url_file.read)
+        end
+    rescue OpenURI::HTTPError => e
+        puts "OpenURI error: #{e.message}"
+    rescue OpenSSL::SSL::SSLError => e
+        puts "OpenSSL error: #{e.message}"
+    end
+end
+----
+
+This script works if executed 'as is' but end with an error if it is packaged by Aibika:
+
+[source]
+----
+OpenSSL error: SSL_connect returned=1 errno=0 peeraddr=140.82.121.4:443 state=error: certificate verify failed
+(unable to get local issuer certificate)
+----
+
+It happens because the package created by aibika runs in a virtual environment that is isolated from the 'normal'
+host environment. SSL root certificates are in the normal environment and openssl gem in the Aibika package does
+not know how to find these certificates.
+
+== The options to support SSL certificates
+
+Two approaches are possoble to deal with the issue described above:
+
+* deploy an Aibika package with root certificates included
+* have the package program look for local root certificates
+
+Since the objective of packaging is to create a program that does not have external dependencies we normally follow
+the first option.
+
+Let's use https://curl.se/docs/caextract.html[mozilla certificates bundle]  provided by cUrl site, put cacert.pem aside of the ruby script,
+and package them together (download.rb is the script from the example above):
+
+[source, shell]
+----
+aibika download.rb cacert.pem
+----
+
+Unfortunately it is not enough - openssl configuration does not know anything about the new certificate file.
+We have to do some addtional patching:
+
+[source,ruby]
+----
+# frozen_string_literal: true
+require 'net/https'
+require 'open-uri'
+
+Net::HTTP.class_eval do
+  alias _use_ssl= use_ssl=
+
+  def use_ssl= boolean
+    self.ca_file = "#{File.expand_path(File.dirname(__FILE__))}/cacert.pem"
+    self.verify_mode = OpenSSL::SSL::VERIFY_PEER
+    self._use_ssl = boolean
+  end
+end
+
+url = 'https://github.com/oneclick/rubyinstaller2/releases/download/RubyInstaller-3.1.4-1/rubyinstaller-3.1.4-1-x64.exe'
+filename = "D:/Projects/rubyinstaller-3.1.4-1-x64.exe"
+
+puts "Downloading #{url} to #{filename} ..."
+
+File.open(filename, "wb") do |file|
+    begin
+        URI.open(url, "rb") do |url_file|
+            file.write(url_file.read)
+        end
+    rescue OpenURI::HTTPError => e
+        puts "OpenURI error: #{e.message}"
+    rescue OpenSSL::SSL::SSLError => e
+        puts "OpenSSL error: #{e.message}"
+    end
+end
+----
+
+We intercept evaluation of Net::HTTP class and alter its behavior. The other, 'conventional',
+option would be to create OpenSSL configuration (an instance of OpenSSL::Config class) and
+find a way to pass it through OpenURI, URI, Net::HTTP down to OpenSSL instance.
+
+== Final notes
+
+While Aibika does its best to put in every image contains all the files the application needs to run
+there are non-trivial circumstances when external artifacts require additional handling diuring
+packaging and/or execution. SSL certificates are one of such artifacts.
