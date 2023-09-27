@@ -31,7 +31,7 @@ Every image contains all the files the application needs to run and has no
 dependencies other than what is included in the targeted operating system.
 
 In fact, the Tebako algorithm is very simple.
-To create an executable package, Tebako execute four tasks:
+To create an executable package, Tebako executes five tasks:
 
 . Create an access layer for DwarFS file system with minimal dependencies on
 external libraries.
@@ -76,7 +76,7 @@ These functions are split across five Tebako components and sub-components:
 |
 * Patches Ruby (task 4, partially)
 
-| CMake Setup script 
+| CMake Setup script
 |
 . Builds static versions of dependencies if missing (task 1)
 . Builds Ruby and Dwarfs access layer with minimal external dependencies (task 2)
