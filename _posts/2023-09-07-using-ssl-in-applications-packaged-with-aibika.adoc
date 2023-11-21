@@ -1,0 +1,170 @@
+---
+layout: post
+title: "Using SSL in applications packaged with Aibika"
+date: 2023-09-07T00:00:00+0800
+categories:
+  - aibika
+  - packaging
+  - ssl
+  - https
+authors:
+  -
+    name: Maxim Samsonov
+    email: m.samsonov@computer.org
+    use_picture: assets
+    social_links:
+      - https://github.com/maxirmx
+
+excerpt: >-
+  Using SSL-powered features with Aibika may require additional handling of SLL
+  certificates.
+---
+
+= Using SSL in applications packaged with Aibika
+
+== Introduction
+
+https://github.com/tamatebako/aibika/[Aibika] is a renewed tool for Windows that
+creates a self-extracting, self-running executable containing the Ruby
+interpreter, application source code, and any additional Ruby libraries or
+dynamic link libraries (DLLs) needed.
+
+While Aibika can select and include files to be included in the package
+automatically or statically, some resources require additional processing.
+
+
+== SSL certificate verification
+
+Let's consider a simple example of downloading a file from the Internet
+through HTTPS.
+
+`download.rb`:
+
+[source,ruby]
+----
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+require 'open-uri'
+require 'pathname'
+
+base_url = 'https://github.com/oneclick/rubyinstaller2/releases/download/RubyInstaller-3.1.4-1/'
+fn = 'rubyinstaller-3.1.4-1-x64.exe'
+url = URI.join(base_url, fn)
+filename = Pathname.new(Dir.pwd).join(fn)
+
+puts "Downloading #{url} to #{filename.relative_path_from(Dir.pwd)} ..."
+
+File.open(filename, "wb") do |file|
+  URI.open(url, "rb") do |url_file|
+    file.write(url_file.read)
+  end
+rescue OpenURI::HTTPError => e
+  puts "OpenURI HTTP error: #{e.message}"
+rescue OpenSSL::SSL::SSLError => e
+  puts "OpenSSL SSL error: #{e.message}"
+end
+----
+
+This script works if executed 'as is' outside Aikiba.
+
+However, it ends with an error when it is run as packaged by Aibika:
+
+[source,sh]
+----
+$ ./download.rb
+Downloading https://github.com/oneclick/rubyinstaller2/releases/download/
+  RubyInstaller-3.1.4-1/rubyinstaller-3.1.4-1-x64.exe
+  to rubyinstaller-3.1.4-1-x64.exe ...
+
+OpenSSL SSL error: SSL_connect returned=1 errno=0 peeraddr=140.82.121.4:443
+  state=error: certificate verify failed
+  (unable to get local issuer certificate)
+----
+
+This is because the package created by Aibika runs in a virtual environment,
+isolated from the "normal" host environment.
+
+The problem is root certificates are housed in the host environment, and the SSL
+processing routines in Ruby in the Aibika package (through the packaged
+`openssl` gem) does not know how to find these certificates on the host.
+
+
+== Supporting SSL verification
+
+To solve the problem described above, two approaches are possible:
+
+* deploy Aibika package with root certificates included
+* let the packaged program look for local root certificates
+
+Since the purpose of packaging is to create a program that has no external
+dependencies, typically, the first option is suitable.
+
+To achieve the first option, we can bundle the `cacert.pem` file, which is the
+https://curl.se/docs/caextract.html[the Mozilla certificate package]
+provided by the https://curl.se[curl project], together with the desired
+Ruby script using Aikiba (`download.rb` is the script from the
+example above):
+
+[source,sh]
+----
+$ aibika download.rb cacert.pem
+----
+
+We need to take an additional step. We need to tell Aikiba's packaged Ruby
+to point to the new bundled certificate file by updating the `Net::HTTP`
+method.
+
+Fortunately, Ruby supports monkey-patching which allows us to do the following
+override by intercept the evaluation of the `Net::HTTP` class and change its
+behavior.
+
+`download.rb` packaged in Aikiba:
+
+[source,ruby]
+----
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+require 'net/https'
+require 'open-uri'
+require 'pathname'
+
+pem_path = Pathname.new(__FILE__).expand_path.join("cacert.pem")
+Net::HTTP.class_eval do
+  alias _use_ssl= use_ssl=
+
+  def use_ssl= boolean
+    self.ca_file = pem_path.to_s
+    self.verify_mode = OpenSSL::SSL::VERIFY_PEER
+    self._use_ssl = boolean
+  end
+end
+
+base_url = 'https://github.com/oneclick/rubyinstaller2/releases/download/RubyInstaller-3.1.4-1/'
+fn = 'rubyinstaller-3.1.4-1-x64.exe'
+url = URI.join(base_url, fn)
+filename = Pathname.new(Dir.pwd).join(fn)
+
+puts "Downloading #{url} to #{filename.relative_path_from(Dir.pwd)} ..."
+
+File.open(filename, "wb") do |file|
+  URI.open(url, "rb") do |url_file|
+    file.write(url_file.read)
+  end
+rescue OpenURI::HTTPError => e
+  puts "OpenURI HTTP error: #{e.message}"
+rescue OpenSSL::SSL::SSLError => e
+  puts "OpenSSL SSL error: #{e.message}"
+end
+----
+
+Another, more "traditional", option would be to create an OpenSSL configuration
+(an instance of the `OpenSSL::Config` class) and find a way to pass it through
+`OpenURI`, `URI`, `Net::HTTP` down to the OpenSSL instance.
+
+
+== Conclusion
+
+While Aibika does its best to ensure that each image contains all the files
+needed to run a bundled application, there are non-trivial circumstances where
+external artifacts require additional processing during operation. packaging
+and/or execution. The SSL verification process is one such artifact.
