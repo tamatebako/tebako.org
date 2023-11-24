@@ -14,7 +14,7 @@ author:
 excerpt: >-
     The distribution of Ruby applications can be considered an unsolved problem.
     By itself, Ruby does not provide a consistent and easy method for setting up
-    and running a running application.
+    and running a complex application.
 ---
 
 = Tebako technology and data flow
@@ -175,4 +175,3 @@ The library routes the call either to:
 In the last step, the patched Ruby source is compiled and linked with the
 embedded DwarFS filesystem and libdwarfs. The output binary is the target Tebako
 package -- a single executable binary that runs the embedded image.
-

@@ -14,7 +14,7 @@ author:
 excerpt: >-
     The distribution of Ruby applications can be considered an unsolved problem.
     By itself, Ruby does not provide a consistent and easy method for setting up
-    and running a running application.
+    and running a complex application.
 ---
 
 = Challenges in distributing Ruby applications
