@@ -1,0 +1,43 @@
+---
+layout: post
+title:  "Details about Tebako patching"
+date:   2023-11-24 00:00:00 +0800
+categories:
+  - tebako
+  - packaging
+author:
+  name: Maxim Samsonov
+  email: m.samsonov@computer.org
+  use_picture: assets
+  social_links:
+    - https://github.com/maxirmx
+excerpt: >-
+    Building Ruby with minimal external dependencies is a challenging task loosely supported by community.
+    We faced numerous issues on this path and had to resolve then creatively.
+---
+
+= Tebako patching
+
+In our post about https://www.tebako.org/blog/2023-02-24-tebako-technology-data-flow/[technology used by Tebako packager] we have mentioned https://github.com/mhx/dwarfs[DwarFs filesystem],
+that is used to carry Ruby application and its dependencies.
+DwarFS is very effective and fast solution but these benefits have its cost - the complex toolchain a long list of dependencies to be satisfied.
+The full dependency lists on Ubuntu 20 is comprised of 271 package. Alpine needs more, MacOS requires less.
+The main dependency "dependency chain" is ```tebako --> libdwarfs (out memfs access layer) --> dwarfs (memfs) --> facebook libraries (folly, fbthrift) --> google libraries (glog, gflags)```
+
+By itself the long list of dependencies should not be and is not an issue. However, we intend to create single-file package. It means that we need static libraries and it is againt against the
+industry focus. Some of the dependencies cannot be installed as static libraries from the standard packages and Tebako integration complexity is is mainly determined by the reason why static libraries
+cannot be installed from the standard package.
+
+Few examples:
+
+* brew formulae for glflags does not include static library. It is easy -- we just check if gflags.a is out there
+* brew formulae for glog used bad options to build static library (I think they did not use PIC). It is easy -- we just build our copy of glog.a on MacOS if it is out there
+* building static libarhieve is an art on any platform (https://github.com/mhx/dwarfs/pull/55/files), but of course it is doable
+* alpine 3:16 did not support static jemalloc library (not sure about 3.18). It was doable but unconventional -- we have to patch system (libc) includes to get libjemalloc.a
+  (https://github.com/tamatebako/tebako-tools/blob/master/ci-scripts/patch-system-includes.sh)
+* libfolly is always static but starting from certain version folly heavily depends on weak references (== dynamic linking) to other libraries.
+  Practically it means that newer versions of folly effectively block the possibility to link dependent libraries statically (I have better explanation somewhere in the comments).
+  It is difficult -- we are using outdated version of folly but it becomes increasingly less compatible with newer versions of othe libraries. So thi one is a pain.
+
+This list is not comprehensive and it is volatile. A new version of host operating system or libfolly update can eliminate the need to patch or create a new challenge.
+That's why we implement multilayer CI/CD approach in Tebako project. It allows to find and locate new issues at the layer were they originate and keep maintenance effort reasonable low.
