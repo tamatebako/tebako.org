@@ -1,0 +1,171 @@
+---
+layout: post
+title:  "Benchmarking of tebako package against original Ruby applications"
+date:   2023-11-24 00:00:00 +0800
+categories:
+  - tebako
+  - packaging
+author:
+  name: Maxim Samsonov
+  email: m.samsonov@computer.org
+  use_picture: assets
+  social_links:
+    - https://github.com/maxirmx
+excerpt: >-
+    Tebako package created from a Ruby application introduces four features that can negatevaly affect performance.
+    In this post we discuss performance comparison of Teback package and original application and show that negative
+    impact is minimal.
+---
+
+:imagesdir: ./assets/benchmarking
+
+= Benchmarking of tebako package against original Ruby applications
+
+== Rationale
+
+Tebako is an executable packager. It packages a set of files into a single
+executable binary that allows a user to run a selected file from the packaged
+software as if it is a mounted filesystem.
+
+As we discussed in the earlier https://www.tebako.org/blog/2023-02-24-tebako-technology-data-flow/[post]
+tebako introduces additional layer for most of functions tha access filesystem. This layer routes calls either to
+original implementation or to dwarfs in-memory packaged filesystem. If a call is served by dwarfs tebako consumes
+additional resources for decompression.
+
+If Ruby application includes native extension, its shared library is extracted
+to host temporarily folder and loaded from there that may create addional delay.
+
+Finally Tebako package includes the whole Ruby standard library and all files that were used
+to install and build additional Ruby gems and theier native extension. The bigger file may taje additional time for startup.
+
+These four features may have performance impact that we have estimated and discuss in the present post.
+
+== Executive summary
+
+In our very moderate test environment (specified below) we observed the following behavior:
+
+* Tebako package parses Ruby code faster then native interpreter. Routing from additional file system access layer + reading dwarfs including decompression
+is faster then reading from disk, even from SSD.
+* External file processing is not noticebly slower for Tebako package despite of additional file system access layer introduced by Tebako
+* Tebako package initialization adds a 'penalty' time needed to read a fairly big file that conatains Ruby standard lib. The application not necessarily
+uses the whole library but we still need to map it to application memory address space on startup.
+* Any native extension or other native code like Java jars in tebako add initialization time because we are decompressing them to temp and loading again
+
+Tebako package introduces additional time that is consumed during initialization. This time depends on the application size and the size of its native extensions,
+it dows not depend on complexity of the data processed by the application or any other volatile factors
+In our tests additional time mentioned above varies from 0.03 seconds for 'Hello, world" script to 3 seconds for metanorma application
+
+== Tests and results
+
+In order to address different aspects of possible performance issues we ran 4 different tests:
+
+* Simple "Hello, world!" script that allowes to measure performance of Ruby core
+* https://rubygems.org/gems/coradoc[Coradoc gem] that uses Ruby code to process external files
+* https://rubygems.org/gems/vectory[Vectory gem] that uses native extension to process external filesystem
+* Сomplex https://metanorma.org[metanorma application] that combines uses numerous Ruby gems, native extensions and Jave code
+
+Simple sript and coradoc, vectory gem tests included several runs with varying repetition of calls.
+Metanorma test included execution of various commands that generate various load profiles.
+
+=== 'Hello, world!' scripts
+
+```
+if (argv = ARGV).empty?
+  puts "No arguments given"
+  exit(1)
+end
+
+if argv[0].to_i < 1
+  puts "Argument must be a positive integer"
+  exit(1)
+end
+
+argv[0].to_i.times do |i|
+  puts "Hello, world number #{i}!"
+  puts "Gem path: #{Gem.path}"
+end
+```
+
+image::/assets/blog/hello-world-benchmarking.jpg["Hello, world!" benchmarking results]
+
+=== Coradoc gem
+
+```
+if (argv = ARGV).empty?
+  puts "No arguments given"
+  exit(1)
+end
+
+if argv[0].to_i < 1
+  puts "Argument must be a positive integer"
+  exit(1)
+end
+
+argv[0].to_i.times do
+  require "coradoc"
+  sample_file = File.join(__dir__, "fixtures", "sample.adoc")
+  require "coradoc/legacy_parser"
+  Coradoc::LegacyParser.parse(sample_file)[:document]
+
+  require "coradoc/oscal"
+  sample_file = File.join(__dir__, "fixtures", "sample-oscal.adoc")
+  document = Coradoc::Document.from_adoc(sample_file)
+  Coradoc::Oscal.to_oscal(document)
+
+  syntax_tree = Coradoc::Parser.parse(sample_file)
+  Coradoc::Transformer.transform(syntax_tree)
+end
+```
+image::/assets/blog/coradoc-benchmarking.jpg[Coradoc gem benchmarking results]
+
+=== Vectory gem  benchmarks
+
+```
+require "tempfile"
+
+if (argv = ARGV).empty?
+  puts "No arguments given"
+  exit(1)
+end
+
+if argv[0].to_i < 1
+  puts "Argument must be a positive integer"
+  exit(1)
+end
+
+argv[0].to_i.times do
+  require "emf2svg"
+
+  svg = Emf2svg.from_file(File.join(__dir__, "fixtures", "img.emf"))
+
+  Tempfile.create(["output", ".svg"]) do |tempfile|
+    tempfile.write(svg)
+    puts "SVG written to #{tempfile.path}"
+  end
+end
+```
+
+image::/assets/blog/vectory-benchmarking.jpg[Vectory gem benchmarking results]
+
+=== Metanorma package benchmarking
+
+Metanorma application benchmarking included execution of utility commands: ```metanorma help```, ```metanorma version```
+and generation of sample sites (ietf, ieee, iec, iso, iho) using
+
+```
+metanorma site generate samples -c samples/metanorma.yml  -o site-<site name> --agree-to-terms
+```
+
+image::/assets/blog/metanorma-benchmarking.jpg[Metanorma benchmarking results]
+
+== Benchmarking environment
+
+```
+Model Name:	Mac mini
+Model Identifier:	Macmini9,1
+Chip:	Apple M1
+Total Number of Cores:	8 (4 performance and 4 efficiency)
+Memory:	16 GB
+Ruby 3.1.4p223 (2023-03-30 revision 957bb7cb81) [arm64-darwin21]
+tebako executable packager 0.5.5
+```
