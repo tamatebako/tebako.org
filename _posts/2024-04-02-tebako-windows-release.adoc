@@ -46,6 +46,6 @@ Once it is installed use the following commands to install additional packages a
 Tebako Windows support is released with several limitations:
 * Only Ruby 3.1.4 is supported
 * Gem with native extensions that use advanced or non-standard build systems are not supported yet.
-To our knowledge, unsupported gems incluse libmspack and seven_zip_ruby but most likely it is not the full list.
+To our knowledge, unsupported gems include libmspack and seven_zip_ruby but most likely it is not the full list.
 
 Tebako team plans to address these limitations in the future releases.
