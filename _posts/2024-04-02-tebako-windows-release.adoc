@@ -1,11 +1,11 @@
 ---
 layout: post
-title:  "Tebako version 0.6.0 released"
+title:  "Tebako Windows support at v0.6.0!"
 date:   2024-04-02 00:00:00 +0800
 categories:
   - tebako
   - packaging
-  - Windows
+  - windows
 author:
   name: Maxim Samsonov
   email: m.samsonov@computer.org
@@ -13,39 +13,84 @@ author:
   social_links:
     - https://github.com/maxirmx
 excerpt: >-
-    Tebako version 0.6.0 was released. This version adds support of Windows target to tebako packaging.
+  Tebako now officially supports Windows, including Windows 2019, Windows 2022
+  targets using MinGW ucrt64, at version 0.6.0 released today.
+  Now Tebako supports packaging for most major platforms: Linux, macOS and
+  Windows.
 ---
 
-= Tebako version 0.6.0 features
+== Background
 
-Tebako is an executable packager. It packages a https://www.ruby-lang.org/[Ruby]
-solution with the key idea:
+Tebako is an executable packager.
+
+It packages a https://www.ruby-lang.org/[Ruby] solution with the key idea:
 
 [quote]
 ____
 one Ruby application => one Tebako image
 ____
 
-Prior to version 0.6.0 Tebako supported packaging for Linux Gnu (Ubuntu), Linux Musl (Alpine Linux) and MacOS platforms.
-Recently released version 0.6.0 adds packaging for Windows 2019, Windows 2022 targets using MinGW ucrt64 toolchain.
+== Windows support at v0.6.0
 
-The simplest approach to setup Tebako packaging environment on Windows is to use Ruby development environment provided by RubyInstaller, for example Ruby+Devkit 3.1.4-1.
-Once it is installed use the following commands to install additional packages and Tebako:
+Prior to v0.6.0, Tebako supported packaging for the platforms:
 
-[source, sh]
+* Linux platforms using https://www.gnu.org/software/libc/[`glibc`] (https://ubuntu.com[Ubuntu], etc)
+* Linux platforms using https://www.musl-libc.org[`musl`] (https://www.alpinelinux.org[Alpine Linux])
+* macOS platforms
+
+From v0.6.0, Tebako now adds Windows 2019, Windows 2022 targets to the mix.
+
+As of today, Tebako officially supports the following platforms:
+
+* Linux platforms using https://www.gnu.org/software/libc/[`glibc`] (https://ubuntu.com[Ubuntu], etc)
+* Linux platforms using https://www.musl-libc.org[`musl`] (https://www.alpinelinux.org[Alpine Linux])
+* macOS platforms
+* Windows 2019, Windows 2022 targets using MinGW `ucrt64` toolchain
+
+
+== Trying out Tebako on Windows
+
+The simplest approach to setup Tebako packaging environment on Windows is to use the Ruby development environment provided by https://rubyinstaller.org[RubyInstaller].
+
+For example, https://github.com/oneclick/rubyinstaller2/releases/download/RubyInstaller-3.1.4-1/rubyinstaller-devkit-3.1.4-1-x64.exe[`Ruby+Devkit 3.1.4-1`].
+
+Once it is installed, use the following commands to install additional packages
+and Tebako in `cmd`:
+
+[source,cmd]
 ----
-  ridk enable ucrt64
+ridk enable ucrt64
 
-  pacman -S git tar bison flex toolchain make cmake
-            boost diffutils libevent double-conversion
-            fmt glog dlfcn gtest autotools ncurses libyaml
+pacman -S git tar bison flex toolchain make cmake
+          boost diffutils libevent double-conversion
+          fmt glog dlfcn gtest autotools ncurses libyaml
 
-  gem install tebako
+gem install tebako
 ----
 
-Tebako Windows support is released with several limitations:
-* Only Ruby 3.1.4 is supported
+== Current limitations
+
+There are several caveats with Windows support for now, and they will be
+addressed in due time:
+
+* Only Ruby 3.1.4 is supported on Windows.
 * Gem with native extensions that use advanced or non-standard build systems are not supported yet.
-To our knowledge, unsupported gems include libmspack and seven_zip_ruby but most likely it is not the full list.
 
-Tebako team plans to address these limitations in the future releases.
+Unsupported gems we know of include (not a complete list of course):
+
+* https://github.com/davispuh/ruby-libmspack[libmspack]
+* https://github.com/masamitsu-murase/seven_zip_ruby[seven_zip_ruby]
+
+NOTE: The list of unsupported gems will be updated as we encounter them.
+
+The Tebako team plans to address these limitations in the future releases.
+
+We will soon publish a blog post for
+link:/blog/2023-08-25-introducing-aibika-and-ocra/[Akiba users] on how to
+migrate from Akiba to Tebako for Windows.
+
+== Conclusion
+
+Tebako now supports single-binary packaging for Ruby on all major platforms!
+
+Pack away...
