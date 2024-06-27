@@ -1,0 +1,81 @@
+---
+layout: post
+title:  "Tebako Expands Windows support at v0.7.0!"
+date:   2024-06-27 00:00:00 +0800
+categories:
+  - tebako
+  - packaging
+  - windows
+author:
+  name: Maxim Samsonov
+  email: m.samsonov@computer.org
+  use_picture: assets
+  social_links:
+    - https://github.com/maxirmx
+excerpt: >-
+  Tebako provides full support for Ruby 3.1 and 3.2 on Windows 2019, Windows 2022
+  at recently released version 0.7.0.
+---
+
+= Tebako Expands Windows Functionality in Latest Release
+
+We're excited to announce full support for Windows in the latest Tebako release, version 0.7.0.
+This update now fully supports Ruby versions 3.1 (tested with 3.1.4 to 3.1.6) and and 3.2 (3.2.3 - 3.2.4). This expansion broadens the compatibility range, making Tebako even more versatile for your development needs.
+
+The extended Ruby support is a new feature for Windows packaging, highlighting our commitment to cross-platform functionality. Linux and MacOS versions have supported  Ruby 2.7, 3.0, 3.1, and 3.2 in previous releases.
+
+In addition to the improved Ruby support, we have thoroughly tested Windows packaging with a wide variety of gems, including those with native extensions.
+This ensures that packaging will support the full power of your application.
+
+Another significant enhancement in version 0.7.0 is the embedding of OpenSSL root certificates. This makes Tebako independent from OpenSSL configuration on the target computer, simplifying deployment and improving security.
+
+== Key New Features:
+* *Expanded Ruby Support on Windows*: Windows packaging compatible with Ruby 3.1 and 3.2.
+* *Full Gem Support on Windows*: Packaging tested against various gems, including those with native extensions.
+* *Embedded OpenSSL Certificates*: Independent from the target computer's OpenSSL configuration.
+
+These updates mark a significant step forward in our mission to provide robust, cross-platform support for developers. Stay tuned for more enhancements and improvements in future releases.
+
+
+== Trying out Tebako on Windows
+
+The simplest approach to setup Tebako packaging environment on Windows is to use the Ruby development environment provided by https://rubyinstaller.org[RubyInstaller].
+
+For example, https://github.com/oneclick/rubyinstaller2/releases/download/RubyInstaller-3.1.4-1/rubyinstaller-devkit-3.1.4-1-x64.exe[`Ruby+Devkit 3.1.4-1`].
+
+Once it is installed, use the following commands to install additional packages
+and Tebako in `cmd`:
+
+[source,cmd]
+----
+ridk enable ucrt64
+
+pacman -S git tar bison flex toolchain make cmake
+          boost diffutils libevent double-conversion
+          fmt glog dlfcn gtest autotools ncurses libyaml
+
+gem install tebako
+----
+
+== Current limitations
+
+There are several caveats with Windows support for now, and they will be
+addressed in due time:
+
+* Ruby 3.1.4-3.1.6 and 3.2.3-3.2.4 is supported on Windows.
+* Gem with native extensions that use advanced or non-standard build systems are not supported yet.
+
+Unsupported gems we know of include (not a complete list of course):
+
+* https://github.com/davispuh/ruby-libmspack[libmspack]
+* https://github.com/masamitsu-murase/seven_zip_ruby[seven_zip_ruby]
+
+NOTE: The list of unsupported gems will be updated as we encounter them.
+
+The Tebako team plans to address these limitations in the future releases.
+
+== Aibika migration
+
+We will soon publish a blog post for
+link:/blog/2023-08-25-introducing-aibika-and-ocra/[Akiba users] on how to
+migrate from Akiba to Tebako for Windows.
