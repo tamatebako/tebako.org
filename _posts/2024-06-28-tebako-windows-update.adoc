@@ -1,0 +1,222 @@
+---
+layout: post
+title:  "Tebako announces full Windows support at v0.7.0"
+date:   2024-06-28 00:00:00 +0800
+categories:
+  - tebako
+  - packaging
+  - windows
+author:
+  name: Maxim Samsonov
+  email: m.samsonov@computer.org
+  use_picture: assets
+  social_links:
+    - https://github.com/maxirmx
+excerpt: >-
+  Tebako 0.7.0 now provides full support for Ruby on Windows 2019, Windows
+  2022.
+---
+
+= Tebako announces full Windows support at v0.7.0
+
+== General
+
+We are thrilled to announce full support for Windows in the latest Tebako
+release v0.7.0.
+
+This expansion means that Windows, alongside with Linux and macOS, are all
+officially supported platforms for Tebako, making Tebako even more versatile for
+your development needs.
+
+By supporting Windows, we ensure that a broader audience can take advantage of
+Tebako’s benefits, such as simplified deployment, enhanced security, and
+consistent application performance across different environments.
+
+== A short recap of Tebako
+
+Tebako is a specialized tool designed to facilitate the deployment of Ruby
+applications with enhanced security and portability. It packages applications
+along with their dependencies into a single, self-contained executable with
+no external dependencies.
+
+This approach helps mitigate deployment issues related to environment
+differences and dependency management, making it easier to ensure that your
+application runs smoothly wherever it is deployed.
+
+== New features on 0.7.0
+
+=== General
+
+Version 0.7.0 introduces several exciting features for Windows users.
+
+* **Full Ruby support on Windows**: Windows packaging is now compatible with
+Ruby 3.1 and 3.2.
+
+* **Full gem support and dependency discovery**: Packaging of external gems
+tested against various gems, including those with native extensions.
+
+* **Embedded OpenSSL certificates**: Tebako is now independent from the target
+computer's OpenSSL configuration, on all platforms.
+
+
+=== Full Ruby support (Windows)
+
+Tebako now fully supports Ruby on Windows, with the following versions:
+
+* Ruby 3.1 (versions 3.1.4 to 3.1.6)
+* Ruby 3.2 (versions 3.2.3 to 3.2.4)
+
+With additional versions to come as future enhancements.
+
+This means you can now package and deploy your Ruby applications using these
+versions on a Windows platform, ensuring compatibility and taking advantage of
+the latest features and improvements in these Ruby releases.
+
+
+=== Full gem support and dependency discovery (Windows)
+
+One of the core strengths of Tebako is its ability to package applications along
+with their dependencies.
+
+Tebako is now able to detect all external dependencies of a Ruby program and has
+been tested against a wide variety of gems, including those with native extensions.
+
+This ensures that your application will have the necessary libraries and
+dependencies bundled in a single executable with no external dependencies,
+obsoleting the need for your users to install dependencies or compilation tools.
+
+=== Embedded certificate store (all platforms)
+
+Security is a top priority for Tebako, and with version 0.7.0, we have made
+significant improvements in this area.
+
+The OpenSSL root certificate store is now embedded within the Tebako package,
+allowing the Tebako-packed executable to run independently from the certificate
+store configuration on the executing computer, resolving these cases:
+
+. preventing deployment issues where executing computers use outdated
+certificates;
+. ensuring that the certificate store is updated and available;
+. ensuring that the certificate store meets the security requirements of the
+packager;
+
+
+=== Known limitations on Windows
+
+Currently, there are several caveats with using Tebako on Windows. They will be
+addressed in due time:
+
+* Ruby 3.1.4-3.1.6 and 3.2.3-3.2.4 are supported on Windows.
+* Gem with native extensions that use non-standard or advanced build systems are
+not supported yet.
+
+Unsupported gems we know of include (not a complete list of course):
+
+* https://github.com/davispuh/ruby-libmspack[libmspack]
+* https://github.com/masamitsu-murase/seven_zip_ruby[seven_zip_ruby]
+
+NOTE: The list of unsupported gems will be updated as we encounter them.
+
+The Tebako team plans to address these limitations in the future releases.
+
+
+== Setting up Tebako on Windows
+
+=== General
+
+For first-time Windows users, setting up Tebako is now as straightforward as
+possible.
+
+Here's a step-by-step guide to get you started.
+
+=== Step 1: Install RubyInstaller
+
+The simplest approach to set up the Tebako packaging environment on Windows is
+to use the Ruby development environment provided by
+https://rubyinstaller.org[RubyInstaller].
+
+RubyInstaller provides a comprehensive and easy-to-use environment for Ruby
+development on Windows.
+
+You can download the installer for `Ruby+Devkit 3.1.4-1` from this link:
+
+* https://github.com/oneclick/rubyinstaller2/releases/download/RubyInstaller-3.1.4-1/rubyinstaller-devkit-3.1.4-1-x64.exe[Ruby+Devkit 3.1.4-1]
+
+Run the downloaded installer and follow the on-screen instructions.
+
+. Launch the Installer: Double-click the downloaded .exe file to start the
+installation process.
+
+. Choose Components: When prompted, ensure that you select the option to include
+the MSYS2 development toolchain. This will provide the necessary tools and
+libraries required for building and packaging Ruby applications.
+
+. Complete Installation: Follow the remaining prompts to complete the
+installation. This process will also download and set up additional tools needed
+for development.
+
+
+=== Step 2: Install and enable the development toolchain
+
+After installation, you need to enable the development toolchain. Open a command
+prompt and run the following command:
+
+[source,cmd]
+----
+ridk enable ucrt64
+----
+
+This command sets up the environment for using the MSYS2 toolchain.
+
+Then install the necessary packages that Tebako depends on.
+
+In the same command
+prompt, run the following command:
+
+[source,cmd]
+----
+pacman -S git tar bison flex toolchain make cmake \
+          boost diffutils libevent double-conversion \
+          fmt glog dlfcn gtest autotools ncurses libyaml
+----
+
+This command installs a variety of tools and libraries required for building and
+packaging your Ruby applications with Tebako.
+
+=== Step 3: Install Tebako
+
+Finally, install Tebako by running the following command in the command prompt:
+
+[source,cmd]
+----
+gem install tebako
+----
+
+=== Done
+
+Now you're ready for some Tebako pressing!
+
+We are developing a set of sample applications that you can test Tebako on
+locally, stay tuned:
+
+* https://github.com/tamatebako/tebako-samples[tebako-samples repository]
+
+
+== Aibika migration
+
+The Tebako team has previously developed Aibika for Windows-only packaging.
+Now with Tebako fully supporting Windows, Aibika is now superseded.
+
+We will soon publish a blog post for
+link:/blog/2023-08-25-introducing-aibika-and-ocra/[Akiba users] on how to
+migrate from Akiba to Tebako for Windows.
+
+== Conclusion
+
+Contact us if you encounter any problems with Tebako, at our issues page:
+
+* https://github.com/tamatebako/tebako/issues
+
+The team is always on the watch for making things easier for Tebako users.
+
+**__Press on__** _with Tebako_!
