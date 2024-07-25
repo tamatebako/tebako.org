@@ -1,0 +1,52 @@
+---
+layout: post
+title:  "Tebako announces support of packages based on Ruby 3.3 at v0.7.0"
+date:   2024-07-25 00:00:00 +0800
+categories:
+  - tebako
+  - packaging
+  - Ruby 3.3
+author:
+  name: Maxim Samsonov
+  email: m.samsonov@computer.org
+  use_picture: assets
+  social_links:
+    - https://github.com/maxirmx
+excerpt: >-
+  Tebako 0.8.0 now provides an option to create packages based on Ruby 3.3.3 and 3.3.4 on Ubuntu, Alpine, MacOS and Windows.
+---
+
+= Tebako announces Ruby 3.3 support at v0.780
+
+== General
+
+We are happy to announce full support for Ruby 3.3 in the latest Tebako
+release v0.8.0.
+
+This expansion means that now it is possible to use Ruby 3.3.3 and 3.3.4 as bedrocks for tebako packages, making Tebako even more versatile for
+your development needs.
+
+By supporting WindowsRuby 3.3, we ensure that a broader audience can take advantage of
+Tebako’s benefits, such as simplified deployment, enhanced security, and
+consistent application performance across different environments.
+
+== A short recap of Tebako
+
+Tebako is a specialized tool designed to facilitate the deployment of Ruby
+applications with enhanced security and portability. It packages applications
+along with their dependencies into a single, self-contained executable with
+no external dependencies.
+
+This approach helps mitigate deployment issues related to environment
+differences and dependency management, making it easier to ensure that your
+application runs smoothly wherever it is deployed.
+
+== Contact information
+
+Contact us if you encounter any problems with Tebako, at our issues page:
+
+* https://github.com/tamatebako/tebako/issues
+
+The team is always on the watch for making things easier for Tebako users.
+
+**__Press on__** _with Tebako_!
