@@ -5,10 +5,10 @@
 $font-family: Quicksand, Verdana, sans-serif;
 $hero-title-font-weight: 500;
 
-$primary-color: #ffa200;
-$accent-color: #8b5937;
-$warning-color: #c5bf1e;
-$important-color: #981919;
+$primary-color: #f44c32;
+$accent-color: #0e6493;
+$warning-color: #a30202;
+$important-color: #5b7393;
 
 $main-background: linear-gradient(135deg, $primary-color 0%, $accent-color 100%);
 
@@ -33,6 +33,11 @@ $main-background: linear-gradient(135deg, $primary-color 0%, $accent-color 100%)
 //   }
 // }
 
+body > .underlay > header .site-logo svg {
+  height: 48px;
+  width: 48px;
+  margin-right: 1em;
+}
 
 // body.layout--home {
 //   > main .custom-intro .summary {

@@ -1,0 +1,105 @@
+---
+title: Frequently Asked Questions (FAQ)
+description: FAQ on Tebako
+layout: post
+---
+
+== Why use Tebako?
+
+Tebako is particularly useful for developers who need to:
+
+* Distribute applications without requiring users to have specific runtimes installed.
+* Simplify the deployment process by packaging all dependencies into one binary.
+* Ensure consistency across different environments by using a single executable.
+* Flexibility to support different runtime versions on the user's machine.
+
+
+== How do I know I need Tebako?
+
+You might need Tebako if you:
+
+* Want to package your application into a single, self-contained binary.
+* Want to avoid the complexities of managing runtime environments on target machines.
+* Distribute software to environments where installing runtimes and their dependencies is challenging.
+* Require a streamlined way to deliver applications to end-users.
+* Need to ensure that your application runs consistently across different environments and architectures.
+
+
+== What is DwarFS?
+
+https://github.com/mhx/dwarfs[DwarFS] is a fast, high compression read-only
+user-land file system designed for efficient storage and access of large
+collections of files.
+
+It is used by Tebako to package applications into a compact and efficient format.
+
+Tebako uses https://github.com/tamatebako/libdwarfs[libdwarfs], the library
+form of https://github.com/mhx/dwarfs[DwarFS], developed for the Tebako project.
+
+== When is Tebako better than comparable solutions?
+
+Tebako offers several advantages over comparable solutions for supported
+interpretive languages.
+
+They are listed in order of the degree of virtualization below.
+
+Tebako stands out by providing a lightweight runtime bundling approach that
+simplifies distribution and deployment while offering flexibility and
+efficiency.
+
+It eliminates the need for users to have specific runtimes installed and ensures
+consistency across different environments.
+
+With Tebako, you can package your entire project with a bundled runtime into a
+single, performant, executable binary.
+
+[cols="a,3a,3a"]
+|===
+| Solution | Pros | Cons
+
+| Virtual machines (VMs)
+|
+- Provides full isolation and compatibility across environments
+|
+- Requires a separate VM installation for each application
+- Heavy resource consumption for virtualization
+
+| Docker
+|
+- Provides portable containers
+- Isolates entire applications and their dependencies
+- Supports easy deployment and scalability
+|
+- Requires Docker installation and management
+- Requires administrative rights on machine
+- Containerization overhead
+
+| *Tebako*
+|
+- Packages all files and dependencies into a single binary
+- Supports multiple operating systems and architectures
+- Provides efficient packaging and execution with DwarFS
+- Offers security features like signing on macOS
+- Simplifies distribution and deployment
+- Native running speed
+|
+- Initial packaging time longer than Ruby gems
+- Minor runtime overhead
+
+| Ruby Gems
+|
+- Easy installation of Ruby libraries
+- Provides user-side version control and dependency management
+|
+- Requires Ruby installation and gem management
+- Runtime execution dependent on the user's installed Ruby version and gems
+
+|===
+
+
+== What are the future plans for Tebako?
+
+* Downloading new DwarFS images to be stored in the local home directory
+* Allowing loading multiple DwarFS images in a stacked way
+* Supporting a COW mechanism that the newly written files are stored
+  in a separate image that can be loaded on top of the read-only file systems.
