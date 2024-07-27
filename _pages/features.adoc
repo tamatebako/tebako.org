@@ -1,0 +1,186 @@
+---
+title: Features
+description: Features of Tebako
+layout: post
+---
+
+Tebako is an advanced executable packager designed for applications written in
+interpretive languages.
+
+It simplifies distribution and deployment by packaging your entire project with
+a bundled runtime into a single, performant, executable binary.
+
+
+== Architecture
+
+A Tebako-packaged binary is effectively a self-executing container-in-a-file.
+
+The packaged binary contains the following components:
+
+* An on-file filesystem (OFFS) containing all the project files and
+dependencies in DwarFS format.
+
+* A runtime environment that includes the necessary libraries and interpreters,
+with patched filesystem calls that redirect access of project files to the
+on-file filesystem.
+
+* An executable loader that loads the on-file filesystem in memory and executes
+the project.
+
+
+== Supported runtimes, platforms and architectures
+
+Tebako artifacts can be built and executed on the following platforms and
+architectures.
+
+.Supported platforms and architectures
+[cols="3", options="header"]
+|===
+| Platform and version | Architectures | Build system
+
+3+| **Linux**
+| Ubuntu 20.04 | amd64, aarch64 | gcc/g+\+: 10; clang/clang++: 12
+| Alpine 3.17 | amd64 | gcc/g+\+: default; clang/clang++: default
+
+3+| **macOS**
+| macOS 12 (Monterey) | amd64          | xcode: [13.1, 14.3.1]
+| macOS 13 (Ventura)  | amd64, aarch64 | xcode: [13.1, 14.3.1]
+| macOS 14 (Sonoma)   | amd64, aarch64 | xcode: [13.1, 14.3.1, 15.4]
+
+3+| **Windows**
+| Windows 10 | amd64 | MinGW ucrt64
+| Windows 11 | amd64 | MinGW ucrt64
+| Windows Server 2019 | amd64 | MinGW ucrt64
+| Windows Server 2022 | amd64 | MinGW ucrt64
+
+|===
+
+[NOTE]
+====
+Windows build caveats:
+
+. Tebako may face errors related to CMake path length limitations
+  (https://gitlab.kitware.com/cmake/cmake/-/issues/25936).
+** This error may affect not Tebako itself, but it may affect the gems that need
+   to be packaged and use CMake to build native extensions.
+** There is no workaround for this issue as it looks like is a limitation of the
+   manifest used to build a CMake executable.
+
+. The MSys strip utility creates broken executable when tebako image is processed.
+** Linking with '-s' flag produces unusable executables as well.
+** Until this issue (#172) is resolved we plan to produce an Windows executable
+   with debug information unstripped.
+** You can opt to run 'strip -S' manually, it most cases it works.
+====
+
+
+.Supported Ruby versions
+[cols="2", options="header"]
+|===
+| Ruby version | Supported platforms
+
+| 2.7.8 | Linux, macOS
+| 3.0.7 | Linux, macOS
+| 3.1.{4,5,6} | Linux, macOS, Windows
+| 3.2.{3,4} | Linux, macOS, Windows
+| 3.3.{3,4} | Linux, macOS, Windows
+
+|===
+
+NOTE: Our goal is to support all maintained Ruby releases, including minor versions.
+
+== Packaging scenarios for Ruby
+
+Tebako for Ruby supports the following packaging scenarios.
+
+This is high-level description of the Tebako Ruby packaging mechanism.
+
+NOTE: These scenarios were inspired by the `ruby-packer` approach.
+
+NOTE: Tebako Ruby is created independently from `ruby-packer`, no line of code
+was copied from `ruby-packer`.
+
+Depending on the configuration files that are present in the root project folder, the Tebako Ruby packager supports different packaging scenarios.
+
+These scenarios differ in what files are packaged and where the entry point is located.
+
+Here is a summary of the scenarios:
+
+[cols="a,2a,4a,3a,a,a,a"]
+|===
+| Scenario | Description | Packaging | Entry point | `*.gemspec` | `Gemfile`  | `*.gem`
+
+| 1
+| Simple ruby script
+| Copy `<project-root>` with all sub-folders to packaged filesystem
+| `<mount_point>/local/<entry_point base name>`
+| No
+| No
+| No
+
+
+| 2
+| Packaged gem
+| Install the gem with `gem install` to packaged filesystem
+| `<mount_point>/bin/<entry_point base name>` (i.e., binstub is expected)
+| No
+| No
+| One
+
+
+| 3
+| Gem source, no `bundler`
+|
+. Build the gem using `gem build` command at the host
+. Install it with `gem install` to packaged filesystem
+
+| `<mount_point>/bin/<entry_point base name>` (i.e., binstub is expected)
+| One
+| No
+| Any
+
+
+| 4
+| Gem source, `bundler`
+|
+. Collect dependencies at the host with `bundle install`
+. Build the gem using `gem build` command
+. Install it with `gem install` to packaged file system
+
+| `<mount_point>/bin/<entry_point base name>` (i.e., binstub is expected)
+| One
+| One
+| Any
+
+
+| 5
+| Rails project
+| Deploy project to packaged filesystem using `bundle install`
+| `<mount_point>/local/<entry_point base name>`
+| No
+| One
+| Any
+
+
+| Error
+| Error: Two or more `*.gem` files present
+| -
+| -
+| No
+| No
+| Two or more
+
+
+| Error
+| Error: Two or more `*.gemspec` files present
+| -
+| -
+| Two or more
+| Any
+| Any
+
+|===
+
+
+These scenarios determine how the project is packaged and where the entry point
+is located within the packaged filesystem.
