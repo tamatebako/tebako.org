@@ -1,0 +1,81 @@
+---
+layout: post
+title:  "Introducing a New Feature in Tebako: Broader GLIBC Compatibility"
+date:   2024-07-25 00:00:00 +0800
+categories:
+  - tebako
+  - packaging
+  - GLIBC
+  - Gnu Linux
+author:
+  name: Maxim Samsonov
+  email: m.samsonov@computer.org
+  use_picture: assets
+  social_links:
+    - https://github.com/maxirmx
+excerpt: >-
+  Tebako 0.8.7 provides an option to remove strict dependencies on GLIBC version for Linux Gnu packages.
+---
+
+= Tebako announces broader packages' portability against GLIBC versions at v0.8.7
+
+== General
+
+We are excited to announce a significant enhancement to Tebako! Our latest feature removes the strict dependency
+on a specific GLIBC version, giving you more flexibility in your deployments. With this update, you can now use
+the Tebako toolchain on Ubuntu 20 to create packages that run seamlessly on Linux GNU distributions with GLIBC
+version 2.31 and above. We've rigorously tested this feature across multiple distributions, including Ubuntu,
+Rocky Linux, Fedora, and CentOS, to ensure reliability and performance. To help you get started, we’ve provided
+sample workflows, which are available at Tebako Samples. By leveraging this new functionality, you can take full
+advantage of Tebako’s core benefits: simplified deployment, enhanced security, and consistent application
+performance across a variety of environments.
+
+=== Minimal Supported Versions for Major Distributions:
+- **Ubuntu**: 20.04 (Focal Fossa) - GLIBC 2.31
+- **Debian**: 11 (Bullseye) - GLIBC 2.31
+- **Rocky Linux**: 9 - GLIBC 2.34
+- **Fedora**: 33 - GLIBC 2.32
+- **CentOS**: 9 - GLIBC 2.34
+- **Red Hat Enterprise Linux (RHEL)**: 9 - GLIBC 2.34
+- **Oracle Linux**: 9 - GLIBC 2.34
+
+Stay tuned for more updates and enhancements!
+
+== A short recap of Tebako
+
+Tebako is a specialized tool designed to streamline the deployment of Ruby
+applications with enhanced security and portability. It packages applications
+along with their dependencies into a single, self-contained executable,
+eliminating the need for external dependencies.
+
+This approach helps mitigate deployment issues related to environment
+differences and dependency management, making it easier to ensure that your
+application runs smoothly wherever it is deployed.
+
+Tebako offers several key features:
+
+- **Simplified Deployment**: Tebako simplifies the deployment process by
+packaging your Ruby application and its dependencies into a single executable.
+This eliminates the need to install and configure dependencies on the target
+system, reducing the chances of compatibility issues.
+
+- **Enhanced Security**: By bundling your application and its dependencies into
+a self-contained executable, Tebako helps protect your code from unauthorized
+access and tampering. It ensures that your application runs in a controlled
+environment, reducing the risk of security vulnerabilities.
+
+- **Portability**: Tebako enables you to create executable packages that can run
+on different operating systems, including Ubuntu, Alpine, macOS, and Windows.
+This allows you to deploy your Ruby application consistently across various
+environments, without worrying about platform-specific dependencies.
+
+
+== Contact information
+
+Contact us if you encounter any problems with Tebako, at our issues page:
+
+* https://github.com/tamatebako/tebako/issues
+
+The team is always on the watch for making things easier for Tebako users.
+
+**__Press on__** _with Tebako_!
