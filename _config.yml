@@ -59,7 +59,7 @@ theme: jekyll-theme-open-project
 landing_priority: [custom_intro, blog, specs, software]
 
 tagline: >-
-  Packaging&nbsp;cross-platform&nbsp;Ruby&nbsp;executables
+  Cross-platform, self-contained&nbsp;executables
 
 author:
   name: Ribose Inc.
