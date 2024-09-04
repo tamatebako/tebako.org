@@ -1,12 +1,12 @@
 ---
 layout: post
-title:  "Introducing a New Feature in Tebako: Broader GLIBC Compatibility"
-date:   2024-07-25 00:00:00 +0800
+title:  "Tebako 0.8.7 improves package portability on Linux distributions"
+date:   2024-09-03 00:00:00 +0800
 categories:
   - tebako
   - packaging
-  - GLIBC
-  - Gnu Linux
+  - glibc
+  - GNU Linux
 author:
   name: Maxim Samsonov
   email: m.samsonov@computer.org
@@ -14,39 +14,301 @@ author:
   social_links:
     - https://github.com/maxirmx
 excerpt: >-
-  Tebako 0.8.7 provides an option to remove strict dependencies on GLIBC version for Linux Gnu packages.
+  Tebako 0.8.7 introduces forward compatibility for Linux distributions that
+  depend on the GNU C Library (`glibc`).
 ---
 
-= Tebako announces broader packages' portability against GLIBC versions at v0.8.7
+== Introduction
 
-== General
+We are excited to announce significant enhancements in Tebako v0.8.7 that improve
+package portability across different Linux distributions.
 
-We are excited to announce a significant enhancement to Tebako! Our latest feature removes the strict dependency
-on a specific GLIBC version, giving you more flexibility in your deployments. With this update, you can now use
-the Tebako toolchain on Ubuntu 20 to create packages that run seamlessly on Linux GNU distributions with GLIBC
-version 2.31 and above. We've rigorously tested this feature across multiple distributions, including Ubuntu,
-Rocky Linux, Fedora, and CentOS, to ensure reliability and performance. To help you get started, we’ve provided
-sample workflows, which are available at Tebako Samples. By leveraging this new functionality, you can take full
-advantage of Tebako’s core benefits: simplified deployment, enhanced security, and consistent application
-performance across a variety of environments.
+This update introduces forward compatibility for Linux distributions that depend
+on the GNU C Library (`glibc`), offering greater flexibility in deploying your
+packaged applications on a wider range of platforms.
 
-=== Minimal Supported Versions for Major Distributions:
-- **Ubuntu**: 20.04 (Focal Fossa) - GLIBC 2.31
-- **Debian**: 11 (Bullseye) - GLIBC 2.31
-- **Rocky Linux**: 9 - GLIBC 2.34
-- **Fedora**: 33 - GLIBC 2.32
-- **CentOS**: 9 - GLIBC 2.34
-- **Red Hat Enterprise Linux (RHEL)**: 9 - GLIBC 2.34
-- **Oracle Linux**: 9 - GLIBC 2.34
+== Package portability
 
-Stay tuned for more updates and enhancements!
+=== What is portability?
 
-== A short recap of Tebako
+In software development, portability refers to the ability of a software
+application or package to run on different computing environments without
+requiring significant modifications. This can include different operating
+systems, hardware architectures, or versions of system libraries.
 
-Tebako is a specialized tool designed to streamline the deployment of Ruby
-applications with enhanced security and portability. It packages applications
-along with their dependencies into a single, self-contained executable,
-eliminating the need for external dependencies.
+=== Tebako package portability
+
+Package portability has always been a key focus for Tebako. Tebako packages are
+designed to be "forward portable" across different operating systems and
+architectures. This means that a package created on a specific platform can be
+executed on a newer version of the same platform, allowing for easy distribution
+and deployment.
+
+Tebako now provides the following benefits relating to package portability:
+
+* Broad compatibility: Packages created with Tebako v0.8.7 are now compatible
+with a wider range of operating systems and Linux distributions.
+
+* Forward portability: Packages can run on newer versions of the same platform
+they were built on.
+
+** For `glibc` systems, Tebako provides the `--patchelf` option which allows
+packages built on glibc-based systems to run on Linux distributions with glibc
+2.31 and above. For example, a Tebako executable package built on Ubuntu 20.04
+with the `--patchelf` option can be executed on Rocky Linux 9.
+
+** Packages built for the `musl` implementation of the C standard library (such
+as Alpine Linux) are forward portable. For instance, a Tebako executable package
+built on Alpine 3.17 can be executed on Alpine 3.19.
+
+** macOS packages are forward portable across different macOS versions. For
+example, a Tebako executable package built on macOS 12 (Monterey) can be
+executed on macOS 14 (Sonoma), but not vice versa.
+
+* Cross-architecture support: macOS packages built on `x86_64` can run on Apple
+M (ARM, `aarch64`) systems.
+
+== C standard libraries and package portability
+
+Understanding C standard libraries is crucial for grasping the importance of
+Tebako's improvements in package portability. Tebako virtualizes above the
+system libraries layer, providing a consistent environment for your application
+to run in. This approach ensures that your application runs smoothly across
+different platforms, regardless of the system libraries installed on the target
+system.
+
+The C standard library is a critical component of the system libraries layer,
+and different Linux distributions use different implementations and versions
+of the C standard library. For example:
+
+* Ubuntu and Fedora use the GNU C Library (`glibc`)
+* Alpine Linux uses the musl C library (`musl`)
+
+These differences can lead to compatibility issues when deploying applications
+across different distributions. Tebako addresses these challenges by providing a
+consistent runtime environment for your application, regardless of the
+underlying system libraries.
+
+=== The GNU C library
+
+https://sourceware.org/glibc/[glibc] (GNU C Library) is the most widely-used
+implementation of the C standard library for Linux systems. It provides core
+functionality for C programs, including system calls, string manipulation,
+mathematical computations, and more. glibc is developed as part of the GNU
+Project and is the default C library for most Linux distributions.
+
+Key characteristics of glibc:
+
+* Extensive feature set
+* Optimized for performance
+* Complex codebase
+* Uses symbol versioning for backward compatibility
+
+=== The musl C library
+
+https://musl.libc.org[musl] is an alternative implementation of the C standard
+library, designed to be lightweight, fast, and simple. musl is commonly used in
+embedded systems and distributions focused on minimalism, such as
+https://alpinelinux.org[Alpine Linux].
+
+Key characteristics of musl:
+
+* Smaller codebase
+* Emphasis on correctness and simplicity
+* Static linking friendly
+* Does not use symbol versioning
+
+== glibc vs musl: Forward portability differences
+
+=== General
+
+The approach to forward portability differs significantly between glibc and
+musl.
+
+=== glibc forward portability
+
+glibc uses a mechanism called symbol versioning to maintain backward
+compatibility while allowing the library to evolve. Each symbol (function or
+variable) in glibc is assigned a version, and multiple versions of the same
+symbol can coexist within the library.
+
+This approach has advantages and challenges:
+
+* *Advantage*: Older binaries can run on systems with newer glibc versions only
+when the older glibc exist, guaranteeing identical behavior for the binary.
+
+* *Challenge*: Binaries compiled against a glibc version may not run on
+systems without that particular glibc version.
+
+When a program is compiled, it is linked against specific versions of glibc
+symbols. If this program is then run on a system with a newer glibc version, it
+may fail to load because the required symbol versions are not present.
+
+Running a Tebako-built package on a system with a newer glibc version will
+result in an error like this:
+
+[source]
+----
+$ ./executable
+./executable: /lib64/libpthread.so.0: version `glibc_PRIVATE' not found (required by ./executable)
+----
+
+Prior to version 0.8.7, Tebako-built packages need to be recompiled for systems
+with newer glibc versions.
+
+=== musl forward portability
+
+musl takes a different approach to forward portability:
+
+* Does not use symbol versioning
+* Aims for a stable
+https://en.wikipedia.org/wiki/Application_binary_interface[ABI (Application Binary Interface)]
+* Focuses on simplicity and correctness
+
+This approach results in:
+
+* *Advantage*: Simpler forward portability, as binaries are less likely to
+depend on specific symbol versions.
+
+* *Challenge*: May require recompilation for optimal performance on newer
+systems.
+
+In summary, while glibc offers better backward compatibility, musl provides
+simpler forward portability. Tebako's improvements address these differences to
+enhance package portability across various Linux distributions.
+
+== Using `--patchelf` for glibc forward portability
+
+=== Background
+
+Around 3 weeks ago, https://github.com/laurent-martin[Laurent Martin] requested
+https://rockylinux.org[Rocky Linux] 9 support in
+https://github.com/tamatebako/tebako/issues/190[Issue #190]. This request was a
+catalyst for the development of the `--patchelf` option in Tebako.
+
+=== The solution
+
+Originally suggested by https://github.com/d4rky-pl[Michał Matyas], it is
+apparently possible to achieve forward compatibility on glibc-based systems by
+stripping symbol version information.
+
+Tebako 0.8.7 now provides the `--patchelf` option, which allows packages built
+with "older" glibc (pre 3.24) to work on newer gnu-linux versions. This option
+modifies symbol version information in the binary after compilation as described
+in https://github.com/tamatebako/tebako/issues/196[Issue #196].
+
+=== Benefits
+
+Using `--patchelf` gives you:
+
+* *Increased compatibility*: Binaries can run on systems with newer glibc
+versions than the one they were compiled against.
+
+* *No source code changes*: This solution works without requiring changes to the
+original source code or recompilation.
+
+* *Flexibility*: Developers can compile on newer systems while still targeting
+older environments.
+
+=== Usage
+
+The `--patchelf` option can be applied when creating the Tebako package using
+the `tebako press` command:
+
+[source,bash]
+----
+tebako-build --patchelf ...other options...
+----
+
+This instructs Tebako to apply the necessary modifications to the resulting
+binary for improved glibc compatibility.
+
+== Caveats
+
+Support for glibc forward portable packages is subject to the following caveats:
+
+. The `--patchelf` option is currently experimental.
+
+. The `--patchelf` option is only available for the GNU toolchain, not yet for
+clang/llvm.
+
+. The package is built against the installed OpenSSL version on the system
+(e.g., 1.1.1), which needs to be present at the target system. If the target
+system has a different version of OpenSSL, the package will not work.
+
+== Support for glibc-dependent Linux distributions
+
+The following table lists the versions of glibc Linux distributions supported
+by Tebako packages through `--patchelf`:
+
+.Minimum versions of glibc Linux distributions that support Tebako packages with forward portability
+[cols="3", options="header"]
+|===
+| Distribution | Minimal supported version | glibc version
+
+| Ubuntu | 20.04 (Focal Fossa) | glibc 2.31
+| Debian | 11 (Bullseye) | glibc 2.31
+| Rocky Linux | 9 | glibc 2.34
+| Fedora | 33 | glibc 2.32
+| CentOS | 9 | glibc 2.34
+| Red Hat Enterprise Linux (RHEL) | 9 | glibc 2.34
+| Oracle Linux | 9 | glibc 2.34
+
+|===
+
+NOTE: See the https://github.com/tamatebako/tebako[GitHub repository] for the
+latest information on supported distributions and versions.
+
+Usage of the
+https://github.com/tamatebako/tebako-ci-containers[Tebako Docker containers] for
+packaging is encouraged since it eliminates the effort needed for toolchain
+setup and configuration.
+
+== Best practices for forward compatibility
+
+To ensure the best forward compatibility for your Tebako packages, consider the
+following best practices:
+
+**Define the target environments**: Identify the target OSes, architectures,
+Linux distributions and versions that your application will run on. This
+helps you determine the compatibility requirements for your Tebako packages.
+
+**For glibc systems, use the `--patchelf` option**: When building packages
+for glibc-based systems, apply the `--patchelf` option to improve
+compatibility with newer glibc versions.
+
+**Test on target systems**: Verify that your Tebako packages run correctly on
+the target systems before deployment. This helps identify any compatibility
+issues early on.
+
+== Conclusion
+
+Tebako 0.8.7 introduces significant improvements in package portability,
+particularly for Linux systems depending on glibc and musl. The new `--patchelf`
+option allows for greater flexibility in deployments, enabling packages created
+on Ubuntu 20 to run seamlessly on Linux GNU distributions with glibc version
+2.31 and above.
+
+These enhancements have been rigorously tested across multiple distributions,
+including Ubuntu, Rocky Linux, Fedora, and CentOS, ensuring reliability and
+performance. They reinforce Tebako's core benefits of simplified deployment,
+enhanced security, and consistent application performance across diverse
+environments.
+
+Looking ahead, we're committed to further improving Tebako's portability and
+usability. We encourage users to explore these new features and provide
+feedback, as your input is crucial in shaping Tebako's future development.
+
+To help you get started, we have sample workflows and sample code provided at
+https://github.com/tamatebako/tebako-samples[Tebako Samples].
+
+== About Tebako
+
+Tebako is a specialized tool designed to streamline the deployment of
+application executables using interpreted languages, such as Ruby, with enhanced
+security and portability. It packages applications along with their dependencies
+into a single, self-contained executable, eliminating the need for external
+dependencies.
 
 This approach helps mitigate deployment issues related to environment
 differences and dependency management, making it easier to ensure that your
@@ -54,27 +316,25 @@ application runs smoothly wherever it is deployed.
 
 Tebako offers several key features:
 
-- **Simplified Deployment**: Tebako simplifies the deployment process by
+- **Simplified deployment**: Tebako simplifies the deployment process by
 packaging your Ruby application and its dependencies into a single executable.
 This eliminates the need to install and configure dependencies on the target
 system, reducing the chances of compatibility issues.
 
-- **Enhanced Security**: By bundling your application and its dependencies into
+- **Enhanced security**: By bundling your application and its dependencies into
 a self-contained executable, Tebako helps protect your code from unauthorized
 access and tampering. It ensures that your application runs in a controlled
 environment, reducing the risk of security vulnerabilities.
 
 - **Portability**: Tebako enables you to create executable packages that can run
 on different operating systems, including Ubuntu, Alpine, macOS, and Windows.
-This allows you to deploy your Ruby application consistently across various
+This allows you to deploy your application consistently across various
 environments, without worrying about platform-specific dependencies.
-
 
 == Contact information
 
-Contact us if you encounter any problems with Tebako, at our issues page:
-
-* https://github.com/tamatebako/tebako/issues
+Contact us if you encounter any problems with Tebako, at our
+https://github.com/tamatebako/tebako/issues[GitHub issues] page.
 
 The team is always on the watch for making things easier for Tebako users.
 
