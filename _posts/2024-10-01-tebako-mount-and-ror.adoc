@@ -1,7 +1,7 @@
 ---
 layout: post
-title:  "Tebako 0.8.7 improves package portability on Linux distributions"
-date:   2024-09-03 00:00:00 +0800
+title:  "Tebako 0.9.0 enhances Ruby on Rails packaging with host folder mounting"
+date:   2024-09-15 00:00:00 +0800
 categories:
   - tebako
   - packaging
@@ -14,90 +14,341 @@ author:
   social_links:
     - https://github.com/maxirmx
 excerpt: >-
- Tebako 0.9.0 introduces the ability to mount host folders to memfs,
- providing seamless packaging support for Ruby on Rails applications.
- This feature helps overcome the challenge of dealing with Rails'
- hardcoded paths for temporary files, caches, and sockets.
+  Tebako 0.9.0 introduces the ability to mount host folders to memfs,
+  providing seamless packaging support for Ruby on Rails applications.
+  This feature helps overcome the challenge of dealing with Rails'
+  hardcoded paths for temporary files, caches, and sockets.
 ---
 
-== Introducing Host Folder Mounting in Tebako 0.9.0:
-Enhanced Support for Ruby on Rails Packaging
+== Tebako 0.9.0 provides Rails support through host folder mounting
 
-We are excited to announce the release of **Tebako 0.9.0**,
-which introduces a powerful new feature: the ability to mount
-host folders into Tebako’s **memfs**. This capability is
-particularly beneficial for packaging **Ruby on Rails**
-applications, addressing one of Rails' long-standing challenges
-— its reliance on hardcoded paths for temporary files, caches,
-and sockets.
+We are delighted to announce the release of Tebako 0.9.0, a major update that
+allows packaging of Ruby on Rails applications.
 
-=== Why This Matters for Rails Developers
+The highlight of this version is the introduction of **host folder mounting** to
+Tebako's in-memory filesystem (memfs).
 
-By default, Rails places temporary files, caches, and sockets
-in hardcoded directories within the application’s root folder.
-These directories often end up included in Tebako’s read-only
-**memfs**, making it difficult to support dynamic file writes
-during runtime. While some patches have been suggested in the
-Rails community to allow configuration of these paths, the core
-issue remains unresolved.
+This capability effectively addresses one of the long-standing challenges of
+packaging Rails applications due to the framework's reliance on hardcoded paths
+for temporary files, caches, and sockets.
 
-With Tebako 0.9.0, however, you can now mount host directories
-to the **memfs** tree, offering a seamless workaround for these
-Rails limitations. This feature allows you to overlay writable
-host directories onto your packaged Rails application without
-modifying the application's source code.
 
-=== How It Works
+== Host folder mounting
 
-The `--tebako-mount` option allows you to specify which
-directories on your host machine should be mounted into the
-Tebako **memfs** during application startup. This can be done
-as many times as necessary, allowing you to mount multiple
-folders or files.
+Host folder mounting (HFM) is a feature that allows directories from the host
+system (the machine running the Tebako-packaged application) to be made
+accessible within the application's packaged filesystem.
 
-For example, to mount the host's `tmp` directory into your
-Rails application's `local/tmp` directory within the **memfs**,
-you would run:
+Applications often need to read from or write to specific directories that are
+outside the packaged application's filesystem for performance, security, or
+persistence reasons.
+
+On Unix-like systems, `/tmp` is a common directory for storing temporary files,
+and `/var/log` is often used for log files. These directories are typically
+writable by the system and are shared across applications.
+
+Tebako's host folder mounting provides the ability to bridge these external
+directories with the packaged application's filesystem, enabling seamless access
+from the packaged application to these directories at runtime.
+
+In effect, it allows the packaged application to read from and write to these
+mounted directories as if they were part of its own filesystem, even though the
+application is running from a packaged executable.
+
+The following diagram illustrates the host folder mounting architecture.
+
+.Host folder mounting architecture
+image::/assets/blog/20241019-host-folder-mounting.svg[]
+
+
+== Comparing to Docker's bind mount
+
+Host folder mounting in Tebako addresses the same use cases as Docker's bind
+mount feature does.
+
+Both mechanisms allow directories from the host system to be made accessible
+within the application's runtime environment. This approach provides a way to
+bridge the gap between the host filesystem and the application's filesystem,
+enabling seamless access to necessary directories.
+
+* In Docker, bind mounts are used to mount a directory from the host machine into
+a container, allowing the container to read from and write to the host
+directory.
+
+* In Tebako, host folder mounting allows the packaged application to interact with
+directories on the host system as if they were part of its own filesystem.
+
+While the concept of mounting host directories is similar, there are key
+differences between Tebako's host folder mounting and Docker's bind mount.
+
+The key differences include:
+
+* Packaged applications in Tebako run from a read-only filesystem (memfs). While
+  applications in Docker containers are run from a read-write filesystem by
+  default.
+
+* Tebako packaged applications have full access to the host filesystem (outside
+  of memfs) at runtime, while Docker containers are isolated from the host
+  filesystem by default.
+
+
+== Ruby on Rails on Tebako (RoRoT)
+
+=== Introduction to Rails
+
+Ruby on Rails, or as Rails or RoR, is a popular server-side web application
+framework written in Ruby. It follows the model-view-controller (MVC)
+architectural pattern and emphasizes convention over configuration. Rails is
+known for its ability to accelerate web application development by providing
+default structures for databases, web services, and web pages.
+
+=== Why package with Tebako
+
+With Tebako 0.9.0, you can now package and deploy Ruby on Rails applications
+using Tebako.
+
+There are multiple ways to deploy Rails applications, including traditional
+server setups, containerized environments, and cloud platforms. However, these
+methods often require additional setup and configuration, making deployment
+complex and time-consuming.
+
+Tebako simplifies the deployment process by packaging the entire Rails
+application, including dependencies, into a single executable. This approach
+provides a self-contained deployment package that can be run on various operating
+systems without additional setup.
+
+A packaged Rails application on Tebako can be called Ruby on Rails on Tebako
+(RoRoT). RoRoT offers several benefits, including:
+
+. Simplified deployment: RoRoT packages the entire Rails application, including
+  dependencies, into a single executable.
+. Enhanced security: By bundling everything into a self-contained executable,
+  RoRoT helps protect code from unauthorized modifications.
+. Improved portability: RoRoT creates packages that can run on various
+  operating systems without additional setup.
+
+=== Challenges with RoRoT
+
+RoRoT differs from packaging normal Ruby gems or applications because of Rails'
+complex structure and its expectations about the filesystem. Unlike simpler
+Sinatra applications on Tebako, Rails applications require more sophisticated
+handling of file paths and runtime directories.
+
+The main challenge in using Rails with Tebako has been Rails' reliance on
+specific filesystem structures, particularly for temporary files and caches.
+
+By default, Rails places temporary files, caches, and sockets in hardcoded
+directories within the application's root folder.
+
+These directories often end up included in Tebako's read-only memfs, making
+it difficult to support dynamic file writes during runtime. While some patches
+have been suggested in the Rails community to allow configuration of these
+paths, the core issue remains unresolved.
+
+Tebako 0.9.0 addresses this challenge with its new host folder mounting feature,
+which mounts host directories to the memfs tree, offering a seamless workaround
+for these Rails limitations. This feature allows you to overlay writable host
+directories onto your packaged Rails application without modifying the
+application's source code.
+
+
+== Using host folder mounting
+
+=== General
+
+Host folder mounting is enabled through the `--tebako-mount` command-line
+argument to a Tebako executable as a runtime option.
+
+Syntax:
 
 [source,sh]
 ----
-rails.tebako --tebako-mount local/tmp:$PWD/tmp server
+tebako_executable --tebako-mount {app_dir_path}:{host_dir_path} command
 ----
 
-This command overlays the writable `tmp` folder from your host
-system, ensuring that Rails can operate with its expected paths
-for temporary files, caches, and sockets — even when packaged
-within Tebako.
+Where,
 
-=== Flexible and Powerful
+* `tebako_executable` is the path to the Tebako executable.
+* `host_dir_path` is the path to the host directory to be mounted.
+* `app_dir_path` is the path within the Tebako application's filesystem where
+the
+  host directory should be mounted.
 
-The `--tebako-mount` option is flexible enough to handle both
-directories and individual files. You can use it to customize
-the runtime environment of your packaged applications by
-providing paths for logs, database files, or any other runtime
-data that needs to remain writable. It can also overlay
-existing memfs objects, ensuring you have full control over how
-your application interacts with its environment.
+The option allows you to specify which directories on your host machine should
+be mounted into the Tebako memfs during application startup. This can be
+done as many times as necessary, allowing you to mount multiple folders or
+files.
 
-=== Conclusion
+A HFM-mounted folder is accessible within the packaged application's filesystem
+at runtime, allowing the application to read from and write to the mounted
+directory as if it were part of the application's filesystem.
 
-The introduction of host folder mounting in Tebako 0.9.0
-represents a significant improvement for developers working
-with complex frameworks like Ruby on Rails. By allowing
-seamless integration of writable directories into the
-application’s filesystem, this feature opens up new
-possibilities for packaging Rails applications in a way that
-previously wasn't possible.
+Specifically:
 
-Get started today with **Tebako 0.9.0** and simplify your Rails
-packaging process!
+* Multiple host folders can be mounted into the application's filesystem by
+specifying the `--tebako-mount` option multiple times.
 
+* Mounting individual files is also supported by the `--tebako-mount` option.
+
+* Overlays are supported, meaning that the mounted directory will take
+precedence over the packaged application's filesystem if there are conflicting
+paths.
+
+Any application packaged with Tebako can benefit from the ability to mount host
+directories, opening up possibilities for more complex applications that require
+runtime file access.
+
+NOTE: The host folder mounting feature is not limited to Rails applications.
+
+.Running a Rails on Tebako application with host folder mounting
+[example]
+====
+This command mounts the host's `tmp` directory into the Rails
+application's filesystem, allowing Rails to write temporary files as
+expected.
+
+[source,sh]
+----
+$ rails.tebako --tebako-mount tmp:$PWD/tmp server
+----
+====
+
+=== Mounting multiple folders
+
+Tebako's host folder mounting feature allows you to mount multiple host folders
+into the application's filesystem.
+
+To mount multiple folders, you can specify the `--tebako-mount` option multiple
+times with different host and application paths.
+
+Syntax:
+
+[source,sh]
+----
+tebako_executable \
+  --tebako-mount {app_dir_path_1}:{host_dir_path_1} \
+  --tebako-mount {app_dir_path_2}:{host_dir_path_2} \
+  command
+----
+
+.Running a Rails on Tebako application with multiple host folder mounts
+[example]
+====
+This command mounts the host's `tmp` and `log` directories into the Rails
+application's filesystem, allowing Rails to write temporary files and logs as
+expected.
+
+[source,sh]
+----
+$ rails.tebako --tebako-mount tmp:$PWD/tmp --tebako-mount log:$PWD/log server
+----
+====
+
+
+=== Mounting individual files
+
+In addition to mounting directories, Tebako's host folder mounting feature
+supports mounting individual files into the application's filesystem.
+
+This is useful for selectively overriding specific files within the packaged
+application with files from the host system. A Unix socket file or a database
+configuration file are examples of files that can be mounted individually.
+
+Syntax:
+
+[source,sh]
+----
+tebako_executable --tebako-mount {host_file_path}:{app_file_path} command
+----
+
+.Running a Rack app on Tebako application with a mounted socket file
+[example]
+====
+This command mounts the host's `socket` file into the Rack application's
+filesystem, allowing Rack to use the socket file as expected.
+
+[source,sh]
+----
+$ rack_app.tebako --tebako-mount my_app.socket:/var/www/myapp/my_app.socket server
+----
+====
+
+
+=== Overlaying writable directories
+
+A significant benefit of host folder mounting in Tebako is the ability to
+overlay writable directories onto the packaged application's filesystem.
+
+This means that a memfs image is no longer strictly read-only given that the
+host folder mounting feature allows writable directories to be mounted into the
+application's filesystem.
+
+The syntax is the same as mounting a directory, but the host directory should be
+writable by the application.
+
+
+== Testing out host folder mounting with RoRoT
+
+Let's walk through an example of packaging and running a Rails application with
+Tebako.
+
+Here's a simple Rails application structure:
+
+[source]
+----
+my_rails_app/
+├── app/
+├── config/
+├── db/
+├── Gemfile
+├── Gemfile.lock
+└── config.ru
+----
+
+To package this application with Tebako, you would use a command like this:
+
+[source,sh]
+----
+$ tebako package -n my_rails_app.teb -e config.ru -r 3.2.0 .
+----
+
+This command packages the application using Ruby 3.2.0.
+
+The resulting executable can be run like this with host folder mounting enabled:
+
+[source,sh]
+----
+$ ./my_rails_app.teb --tebako-mount tmp:$PWD/tmp --tebako-mount log:$PWD/log server
+----
+
+This command overlays the writable `tmp` folder from your host system and the
+`log` folder, ensuring that Rails can operate with its expected paths for
+temporary files, caches, and sockets -- even when packaged within Tebako.
+
+
+== Conclusion
+
+The introduction of host folder mounting in Tebako 0.9.0 represents a
+significant improvement for developers working with complex frameworks like Ruby
+on Rails.
+
+By allowing seamless integration of writable directories into the application's
+filesystem, this feature opens up new possibilities for packaging Rails
+applications in a way that previously wasn't possible.
+
+We're excited to see how the community will leverage these new capabilities,
+paving the way for more complex Ruby applications to benefit from Tebako.
+
+We encourage developers to try out Tebako 0.9.0 and share their experiences.
+Your feedback is crucial as we continue to evolve and improve Tebako.
 
 == Contact information
 
-Contact us if you encounter any problems with Tebako, at our
-https://github.com/tamatebako/tebako/issues[GitHub issues] page.
+If you encounter any issues or have questions regarding Tebako, please reach out
+to us through our https://github.com/tamatebako/tebako/issues[GitHub issues]
+page.
 
-The team is always on the watch for making things easier for Tebako users.
+Our team is dedicated to supporting Tebako users and continuously improving
+Tebako to meet your needs.
 
 **__Press on__** _with Tebako_!
