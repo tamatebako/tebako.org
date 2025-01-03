@@ -1,0 +1,68 @@
+---
+layout: post
+title:  "Tebako announces support of packages based on Ruby 3.4 at v0.12.0"
+date:   2025-01-05 00:00:00 +0800
+categories:
+  - tebako
+  - packaging
+  - Ruby 3.4
+author:
+  name: Maxim Samsonov
+  email: m.samsonov@computer.org
+  use_picture: assets
+  social_links:
+    - https://github.com/maxirmx
+excerpt: >-
+  Tebako 0.12.0 now provides an option to create packages based on Ruby 3.4.1 on Ubuntu, Alpine, macOS and Windows.
+---
+
+= Tebako announces Ruby 3.4.1, 3.3.6 and 3.2.6 support at v0.12.0
+
+== General
+
+We are thrilled to announce that Tebako now fully supports Prism parser and Ruby 3.4 in the
+latest release, v0.12.0.
+
+This expansion means that you can now leverage the power of
+https://www.ruby-lang.org/en/news/2024/12/25/ruby-3-4-1-released/[Ruby 3.4.1],
+https://www.ruby-lang.org/en/news/2024/11/05/ruby-3-3-6-released/[Ruby 3.3.6] and
+https://www.ruby-lang.org/en/news/2024/10/30/ruby-3-2-6-released/[Ruby 3.2.6]
+as the foundation for Tebako packages, making Tebako even more versatile for
+your development needs.
+
+By embracing Ruby 3.4, we ensure that a wider audience can benefit from Tebako's
+features, including simplified deployment, enhanced security, and consistent
+application performance across different environments.
+
+== A brief overview of Tebako
+
+Tebako is a tool designed to simplify the deployment of Ruby applications, enhancing both security and portability.
+It packages applications and their dependencies into a single, self-contained executable, removing the need
+to install additional packages prior to application setup.
+
+This method helps avoid deployment issues related to environment differences and dependency management,
+ensuring your application runs smoothly wherever it is deployed.
+
+Tebako provides several key features:
+
+- **Simplified Deployment**: Tebako streamlines the deployment process by packaging your Ruby application and
+its dependencies into a single executable. This removes the need to install and configure dependencies on the
+target system, minimizing compatibility issues.
+
+- **Enhanced Security**: By bundling your application and its dependencies into a self-contained executable,
+Tebako helps protect your code from unauthorized access and tampering. It ensures your application runs in a
+controlled environment, reducing security vulnerabilities.
+
+- **Portability**: Tebako allows you to create executable packages that can run on various operating systems,
+including Ubuntu, Alpine, macOS, and Windows. This ensures consistent deployment of your Ruby application across
+different environments, without worrying about platform-specific dependencies.
+
+== Contact information
+
+Contact us if you encounter any problems with Tebako, at our issues page:
+
+* https://github.com/tamatebako/tebako/issues
+
+The team is always on the watch for making things easier for Tebako users.
+
+**__Press on__** _with Tebako_!
