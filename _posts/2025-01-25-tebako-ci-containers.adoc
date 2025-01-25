@@ -1,0 +1,65 @@
+---
+layout: post
+title:  "Tebako extends continious integration support with preconfigured multiarchitecture Docker containers"
+date:   2025-01-25 00:00:00 +0800
+categories:
+  - tebako
+  - packaging
+  - continious integration
+author:
+  name: Maxim Samsonov
+  email: m.samsonov@computer.org
+  use_picture: assets
+  social_links:
+    - https://github.com/maxirmx
+excerpt: >-
+  Tebako offers CI Linux containers with preintsalled packaging environment.
+---
+
+= Introducing Tebako Packaging Containers: Multiarchitecture Support for GNU and musl Linux
+
+At Tebako, we're simplifying the packaging process for developers across platforms and architectures.
+We're thrilled to introduce our *Tebako Packaging Containers*, now available at *ghrc.io* (GitHub Container Registry).
+These containers streamline your workflow while ensuring compatibility with both *GNU Linux* and *musl-based distributions*.
+
+== Multiarchitecture Support: amd64 and arm64
+
+Supporting multiple architectures is no longer optional—it’s essential. Our Tebako Packaging Containers include *multiarchitecture manifests*
+for both *amd64* and *arm64*, ensuring seamless compatibility on traditional x86_64 systems and modern ARM-based devices.
+
+== Broad Distribution Support for GNU and musl Linux
+
+Tebako Packaging Containers are built to support a wide range of Linux distributions, no matter the underlying libc implementation:
+
+* *GNU Linux*: Built on *Ubuntu*, our container is also fully capable of packaging applications for *Red Hat* and *Fedora*.
+Rigorous testing ensures compatibility across these popular distributions, letting you focus on building great software.
+* *musl-based distributions*: Built on *Alpine Linux*, our musl container works seamlessly with Alpine and other musl environments.
+Have experience using our container with another musl-based distribution? Share your feedback to help us expand our support!
+
+== Why Choose Tebako Packaging Containers?
+
+* *Cross-Distribution Compatibility*: Package your applications for Ubuntu, Red Hat, Fedora, Alpine, and beyond.
+* *Multiarchitecture Ready*: Package for both amd64 and arm64 platforms with ease.
+* *Reliable and Tested*: Our containers undergo rigorous testing to ensure performance and reliability.
+* *Community-Driven*: We value your input! Help us improve by sharing your experiences using Tebako containers.
+
+== Get Started Today
+
+Simplify your packaging process by visiting our https://github.com/tamatebako/tebako-ci-containers[GitHub repository].
+Explore readme and examples to get started with Tebako Packaging Containers.
+
+We can’t wait to see what you build! For feedback, questions, or suggestions, reach out—we’re here to help make cross-platform packaging a breeze.
+
+Happy packaging!
+
+— The Tebako Team
+
+== Contact information
+
+Contact us if you encounter any problems with Tebako, at our issues page:
+
+* https://github.com/tamatebako/tebako/issues
+
+The team is always on the watch for making things easier for Tebako users.
+
+**__Press on__** _with Tebako_!
