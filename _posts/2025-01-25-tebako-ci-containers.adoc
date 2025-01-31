@@ -1,0 +1,97 @@
+---
+layout: post
+title:  "Tebako extends continious integration support with preconfigured multiarchitecture Docker containers"
+date:   2025-01-25 00:00:00 +0800
+categories:
+  - tebako
+  - packaging
+  - continious integration
+author:
+  name: Maxim Samsonov
+  email: m.samsonov@computer.org
+  use_picture: assets
+  social_links:
+    - https://github.com/maxirmx
+excerpt: >-
+  Tebako offers CI Linux containers with preintsalled packaging environment.
+---
+
+= Introducing Tebako Packaging Containers: Multiarchitecture Support for GNU and musl Linux
+
+At Tebako, we aim to simplify the packaging process for developers across platforms and architectures.
+We’re excited to announce the launch of *Tebako Packaging Containers*, now available on the *GitHub Container Registry (ghcr.io)*.
+These containers streamline workflows and ensure compatibility with both *GNU Linux* and *musl-based distributions*.
+
+== Why Choose Tebako Packaging Containers?
+
+Creating Tebako packages for Linux requires matching the target system's architecture and standard library implementation. For instance:
+- **x86_64/aarch64 packages** must be built on **x86_64/aarch64 systems**, respectively.
+- Packages for **GNU/musl Linux** must be created in corresponding **GNU/musl environments**.
+
+Installing Tebako on diverse Linux configurations can be challenging, and our testing focuses on specific Ubuntu and Alpine setups.
+To overcome these challenges, we provide **Docker containers** preconfigured with the Tebako executable packager.
+
+=== Key Benefits:
+* *Cross-Distribution Compatibility*: Package applications for Ubuntu, Red Hat, Fedora, Alpine, and more.
+* *Multiarchitecture Ready*: Build for both `amd64` and `arm64` platforms effortlessly.
+* *Reliable and Tested*: Our containers are rigorously tested to ensure high performance and reliability.
+* *Community-Driven*: Your feedback matters! Share your experiences to help us improve Tebako containers.
+
+== Container Availability
+
+We offer containers designed for packaging in **GNU** and **musl** target environments.
+The currently available tags are:
+
+=== `ubuntu-20.04`
+
+This container is based on **Ubuntu 20.04 LTS**, providing a suitable environment for packaging applications targeting **GNU systems** with the https://sourceware.org/glibc[`glibc` implementation of the C standard library].
+
+The `--patchelf` option ensures forward compatibility with GNU Linux distributions using GLIBC version 2.31 and above.
+
+.Minimum GLIBC Versions for Tebako Packages
+[cols="3", options="header"]
+|===
+| Distribution | Minimum Supported Version | GLIBC Version
+| Ubuntu | 20.04 (Focal Fossa) | GLIBC 2.31
+| Debian | 11 (Bullseye) | GLIBC 2.31
+| Rocky Linux | 9 | GLIBC 2.34
+| Fedora | 33 | GLIBC 2.32
+| CentOS | 9 | GLIBC 2.34
+| Red Hat Enterprise Linux (RHEL) | 9 | GLIBC 2.34
+| Oracle Linux | 9 | GLIBC 2.34
+|===
+
+=== `alpine-3.17`
+
+This container is based on **Alpine Linux 3.17**, offering an optimized environment for packaging applications targeting systems with the https://musl.libc.org[`musl` implementation of the C standard library].
+
+Both containers are available on the **GitHub Container Registry (GHCR)** for **x86_64 (amd64)** and **aarch64 (arm64)** architectures.
+They include multi-architecture manifests and come preconfigured with Tebako packaging environments for Ruby versions **3.2.6** and **3.3.6**.
+
+== Get Started Today
+
+Simplify your packaging process by visiting our https://github.com/tamatebako/tebako-ci-containers[GitHub repository].
+Explore the README to start using Tebako Packaging Containers today.
+
+=== Samples
+
+* https://github.com/tamatebako/tebako-ci-containers/blob/maxirmx-update-readme/.github/workflows/build-containers.yml[Tebako CI Containers GitHub Actions workflow]
+includes examples featuring packaging of fontist gem.
+* https://github.com/tamatebako/tebako-samples[Tebako samples repository] includes tutorial with basic Tebako CI containers examples and advanced workflows that show
+how to package Sinatra and Ruby on Rails applications.
+
+We’re eager to see what you’ll build! If you have feedback, questions, or suggestions, feel free to reach out—we’re here to help make
+packaging seamless.
+
+Happy packaging!
+— The Tebako Team
+
+== Contact information
+
+Contact us if you encounter any problems with Tebako, at our issues page:
+
+* https://github.com/tamatebako/tebako/issues
+
+The team is always on the watch for making things easier for Tebako users.
+
+**__Press on__** _with Tebako_!
