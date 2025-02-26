@@ -26,8 +26,8 @@ executable binary that allows a user to run a selected file from the packaged
 software as if it is a mounted filesystem.
 
 Tebako is capable of packaging Ruby applications for Linux
-(https://www.gnu.org/software/libc/[glibc] the GNU C Library, and
-https://www.musl-libc.org[musl libc]),
+(https://sourceware.org/glibc/[glibc] the GNU C Library, and
+https://musl.libc.org[musl libc]),
 macOS, and Windows (MSys) platforms.
 
 NOTE: Tebako 0.4.0 provides limited Windows support. It can only package
