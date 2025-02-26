@@ -47,8 +47,8 @@ external libraries.
 The main complexity is related to the fulfillment of the
 "_with minimal dependencies_" condition for different operating systems.
 
-Although GNU Linux (systems that use the https://www.gnu.org/software/libc/[GNU C Library `glibc`]),
-musl Linux (systems that use https://www.musl-libc.org[musl libc]),
+Although GNU Linux (systems that use the https://sourceware.org/glibc/[GNU C Library `glibc`]),
+musl Linux (systems that use https://musl.libc.org[musl libc]),
 and macOS (which is BSD based) provide very similar sets of
 libraries, their names, dependencies, and packaging differ, and not always in a
 predictable and stable way.

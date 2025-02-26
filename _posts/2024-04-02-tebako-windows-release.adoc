@@ -34,16 +34,16 @@ ____
 
 Prior to v0.6.0, Tebako supported packaging for the platforms:
 
-* Linux platforms using https://www.gnu.org/software/libc/[`glibc`] (https://ubuntu.com[Ubuntu], etc)
-* Linux platforms using https://www.musl-libc.org[`musl`] (https://www.alpinelinux.org[Alpine Linux])
+* Linux platforms using https://sourceware.org/glibc/[`glibc`] (https://ubuntu.com[Ubuntu], etc)
+* Linux platforms using https://musl.libc.org[`musl`] (https://www.alpinelinux.org[Alpine Linux])
 * macOS platforms
 
 From v0.6.0, Tebako now adds Windows 2019, Windows 2022 targets to the mix.
 
 As of today, Tebako officially supports the following platforms:
 
-* Linux platforms using https://www.gnu.org/software/libc/[`glibc`] (https://ubuntu.com[Ubuntu], etc)
-* Linux platforms using https://www.musl-libc.org[`musl`] (https://www.alpinelinux.org[Alpine Linux])
+* Linux platforms using https://sourceware.org/glibc/[`glibc`] (https://ubuntu.com[Ubuntu], etc)
+* Linux platforms using https://musl.libc.org[`musl`] (https://www.alpinelinux.org[Alpine Linux])
 * macOS platforms
 * Windows 2019, Windows 2022 targets using MinGW `ucrt64` toolchain
 
