@@ -12,64 +12,100 @@ author:
   social_links:
     - https://github.com/maxirmx
 excerpt: >-
-    Tebako package created from a Ruby application introduces four features that can negatevaly affect performance.
-    In this post we discuss performance comparison of Teback package and original application and show that negative
+    A Tebako package created from a Ruby application introduces four features that
+    can negatively affect performance. In this post we discuss performance
+    comparison of Tebako package and original application and show that negative
     impact is minimal.
 ---
 
-:imagesdir: ./assets/benchmarking
-
 = Benchmarking of tebako package against original Ruby applications
 
-== Rationale
+== Introduction
 
-Tebako is an executable packager. It packages a set of files into a single
-executable binary that allows a user to run a selected file from the packaged
-software as if it is a mounted filesystem.
+Performance is a critical consideration when packaging applications for
+distribution. Tebako, as an executable packager, introduces several
+architectural elements that could potentially impact performance. This article
+presents a comprehensive benchmarking analysis comparing Tebako-packaged
+applications against their original Ruby implementations.
 
-As we discussed in the earlier https://www.tebako.org/blog/2023-02-24-tebako-technology-data-flow/[post]
-tebako introduces additional layer for most of functions tha access filesystem. This layer routes calls either to
-original implementation or to dwarfs in-memory packaged filesystem. If a call is served by dwarfs tebako consumes
-additional resources for decompression.
+Tebako packages introduce four specific features that might affect performance:
 
-If Ruby application includes native extension, its shared library is extracted
-to host temporarily folder and loaded from there that may create addional delay.
+. An additional filesystem access layer that routes calls either to the original
+implementation or to the DwarFS in-memory packaged filesystem
 
-Finally Tebako package includes the whole Ruby standard library and all files that were used
-to install and build additional Ruby gems and theier native extension. The bigger file may taje additional time for startup.
+. Resource consumption for decompression when accessing files from the DwarFS
+filesystem
 
-These four features may have performance impact that we have estimated and discuss in the present post.
+. Extraction of native extension shared libraries to temporary folders before loading
 
-== Executive summary
+. Inclusion of the entire Ruby standard library and all files used during
+installation, potentially increasing startup time
 
-In our very moderate test environment (specified below) we observed the following behavior:
+To quantify these potential impacts, we conducted systematic benchmarking across
+various application types and usage patterns.
 
-* Tebako package parses Ruby code faster then native interpreter. Routing from additional file system access layer + reading dwarfs including decompression
-is faster then reading from disk, even from SSD.
-* External file processing is not noticebly slower for Tebako package despite of additional file system access layer introduced by Tebako
-* Tebako package initialization adds a 'penalty' time needed to read a fairly big file that conatains Ruby standard lib. The application not necessarily
-uses the whole library but we still need to map it to application memory address space on startup.
-* Any native extension or other native code like Java jars in tebako add initialization time because we are decompressing them to temp and loading again
+== Understanding key components
 
-Tebako package introduces additional time that is consumed during initialization. This time depends on the application size and the size of its native extensions,
-it dows not depend on complexity of the data processed by the application or any other volatile factors
-In our tests additional time mentioned above varies from 0.03 seconds for 'Hello, world" script to 3 seconds for metanorma application
+=== Tebako packaging
 
-== Tests and results
+Tebako is an executable packager that combines a Ruby application and its
+dependencies into a single executable binary. It allows users to run the
+packaged software as if it were using a mounted filesystem, eliminating the need
+for separate installation steps.
 
-In order to address different aspects of possible performance issues we ran 4 different tests:
+As described in our earlier
+link:/blog/2023-02-24-tebako-technology-data-flow/[technology post],
+Tebako packages a patched, statically linked Ruby interpreter with an embedded
+DwarFS filesystem containing the application code and dependencies. This
+approach provides excellent portability but introduces architectural elements
+that could potentially impact performance.
 
-* Simple "Hello, world!" script that allowes to measure performance of Ruby core
-* https://rubygems.org/gems/coradoc[Coradoc gem] that uses Ruby code to process external files
-* https://rubygems.org/gems/vectory[Vectory gem] that uses native extension to process external filesystem
-* Сomplex https://metanorma.org[metanorma application] that combines uses numerous Ruby gems, native extensions and Jave code
+The performance implications of this packaging approach vary based on the
+application's characteristics, particularly its dependency on filesystem
+operations and native extensions.
 
-Simple sript and coradoc, vectory gem tests included several runs with varying repetition of calls.
-Metanorma test included execution of various commands that generate various load profiles.
+=== DwarFS filesystem
 
-=== 'Hello, world!' scripts
+https://github.com/mhx/dwarfs[DwarFS] is a highly compressed, read-only
+filesystem that serves as the foundation for Tebako's packaging strategy. It
+enables efficient storage of Ruby applications and their dependencies within a
+single executable.
 
-```
+DwarFS offers several advantages for application packaging:
+
+* High compression ratios for efficient storage
+* Fast read access for optimal performance
+* Read-only nature that ensures package integrity
+
+From a performance perspective, DwarFS introduces a trade-off: while
+decompression requires computational resources, reading from an in-memory
+filesystem can be faster than accessing files from disk, particularly for
+mechanical hard drives.
+
+== Benchmark targets
+
+To comprehensively evaluate performance across different usage patterns, we
+selected four distinct benchmark targets that represent a range of complexity
+and resource usage patterns.
+
+=== "Hello World" script
+
+The "Hello World" script serves as our baseline test, focusing on core Ruby
+interpreter performance with minimal external dependencies.
+
+Purpose:: This simple script helps isolate the performance of Ruby's core
+functionality, particularly the parsing and execution of basic Ruby code.
+
+Implementation:: The script outputs a configurable number of "Hello, world"
+messages and displays the gem path, with execution count controlled via
+command-line arguments.
+
+Value:: By minimizing external factors, this benchmark provides clear insights
+into the baseline performance differences between native Ruby and
+Tebako-packaged applications.
+
+[source,ruby]
+----
 if (argv = ARGV).empty?
   puts "No arguments given"
   exit(1)
@@ -84,13 +120,26 @@ argv[0].to_i.times do |i|
   puts "Hello, world number #{i}!"
   puts "Gem path: #{Gem.path}"
 end
-```
+----
 
-image::/assets/blog/hello-world-benchmarking.jpg["Hello, world!" benchmarking results]
+=== Coradoc
 
-=== Coradoc gem
+https://github.com/metanorma/coradoc[Coradoc] is a document markup processor
+designed for structured content handling.
 
-```
+Purpose:: This benchmark tests file processing performance, particularly how
+Tebako handles external file access and processing through pure Ruby code.
+
+Features tested:: The benchmark exercises Coradoc's document parsing,
+transformation, and OSCAL (Open Security Controls Assessment Language)
+conversion capabilities.
+
+Real-world relevance:: Document processing represents a common use case for Ruby
+applications, making this benchmark relevant for assessing performance in
+content management and documentation systems.
+
+[source,ruby]
+----
 if (argv = ARGV).empty?
   puts "No arguments given"
   exit(1)
@@ -115,12 +164,26 @@ argv[0].to_i.times do
   syntax_tree = Coradoc::Parser.parse(sample_file)
   Coradoc::Transformer.transform(syntax_tree)
 end
-```
-image::/assets/blog/coradoc-benchmarking.jpg[Coradoc gem benchmarking results]
+----
 
-=== Vectory gem  benchmarks
+=== Vectory
 
-```
+https://rubygems.org/gems/vectory[Vectory] is a vector graphics processing
+library that includes native extensions for performance-critical operations.
+
+Purpose:: This benchmark evaluates how Tebako handles applications with native
+extensions, particularly focusing on the performance impact of extracting and
+loading these extensions from temporary locations.
+
+Features tested:: The benchmark exercises Vectory's EMF to SVG conversion
+capabilities, which rely on native extensions for efficient processing.
+
+Real-world relevance:: Many production Ruby applications leverage native
+extensions for performance-critical operations, making this benchmark essential
+for understanding Tebako's impact on such applications.
+
+[source,ruby]
+----
 require "tempfile"
 
 if (argv = ARGV).empty?
@@ -143,29 +206,187 @@ argv[0].to_i.times do
     puts "SVG written to #{tempfile.path}"
   end
 end
-```
+----
+
+=== Metanorma
+
+https://www.metanorma.org[Metanorma] is a comprehensive standards document
+authoring and publishing suite that combines numerous Ruby gems, native
+extensions, and Java components.
+
+Purpose:: This benchmark tests complex application performance, representing the
+most comprehensive real-world scenario in our test suite.
+
+Features tested:: The benchmark exercises various Metanorma commands, including
+help, version, and site generation for different standards formats (IETF, IEEE,
+IEC, ISO, IHO).
+
+Real-world relevance:: As an enterprise-level document processing system,
+Metanorma represents the kind of complex application that benefits most from
+packaging solutions like Tebako, making it an ideal test case for real-world
+performance assessment.
+
+The Metanorma benchmark included execution of utility commands (`metanorma
+help`, `metanorma version`) and generation of sample sites for various standards
+formats using:
+
+[source,sh]
+----
+$ metanorma site generate samples -c samples/metanorma.yml -o site-<site name> --agree-to-terms
+----
+
+== Testing methodology
+
+Our benchmarking approach focused on comparing execution times between native
+Ruby applications and their Tebako-packaged equivalents across various
+workloads.
+
+=== Environment specifications
+
+All tests were conducted on the following hardware and software configuration:
+
+----
+Model Name: Mac mini
+Model Identifier: Macmini9,1
+Chip: Apple M1
+Total Number of Cores: 8 (4 performance and 4 efficiency)
+Memory: 16 GB
+Ruby 3.1.4p223 (2023-03-30 revision 957bb7cb81) [arm64-darwin21]
+Tebako executable packager 0.5.5
+----
+
+=== Test procedures
+
+For the Hello World, Coradoc, and Vectory benchmarks, we executed multiple runs
+with varying repetition counts to assess how performance differences scale with
+workload. This approach helps distinguish between fixed overhead (such as
+initialization time) and proportional overhead (such as ongoing filesystem
+access).
+
+For the Metanorma benchmark, we executed various commands that generate
+different load profiles, providing insights into performance across diverse
+usage patterns.
+
+== Performance analysis
+
+Our benchmarking results revealed several interesting patterns across the
+different test cases.
+
+=== Parsing performance
+
+Surprisingly, Tebako-packaged applications parsed Ruby code faster than the
+native interpreter in many cases. The combination of the filesystem access layer
+routing and DwarFS decompression proved more efficient than reading from disk,
+even when using an SSD.
+
+This performance advantage was particularly evident in the Hello World
+benchmark, where the Tebako package consistently outperformed the native Ruby
+interpreter for code parsing and execution.
+
+image::/assets/blog/hello-world-benchmarking.jpg["Hello, world!" benchmarking results]
+
+=== File processing performance
+
+External file processing showed minimal performance differences between Tebako
+packages and native applications, despite the additional filesystem access layer
+introduced by Tebako.
+
+The Coradoc benchmark, which focuses on document processing through pure Ruby
+code, demonstrated that Tebako's filesystem routing has negligible impact on
+file processing performance.
+
+image::/assets/blog/coradoc-benchmarking.jpg[Coradoc gem benchmarking results]
+
+=== Native extension handling
+
+Applications with native extensions showed the most significant performance
+differences, primarily during initialization. The Vectory benchmark highlighted
+the additional time required to extract native extensions to temporary locations
+before loading.
+
+However, once initialized, the ongoing performance impact was minimal,
+suggesting that the primary overhead is concentrated in the startup phase rather
+than during normal operation.
 
 image::/assets/blog/vectory-benchmarking.jpg[Vectory gem benchmarking results]
 
-=== Metanorma package benchmarking
+=== Complex application performance
 
-Metanorma application benchmarking included execution of utility commands: ```metanorma help```, ```metanorma version```
-and generation of sample sites (ietf, ieee, iec, iso, iho) using
+The Metanorma benchmark provided the most comprehensive view of real-world
+performance implications. As expected, Tebako packages showed longer
+initialization times due to the combined effects of loading the entire Ruby
+standard library and extracting multiple native extensions.
 
-```
-metanorma site generate samples -c samples/metanorma.yml  -o site-<site name> --agree-to-terms
-```
+However, the relative performance impact decreased as the workload increased,
+indicating that the initialization overhead becomes less significant for
+longer-running tasks.
 
 image::/assets/blog/metanorma-benchmarking.jpg[Metanorma benchmarking results]
 
-== Benchmarking environment
+== Key findings
 
-```
-Model Name:	Mac mini
-Model Identifier:	Macmini9,1
-Chip:	Apple M1
-Total Number of Cores:	8 (4 performance and 4 efficiency)
-Memory:	16 GB
-Ruby 3.1.4p223 (2023-03-30 revision 957bb7cb81) [arm64-darwin21]
-tebako executable packager 0.5.5
-```
+Our benchmarking analysis revealed several key insights about Tebako's
+performance characteristics:
+
+. *Faster code parsing*: Tebako packages parse Ruby code faster than native
+interpreters. The combination of the filesystem access layer and DwarFS
+decompression outperforms direct disk access, even with SSDs.
+
+. *Minimal file processing impact*: External file processing shows negligible
+performance differences despite Tebako's additional filesystem access layer.
+
+. *Initialization overhead*: Tebako packages incur a "penalty" during
+initialization, primarily due to:
+
+** Loading the Ruby standard library (which may not be fully utilized by the
+application)
+
+** Mapping the package to the application's memory address space
+
+** Extracting and loading native extensions from temporary locations
+
+. *Workload-dependent impact*: The performance impact decreases as workload
+increases, making Tebako particularly suitable for longer-running applications
+where initialization overhead becomes less significant.
+
+== Conclusions and recommendations
+
+Tebako packaging introduces a fixed initialization overhead that varies based on
+application size and the presence of native extensions. In our tests, this
+additional time ranged from 0.03 seconds for the "Hello, World" script to
+approximately 3 seconds for the complex Metanorma application.
+
+Importantly, this overhead:
+
+* Is primarily concentrated during initialization
+* Does not scale with data processing complexity
+* Becomes less significant for longer-running tasks
+
+Based on these findings, we can provide several recommendations for optimal
+performance with Tebako-packaged applications:
+
+. *Ideal use cases*: Tebako is particularly well-suited for applications where:
+
+** Distribution simplicity outweighs minor initialization delays
+
+** Tasks run long enough to amortize the initialization overhead
+
+** Simplified deployment provides significant operational benefits
+
+. *Performance optimization*: When packaging performance-critical applications:
+
+** Consider the initialization overhead in your application's startup sequence
+
+** For applications with frequent short runs, evaluate whether the packaging
+benefits outweigh the cumulative initialization overhead
+
+. *User experience*: For interactive applications:
+
+** Consider implementing splash screens or progress indicators during
+initialization
+
+** Defer non-essential module loading to minimize initial startup time
+
+Overall, our benchmarking demonstrates that Tebako provides an excellent balance
+between distribution simplicity and performance, with minimal impact on runtime
+performance for most real-world applications.
