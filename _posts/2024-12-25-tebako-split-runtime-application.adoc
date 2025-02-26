@@ -183,11 +183,18 @@ Characteristics:
 
 To leverage these new features, follow this streamlined process.
 
+Given a Ruby application at `hello.rb`:
+
+[source,Ruby]
+----
+puts "Hello, #{ARGV[0]}!"
+----
+
 . *Create the runtime package*:
 +
 [source,bash]
 ----
-$ tebako press -m runtime -o tebako-runtime-package -R {ruby-ver}
+$ tebako press -m runtime -o tebako-runtime-package [-R {ruby-ver}]
 ----
 
 . *Create the application package*:
@@ -202,6 +209,13 @@ $ tebako press -m application -o tebako-application-package -e hello.rb -r test
 [source,sh]
 ----
 $ tebako-runtime-package --tebako-run tebako-application-package Maxim
+----
++
+Which outputs:
++
+[source]
+----
+Hello, Maxim!
 ----
 
 . *Deploy the packages*
