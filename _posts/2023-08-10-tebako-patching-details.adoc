@@ -62,7 +62,7 @@ Furthermore, since Tebako aims to be a statically-linked executable, we needed
 to create a library version of DwarFS that is also statically linked.
 
 As a result, we needed to create a library version of DwarFS,
-https://github.com/tebako/libdwarfs[`libdwarfs`], that provides a static
+https://github.com/tamatebako/libdwarfs[`libdwarfs`], that provides a static
 interface for our packaging process and allows Tebako to read/write DwarFS
 filesystems within the library.
 

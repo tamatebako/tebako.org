@@ -162,7 +162,7 @@ $ docker run -v <application_folder>:/mnt/w \
 .Packaging the `fontist` gem from outside the container
 [example]
 ====
-To package the https://github.com/fontists/fontist[`fontist` gem], a Ruby
+To package the https://github.com/fontist/fontist[`fontist` gem], a Ruby
 application for managing fonts, located in the `fontist/` directory under the
 current working directory, use the following command:
 
@@ -207,7 +207,7 @@ $ tebako press <tebako press parameters>
 .Packaging the `fontist` gem from inside the container
 [example]
 ====
-To package the https://github.com/fontists/fontist[`fontist` gem], located in
+To package the https://github.com/fontist/fontist[`fontist` gem], located in
 the `fontist/` directory under the current working directory, use the following
 commands:
 
