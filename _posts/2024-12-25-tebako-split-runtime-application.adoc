@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Tebako 0.11.0 separates runtime and application packaging"
+title:  "Announcing Tebako v0.11.0: decoupling runtime and application"
 date:   2024-12-25 00:00:00 +0800
 categories:
   - tebako
@@ -15,66 +15,217 @@ author:
     - https://github.com/maxirmx
 excerpt: >-
   Tebako 0.11.0 separates runtime and application packaging for
-  reusable Ruby execution, enhancing flexibility, efficiency, and simplified updates.
+  reusable Ruby execution, enhancing flexibility, efficiency, and simplified
+  updates.
 ---
 
-= Announcing Tebako v0.11.0: Decoupling Runtime and Application
+= Announcing Tebako v0.11.0: decoupling runtime and application
 
-We are excited to announce the release of Tebako v0.11.0, introducing a groundbreaking feature
-that allows the separate packaging of the runtime environment and application. This advancement
-enables developers to create a reusable Ruby execution environment, facilitating the deployment
-of multiple applications or different versions of the same application with greater efficiency
-and flexibility.
+We are excited to announce the release of Tebako v0.11.0, introducing a
+groundbreaking feature that allows the separate packaging of the runtime
+environment and application.
 
-== Decoupling Runtime and Application
+This advancement enables developers to create a reusable Ruby execution
+environment, facilitating the deployment of multiple applications or different
+versions of the same application with greater efficiency and flexibility.
 
-In previous versions, Tebako packaged the Ruby interpreter, dependencies, and the application
-into a single executable. While effective, this approach required repackaging the entire stack
-for each application or version update. With v0.11.0, we have decoupled the runtime from the application,
-allowing the creation of a standalone runtime package that can be reused across various applications.
+Before:
 
-== Benefits of the New Feature
+.Tebako pre-v0.11.0 architecture
+[source]
+----
++------------------------+
+|    Tebako package      |
+|  +----------------+    |
+|  | Ruby Runtime   |    |
+|  +----------------+    |
+|  | Application    |    |
+|  +----------------+    |
++------------------------+
+----
 
-- *Enhanced Flexibility*: Developers can now maintain a consistent runtime environment across multiple
-applications, ensuring compatibility and reducing the need for redundant packaging.
-- *Improved Efficiency*: By reusing the runtime package, the time and resources required for packaging
-and deployment are significantly reduced.
-- *Simplified Updates*: Updating the runtime environment no longer necessitates repackaging each application
-individually, streamlining maintenance processes.
+After:
 
-== Packaging Modes and Workflow
+[source]
+.Tebako v0.11.0 architecture
+----
++-----------------------+     +----------------------+
+|    Runtime package    |     |  Application package |
+|  +----------------+   |     |   +--------------+   |
+|  | Ruby Runtime   |   |     |   | Application  |   |
+|  | Interpreter    |<----------->| Code         |   |
+|  | Dependencies   |   |     |   | Resources    |   |
+|  +----------------+   |     |   +--------------+   |
++-----------------------+     +----------------------+
+----
 
-Tebako v0.11.0 supports several packaging modes to suit different deployment scenarios:
 
-- *"bundle"*: Package runtime and application into a single file (as implemented originally).
-- *"runtime"*: Create a runtime executable that can be used to run different applications
-or different versions of the same application.
-- *"application"*: Package the application separately, designed to be executed by the runtime.
-- *"both"*: Create runtime and application as two separate entities.
+== Decoupling runtime and application
 
-Here’s how these modes fit into your workflow:
+In previous versions, Tebako packaged all these components into a single
+executable:
 
-1. *Create the Runtime Package*: Use the `tebako create-runtime` command to package the Ruby interpreter
-and dependencies into a standalone runtime executable.
-2. *Package Your Application*: Utilize the `tebako package-app` command to package your application code,
-specifying the path to the previously created runtime package.
-3. *Deploy and Execute*: Deploy both the runtime and application packages to your target environment.
-Execute your application by referencing the runtime package, ensuring a consistent and reusable execution environment.
+* Ruby interpreter
+* Ruby dependencies
+* the application code and resources
 
-This flexibility allows developers to tailor their deployment strategy to their specific needs while reducing redundant effort.
+While effective, this approach required repackaging the entire stack for each
+application or version update.
 
-For detailed instructions and examples, please refer to our https://github.com/tamatebako/tebako[documentation].
+With v0.11.0, we have decoupled the runtime from the application, allowing the
+creation of a standalone runtime package that can be reused across various
+applications.
+
+== Benefits of the new feature
+
+=== Enhanced flexibility
+
+Tebako v0.11.0's decoupled architecture introduces a new level of flexibility in
+deployment scenarios. By maintaining a consistent runtime environment across
+multiple applications, organizations can ensure standardization and
+compatibility throughout their Ruby application ecosystem.
+
+This separation allows developers to deploy different applications or versions
+while maintaining the same underlying Ruby environment, significantly reducing
+complexity in managing multiple deployments.
+
+=== Improved efficiency
+
+The new architecture brings substantial improvements in resource utilization and
+deployment speed. Instead of packaging the entire Ruby runtime with each
+application, developers can now reuse a single runtime package across multiple
+applications.
+
+This approach significantly reduces:
+
+* Storage requirements for deployed applications
+* Time spent packaging applications
+* Network bandwidth needed for distribution
+* System resource usage during deployment
+
+=== Simplified updates and maintenance
+
+One of the most significant advantages of the decoupled architecture is the
+streamlined update process.
+
+When updates to the Ruby runtime or its dependencies are required, developers
+can now:
+
+* Update the runtime package once
+* Deploy the updated runtime across all applications
+* Avoid the need to repackage individual applications
+
+This approach dramatically reduces maintenance overhead and ensures consistent
+runtime environments across all deployments.
+
+== Deployment options
+
+=== Packaging modes
+
+Tebako v0.11.0 introduces flexible packaging modes to accommodate various
+deployment scenarios:
+
+* Bundle mode
+* Runtime mode
+* Application mode
+* "Both" mode
+
+=== Bundle mode
+
+The traditional single-file packaging mode, combining both runtime and
+application in a single executable.
+
+If you want to distribute a single, simple executable without any local or
+remote dependencies, this is the mode for you.
+
+Characteristics:
+
+* Ideal for standalone deployments.
+* Ensures complete portability.
+* Maintains backwards compatibility.
+
+NOTE: This is the default Tebako pre-v0.11.0 behavior.
+
+=== Runtime mode
+
+In this mode, Tebako creates a separate runtime package containing the Ruby
+interpreter and its dependencies. This runtime package can be shared across
+multiple applications.
+
+Characteristics:
+
+* Reduces overall deployment size of the application.
+* Simplifies runtime updates.
+* Enhances application portability.
+
+=== Application mode
+
+In this mode, Tebako packages only the application code and resources, relying
+on a shared runtime package for execution.
+
+Characteristics:
+
+* Requires a compatible runtime package built using runtime mode.
+* Enables quick application updates.
+* Reduces package size.
+
+=== Both mode
+
+Creates separate runtime and application packages in one go.
+
+Characteristics:
+
+* Provides maximum flexibility.
+* Enables independent updates.
+* Ideal for complex deployment scenarios.
+
+== Building Tebako packages
+
+To leverage these new features, follow this streamlined process.
+
+. *Create the runtime package*:
++
+[source,bash]
+----
+tebako create-runtime --output runtime.exe
+----
+
+. *Create the application package*:
++
+[source,bash]
+----
+tebako package-app --runtime runtime.exe --output app.pak
+----
+
+. *Deploy the packages*
+
+** Deploy the runtime package to shared location for download
+
+** Distribute application packages as needed
+
+** Execute applications using the shared runtime
+
+This flexibility allows developers to tailor their deployment strategy to their
+specific needs while reducing redundant effort.
+
+For detailed instructions and examples, please refer to our
+https://github.com/tamatebako/tebako[documentation].
 
 == Conclusion
 
-The release of Tebako v0.11.0 marks a significant milestone in our mission to provide innovative solutions
-for Ruby application deployment. By enabling the separate packaging of runtime and application, we empower
-developers with greater flexibility, efficiency, and control over their deployment processes.
-We encourage you to explore this new feature and share your feedback with us. Your insights are invaluable
-as we continue to enhance Tebako to better serve the developer community.
+The release of Tebako v0.11.0 marks a significant milestone in our mission to
+provide innovative solutions for Ruby application deployment.
+
+By enabling the separate packaging of runtime and application, we empower
+developers with greater flexibility, efficiency, and control over their
+deployment processes.
+
+We encourage you to explore this new feature and share your feedback with us.
+Your insights are invaluable as we continue to enhance Tebako to better serve
+the developer community.
 
 
-== Contact information
+== Feedback and contacts
 
 Our team is dedicated to supporting Tebako users and continuously improving
 Tebako to meet your needs.
@@ -84,4 +235,5 @@ to us through our https://github.com/tamatebako/tebako/issues[GitHub issues]
 page.
 
 **__Press on__** _with Tebako_!
-_Tebako is a project of Ribose Group Inc. — All rights reserved._
+
+_Tebako is a project of Ribose. — All rights reserved._
