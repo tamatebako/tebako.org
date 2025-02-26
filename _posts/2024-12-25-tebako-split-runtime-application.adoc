@@ -187,14 +187,21 @@ To leverage these new features, follow this streamlined process.
 +
 [source,bash]
 ----
-tebako create-runtime --output runtime.exe
+$ tebako press -m runtime -o tebako-runtime -R {ruby-ver}
 ----
 
 . *Create the application package*:
 +
 [source,bash]
 ----
-tebako package-app --runtime runtime.exe --output app.pak
+$ tebako press -m application -o tebako-application -e hello.rb -r test
+----
+
+. *Run the application*: using the pre-packaged runtime.
++
+[source,sh]
+----
+$ tebako runtime --tebako-run tebako-application Maxim
 ----
 
 . *Deploy the packages*
