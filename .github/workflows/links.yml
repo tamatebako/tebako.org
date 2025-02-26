@@ -4,43 +4,42 @@ on:
   push:
     branches:
     - main
-    - staging
   pull_request:
 
 jobs:
   link_checker:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-    - name: Setup Ruby
-      uses: ruby/setup-ruby@v1
+    - uses: ruby/setup-ruby@v1
       with:
-        ruby-version: '3.1'
+        ruby-version: '3.3'
         bundler-cache: true
-        cache-version: 0 # Increment this number if you need to re-download cached gems
+
     - name: Setup Pages
       id: pages
-      uses: actions/configure-pages@v3
+      uses: actions/configure-pages@v5
+      with:
+        enablement: true
 
     - name: Build with Jekyll
       # Outputs to the './_site' directory by default
-      run: bundle exec jekyll build --baseurl "${{ steps.pages.outputs.base_path }}"
+      run: bundle exec jekyll build --verbose --trace --baseurl "${{ steps.pages.outputs.base_path }}"
       env:
         JEKYLL_ENV: production
 
     - name: Link Checker
-      uses: lycheeverse/lychee-action@v1.2.0
+      id: lychee
+      uses: lycheeverse/lychee-action@v2
       with:
-        args: --verbose --no-progress --exclude-file .lycheeignore -- _site/**/*.html
+        args: --base _site/ --verbose --no-progress '_site/**/*.html'
         fail: true
-      env:
-        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
 
-      # - name: Create Issue From File
-      #   uses: peter-evans/create-issue-from-file@v2
-      #   with:
-      #     title: Link Checker Report
-      #     content-filepath: ./lychee/out.md
-      #     labels: report, automated issue
+    # - name: Create Issue From File
+    #   if: steps.lychee.outputs.exit_code != 0
+    #   uses: peter-evans/create-issue-from-file@v5
+    #   with:
+    #     title: Link Checker Report
+    #     content-filepath: ./lychee/out.md
+    #     labels: report, automated issue
