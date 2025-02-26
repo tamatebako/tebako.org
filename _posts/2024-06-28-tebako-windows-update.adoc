@@ -29,7 +29,7 @@ officially supported platforms for Tebako, making Tebako even more versatile for
 your development needs.
 
 By supporting Windows, we ensure that a broader audience can take advantage of
-Tebako’s benefits, such as simplified deployment, enhanced security, and
+Tebako's benefits, such as simplified deployment, enhanced security, and
 consistent application performance across different environments.
 
 == A short recap of Tebako

@@ -1,11 +1,11 @@
 ---
 layout: post
-title:  "Tebako extends continious integration support with preconfigured multiarchitecture Docker containers"
+title:  "Tebako multi-architecture packaging containers now available on Docker"
 date:   2025-01-25 00:00:00 +0800
 categories:
   - tebako
   - packaging
-  - continious integration
+  - continuous integration
 author:
   name: Maxim Samsonov
   email: m.samsonov@computer.org
@@ -13,16 +13,23 @@ author:
   social_links:
     - https://github.com/maxirmx
 excerpt: >-
-  Tebako offers CI Linux containers with preintsalled packaging environment.
+  Tebako now offers Linux GNU and musl containers on amd64 and arm64
+  architectures with preinstalled Tebako environments.
 ---
 
-= Introducing Tebako Packaging Containers: Multiarchitecture Support for GNU and musl Linux
+Tebako aims to simplify the packaging process for developers across platforms
+and architectures, and we understand that a pre-packaged environment can
+significantly reduce the complexity of the packaging process.
 
-At Tebako, we aim to simplify the packaging process for developers across platforms and architectures.
-We’re excited to announce the launch of *Tebako Packaging Containers*, now available on the *GitHub Container Registry (ghcr.io)*.
-These containers streamline workflows and ensure compatibility with both *GNU Linux* and *musl-based distributions*.
+We're excited to announce the launch of
+https://github.com/orgs/tamatebako/packages?repo_name=tebako-ci-containers[*Tebako Packaging Containers*],
+now available on the
+*GitHub Container Registry (ghcr.io)*.
 
-== Why Choose Tebako Packaging Containers?
+These containers streamline workflows and ensure compatibility with both
+*GNU Linux* and *musl-based distributions*.
+
+== Introducing Tebako packaging containers
 
 Creating Tebako packages for Linux requires matching the target system's architecture and standard library implementation. For instance:
 - **x86_64/aarch64 packages** must be built on **x86_64/aarch64 systems**, respectively.
@@ -31,22 +38,51 @@ Creating Tebako packages for Linux requires matching the target system's archite
 Installing Tebako on diverse Linux configurations can be challenging, and our testing focuses on specific Ubuntu and Alpine setups.
 To overcome these challenges, we provide **Docker containers** preconfigured with the Tebako executable packager.
 
-=== Key Benefits:
+=== Key Benefits
+
 * *Cross-Distribution Compatibility*: Package applications for Ubuntu, Red Hat, Fedora, Alpine, and more.
 * *Multiarchitecture Ready*: Build for both `amd64` and `arm64` platforms effortlessly.
 * *Reliable and Tested*: Our containers are rigorously tested to ensure high performance and reliability.
 * *Community-Driven*: Your feedback matters! Share your experiences to help us improve Tebako containers.
 
-== Container Availability
+== Available containers
+
+=== General
 
 We offer containers designed for packaging in **GNU** and **musl** target environments.
-The currently available tags are:
+
+The Tebako packaging containers are available in both **x86_64** (`amd64`) and
+**`aarch64`** / **`arm64`** architectures.
+
+They include multi-architecture manifests and come preconfigured with Tebako
+packaging environments for Ruby versions **3.2.6** and **3.3.6**.
+
+To run the container, use the following command:
+
+[example]
+====
+.Running a Tebako container interactively with `bash`
+[source,sh]
+----
+$ docker run -it --rm -v $PWD:/mnt/w ghcr.io/tamatebako/tebako-<container_tag>:latest bash
+----
+====
+
+The currently available tags are described below.
 
 === `ubuntu-20.04`
 
-This container is based on **Ubuntu 20.04 LTS**, providing a suitable environment for packaging applications targeting **GNU systems** with the https://sourceware.org/glibc[`glibc` implementation of the C standard library].
+The
+https://github.com/tamatebako/tebako-ci-containers/pkgs/container/tebako-ubuntu-20.04[Tebako `ubuntu-20.04` container]
+is based on https://hub.docker.com/_/ubuntu/[**Ubuntu 20.04 LTS**], providing
+a suitable environment for packaging applications targeting **GNU systems** with
+the https://sourceware.org/glibc[`glibc` implementation of the C standard library].
 
-The `--patchelf` option ensures forward compatibility with GNU Linux distributions using GLIBC version 2.31 and above.
+NOTE: Don't let the Ubuntu version fool you! While this container version is
+based on Ubuntu 20.04, packages built using the container are compatible with
+all other Ubuntu distributions newer than Ubuntu 20.04.
+
+This container builds packages compatible with the following platforms:
 
 .Minimum GLIBC Versions for Tebako Packages
 [cols="3", options="header"]
@@ -61,27 +97,171 @@ The `--patchelf` option ensures forward compatibility with GNU Linux distributio
 | Oracle Linux | 9 | GLIBC 2.34
 |===
 
+NOTE: Compatibility with these distributions is based on the minimum supported
+GLIBC version, through the Tebako `--patchelf` option which ensures forward
+compatibility with GNU Linux distributions using GLIBC version 2.31 and above.
+
+To use the container, run the following command:
+
+[source,sh]
+----
+$ docker run -it --rm -v $PWD:/mnt/w ghcr.io/tamatebako/tebako-ubuntu-20.04:latest bash
+----
+
+
 === `alpine-3.17`
 
-This container is based on **Alpine Linux 3.17**, offering an optimized environment for packaging applications targeting systems with the https://musl.libc.org[`musl` implementation of the C standard library].
+The
+https://github.com/tamatebako/tebako-ci-containers/pkgs/container/tebako-alpine-3.17[Tebako `alpine-3.17` container]
+is based on https://hub.docker.com/_/alpine/[**Alpine Linux 3.17**], offering
+an optimized environment for packaging applications targeting systems with the
+https://musl.libc.org[`musl` implementation of the C standard library].
 
-Both containers are available on the **GitHub Container Registry (GHCR)** for **x86_64 (amd64)** and **aarch64 (arm64)** architectures.
-They include multi-architecture manifests and come preconfigured with Tebako packaging environments for Ruby versions **3.2.6** and **3.3.6**.
+NOTE: While this container version is based on Alpine 3.17, packages built using
+the container are compatible with all other Alpine distributions newer than
+Alpine 3.17.
 
-== Get Started Today
 
-Simplify your packaging process by visiting our https://github.com/tamatebako/tebako-ci-containers[GitHub repository].
-Explore the README to start using Tebako Packaging Containers today.
+== Using the Tebako containers
+
+=== General
+
+There are two primary methods for packaging with Tebako:
+
+**From outside the container**::
+Using Docker commands to package your application without entering the container.
+
+**From inside the container**::
+Interactively working within the container to package your application.
+
+=== Prerequisites
+
+* Docker installed on your machine.
+* A Ruby application ready for packaging.
+
+=== From outside the container
+
+You can package your application from outside the container by running a single
+Docker command. This command mounts your workspace into the container and
+executes the `tebako press` command.
+
+The following `press` command parameters are to be specified:
+
+* Application root (`--root=[application_root_directory]`)
+* Entry point (`--entry-point=[entry_point]`)
+* Output location (`--output=[output_executable]`)
+* Ruby version (`--Ruby=[version]`)
+
+[source,sh]
+----
+$ docker run -v <application_folder>:/mnt/w \
+  -t ghcr.io/tamatebako/tebako-${{ container_tag }}:latest \
+  tebako press <tebako press parameters>
+----
+
+.Packaging the `fontist` gem from outside the container
+[example]
+====
+To package the https://github.com/fontists/fontist[`fontist` gem], a Ruby
+application for managing fonts, located in the `fontist/` directory under the
+current working directory, use the following command:
+
+[source,sh]
+----
+docker run -v $PWD:/mnt/w \
+  -t ghcr.io/tamatebako/tebako-ubuntu-20.04:latest \
+  tebako press --root=/mnt/w/fontist --entry-point=fontist --output=/mnt/w/fontist-package --Ruby=3.3.7
+----
+====
+
+=== from inside the container
+
+To package your application from inside the Tebako container, follow these
+steps:
+
+. Pull the Tebako container image:
++
+[source,sh]
+----
+$ docker pull ghcr.io/tamatebako/tebako-<container_tag>:latest
+----
++
+Replace `<container_tag>` with the desired container tag (e.g., `ubuntu-20.04` or `alpine-3.17`).
+
+. Start and enter the container interactively:
++
+[source,sh]
+----
+$ docker run -it --rm -v <application_folder>:/mnt/w ghcr.io/tamatebako/tebako-<container_tag>:latest bash
+----
++
+Replace `<container_tag>` with the appropriate tag and `<application_folder>` with the path to your application folder.
+
+. Once inside the container, run the `tebako press` command:
++
+[source,sh]
+----
+$ tebako press <tebako press parameters>
+----
+
+.Packaging the `fontist` gem from inside the container
+[example]
+====
+To package the https://github.com/fontists/fontist[`fontist` gem], located in
+the `fontist/` directory under the current working directory, use the following
+commands:
+
+[source,sh]
+----
+# Start and enter the container
+$ docker run -it --rm -v $PWD:/mnt/w ghcr.io/tamatebako/tebako-<container_tag>:latest bash
+
+# Run this after entering the container
+$ tebako press --root=/mnt/w/fontist --entry-point=fontist --output=/mnt/w/fontist-package --Ruby=3.3.7
+----
+====
+
+If you are packaging a Ruby Gem, the `*.gemspec` file is used to specify files
+included in the gem, often using the shell command `git ls-files`. This means that when
+packaging from inside the container, the container's instance of `git` will be
+used to resolve these files.
+
+If you use a mounted host directory for packaging, the container's instance of
+`git` will be used to obtain this list by default, and if the packaging directory
+is not a Git repository, the command will fail.
+
+To resolve this, you shall alter the container's configuration by running the
+following command before packaging:
+
+[source,sh]
+----
+git config --global --add safe.directory <source>
+----
+
+NOTE: Thanks to https://github.com/bradgessler[bradgessler] for the suggestion!
+
+Packaging from inside the container is primarily designed to support CI
+environments like GitHub Actions (GHA) or Cirrus CI. It provides a complete
+packaging environment that does not require any additional installations, making
+it ideal for automated workflows.
 
 === Samples
 
-* https://github.com/tamatebako/tebako-ci-containers/blob/maxirmx-update-readme/.github/workflows/build-containers.yml[Tebako CI Containers GitHub Actions workflow]
+* https://github.com/tamatebako/tebako-ci-containers/blob/main/.github/workflows/build-containers.yml[Tebako CI Containers GitHub Actions workflow]
 includes examples featuring packaging of fontist gem.
 * https://github.com/tamatebako/tebako-samples[Tebako samples repository] includes tutorial with basic Tebako CI containers examples and advanced workflows that show
 how to package Sinatra and Ruby on Rails applications.
 
-We’re eager to see what you’ll build! If you have feedback, questions, or suggestions, feel free to reach out—we’re here to help make
-packaging seamless.
+
+== Get started and feedback
+
+Simplify your packaging process by visiting our
+https://github.com/tamatebako/tebako-ci-containers[GitHub repository].
+
+Explore the README to start using Tebako Packaging Containers today.
+
+We're eager to see what you'll build! If you have feedback, questions, or
+suggestions, feel free to reach out -- we're here to help make packaging seamless.
 
 Happy packaging!
 — The Tebako Team
