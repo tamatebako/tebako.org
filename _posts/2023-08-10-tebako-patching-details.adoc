@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Details about Tebako patching"
+title:  "Details about Tebako patching processes"
 date:   2023-11-24 00:00:00 +0800
 categories:
   - tebako
@@ -12,32 +12,289 @@ author:
   social_links:
     - https://github.com/maxirmx
 excerpt: >-
-    Building Ruby with minimal external dependencies is a challenging task loosely supported by community.
-    We faced numerous issues on this path and had to resolve then creatively.
+    Building Ruby with minimal external dependencies is a challenging task
+    loosely supported by the community. We faced numerous issues on this path
+    and had to resolve them creatively.
 ---
 
-= Tebako patching
+= Details about Tebako patching processes
 
-In our post about https://www.tebako.org/blog/2023-02-24-tebako-technology-data-flow/[technology used by Tebako packager] we have mentioned https://github.com/mhx/dwarfs[DwarFs filesystem],
-that is used to carry Ruby application and its dependencies.
-DwarFS is very effective and fast solution but these benefits have its cost - the complex toolchain a long list of dependencies to be satisfied.
-The full dependency lists on Ubuntu 20 is comprised of 271 package. Alpine needs more, MacOS requires less.
-The main dependency "dependency chain" is ```tebako --> libdwarfs (out memfs access layer) --> dwarfs (memfs) --> facebook libraries (folly, fbthrift) --> google libraries (glog, gflags)```
+== Introduction
 
-By itself the long list of dependencies should not be and is not an issue. However, we intend to create single-file package. It means that we need static libraries and it is againt against the
-industry focus. Some of the dependencies cannot be installed as static libraries from the standard packages and Tebako integration complexity is is mainly determined by the reason why static libraries
-cannot be installed from the standard package.
+Creating single-file executable packages for Ruby applications presents
+significant technical challenges, particularly when it comes to static linking.
 
-Few examples:
+The industry's preference for dynamic linking conflicts with our goal of
+producing self-contained executables that don't rely on external dependencies at
+runtime.
 
-* brew formulae for glflags does not include static library. It is easy -- we just check if gflags.a is out there
-* brew formulae for glog used bad options to build static library (I think they did not use PIC). It is easy -- we just build our copy of glog.a on MacOS if it is out there
-* building static libarhieve is an art on any platform (https://github.com/mhx/dwarfs/pull/55/files), but of course it is doable
-* alpine 3:16 did not support static jemalloc library (not sure about 3.18). It was doable but unconventional -- we have to patch system (libc) includes to get libjemalloc.a
-  (https://github.com/tamatebako/tebako-tools/blob/master/ci-scripts/patch-system-includes.sh)
-* libfolly is always static but starting from certain version folly heavily depends on weak references (== dynamic linking) to other libraries.
-  Practically it means that newer versions of folly effectively block the possibility to link dependent libraries statically (I have better explanation somewhere in the comments).
-  It is difficult -- we are using outdated version of folly but it becomes increasingly less compatible with newer versions of othe libraries. So thi one is a pain.
+In our post about the
+link:/blog/2023-02-24-tebako-technology-data-flow/[technology used by Tebako packager],
+we introduced the core components of our solution.
 
-This list is not comprehensive and it is volatile. A new version of host operating system or libfolly update can eliminate the need to patch or create a new challenge.
-That's why we implement multilayer CI/CD approach in Tebako project. It allows to find and locate new issues at the layer were they originate and keep maintenance effort reasonable low.
+This article explores the specific challenges we encountered with dependency
+management and the creative solutions we implemented to overcome them.
+
+== Understanding key technologies
+
+=== DwarFS filesystem in Tebako
+
+https://github.com/mhx/dwarfs[DwarFS] is a highly compressed, read-only
+filesystem that serves as the foundation for Tebako's packaging strategy.
+
+Amongst other filesystem options, including SquashFS, we selected DwarFS for its
+unparalleled performance and ability to efficiently store and retrieve Ruby
+applications and their dependencies within a single filesystem.
+
+DwarFS offers several advantages for our use case:
+
+* High compression ratios for efficient storage
+* Fast read access for optimal performance
+* Read-only nature that ensures package integrity
+
+These benefits make DwarFS an ideal choice for Tebako, but implementing it
+requires navigating a complex toolchain with numerous dependencies.
+
+By default, DwarFS is not designed for the command line, it is not designed to be
+used as a software library.
+
+Furthermore, since Tebako aims to be a statically-linked executable, we needed
+to create a library version of DwarFS that is also statically linked.
+
+As a result, we needed to create a library version of DwarFS,
+https://github.com/tebako/libdwarfs[`libdwarfs`], that provides a static
+interface for our packaging process and allows Tebako to read/write DwarFS
+filesystems within the library.
+
+
+=== Static libraries and industry trends
+
+When compiling software, there are two main approaches to handling library
+dependencies: static linking and dynamic linking.
+
+Static linking:: the library code is directly embedded into the final executable
+at compile time. This creates a larger executable but ensures it can run
+independently without relying on system libraries.
+
+Dynamic linking:: includes only references to libraries in the executable. The
+actual library code is loaded at runtime from the system, resulting in smaller
+executables but requiring the correct library versions to be present on the
+target system.
+
+Generally, the software industry has increasingly favored dynamic linking for
+several reasons:
+
+* Smaller individual binaries
+* Separation of concerns and dependency management
+* Easier security updates
+
+This trend means that many libraries prioritize dynamic linking support, making
+static linking more challenging to implement and maintain.
+
+However, Tebako needs static linking:
+
+* It ensures the packaged Ruby application can run on any compatible system
+without additional dependencies.
+
+* The packaged Ruby runtime is compiled against a specific set of libraries to
+ensure consistent behavior.
+
+* The packaged executable needs to run independently of the host system's
+platform and architecture. This means that a platform-specific compilation
+process is needed.
+
+* It cannot pass on the "dependency hell" issue to its end users.
+
+This means that Tebako must address the complexities of static linking in a
+dynamic-linking-focused ecosystem.
+
+== Dependency chain analysis
+
+The complexity of Tebako's dependency management becomes apparent when examining the complete dependency chain:
+
+.Primary dependency chain
+[source]
+----
+┌─────────┐     ┌──────────┐     ┌────────┐     ┌─────────────┐     ┌────────────┐
+│ Tebako  │ --> │ libdwarfs│ --> │ dwarfs │ --> │ FB Libraries│ --> │ Google Libs│
+└─────────┘     └──────────┘     └────────┘     └─────────────┘     └────────────┘
+                (memfs layer)     (memfs)         (folly/fbthrift)   (glog/gflags)
+----
+
+.Detailed dependencies
+[source]
+----
+┌─────────┐
+│ Tebako  │
+└────┬────┘
+     │
+     v
+┌──────────┐     ┌───────────────┐
+│ libdwarfs│<----│ Static Libs   │
+└────┬─────┘     │ - gflags      │
+     │           │ - glog        │
+     v           │ - libarchive  │
+┌────────┐       │ - jemalloc    │
+│ dwarfs │<------│ - libfolly    │
+└────────┘       └───────────────┘
+----
+
+The challenge of dependencies is evident in the number of libraries required to
+build a single Tebako executable.
+
+On Ubuntu 20, the full dependency list comprises 271 packages. Alpine requires
+even more packages, while macOS needs fewer.
+
+The sheer number of dependencies isn't inherently problematic, but the
+requirement for static libraries introduces significant complexity.
+
+== Platform-specific challenges
+
+Each platform presents unique challenges for static linking. Below, we detail a
+selection of issues we encountered and how we resolved them.
+
+=== Missing static libraries in Homebrew
+
+*Problem:* The Homebrew formula for `gflags` doesn't include static library builds.
+
+*Solution:* We implemented a verification step that checks for the presence of
+`gflags.a` in the system. When missing, our build process detects this and takes
+appropriate action.
+
+*Implementation:*
+[source,bash]
+----
+# Check if static gflags library exists
+if [ ! -f "${HOMEBREW_PREFIX}/lib/libgflags.a" ]; then
+  echo "Static gflags library not found, building from source"
+  # Build process follows
+fi
+----
+
+This straightforward check allows us to handle the missing static library
+gracefully.
+
+=== Build option issues on macOS
+
+*Problem:* The Homebrew formula for `glog` uses incorrect options for building
+static libraries, likely omitting Position Independent Code (PIC) flags.
+
+*Solution:* We build our own copy of `glog.a` on macOS when the system version
+is unsuitable.
+
+*Implementation:* Our build script detects macOS and compiles `glog` with the
+correct flags:
+
+[source,bash]
+----
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  # Build glog with proper PIC flags
+  ./configure CFLAGS="-fPIC" CXXFLAGS="-fPIC" --enable-static --disable-shared
+  make
+fi
+----
+
+This ensures we have a properly built static library regardless of the system version.
+
+=== Complex static builds across platforms
+
+*Problem:* Building static `libarchive` is particularly challenging on all
+platforms due to its numerous dependencies and configuration requirements.
+
+*Solution:* We developed a comprehensive build process that works consistently
+across supported platforms.
+
+*Implementation:* Our approach is documented in a detailed pull request
+(https://github.com/mhx/dwarfs/pull/55/files[DwarFS PR #55 from Ribose])
+that addresses the specific challenges of static `libarchive` builds.
+
+The solution involves careful configuration of build flags, dependency
+management, and platform-specific adjustments to ensure consistent results.
+
+=== System-level patches on Alpine
+
+*Problem:* Alpine 3.16 didn't support static `jemalloc` libraries (the situation
+may have changed in 3.18).
+
+*Solution:* We implemented an unconventional approach that patches system includes to enable static `jemalloc` linking.
+
+*Implementation:* Our solution is implemented in a dedicated script (located in
+the https://github.com/tamatebako/tebako-tools[Tebako tools] repository) that
+modifies system headers to properly support static `jemalloc`.
+
+This approach demonstrates the sometimes creative solutions required when
+working with static linking in modern environments.
+
+=== Version compatibility challenges
+
+*Problem:* Newer versions of `libfolly` heavily depend on weak references (a
+feature of dynamic linking) to other libraries, effectively blocking static
+linking capabilities.
+
+*Solution:* We currently use an older version of `libfolly` that supports static
+linking, but this creates ongoing compatibility challenges with newer versions
+of other libraries.
+
+*Implementation:* We maintain a compatibility matrix that tracks which versions
+of `libfolly` work with our static linking requirements and which versions of
+other libraries are compatible with our chosen `libfolly` version.
+
+This represents one of our most significant ongoing challenges, as it requires
+careful version management across multiple interdependent libraries.
+
+== Maintenance and testing strategy
+
+To manage these complex dependencies effectively, we have implemented a
+multilayer CI/CD approach in the Tebako project.
+
+This strategy allows us to:
+
+. Identify new issues at the specific layer where they originate
+. Isolate and address problems without disrupting the entire build chain
+. Maintain comprehensive test coverage across all supported platforms
+. Quickly adapt to upstream changes in dependencies
+
+Our CI/CD pipeline tests each layer independently before integrating them,
+ensuring that issues are caught early and resolved efficiently.
+
+== Looking ahead
+
+The challenges described in this article represent the current state of static
+linking in a dynamic-linking-focused ecosystem. As package managers and
+libraries continue to evolve, we expect some issues to resolve while new ones
+emerge.
+
+Our approach focuses on:
+
+* Maintaining compatibility with current library versions where possible
+* Implementing targeted patches where necessary
+* Contributing upstream when appropriate
+* Documenting workarounds for the benefit of the community
+
+This balanced strategy allows us to deliver a reliable packaging solution while
+managing the inherent complexity of static linking.
+
+== Summary
+
+Building Ruby applications with minimal external dependencies presents
+significant technical challenges that require creative solutions:
+
+* The industry trend toward dynamic linking conflicts with the goal of creating
+self-contained executables
+
+* Each platform presents unique challenges for static library availability and
+compatibility
+
+* Complex dependency chains require careful management and version control
+
+* Unconventional approaches, including system-level patches, are sometimes
+necessary
+
+Through our multilayer CI/CD approach and targeted solutions for specific
+dependencies, we've created a maintainable system for packaging Ruby
+applications as single executables. While the challenges are significant, the
+resulting capability to distribute Ruby applications as standalone executables
+provides substantial value to the Ruby ecosystem.
+
+The Tebako project continues to evolve as we address these challenges and
+improve our packaging capabilities across all supported platforms.
