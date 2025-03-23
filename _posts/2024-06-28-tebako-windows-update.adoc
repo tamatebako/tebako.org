@@ -208,8 +208,8 @@ The Tebako team has previously developed Aibika for Windows-only packaging.
 Now with Tebako fully supporting Windows, Aibika is now superseded.
 
 We will soon publish a blog post for
-link:/blog/2023-08-25-introducing-aibika-and-ocra/[Akiba users] on how to
-migrate from Akiba to Tebako for Windows.
+link:/blog/2023-08-24-introducing-aibika-and-ocra/[Aibika users] on how to
+migrate from Aibika to Tebako for Windows.
 
 == Conclusion
 
