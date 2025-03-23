@@ -86,8 +86,8 @@ NOTE: The list of unsupported gems will be updated as we encounter them.
 The Tebako team plans to address these limitations in the future releases.
 
 We will soon publish a blog post for
-link:/blog/2023-08-25-introducing-aibika-and-ocra/[Akiba users] on how to
-migrate from Akiba to Tebako for Windows.
+link:/blog/2023-08-24-introducing-aibika-and-ocra/[Aibika users] on how to
+migrate from Aibika to Tebako for Windows.
 
 == Conclusion
 
