@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  " ..."
+title:  "Understanding Tebako Packaging Scenarios for Ruby Applications"
 date:   2025-03-28 00:00:00 +0800
 categories:
   - tebako
@@ -13,28 +13,10 @@ author:
   social_links:
     - https://github.com/maxirmx
 excerpt: >-
-  ...
+  A comprehensive guide to the different packaging scenarios supported by Tebako
 ---
 
----
-layout: post
-title:  "Understanding Tebako Packaging Scenarios for Ruby Applications"
-date:   2025-03-24 00:00:00 +0800
-categories:
-  - tebako
-  - packaging
-  - continuous integration
-author:
-  name: Maxim Samsonov
-  email: m.samsonov@computer.org
-  use_picture: assets
-  social_links:
-    - https://github.com/maxirmx
-excerpt: >-
-  A comprehensive guide to the different packaging scenarios supported by Tebako for Ruby applications.
----
-
-== Tebako Packaging Scenarios for Ruby Applications
+== Tebako Packaging Scenarios
 
 === General
 Tebako is an advanced executable packager designed for applications written
@@ -65,7 +47,7 @@ The appropriate packaging scenario is determined by the contents of the
 root folder:
 
 ==== 1. Simple Script
-If the root folder does not contain a `Gemfile`, `*.gemspec`, or `*.gem`
+If the root folder does not contain a `Gemfile`, `.gemspec`, or `.gem`
 files, Tebako treats the application as a simple script.
 
 In this case:
@@ -75,7 +57,7 @@ In this case:
 * On startup, Tebako executes `<memfs root>/local/<entry point>`.
 
 ==== 2. Bundled Project
-If the root folder contains a `Gemfile` but no `*.gemspec` files, the
+If the root folder contains a `Gemfile` but no `.gemspec` files, the
 application is considered a bundled project. This is common for Rails or
 Sinatra projects.
 
@@ -87,7 +69,7 @@ In this scenario, Tebako:
 * Executes `<memfs root>/local/<entry point>` on startup.
 
 ==== 3. Gem Packaging
-If the root folder contains a `*.gemspec` file but no `Gemfile`, Tebako
+If the root folder contains a `.gemspec` file but no `Gemfile`, Tebako
 assumes it is packaging a gem.
 
 In this case:
@@ -105,10 +87,10 @@ gem install
   filesystem, this folder is `<memfs root>/bin`.
 * On startup, Tebako executes `<memfs root>/bin/<entry point>`.
 
-NOTE: Multiple `*.gemspec` files in the root folder are not supported.
+NOTE: Multiple `.gemspec` files in the root folder are not supported.
 
 ==== 4. Bundled Gem
-If the root folder contains both a `*.gemspec` file and a `Gemfile`, Tebako
+If the root folder contains both a `.gemspec` file and a `Gemfile`, Tebako
 assumes it is packaging a bundled gem.
 
 In this case:
@@ -125,15 +107,15 @@ bundle exec gem install
 * The entry point follows the same logic as in the Gem Packaging scenario
   (`<memfs root>/bin/<entry point>`).
 
-NOTE: Multiple `*.gemspec` files in the root folder are not supported.
+NOTE: Multiple `.gemspec` files in the root folder are not supported.
 
 ==== 5. Prebuilt Gems
-If the root folder contains `*.gem` files but no `Gemfile` or `*.gemspec`,
+If the root folder contains `.gem` files but no `Gemfile` or `.gemspec`,
 Tebako assumes it is packaging prebuilt gems.
 
 In this case:
 
-* Tebako runs `gem install` for all `*.gem` files in the root folder, in
+* Tebako runs `gem install` for all `.gem` files in the root folder, in
   random order.
 * The entry point follows the same logic as in the Gem Packaging scenario
   (`<memfs root>/bin/<entry point>`).
