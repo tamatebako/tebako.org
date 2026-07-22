@@ -1,0 +1,113 @@
+---
+layout: post
+title:  "Tebako is alive — the thrift-free re-architecture"
+date:   2026-07-22 00:00:00 +0800
+categories:
+  - tebako
+  - packaging
+  - architecture
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: >-
+  Answering "Is the project dead?": no. Maintenance continues under the
+  tamatebako organization, and the dependency churn behind the recurring
+  build breakage is being fixed at the root — by removing folly and Thrift
+  from the stack entirely.
+---
+
+= Tebako is alive — the thrift-free re-architecture
+
+https://github.com/tamatebako/tebako/issues/335[tebako#335] asks the
+question directly: is the project dead?
+
+It is a fair question, and it deserves a straight answer.
+
+Public activity has been quiet. In February 2026, Maxim Samsonov
+(https://github.com/maxirmx[maxirmx]), Tebako's lead engineer,
+https://github.com/tamatebako/tebako/issues/331#issuecomment-3969085236[stepped
+back from the project]. We are grateful for everything he built — Tebako
+exists because of his work.
+
+Since then the visible symptoms have accumulated: Tebako
+https://github.com/tamatebako/tebako/issues/331[no longer builds on current
+macOS], it is
+https://github.com/tamatebako/tebako/issues/329[incompatible with newer
+openssl gems], and the underlying
+https://github.com/tamatebako/tebako/issues/311#issuecomment-2847897015[moving-target
+problem] — library versions shifting under the build on every Homebrew or
+Xcode update — keeps resurfacing.
+
+So, the answer: *the project is not dead.* Maintenance continues under the
+https://github.com/tamatebako[tamatebako organization]. But we are not
+interested in patching these build breaks one at a time, because they are
+symptoms of a single root cause.
+
+
+== The root cause: dependency churn
+
+Tebako's filesystem stack — DwarFS, plus its folly and fbthrift
+dependencies — is compiled from source on the packager's machine, against
+whatever Boost, OpenSSL and toolchain versions happen to be installed.
+Every one of those is a moving target. When any of them moves, the build
+breaks, and the failure lands on users who just wanted to package an
+application. Issue
+https://github.com/tamatebako/tebako/issues/331[#331] is exactly this class
+of failure: a folly header no longer compiles under a newer Xcode, and
+there is nothing a Tebako user can do about it locally.
+
+The same architecture is also why `tebako setup` compiles the world —
+Ruby, DwarFS, folly, fbthrift and everything below them — a source build
+that can take hours before the first package is ever produced.
+
+
+== The fix: remove the problem, then prebuild the rest
+
+The re-architecture in flight (the v0.15 line) attacks this at the root:
+
+* *folly and fbthrift are removed entirely.*
+https://github.com/tamatebako/dwarfs-t[dwarfs-t], Tebako's variant fork of
+DwarFS, rides upstream DwarFS v0.10+ with FlatBuffers metadata — Thrift is
+no longer needed to build or to read images.
+https://github.com/tamatebako/libtfs[libtfs] (renamed from libdwarfs), the
+filesystem layer Tebako links, is folly-free, with CI guards that fail the
+build if folly ever sneaks back into the dependency graph. The overall
+dependency surface shrinks accordingly.
+* *Heavy components ship prebuilt.* libtfs publishes per-platform packages,
+and https://github.com/tamatebako/tebako-runtime-ruby[tebako-runtime-ruby]
+publishes prebuilt, tebako-patched Ruby runtimes. `tebako press` downloads
+these components instead of compiling them: no C++ toolchain on the
+packager's machine, no hours-long setup, and no exposure to the local
+Boost/OpenSSL/Xcode lottery.
+* *The packaging model gets composable.* Every Tebako binary becomes a
+composition of three parts — a small bootstrap launcher, a language
+runtime, and one or more filesystem images — with tooling to bundle,
+unbundle and reassemble them, and a shared machine-local runtime cache
+under `~/.tebako` so that lean binaries download a runtime once and share
+it across every Tebako application on the machine.
+
+The full design — what is current, what is in flight, and what is roadmap —
+is documented on the new link:/architecture/[architecture page].
+
+
+== What this means today
+
+* The current release line is v0.14.x, and the work above is *in flight*,
+not shipped. We do not promise dates; each piece is released when its
+platform matrix (glibc, musl, macOS arm64/x86_64, Windows msys) is green.
+* Existing Tebako-packaged binaries and images keep working: the new engine
+keeps read compatibility with thrift-era images, and the classic bundle
+mode remains fully supported.
+* https://github.com/tamatebako/tebako/issues/331[#331],
+https://github.com/tamatebako/tebako/issues/335[#335] and the related build
+issues will be updated as the pieces land. The fix for the macOS breakage
+is not another pin-and-patch round — it is the removal of the dependency
+chain that keeps causing it.
+
+If you rely on Tebako: thank you for your patience, and please keep the
+bug reports coming. If you are evaluating Tebako: the architecture page
+linked above shows where the project is and where it is going.
+
+**__Press on__** _with Tebako_!

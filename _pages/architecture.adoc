@@ -1,0 +1,396 @@
+---
+title: Architecture
+description: Tebako architecture — how Tebako works today and the thrift-free re-architecture in flight
+layout: post
+---
+
+Tebako packages an application together with its language runtime into a
+single, self-contained executable. Inside the executable, filesystem calls
+made by the runtime are patched and redirected into an embedded read-only
+filesystem image that carries the application and its dependencies.
+
+This page describes how Tebako works today and the re-architecture that is
+in flight: the move to a thrift-free filesystem engine, prebuilt components,
+and composable three-part packages.
+
+[IMPORTANT]
+====
+This page covers both shipped and in-development capabilities. Each
+capability is labelled with one of the following statuses:
+
+* *Current (v0.14.x)* — available in the released Tebako gem today.
+* *In flight (v0.15.0)* — under active development in the v0.15 line; the
+design is fixed, but the capability is not yet released.
+* *Roadmap* — planned, not scheduled.
+
+Nothing labelled "In flight" or "Roadmap" is available in a released gem.
+====
+
+
+== How Tebako works today (v0.14.x)
+
+*Status: Current (v0.14.x)*
+
+A Tebako-packaged binary is a self-executing container-in-a-file:
+
+.Tebako v0.14.x executable (bundle mode)
+[source]
+----
++------------------------------------------------------+
+| Tebako executable                                    |
+|  +------------------------------------------------+  |
+|  | Patched Ruby runtime + tebako-main             |  |
+|  | (libc filesystem calls redirected into the     |  |
+|  |  embedded image)                               |  |
+|  +------------------------------------------------+  |
+|  | libdwarfs VFS layer (DwarFS reader)            |  |
+|  +------------------------------------------------+  |
+|  | DwarFS image: application code, gems, data     |  |
+|  | mounted at /__tebako_memfs__                   |  |
+|  +------------------------------------------------+  |
++------------------------------------------------------+
+----
+
+The packaging flow is:
+
+. `gem install tebako`
+. `tebako setup` builds the patched Ruby runtime and the filesystem stack
+from source on the packager's machine.
+. `tebako press` deploys the application into a DwarFS image and links the
+image into the executable.
+
+Since v0.11.0, the runtime and the application can also be packaged
+separately: runtime mode produces a reusable runtime package, application
+mode produces an application-only package, and the two are combined at run
+time with `--tebako-run`. Packaged binaries also support `--tebako-extract`
+(to unpack the embedded image) and `--tebako-mount` (to expose it as a
+mounted filesystem).
+
+Under the hood, the v0.14.x filesystem stack is built from
+https://github.com/tamatebako/libtfs[libdwarfs] (the library form of
+https://github.com/mhx/dwarfs[DwarFS] developed for Tebako), which in turn
+builds DwarFS with folly and fbthrift from source. That dependency chain is
+the reason for the re-architecture described below.
+
+
+== Why re-architect
+
+Building the filesystem stack from source on every packager's machine has
+two recurring costs:
+
+* *Dependency churn.* folly, fbthrift, Boost, OpenSSL and the system
+toolchain are a moving target — an update to any of them can break the
+build. The macOS build failures reported in
+https://github.com/tamatebako/tebako/issues/331[tebako#331] are one example
+of this class of problem.
+* *Build time.* `tebako setup` compiles the full dependency chain, including
+Ruby itself, from source — a full build that can take hours.
+
+Rather than patching individual build breaks one at a time, the
+re-architecture fixes the problem at the root: remove folly and fbthrift
+from the dependency chain entirely, shrink the dependency surface, and ship
+prebuilt components so that packaging no longer requires compiling the
+world.
+
+
+== The thrift-free engine: libtfs and dwarfs-t
+
+*Status: In flight (v0.15.0)*
+
+Two renamed components form the new engine:
+
+* https://github.com/tamatebako/dwarfs-t[*dwarfs-t*] — Tebako's permanent
+variant fork of DwarFS, tracking upstream DwarFS v0.10+ with FlatBuffers
+metadata serialization. Thrift is no longer required to build or read
+images. The dwarfs-t reader keeps read compatibility with existing
+thrift-era images, so already-packaged Tebako binaries and images remain
+usable.
+* https://github.com/tamatebako/libtfs[*libtfs*] (formerly libdwarfs) — a
+format-pluggable virtual filesystem layer, free of folly and Thrift, with
+CI guards that fail the build if folly ever re-enters the dependency graph.
+
+libtfs is format-agnostic at its core. Image formats plug in as adapters
+that register their magic bytes for auto-detection; Tebako links only
+libtfs core, so adding a format never requires Tebako changes.
+
+.libtfs: format-pluggable VFS
+[source]
+----
++------------------------------------------------------------+
+| libtfs core (format-agnostic)                              |
+|  - legacy Tebako API (mount tables, memfs::load,           |
+|    tebako_open/read/... — what tebako-main links)          |
+|  - modern C API (tebako_fs_init from memory or file)       |
+|  - path resolution, LRU cache, typed errors                |
++------------------------------------------------------------+
+| adapter registry (magic-byte detection + format ids)       |
++--------------+---------------+--------------+--------------+
+| dwarfs       | squashfs      | zip          | future       |
+| adapter      | adapter       | adapter      | adapters     |
+| (primary     |               | (interop)    | (erofs, ...) |
+| format)      |               |              |              |
++--------------+---------------+--------------+--------------+
+----
+
+The primary image format stays DwarFS (dwarfs-t variant) for its
+compression and read characteristics; user-facing images are branded
+*tebako images* (`.tfs`), with the actual format handled by adapters.
+Images are built with `tebakofs mkimage --format ...` (the `mkdwarfs`
+binary remains available).
+
+
+== Prebuilt components
+
+*Status: In flight (v0.15.0)*
+
+The v0.15 line publishes the heavy components as prebuilt, per-platform
+packages, so a packager's machine no longer needs a C++ toolchain:
+
+.Published artifacts per Tebako release
+[source]
+----
++------------------------+ +-------------------------+ +------------------+
+| libtfs release         | | tebako-runtime-ruby     | | tebako gem       |
+| (per platform)         | | release (per platform)  | | (RubyGems)       |
+|  - static libs + hdrs  | |  patched Ruby +         | |  packager,       |
+|  - mkdwarfs, tebakofs  | |  tebako-main + libtfs + | |  runtime manager |
+|                        | |  jemalloc; no folly/    | |                  |
+|                        | |  thrift                 | |                  |
++------------------------+ +-------------------------+ +------------------+
+                \                 |                        /
+                 \                |                       /
+                  v               v                      v
+              User machine: downloads components, no C++ toolchain
+----
+
+`tebako press` resolves and downloads a prebuilt runtime from the
+https://github.com/tamatebako/tebako-runtime-ruby[tebako-runtime-ruby]
+releases instead of building Ruby from source, replacing the long
+`tebako setup` source build. A `--build-runtime` fallback keeps the full
+source build available for development and exotic targets.
+
+
+== Three-part packages
+
+*Status: In flight (v0.15.0)*
+
+In the v0.15 line, every Tebako product is a composition of three
+independently distributable parts:
+
+.Three-part package model
+[cols="1,3,2", options="header"]
+|===
+| Part | What it is | Distributed as
+
+| A. Tebako bootstrap
+| Small launcher executable: manifest parser, runtime resolver (cache
+lookup, download, verify, install), exec handoff. Platform-specific,
+application-agnostic; does not link libtfs.
+| `tebako-bootstrap-<version>-<platform>`, from
+https://github.com/tamatebako/tebako-bootstrap[tebako-bootstrap]
+
+| B. Language runtime
+| Patched interpreter + tebako-main + libtfs core + jemalloc, statically
+linked. Mounts the images and runs the application. Versioned by
+(type, version, Tebako ABI, platform).
+| `tebako-runtime-<tebako>-<ruby>-<platform>`, from
+https://github.com/tamatebako/tebako-runtime-ruby[tebako-runtime-ruby]
+
+| C. Data image(s)
+| One or more `.tfs` images carrying application code, gems and data; any
+adapter format, each slot with its own mount point.
+| Built with `tebakofs mkimage`; embedded in the binary or shipped as
+sidecar files
+|===
+
+A stitched binary concatenates the parts and records them in a manifest
+trailer at the end of the file:
+
+.Stitched three-part binary
+[source]
+----
++----------------------------------+
+| executable portion               |  bootstrap (lean) or runtime (fat/classic)
++----------------------------------+
+| image slot 0 (application image) |  .tfs image(s); slots may use
+| image slots 1..n (optional)      |  different adapter formats
++----------------------------------+
+| tebako manifest trailer (tpkg)   |  slot table + fixed-size header at EOF
++----------------------------------+
+----
+
+The trailer format is defined by `tebako/tpkg.h`, a single-header,
+dependency-free mini-library shared by the bootstrap, the runtime and the
+tooling. At startup the runtime maps its own executable and walks three
+paths: parse the trailer and mount each recorded slot; if no trailer is
+present, auto-detect a single appended DwarFS image; otherwise fall back to
+the classic built-in image behaviour. Existing binaries therefore keep
+working unchanged.
+
+
+== Press modes: classic, lean, fat
+
+*Status: In flight (v0.15.0)*
+
+The three-part model gives `tebako press` three modes:
+
+* *Classic* — today's in-process bundle: runtime and image(s) in one
+executable, single process, no cache, no first-run cost, zero disk
+footprint. Fully supported going forward.
+* *Lean* (default) — bootstrap + images + manifest. The binary carries no
+runtime; on first run the bootstrap resolves the required runtime into the
+shared machine-local cache (see below) and hands off to it. The runtime
+mounts the images directly out of the lean binary's file — no extraction,
+no temporary copies.
+* *Fat (self-installing)* — a lean package with the runtime appended as a
+payload slot. First run installs the payload into the shared cache (where
+every other Tebako application on the machine can use it); subsequent runs
+take the lean path. A single offline-capable file that still converges to
+shared runtimes.
+
+
+== Runtime auto-download and the shared cache
+
+*Status: In flight (v0.15.0)*
+
+Runtimes are shared machine-wide through a common cache:
+
+* Root: `$TEBAKO_HOME`, default `~/.tebako` (Windows:
+`%LOCALAPPDATA%\tebako`).
+* Layout: `runtimes/<type>-<version>-<tebakoabi>-<platform>/`, holding the
+runtime executable plus SHA256 and origin metadata.
+* Downloads are SHA256-verified against the release checksums, written to a
+temporary location and atomically renamed into place; per-entry locking
+makes concurrent first runs from many Tebako applications safe (a single
+download is shared).
+* `TEBAKO_RUNTIME_MIRROR` redirects downloads to a mirror;
+`TEBAKO_OFFLINE=1` restricts resolution to the cache.
+* Cache management: `tebako cache list` and `tebako cache prune`.
+
+
+== Package tooling: tebakofs
+
+*Status: In flight (v0.15.0)*
+
+`tebakofs` (shipped with libtfs; wrapped by the `tebako` gem) composes and
+decomposes three-part packages:
+
+* `tebakofs bundle` — assemble bootstrap, optional runtime and images into
+a binary (writes the manifest trailer).
+* `tebakofs unbundle` — decompose a binary into its bootstrap, runtime (if
+embedded), images and manifest.
+* `tebakofs reassemble` — rebuild a binary from an unbundled directory
+after swapping parts (new runtime version, added or removed images,
+lean/fat conversion).
+* `tebakofs insert-image` / `remove-image` / `set-runtime` — granular
+in-place edits.
+* `tebakofs info` — dump the manifest: parts, runtime reference, slots,
+formats, sizes.
+
+Classic bundle-mode binaries are build artifacts rather than reassembly
+sources; their images remain extractable at run time via
+`--tebako-extract`.
+
+
+== Repository topology and multi-language support
+
+The re-architecture splits Tebako into small, single-purpose repositories:
+
+[cols="1,3", options="header"]
+|===
+| Repository | Role
+
+| https://github.com/tamatebako/tebako[tebako]
+| The `tebako` gem and CLI: packager, runtime manager, per-language
+packaging scenarios.
+
+| https://github.com/tamatebako/libtfs[libtfs]
+| Format-pluggable VFS engine, `tebakofs` CLI, `tpkg.h` manifest library.
+Language-neutral.
+
+| https://github.com/tamatebako/dwarfs-t[dwarfs-t]
+| Tebako variant fork of DwarFS (thrift-free, FlatBuffers metadata).
+
+| https://github.com/tamatebako/tebako-bootstrap[tebako-bootstrap]
+| The lean-package launcher: manifest parsing, runtime resolution, exec
+handoff. No language bias; independent release cadence.
+
+| https://github.com/tamatebako/tebako-runtime-ruby[tebako-runtime-ruby]
+| Prebuilt patched-Ruby runtime packages: interpreter patches, build
+matrix, per-release checksums and manifest.
+
+| https://github.com/tamatebako/tebako-runtime[tebako-runtime]
+| The in-image adapter gem for Ruby (how packaged Ruby code sees the
+Tebako filesystem).
+
+| https://github.com/tamatebako/tebako-samples[tebako-samples],
+https://github.com/tamatebako/tebako-ci-containers[tebako-ci-containers]
+| Tutorials, sample applications, and packaging containers.
+|===
+
+*Multi-language support is Roadmap.* The topology is designed so that a new
+language (Python, Julia, ...) plugs in with exactly three additions:
+
+. a `tebako-runtime-<lang>` repository providing interpreter patches and a
+prebuilt-runtime build matrix;
+. a packaging scenario for that language in the `tebako` gem;
+. an in-image adapter package (the equivalent of the `tebako-runtime` gem
+for Ruby).
+
+The bootstrap, `tpkg.h`, `tebakofs` and libtfs are language-neutral and
+remain unchanged. Ruby is the first and currently only supported language.
+
+
+== Status summary
+
+[cols="2,1", options="header"]
+|===
+| Capability | Status
+
+| Single fat executable with embedded DwarFS image (`tebako press`, bundle mode)
+| Current (v0.14.x)
+
+| Runtime/application split (`--tebako-run`), `--tebako-extract`, `--tebako-mount`
+| Current (v0.14.x)
+
+| Thrift-free engine: dwarfs-t + libtfs (folly/fbthrift removed)
+| In flight (v0.15.0)
+
+| Prebuilt libtfs packages (static libs, `mkdwarfs`, `tebakofs`)
+| In flight (v0.15.0)
+
+| Prebuilt runtime packages (`tebako-runtime-ruby`); press downloads
+runtimes instead of building Ruby from source
+| In flight (v0.15.0)
+
+| Three-part packages with `tpkg` manifest trailer
+| In flight (v0.15.0)
+
+| Press modes: classic / lean / fat (self-installing)
+| In flight (v0.15.0)
+
+| Runtime auto-download with shared machine-local cache (`~/.tebako`)
+| In flight (v0.15.0)
+
+| `tebakofs` package tooling (bundle / unbundle / reassemble / info)
+| In flight (v0.15.0)
+
+| Additional image format adapters (erofs, ...)
+| Roadmap
+
+| Stacked/union multi-image mounts and copy-on-write layer (see the
+link:/faq/[FAQ])
+| Roadmap
+
+| Multi-language runtimes (Python, Julia, ...)
+| Roadmap
+
+| In-process (dlopen) language runtimes
+| Roadmap
+|===
+
+
+== Feedback
+
+Architecture discussion happens on GitHub:
+https://github.com/tamatebako/tebako/issues[tamatebako/tebako issues].
