@@ -174,7 +174,7 @@ docker run -v $PWD:/mnt/w \
 ----
 ====
 
-=== from inside the container
+=== From inside the container
 
 To package your application from inside the Tebako container, follow these
 steps:
