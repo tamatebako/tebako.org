@@ -1,0 +1,94 @@
+---
+layout: post
+title:  "Setting the record straight: Tebako packaging capabilities"
+date:   2025-03-05 00:00:00 +0800
+categories:
+  - tebako
+  - packaging
+  - technical
+author:
+  -
+    name: Ronald Tse
+    email: tse@ribose.com
+    social_links:
+      - https://www.linkedin.com/in/rhtse/
+      - https://github.com/ronaldtse
+  -
+    name: Maxim Samsonov
+    email: m.samsonov@computer.org
+    use_picture: assets
+    social_links:
+      - https://github.com/maxirmx
+excerpt: >-
+    Thanks to Brad Gessler for his Tebako blog post! Here we clarify macOS Intel build capabilities
+    and the intended gem release workflow to help developers implement Tebako more efficiently.
+---
+
+= Setting the record straight: Tebako packaging capabilities
+
+Thanks to Brad Gessler for his https://terminalwire.com/articles/tebako[recent blog post] on Tebako and his valuable contributions to the project! Here we'll clarify a couple of points to help you implement Tebako more effectively.
+
+== The real scoop on macOS Intel builds with GitHub Actions
+
+Brad wrote:
+[quote]
+____
+At the time of this writing GitHub Actions supports arm64 macOS, x86_64 Linux, and arm64 Linux out of the box, but for Terminalwire I needed to support x86_64 macOS builds.
+
+To get that working, I pulled my 2016 MacBook Pro out of the closet, turned it on, installed macOS 13, set up a development environment, and got Tebako building binaries for that platform.
+____
+
+*Plot twist:* No need to dust off that old MacBook! GitHub Actions actually supports macOS Intel builds through the `macos-13` runner. Yes, despite the modern numbering, `macos-13` is still running on x86_64 architecture.
+
+Check GitHub's https://docs.github.com/en/actions/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners[documentation on runners] for confirmation. Our https://github.com/tamatebako/tebako-samples[tebako-samples repository] even includes a ready-to-use build sample for the `macos-13` runner in `.github/workflows/macos.yml`.
+
+Why maintain a physical build environment when you can automate everything in the cloud? Your 2016 MacBook can go back to its well-deserved retirement.
+
+== Gems first, Tebako second: It's a feature, not a bug
+
+Brad mentioned:
+[quote]
+____
+My CI pipeline currently uses the "packaged gem" scenario, which means I need to cut releases of my gem to RubyGems before building a Tebako executable. This complicates my pre-release CI workflow since I have to release `*.*.*.alpha*` gems, but it does get a Tebako build out the door.
+____
+
+What looks like a complication is actually our intended workflow by design. At https://github.com/metanorma/metanorma-cli/issues/362[Metanorma], we follow the same approach:
+
+1. Release all gems to RubyGems
+2. Build Tebako packages based on those released gems
+
+This sequence ensures complete consistency between source packages and binary distributions. For pre-release testing, those `.alpha` gems are exactly the right approach!
+
+Benefits of this "gems first" workflow:
+- Consistent functionality across both installation methods
+- Clean version tracking and issue reporting
+- Clear audit trail for each release
+- Proper dependency resolution during packaging
+
+== What Brad got right (and his contributions)
+
+Brad has opened several insightful issues and contributed fixes to Tebako:
+
+- *Issue #237:* Identified that `$PROGRAM_NAME` and `$0` show the internal DwarFS path instead of the actual executable name
+- *Issue #216:* Reported challenges with async-websockets support
+- *Issue #215:* Highlighted that modern gems using the `./exe` directory aren't fully supported
+- *PR #213:* Fixed documentation typos for Windows installation
+
+His findings about Tebako's efficient binary sizes (just 14-15MB for terminalwire-exec) and cross-platform support highlight what makes Tebako special.
+
+== Packaging improvements coming soon
+
+Based on Brad's feedback, we're working on:
+
+- Better support for the `./exe` directory in modern gem structures
+- Proper handling of `$PROGRAM_NAME` for CLI applications
+- Enhanced async IO support for kqueue and epoll-based operations
+- More comprehensive CI/CD integration examples
+
+== In conclusion
+
+Tebako continues to evolve as the simplest way to distribute Ruby applications to end users across platforms. We're committed to making Ruby application distribution painless, efficient, and accessible.
+
+For more details, visit the https://www.tebako.org[Tebako website] or the https://github.com/tamatebako/tebako[GitHub repository]. Run into issues? https://github.com/tamatebako/tebako/issues[Let us know].
+
+**__Press on__** _with Tebako_!
