@@ -45,9 +45,11 @@ const canonical = new URL(Astro.url.pathname, Astro.site).toString()
   <meta property="og:description" content={description} />
   <meta property="og:url" content={canonical} />
   <meta property="og:site_name" content={SITE.name} />
+  <meta property="og:image" content={new URL('/web-app-manifest-512x512.png', Astro.site).toString()} />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content={title} />
   <meta name="twitter:description" content={description} />
+  <meta name="twitter:image" content={new URL('/web-app-manifest-512x512.png', Astro.site).toString()} />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
