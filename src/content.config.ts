@@ -2,7 +2,10 @@ import { defineCollection, z } from 'astro:content'
 import { adocLoader } from './content/loaders/adoc-loader'
 
 const blog = defineCollection({
-  loader: adocLoader({ base: '_posts' }),
+  loader: adocLoader({
+    base: '_posts',
+    attributes: { relfileprefix: '/blog/', outfilesuffix: '/' },
+  }),
   schema: z.object({
     title: z.string(),
     date: z.coerce.date(),
