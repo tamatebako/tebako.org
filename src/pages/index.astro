@@ -1,0 +1,202 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import JewelBox from '../components/JewelBox.vue'
+import HiddenGem from '../components/HiddenGem.astro'
+import WisdomGem from '../components/WisdomGem.astro'
+import { SITE } from '../config/site'
+
+const features = [
+  {
+    title: 'Self-contained',
+    kanji: '一',
+    description:
+      'Ruby runtime, gems, native extensions — every dependency sealed inside a single file. Nothing to install on the target.',
+  },
+  {
+    title: 'Cross-platform',
+    kanji: '界',
+    description:
+      'Build for Linux, macOS, and Windows from one command. x86_64 and ARM64, desktop and server.',
+  },
+  {
+    title: 'DwarFS-powered',
+    kanji: '圧',
+    description:
+      'A virtual filesystem compresses your entire app tree into one mountable image, mounted at startup. Fast and tiny.',
+  },
+]
+
+const stats = [
+  { value: '~15MB', label: 'Typical binary size' },
+  { value: '3', label: 'Platforms supported' },
+  { value: '0', label: 'Runtime dependencies' },
+]
+---
+
+<BaseLayout>
+  <section class="relative overflow-hidden pt-32 pb-20 lg:min-h-[90vh] lg:flex lg:items-center">
+    <div
+      class="pointer-events-none absolute inset-0 select-none"
+      aria-hidden="true"
+    >
+      <span
+        class="absolute -right-20 top-0 font-[var(--font-display)] leading-none text-[var(--tb-c-accent)] opacity-[0.04]"
+        style="font-size: clamp(20rem, 40vw, 40rem);"
+      >
+        玉
+      </span>
+    </div>
+
+    <div class="relative mx-auto grid w-full max-w-7xl items-center gap-12 px-6 lg:grid-cols-[1.1fr_0.9fr]">
+      <div class="space-y-7">
+        <p class="tb-eyebrow tb-animate-rise">玉手箱 — TAMATEBAKO</p>
+        <WisdomGem id="hero-wisdom" quote="The box was never meant to stay closed forever." style="display:inline-block; margin-left:0.5rem; vertical-align:middle;" />
+        <h1 class="tb-animate-rise tb-delay-1">
+          The jewel box<br />
+          for <span class="tb-text-gradient italic">Ruby.</span>
+        </h1>
+        <p
+          class="tb-animate-rise tb-delay-2 max-w-xl text-lg leading-relaxed text-[var(--tb-c-text-2)] lg:text-xl"
+        >
+          Tebako packages Ruby applications into single, self-contained executables.
+          One file. Zero dependencies. Every platform.
+        </p>
+        <div class="tb-animate-rise tb-delay-3 flex flex-wrap gap-4">
+          <a href={SITE.docs} class="tb-btn tb-btn-primary">
+            Get started
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
+          </a>
+          <a href={SITE.github} class="tb-btn tb-btn-ghost">
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="currentColor" aria-hidden="true">
+              <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
+            </svg>
+            GitHub
+          </a>
+        </div>
+
+        <dl class="tb-animate-rise tb-delay-4 mt-12 flex gap-8 border-t border-[var(--tb-c-divider)] pt-8">
+          {stats.map((s) => (
+            <div>
+              <dd class="font-[var(--font-display)] text-3xl font-medium text-[var(--tb-c-text-1)]">
+                {s.value}
+              </dd>
+              <dt class="mt-1 font-[var(--font-mono)] text-xs uppercase tracking-wider text-[var(--tb-c-text-3)]">
+                {s.label}
+              </dt>
+            </div>
+          ))}
+        </dl>
+
+        <HiddenGem id="hero-crown" style="position:absolute; top:65%; right:-2%; opacity:0.05;" />
+      </div>
+
+      <div class="tb-animate-rise tb-delay-3">
+        <JewelBox client:load />
+      </div>
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-7xl px-6 py-24">
+    <div class="mb-16 max-w-2xl">
+      <p class="tb-eyebrow mb-3">WHY TEBAKO</p>
+      <WisdomGem id="features-wisdom" quote="Every gem was once rough stone." style="display:inline-block; margin-left:0.5rem; vertical-align:middle;" />
+      <h2 class="text-balance">
+        Your app,<br />perfectly <em class="tb-text-gradient not-italic">preserved.</em>
+      </h2>
+      <p class="mt-4 text-lg text-[var(--tb-c-text-2)]">
+        Like a jewel placed in a fine box — protected, portable, and ready to be shared.
+      </p>
+    </div>
+
+    <div class="grid gap-6 md:grid-cols-3">
+      {features.map((f) => (
+        <article class="tb-card group relative overflow-hidden p-8">
+          <span
+            class="pointer-events-none absolute -right-4 -top-8 font-[var(--font-display)] text-8xl text-[var(--tb-c-accent)] opacity-10 transition-transform duration-500 group-hover:scale-110"
+            aria-hidden="true"
+          >
+            {f.kanji}
+          </span>
+          <h3 class="relative mb-3 font-[var(--font-display)] text-2xl font-medium">
+            {f.title}
+          </h3>
+          <p class="relative text-[var(--tb-c-text-2)]">{f.description}</p>
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-4xl px-6 py-24">
+    <div class="mb-12 text-center">
+      <p class="tb-eyebrow mb-3">QUICK START</p>
+      <WisdomGem id="terminal-wisdom" quote="Ship the jewel, not the workshop." style="display:inline-block; margin-left:0.5rem; vertical-align:middle;" />
+      <h2>Open the box<br />in three commands.</h2>
+    </div>
+
+    <div class="overflow-hidden rounded-2xl border border-[var(--tb-c-divider-strong)] shadow-2xl">
+      <div class="flex items-center gap-2 border-b border-[var(--tb-c-divider)] px-4 py-3" style="background: var(--tb-c-bg-soft);">
+        <span class="h-3 w-3 rounded-full bg-[#ff5f57]"></span>
+        <span class="h-3 w-3 rounded-full bg-[#febc2e]"></span>
+        <span class="h-3 w-3 rounded-full bg-[#28c840]"></span>
+        <span class="ml-3 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">~/my-ruby-app</span>
+        <HiddenGem id="terminal-gem" style="margin-left:auto; opacity:0.06;" />
+      </div>
+      <pre class="overflow-x-auto p-6 font-[var(--font-mono)] text-sm leading-relaxed" style="background: var(--color-ink-deep); color: var(--color-paper-soft);"><code><span class="text-[var(--color-mist-pale)]"># Install tebako</span>
+<span class="text-[var(--color-gold)]">$</span> gem install tebako
+
+<span class="text-[var(--color-mist-pale)]"># Package your app into a single executable</span>
+<span class="text-[var(--color-gold)]">$</span> tebako press \
+    --root=. \
+    --entry-point=app.rb \
+    --output=my-app \
+    --Ruby=3.4
+
+<span class="text-[var(--color-mist-pale)]"># Run it — anywhere, no Ruby needed</span>
+<span class="text-[var(--color-gold)]">$</span> ./my-app
+<span class="text-[var(--color-gold-soft)]">→ Hello from your packaged Ruby app!</span></code></pre>
+    </div>
+
+    <p class="mt-6 text-center text-sm text-[var(--tb-c-text-3)]">
+      Supports Ruby 3.1 through 3.4. See the{" "}
+      <a href={SITE.docs} class="tb-link-underline font-medium">
+        full documentation
+      </a>.
+    </p>
+  </section>
+
+  <section class="relative mx-auto max-w-4xl px-6 py-24">
+    <div
+      class="relative overflow-hidden rounded-[2rem] border border-[var(--tb-c-divider-strong)] p-12 text-center lg:p-20"
+      style="background: linear-gradient(135deg, var(--color-ink), var(--color-ink-deep));"
+    >
+      <span
+        class="pointer-events-none absolute inset-0 flex items-center justify-center font-[var(--font-display)] text-[20rem] leading-none text-[var(--color-gold)] opacity-5"
+        aria-hidden="true"
+      >
+        玉
+      </span>
+      <div class="relative">
+        <h2 class="text-[var(--color-paper)]">
+          Ready to package<br />your Ruby app?
+        </h2>
+        <p class="mx-auto mt-4 max-w-md text-lg text-[var(--color-mist-pale)]">
+          Join the developers shipping Ruby without runtime headaches.
+        </p>
+        <div class="mt-8 flex flex-wrap justify-center gap-4">
+          <a href={SITE.docs} class="tb-btn tb-btn-primary">
+            Get started
+          </a>
+          <a
+            href={SITE.samplesRepo}
+            class="tb-btn tb-btn-ghost"
+            style="color: var(--color-paper); border-color: rgba(245, 237, 208, 0.3);"
+          >
+            View samples
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

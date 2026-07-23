@@ -1,0 +1,35 @@
+---
+interface Props {
+  variant?: string
+  class?: string
+  showWordmark?: boolean
+}
+
+const {
+  variant = 'ruby',
+  class: className = '',
+  showWordmark = true,
+} = Astro.props
+
+const logoSrc = `/branding/logo-${variant}.svg`
+---
+
+<a
+  href="/"
+  class={`group inline-flex items-center gap-2.5 ${className}`}
+  aria-label="Tebako home"
+>
+  <span class="block h-9 w-9 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-[-4deg]">
+    <img
+      src={logoSrc}
+      alt=""
+      class="h-full w-full object-contain"
+      draggable="false"
+    />
+  </span>
+  {showWordmark && (
+    <span class="font-[var(--font-display)] text-xl font-medium tracking-tight text-[var(--tb-c-text-1)]">
+      tebako
+    </span>
+  )}
+</a>

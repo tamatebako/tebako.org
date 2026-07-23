@@ -5,3 +5,14 @@ _site
 vendor
 .DS_Store
 Gemfile.lock
+
+# Astro / Node
+node_modules/
+dist/
+.astro/
+.astro-check/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pagefind/*
+!public/pagefind/

@@ -1,0 +1,364 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import HiddenGem from '../components/HiddenGem.astro'
+import WisdomGem from '../components/WisdomGem.astro'
+import { SITE } from '../config/site'
+
+const colors = [
+  { name: 'Ink', hex: '#06394a', role: 'The midnight ocean — depth, grounding', text: 'light' },
+  { name: 'Paper', hex: '#faf5dc', role: 'The calm within — clean surfaces, light', text: 'dark' },
+  { name: 'Vermillion', hex: '#c36242', role: 'The Ruby\'s glow — primary actions', text: 'light' },
+  { name: 'Gold', hex: '#f8b883', role: 'The emanating light — highlights', text: 'dark' },
+  { name: 'Amber', hex: '#d38370', role: 'The warm halo — secondary glow', text: 'dark' },
+  { name: 'Slate', hex: '#405969', role: 'The storm clouds — neutral support', text: 'light' },
+]
+
+const ecosystem = [
+  {
+    name: 'tebako',
+    url: SITE.github,
+    description: 'The main CLI packager. Turns Ruby apps into self-contained executables.',
+    category: 'Core',
+  },
+  {
+    name: 'tebako-samples',
+    url: SITE.samplesRepo,
+    description: 'Ready-to-use build workflows for common packaging scenarios.',
+    category: 'Resources',
+  },
+]
+---
+
+<BaseLayout
+  title="About — Tebako"
+  description="Tebako (手箱) is short for tamatebako (玉手箱), the legendary jewel box. We place your precious Ruby application into a portable, protective box."
+>
+  <section class="relative overflow-hidden pt-32 pb-16">
+    <div class="pointer-events-none absolute inset-0 select-none" aria-hidden="true">
+      <span
+        class="absolute -right-10 top-10 font-[var(--font-display)] leading-none text-[var(--tb-c-accent)] opacity-[0.04]"
+        style="font-size: clamp(16rem, 35vw, 32rem);"
+      >
+        玉
+      </span>
+    </div>
+
+    <div class="relative mx-auto max-w-4xl px-6">
+      <p class="tb-eyebrow tb-animate-rise">手箱 · ABOUT</p>
+      <h1 class="tb-animate-rise tb-delay-1 mt-3">
+        A box for your<br /><span class="tb-text-gradient italic">precious code.</span>
+      </h1>
+      <p class="tb-animate-rise tb-delay-2 mt-6 max-w-2xl text-xl leading-relaxed text-[var(--tb-c-text-2)]">
+        Tebako is short for <strong class="text-[var(--tb-c-text-1)]">tamatebako</strong> (玉手箱) —
+        the legendary jewel box from Japanese folklore. We give the name new life: a portable
+        fortress that carries your Ruby application safely to any destination.
+      </p>
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-4xl px-6 py-16">
+    <p class="tb-eyebrow mb-3">THE NAME</p>
+    <WisdomGem id="about-name-wisdom" quote="What is precious needs no wrapping — yet wrapping protects it nonetheless." style="display:inline-block; margin-left:0.5rem; vertical-align:middle;" />
+    <h2 class="mb-6">Tamatebako — the jewel box.</h2>
+    <div class="space-y-4 text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      <p>
+        In the folktale of <em>Urashima Tarō</em>, the princess Otohime gives the
+        fisherman a beautiful casket as a parting gift. The box — the
+        <strong class="text-[var(--tb-c-text-1)]">tamatebako</strong> (玉手箱) — was said
+        to contain something precious. Its name breaks down as:
+      </p>
+      <div class="my-8 grid gap-4 sm:grid-cols-3">
+        <div class="tb-card relative p-6 text-center">
+          <p class="font-[var(--font-display)] text-5xl text-[var(--tb-c-accent)]">玉</p>
+          <p class="mt-2 font-[var(--font-mono)] text-sm text-[var(--tb-c-text-3)]">tama</p>
+          <p class="mt-1 text-sm">jewel, precious stone</p>
+          <HiddenGem id="kanji-tama" style="position:absolute; top:0.5rem; right:0.75rem;" />
+        </div>
+        <div class="tb-card relative p-6 text-center">
+          <p class="font-[var(--font-display)] text-5xl text-[var(--tb-c-accent)]">手</p>
+          <p class="mt-2 font-[var(--font-mono)] text-sm text-[var(--tb-c-text-3)]">te</p>
+          <p class="mt-1 text-sm">hand</p>
+          <HiddenGem id="kanji-te" style="position:absolute; top:0.5rem; right:0.75rem;" />
+        </div>
+        <div class="tb-card relative p-6 text-center">
+          <p class="font-[var(--font-display)] text-5xl text-[var(--tb-c-accent)]">箱</p>
+          <p class="mt-2 font-[var(--font-mono)] text-sm text-[var(--tb-c-text-3)]">bako (hako)</p>
+          <p class="mt-1 text-sm">box, casket</p>
+          <HiddenGem id="kanji-bako" style="position:absolute; top:0.5rem; right:0.75rem;" />
+        </div>
+      </div>
+      <p>
+        For our project, the metaphor fits perfectly. Your Ruby application is the
+        jewel — precious, crafted, irreplaceable. Tebako is the box that carries it:
+        <strong class="text-[var(--tb-c-text-1)]">portable, self-contained, and ready to be
+        opened anywhere.</strong>
+      </p>
+    </div>
+  </section>
+
+  <section class="relative mx-auto max-w-4xl px-6 py-16">
+    <div class="pointer-events-none absolute inset-0 select-none overflow-hidden rounded-[2rem]" aria-hidden="true">
+      <span
+        class="absolute -right-8 top-1/2 -translate-y-1/2 font-[var(--font-display)] leading-none text-[var(--tb-c-accent)] opacity-[0.03]"
+        style="font-size: clamp(16rem, 30vw, 28rem);"
+      >
+        時
+      </span>
+    </div>
+
+    <div class="relative">
+      <p class="tb-eyebrow mb-3">THE LEGEND</p>
+      <h2 class="mb-8">A fisherman, a princess,<br />and three hundred years.</h2>
+
+      <div class="space-y-5 text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+        <p>
+          Long ago, a fisherman named <strong class="text-[var(--tb-c-text-1)]">Urashima Tarō</strong>
+          saved a sea turtle from torment. In gratitude, the turtle carried him beneath the waves
+          to the Dragon Palace — <em>龍宮城, Ryūgū-jō</em> — a palace of coral and light at the
+          bottom of the sea.
+        </p>
+        <p>
+          There, the princess Otohime welcomed him. For what felt like three days, he feasted,
+          watched the dance of fishes, and forgot the world above. When he finally wished to
+          return, Otohime gave him a gift: a small casket — the <strong class="text-[var(--tb-c-text-1)]">tamatebako</strong>,
+          the jewel box — with a single condition.
+        </p>
+
+        <blockquote class="my-8 border-l-[3px] border-[var(--tb-c-accent)] py-2 pl-6 text-xl font-medium not-italic text-[var(--tb-c-text-1)]">
+          Do not open it.
+        </blockquote>
+
+        <p>
+          He returned to the shore and found everything changed. His village was gone.
+          His family was gone. <strong class="text-[var(--tb-c-text-1)]">Three hundred years</strong>
+          had passed in what felt like three days.
+        </p>
+        <p>
+          In his grief, he opened the box. White smoke billowed forth — and in an instant,
+          the years caught up with him. Time, which had been held safely inside the box,
+          rushed out all at once.
+        </p>
+      </div>
+    </div>
+
+    <div class="relative mt-12 overflow-hidden rounded-[var(--radius-2xl)] p-8 lg:p-10" style="background: linear-gradient(135deg, var(--color-ink), var(--color-ink-deep));">
+      <div class="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden" aria-hidden="true">
+        <span class="font-[var(--font-display)] text-[12rem] leading-none text-[var(--color-gold)] opacity-5">
+          永
+        </span>
+      </div>
+      <div class="relative">
+        <p class="tb-eyebrow mb-3" style="color: var(--color-gold);">WHAT THE LEGEND TEACHES</p>
+        <h3 class="mb-4 text-[var(--color-paper)]">The box held time.</h3>
+        <div class="space-y-4 text-[var(--color-mist-pale)]">
+          <p>
+            The tamatebako held something precious: <strong class="text-[var(--color-paper)]">time itself.</strong>
+            The days at the Dragon Palace were not lost — they were preserved, stored safely
+            inside the box until it was opened.
+          </p>
+          <p>
+            Tebako does for your code what the tamatebako did for Urashima's time. It preserves
+            your application in a state of <strong class="text-[var(--color-paper)]">suspended perfection</strong> —
+            frozen at the exact moment of packaging. No dependency rot. No version drift.
+            No bit decay. The gems, the runtime, the configuration — all held safe inside the box.
+          </p>
+          <p>
+            When you ship the executable, you hand someone a tamatebako of their own. They
+            open it — and your application springs to life, exactly as you intended, exactly
+            as you built it. No aging. No erosion. No three hundred years of change between
+            your machine and theirs.
+          </p>
+          <p class="pt-2 text-lg font-medium text-[var(--color-gold)]">
+            This is what we mean by timelessness: your code, held outside of time, until the moment it runs.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-4xl px-6 py-16">
+    <p class="tb-eyebrow mb-3">THE LOGO</p>
+    <WisdomGem id="about-logo-wisdom" quote="The Ruby glows because it remembers the hands that shaped it." style="display:inline-block; margin-left:0.5rem; vertical-align:middle;" />
+    <h2 class="mb-6">A gravitic cube over the ocean.</h2>
+    <div class="space-y-4 text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      <p>
+        The Tebako logo is not merely decoration — it is the product, rendered as myth.
+        It depicts a transparent cube floating above a stormy ocean at midnight, its edges
+        glowing with the warm light of a single Ruby held within.
+      </p>
+      <p>
+        Every element carries meaning:
+      </p>
+      <ul class="space-y-3">
+        <li class="flex gap-3">
+          <span class="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[var(--tb-c-accent)]"></span>
+          <span><strong class="text-[var(--tb-c-text-1)]">Reverse gravity</strong> — the cube pushes away the turbulent waves below, creating a calm, self-contained space within. This is dependency isolation: the chaos of the outside world cannot reach what is inside.</span>
+        </li>
+        <li class="flex gap-3">
+          <span class="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[var(--tb-c-accent)]"></span>
+          <span><strong class="text-[var(--tb-c-text-1)]">Heavy water walls</strong> — the cube's faces are sheets of dense water that refract light in strange ways. This is the DwarFS virtual filesystem: your entire application tree, compressed and mounted at startup, visible yet protected.</span>
+        </li>
+        <li class="flex gap-3">
+          <span class="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[var(--tb-c-accent)]"></span>
+          <span><strong class="text-[var(--tb-c-text-1)]">A single Ruby</strong> — at the center floats your application, its warm glow illuminating the darkness. This is the code you wrote, running exactly as you intended, undisturbed by the storm.</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="mt-12 grid gap-6 sm:grid-cols-2">
+      <div class="overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--tb-c-divider)] p-8 text-center" style="background: linear-gradient(135deg, var(--color-paper-soft), var(--color-paper-warm));">
+        <p class="mb-4 font-[var(--font-mono)] text-xs uppercase tracking-widest text-[var(--tb-c-text-3)]">On light</p>
+        <img src="/branding/logo-ruby.svg" alt="Tebako logo on light background" class="mx-auto max-w-[200px]" loading="lazy" />
+        <p class="mt-4 text-sm text-[var(--tb-c-text-2)]">The transparent background lets the ocean and cube blend with the warm paper surface.</p>
+      </div>
+      <div class="overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--tb-c-divider-strong)] p-8 text-center" style="background: linear-gradient(135deg, var(--color-ink), var(--color-ink-deep));">
+        <p class="mb-4 font-[var(--font-mono)] text-xs uppercase tracking-widest text-[var(--color-mist)]">On dark</p>
+        <img src="/branding/logo-ruby.svg" alt="Tebako logo on dark background" class="mx-auto max-w-[200px]" loading="lazy" />
+        <p class="mt-4 text-sm text-[var(--color-mist-pale)]">The midnight ocean becomes the page itself. The Ruby's vermillion glows against the dark.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-4xl px-6 py-16">
+    <p class="tb-eyebrow mb-3">WHY RUBY</p>
+    <h2 class="mb-6">The stone is a Ruby.</h2>
+    <div class="space-y-4 text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      <p>
+        The gem inside the cube is red because Tebako was born to package <strong class="text-[var(--tb-c-text-1)]">Ruby</strong>.
+        The deep vermillion of the stone — <code class="rounded bg-[var(--tb-c-divider)] px-1.5 py-0.5 font-[var(--font-mono)] text-sm text-[var(--tb-c-accent)]">#c36242</code>
+        — is the color of a running application, of warmth, of something alive.
+      </p>
+      <p>
+        Ruby is a language built for developer happiness. Tebako extends that promise to
+        the end user: the joy of writing Ruby becomes the simplicity of running a single
+        file. No gem installs. No version conflicts. No runtime to configure. Just the box,
+        opened with a double-click, the jewel glowing inside.
+      </p>
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-4xl px-6 py-16">
+    <p class="tb-eyebrow mb-3">THE COLORS</p>
+    <h2 class="mb-6">A palette from midnight and flame.</h2>
+    <p class="mb-8 text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      Every color in the Tebako identity is drawn directly from the logo illustration —
+      the deep teal-black of the midnight ocean, the warm cream of the calm interior,
+      the vermillion of the Ruby's glow.
+    </p>
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {colors.map((c) => (
+        <div class="overflow-hidden rounded-2xl border border-[var(--tb-c-card-border)]">
+          <div
+            class="flex h-24 items-end p-4"
+            style={`background: ${c.hex};`}
+          >
+            <span
+              class="font-[var(--font-mono)] text-sm font-medium"
+              style={`color: ${c.text === 'light' ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.7)'};`}
+            >
+              {c.hex}
+            </span>
+          </div>
+          <div class="bg-[var(--tb-c-card)] p-4">
+            <p class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)]">{c.name}</p>
+            <p class="mt-1 text-sm text-[var(--tb-c-text-3)]">{c.role}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-4xl px-6 py-16">
+    <p class="tb-eyebrow mb-3">HOW IT WORKS</p>
+    <h2 class="mb-6">The box, opened.</h2>
+    <div class="space-y-4 text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      <p>
+        Beneath the poetry is solid engineering. Tebako uses
+        <strong class="text-[var(--tb-c-text-1)]">DwarFS</strong> — a fast, high-compression
+        read-only filesystem — to pack your entire application tree into a single mountable
+        image. At runtime, this image is mounted and your application starts as if it were
+        running in its original directory structure.
+      </p>
+      <p>
+        The Ruby runtime itself is patched and embedded, so the executable is truly
+        self-contained. Native C extensions, gem dependencies, configuration files —
+        everything travels inside the box.
+      </p>
+    </div>
+    <div class="mt-8 grid gap-4 sm:grid-cols-3">
+      <div class="tb-card p-6">
+        <p class="font-[var(--font-mono)] text-3xl text-[var(--tb-c-accent)]">01</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium">Press</h3>
+        <p class="mt-1 text-sm text-[var(--tb-c-text-2)]">A single command packages your app.</p>
+      </div>
+      <div class="tb-card p-6">
+        <p class="font-[var(--font-mono)] text-3xl text-[var(--tb-c-accent)]">02</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium">Mount</h3>
+        <p class="mt-1 text-sm text-[var(--tb-c-text-2)]">At runtime, DwarFS mounts the image.</p>
+      </div>
+      <div class="tb-card p-6">
+        <p class="font-[var(--font-mono)] text-3xl text-[var(--tb-c-accent)]">03</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium">Run</h3>
+        <p class="mt-1 text-sm text-[var(--tb-c-text-2)]">Your Ruby app executes — anywhere.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-4xl px-6 py-16">
+    <p class="tb-eyebrow mb-3">THE ECOSYSTEM</p>
+    <h2 class="mb-6">Open source, built together.</h2>
+    <div class="space-y-4">
+      {ecosystem.map((project) => (
+        <a
+          href={project.url}
+          class="tb-card group flex items-center justify-between gap-4 p-6"
+        >
+          <div>
+            <div class="flex items-center gap-3">
+              <h3 class="font-[var(--font-display)] text-xl font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">
+                {project.name}
+              </h3>
+              <span class="rounded-full bg-[var(--tb-c-divider)] px-2.5 py-0.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+                {project.category}
+              </span>
+            </div>
+            <p class="mt-1 text-[var(--tb-c-text-2)]">{project.description}</p>
+          </div>
+          <svg viewBox="0 0 24 24" class="h-5 w-5 flex-shrink-0 text-[var(--tb-c-text-3)] transition-all group-hover:translate-x-1 group-hover:text-[var(--tb-c-accent)]" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </a>
+      ))}
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-4xl px-6 py-16">
+    <div
+      class="relative overflow-hidden rounded-[2rem] border border-[var(--tb-c-divider-strong)] p-12 text-center"
+      style="background: linear-gradient(135deg, var(--color-ink), var(--color-ink-deep));"
+    >
+      <span
+        class="pointer-events-none absolute inset-0 flex items-center justify-center font-[var(--font-display)] text-[18rem] leading-none text-[var(--color-gold)] opacity-5"
+        aria-hidden="true"
+      >
+        玉
+      </span>
+      <div class="relative">
+        <h2 class="text-[var(--color-paper)]">Ready to open<br />the box?</h2>
+        <p class="mx-auto mt-4 max-w-md text-lg text-[var(--color-mist-pale)]">
+          Package your first Ruby application in minutes.
+        </p>
+        <div class="mt-8 flex flex-wrap justify-center gap-4">
+          <a href={SITE.docs} class="tb-btn tb-btn-primary">Get started</a>
+          <a
+            href={SITE.github}
+            class="tb-btn tb-btn-ghost"
+            style="color: var(--color-paper); border-color: rgba(245, 237, 208, 0.3);"
+          >
+            View on GitHub
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

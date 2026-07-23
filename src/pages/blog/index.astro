@@ -1,0 +1,69 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import BlogPostCard from '../../components/BlogPostCard.astro'
+import HiddenGem from '../../components/HiddenGem.astro'
+import WisdomGem from '../../components/WisdomGem.astro'
+import { getCollection } from 'astro:content'
+
+const posts = (await getCollection('blog')).sort(
+  (a, b) => b.data.date.getTime() - a.data.date.getTime()
+)
+
+const [latest, ...rest] = posts
+---
+
+<BaseLayout
+  title="Blog — Tebako"
+  description="Updates, deep dives, and stories from packaging Ruby applications into self-contained executables."
+>
+  <section class="mx-auto max-w-5xl px-6 pb-20 pt-32">
+    <p class="tb-eyebrow tb-animate-rise">玉手箱 JOURNAL</p>
+    <WisdomGem id="blog-wisdom" quote="I wanted to minimize my frustration." author="Yukihiro Matsumoto" style="display:inline-block; margin-left:0.5rem; vertical-align:middle;" />
+    <div class="relative">
+      <h1 class="tb-animate-rise tb-delay-1 mt-3">The Tebako blog.</h1>
+      <HiddenGem id="blog-compass" style="position:absolute; top:0; right:0; opacity:0.05;" />
+    </div>
+    <p class="tb-animate-rise tb-delay-2 mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      Engineering notes, release announcements, and deep dives into the world of
+      packaging interpretive-language apps.
+    </p>
+
+    {latest && (
+      <a
+        href={`/blog/${latest.id}/`}
+        class="tb-animate-rise tb-delay-3 mt-12 block overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--tb-c-card-border)] transition-all duration-500 hover:border-[var(--tb-c-accent)]"
+        style="background: linear-gradient(135deg, var(--tb-c-card), var(--tb-c-bg-warm));"
+      >
+        <div class="grid gap-6 p-10 md:grid-cols-[2fr_1fr] md:items-center">
+          <div>
+            <div class="mb-3 flex items-center gap-3 font-[var(--font-mono)] text-xs uppercase tracking-wider text-[var(--tb-c-accent)]">
+              <span>Latest</span>
+            </div>
+            <h2 class="font-[var(--font-display)] text-3xl font-medium leading-tight text-[var(--tb-c-text-1)] lg:text-4xl">
+              {latest.data.title}
+            </h2>
+            {latest.data.excerpt && (
+              <p class="mt-4 max-w-xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+                {latest.data.excerpt}
+              </p>
+            )}
+          </div>
+          <div class="flex flex-col gap-3 text-sm text-[var(--tb-c-text-3)]">
+            <time datetime={latest.data.date.toISOString()} class="font-[var(--font-mono)]">
+              {latest.data.date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+            </time>
+            {latest.data.author[0] && <span>{latest.data.author[0].name}</span>}
+          </div>
+        </div>
+      </a>
+    )}
+
+    {rest.length > 0 && (
+      <div class="mt-8 grid gap-6 md:grid-cols-2">
+        {rest.map((post) => (
+          <BlogPostCard post={post} />
+        ))}
+      </div>
+    )}
+  </section>
+</BaseLayout>

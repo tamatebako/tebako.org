@@ -1,0 +1,85 @@
+---
+import '../styles/global.css'
+import { ClientRouter } from 'astro:transitions'
+import Nav from '../components/Nav.astro'
+import Footer from '../components/Footer.astro'
+import EasterEggGlobal from '../components/EasterEggGlobal.astro'
+import { SITE } from '../config/site'
+
+interface Props {
+  title?: string
+  description?: string
+}
+
+const {
+  title = SITE.title,
+  description = SITE.description,
+} = Astro.props
+
+const canonical = new URL(Astro.url.pathname, Astro.site).toString()
+---
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <script is:inline>
+    (function(){try{var s=localStorage.getItem('tb-theme');var d=window.matchMedia('(prefers-color-scheme: dark)').matches;if(s==='dark'||(s!=='light'&&d))document.documentElement.classList.add('dark')}catch(e){}})()
+  </script>
+
+  <link rel="icon" type="image/png" href="/favicon-96x96.png?v=20260723" sizes="96x96" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=20260723" />
+  <link rel="shortcut icon" href="/favicon.ico?v=20260723" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=20260723" />
+  <link rel="manifest" href="/site.webmanifest?v=20260723" />
+  <link rel="alternate" type="application/rss+xml" title="Tebako Blog" href="/rss.xml" />
+
+  <title>{title}</title>
+  <meta name="description" content={description} />
+  <link rel="canonical" href={canonical} />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:url" content={canonical} />
+  <meta property="og:site_name" content={SITE.name} />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content={title} />
+  <meta name="twitter:description" content={description} />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+  />
+
+  <ClientRouter />
+
+  <script type="application/ld+json" set:html={JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": SITE.name,
+    "url": SITE.url,
+    "description": SITE.description,
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": `${SITE.url}/?q={search_term_string}`,
+      "query-input": "required name=search_term_string"
+    }
+  })} />
+</head>
+<body class="tb-grain tb-bg-radial-ink">
+  <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[200] focus:rounded-lg focus:bg-[var(--tb-c-accent)] focus:px-4 focus:py-2 focus:text-white">
+    Skip to content
+  </a>
+  <Nav />
+  <main id="main">
+    <slot />
+  </main>
+  <Footer />
+  <EasterEggGlobal />
+</body>
+</html>
