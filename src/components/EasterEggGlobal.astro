@@ -1,0 +1,819 @@
+---
+---
+
+<!-- Gem badge (hidden until first gem found) -->
+<div class="tb-gem-badge" id="tb-gem-badge" style="display:none;" title="Gems collected">
+  <span class="tb-gem-badge-icon">◆</span>
+  <span class="tb-gem-badge-count">0/8</span>
+</div>
+
+<style is:global>
+  .tb-gem-badge {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    z-index: 9990;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.1rem;
+    border-radius: 999px;
+    background: var(--tb-c-card);
+    border: 1px solid var(--tb-c-divider-strong);
+    box-shadow: var(--tb-shadow-card);
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--tb-c-text-1);
+    cursor: default;
+    transition: all 0.4s var(--ease-out-quint, ease);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .tb-gem-badge:hover {
+    transform: translateY(-3px);
+    border-color: var(--tb-c-accent);
+    box-shadow: var(--tb-shadow-card-hover);
+  }
+  .tb-gem-badge-icon {
+    color: var(--tb-c-accent);
+    font-size: 0.9rem;
+    animation: tb-gem-badge-pulse 2s ease-in-out infinite;
+    text-shadow: 0 0 8px currentColor;
+  }
+  @keyframes tb-gem-badge-pulse {
+    0%, 100% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.25); opacity: 1; }
+  }
+
+  .tb-gem-toast {
+    position: fixed;
+    bottom: 5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9991;
+    padding: 0.75rem 1.75rem;
+    border-radius: 999px;
+    background: var(--color-ink);
+    color: var(--color-gold);
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .dark .tb-gem-toast {
+    background: var(--color-ink-soft);
+  }
+
+  .tb-kanji-sweep {
+    position: fixed;
+    font-family: var(--font-display);
+    font-weight: 500;
+    color: var(--color-gold);
+    pointer-events: none;
+    z-index: 9992;
+    text-shadow: 0 0 24px rgba(248, 184, 131, 0.6);
+    will-change: transform, opacity;
+  }
+
+  .tb-gem-sparkle {
+    position: fixed;
+    width: 8px;
+    height: 8px;
+    margin: -4px 0 0 -4px;
+    border-radius: 50%;
+    background: var(--color-gold);
+    box-shadow: 0 0 8px rgba(248, 184, 131, 0.9), 0 0 16px rgba(248, 184, 131, 0.5);
+    pointer-events: none;
+    z-index: 9993;
+    will-change: transform, opacity;
+  }
+
+  html.tb-flash-gold {
+    --tb-c-accent: #f8b883 !important;
+  }
+
+  canvas.tb-cursor-canvas {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9994;
+    mix-blend-mode: screen;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tb-gem-badge-icon { animation: none; }
+    canvas.tb-cursor-canvas { display: none; }
+  }
+
+  .tb-wisdom-gem {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    color: var(--tb-c-accent);
+    opacity: 0.35;
+    cursor: pointer;
+    pointer-events: auto;
+    transition: opacity 0.3s var(--ease-out-quint, ease), transform 0.3s var(--ease-out-quint, ease);
+    vertical-align: middle;
+    position: relative;
+    z-index: 1;
+    filter: drop-shadow(0 0 4px rgba(248, 184, 131, 0.4));
+    animation: tb-wisdom-twinkle 3s ease-in-out infinite;
+  }
+  .tb-wisdom-gem:hover,
+  .tb-wisdom-gem:focus-visible {
+    opacity: 1;
+    transform: scale(1.6) rotate(180deg);
+    outline: none;
+    filter: drop-shadow(0 0 10px rgba(248, 184, 131, 0.8));
+  }
+  @keyframes tb-wisdom-twinkle {
+    0%, 100% { opacity: 0.25; transform: scale(1); }
+    50% { opacity: 0.55; transform: scale(1.1); }
+  }
+  .tb-wisdom-gem svg {
+    width: 100%;
+    height: 100%;
+  }
+  .tb-wisdom-gem.collected {
+    opacity: 0 !important;
+    pointer-events: none;
+    transform: scale(0);
+  }
+
+  .tb-quote-card {
+    position: fixed;
+    top: 38%;
+    left: 50%;
+    z-index: 9996;
+    max-width: min(28rem, 90vw);
+    padding: 2rem 2.5rem;
+    border-radius: 1.5rem;
+    background: var(--tb-c-card, #fff);
+    border: 1px solid var(--tb-c-accent, #c36242);
+    box-shadow: 0 20px 60px -20px rgba(6, 57, 74, 0.3), 0 0 50px rgba(248, 184, 131, 0.15);
+    text-align: center;
+    pointer-events: none;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .tb-quote-text {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    line-height: 1.6;
+    color: var(--tb-c-text-1, #1a2b34);
+    font-weight: 500;
+  }
+  .tb-quote-author {
+    margin-top: 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--tb-c-text-3, #7a8b94);
+    letter-spacing: 0.02em;
+  }
+
+  .tb-wisdom-flyer {
+    position: fixed;
+    z-index: 9995;
+    pointer-events: none;
+    will-change: transform, opacity;
+    filter: drop-shadow(0 0 8px rgba(248, 184, 131, 0.8));
+  }
+  .tb-wisdom-flyer svg {
+    width: 28px;
+    height: 28px;
+    color: var(--color-gold);
+  }
+
+  .tb-lore-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(3, 29, 40, 0.96);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    opacity: 0;
+    transition: opacity 0.6s ease;
+    padding: 1.5rem;
+  }
+  .tb-lore-overlay.visible {
+    opacity: 1;
+  }
+  .tb-lore-card {
+    position: relative;
+    max-width: 34rem;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 3rem 2.5rem;
+    border-radius: 1.5rem;
+    background: linear-gradient(160deg, var(--color-ink), var(--color-ink-deep));
+    border: 1px solid rgba(248, 184, 131, 0.2);
+    box-shadow: 0 0 80px rgba(248, 184, 131, 0.1), 0 20px 60px rgba(0, 0, 0, 0.5);
+    text-align: center;
+    transform: translateY(20px) scale(0.95);
+    opacity: 0;
+    transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.6s ease;
+  }
+  .tb-lore-overlay.visible .tb-lore-card {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  .tb-lore-kanji {
+    font-size: 5rem;
+    color: var(--color-gold);
+    opacity: 0.15;
+    line-height: 1;
+    margin-bottom: 0.5rem;
+  }
+  .tb-lore-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--color-gold);
+    margin-bottom: 0.5rem;
+  }
+  .tb-lore-title {
+    font-family: var(--font-display);
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: var(--color-paper);
+    margin-bottom: 1.5rem;
+  }
+  .tb-lore-body {
+    text-align: left;
+    font-size: 0.9375rem;
+    line-height: 1.8;
+    color: var(--color-mist-pale);
+  }
+  .tb-lore-body p {
+    margin-bottom: 1rem;
+  }
+  .tb-lore-body strong {
+    color: var(--color-paper);
+  }
+  .tb-lore-body em {
+    color: var(--color-gold);
+    font-style: italic;
+  }
+  .tb-lore-divider {
+    text-align: center;
+    margin: 1.5rem 0;
+    color: var(--color-gold);
+    opacity: 0.4;
+    letter-spacing: 0.5em;
+  }
+  .tb-lore-close {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+    padding: 0.6rem 1.5rem;
+    border-radius: 999px;
+    background: var(--tb-c-accent);
+    color: var(--color-paper);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.2s ease, background 0.2s ease;
+  }
+  .tb-lore-close:hover {
+    transform: translateY(-2px);
+    background: var(--color-vermillion-deep);
+  }
+</style>
+
+<script is:inline>
+  window.help = function () {
+    var found = 0, wisdom = 0
+    try { found = JSON.parse(localStorage.getItem('tb-gems-found') || '[]').length } catch (e) {}
+    try { wisdom = JSON.parse(localStorage.getItem('tb-wisdom-found') || '[]').length } catch (e) {}
+    return [
+      '🎁 Tebako Easter Eggs',
+      '',
+      '1. Click the jewel box on the homepage — the Ruby flies out',
+      '2. Type "tebako" anywhere — tumbling gem shower',
+      '3. Find 8 hidden collector gems (◆) across the site',
+      '4. Click wisdom gems for quotes that fly away',
+      '5. Leave the homepage idle 30s — the box glows',
+      '6. Visit a nonexistent URL — drift lost at sea',
+      '7. Move your cursor — gold sparkles trail',
+      '',
+      'Progress: ' + found + '/8 gems collected · ' + wisdom + ' wisdom gems',
+      '',
+      'Tips: gems are faint — look in corners, near headings, in the footer.',
+      'Type tebako.help(), tebako.gems(), tebako.reset()',
+    ].join('\n')
+  }
+  window.tebako = {
+    help: function () { return window.help() },
+    gems: function () {
+      var c = 0, w = 0
+      try { c = JSON.parse(localStorage.getItem('tb-gems-found') || '[]').length } catch (e) {}
+      try { w = JSON.parse(localStorage.getItem('tb-wisdom-found') || '[]').length } catch (e) {}
+      return c + w
+    },
+    total: function () { return 19 },
+    wisdom: function () { try { return JSON.parse(localStorage.getItem('tb-wisdom-found') || '[]').length } catch (e) { return 0 } },
+    reset: function () {
+      localStorage.removeItem('tb-gems-found')
+      localStorage.removeItem('tb-wisdom-found')
+      return '✨ All progress reset. Reload to start fresh.'
+    },
+  }
+
+  ;(function () {
+  const ALL_GEMS = [
+    'hero-crown', 'kanji-tama', 'kanji-te', 'kanji-bako',
+    'terminal-gem', 'blog-compass', 'footer-treasure', 'sea-404',
+  ]
+  const GEM_KEY = 'tb-gems-found'
+  const MESSAGES = {
+    1: 'A gem glimmers in the light. 1/8',
+    2: 'Two gems now. The box stirs. 2/8',
+    3: 'Three gathered. 3/8',
+    4: 'Halfway. The Ruby brightens. 4/8',
+    5: 'Five gems. A collector\'s eye. 5/8',
+    6: 'Six. The ocean whispers. 6/8',
+    7: 'Seven gems. One remains. 7/8',
+    8: 'All gems found. The tamatebako is complete. ✨',
+  }
+
+  const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  function getFound() {
+    try { return new Set(JSON.parse(localStorage.getItem(GEM_KEY) || '[]')) }
+    catch { return new Set() }
+  }
+
+  function saveFound(found) {
+    try { localStorage.setItem(GEM_KEY, JSON.stringify([...found])) }
+    catch { /* localStorage unavailable */ }
+  }
+
+  function playChime(rising = true) {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext
+      if (!Ctx) return
+      const ctx = new Ctx()
+      const now = ctx.currentTime
+      const notes = rising ? [523.25, 659.25, 783.99] : [783.99, 659.25, 523.25]
+      notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = 'sine'
+        osc.frequency.value = freq
+        const start = now + i * 0.08
+        gain.gain.setValueAtTime(0.001, start)
+        gain.gain.exponentialRampToValueAtTime(0.12, start + 0.02)
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.6)
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.start(start)
+        osc.stop(start + 0.6)
+      })
+    } catch { /* audio unavailable */ }
+  }
+
+  function spawnBurst(x, y) {
+    for (let i = 0; i < 10; i++) {
+      const s = document.createElement('div')
+      s.className = 'tb-gem-sparkle'
+      s.style.left = x + 'px'
+      s.style.top = y + 'px'
+      document.body.appendChild(s)
+      const angle = (Math.PI * 2 * i) / 10 + Math.random() * 0.3
+      const dist = 40 + Math.random() * 40
+      s.animate([
+        { transform: 'translate(0,0) scale(1)', opacity: 1 },
+        { transform: `translate(${Math.cos(angle) * dist}px, ${Math.sin(angle) * dist - 20}px) scale(0)`, opacity: 0 },
+      ], { duration: 800 + Math.random() * 300, easing: 'cubic-bezier(0.22,1,0.36,1)' }).onfinish = () => s.remove()
+    }
+  }
+
+  function showToast(msg) {
+    const t = document.createElement('div')
+    t.className = 'tb-gem-toast'
+    t.textContent = msg
+    document.body.appendChild(t)
+    t.animate([
+      { opacity: 0, transform: 'translate(-50%, 16px)' },
+      { opacity: 1, transform: 'translate(-50%, 0)' },
+    ], { duration: 400, easing: 'cubic-bezier(0.22,1,0.36,1)', fill: 'forwards' })
+    setTimeout(() => {
+      t.animate([{ opacity: 1 }, { opacity: 0, transform: 'translate(-50%, -8px)' }],
+        { duration: 500, fill: 'forwards' }).onfinish = () => t.remove()
+    }, 3200)
+  }
+
+  function updateBadge(total) {
+    var badge = document.getElementById('tb-gem-badge')
+    if (!badge) return
+    var count = badge.querySelector('.tb-gem-badge-count')
+    var TOTAL = 19
+    if (total > 0) {
+      badge.style.display = 'flex'
+      if (count) count.textContent = total + '/' + TOTAL
+      badge.animate([
+        { transform: 'scale(0.8)' },
+        { transform: 'scale(1.1)' },
+        { transform: 'scale(1)' },
+      ], { duration: 400, easing: 'cubic-bezier(0.34,1.56,0.64,1)' })
+    }
+  }
+
+  var finaleDone = false
+
+  function checkFinale() {
+    var combined = getFound().size + getWisdomFound().size
+    if (combined >= 11 && !finaleDone) {
+      finaleDone = true
+      setTimeout(triggerFinale, 800)
+    }
+  }
+
+  function handleGemClick(e) {
+    const target = e.currentTarget
+    const id = target?.dataset?.gemId
+    if (!id || !ALL_GEMS.includes(id)) return
+    const found = getFound()
+    if (found.has(id)) return
+    found.add(id)
+    saveFound(found)
+    target.classList.add('found')
+    const rect = target.getBoundingClientRect()
+    spawnBurst(rect.left + rect.width / 2, rect.top + rect.height / 2)
+    playChime(true)
+    const total = found.size
+    showToast(MESSAGES[total] || `Gem found! ${total}/${ALL_GEMS.length}`)
+    updateBadge(getFound().size + getWisdomFound().size)
+    checkFinale()
+  }
+
+  function triggerFinale() {
+    playChime(true)
+    for (var i = 0; i < 35; i++) {
+      setTimeout(sweepGem, i * 35 + Math.random() * 400)
+    }
+    document.documentElement.classList.add('tb-flash-gold')
+    setTimeout(function () { document.documentElement.classList.remove('tb-flash-gold') }, 2000)
+    setTimeout(showLorePopup, 1500)
+  }
+
+  function showLorePopup() {
+    var existing = document.querySelector('.tb-lore-overlay')
+    if (existing) return
+    var overlay = document.createElement('div')
+    overlay.className = 'tb-lore-overlay'
+    overlay.innerHTML =
+      '<div class="tb-lore-card">' +
+      '<div class="tb-lore-kanji">永</div>' +
+      '<p class="tb-lore-eyebrow">An Alternative Telling of the Tamatebako</p>' +
+      '<h2 class="tb-lore-title">The Keeper of the Box</h2>' +
+      '<div class="tb-lore-body">' +
+      '<p>In the original tale, Urashima Tarō opened the box — and three hundred years rushed out at once, aging him in an instant.</p>' +
+      '<p>But there is another version.</p>' +
+      '<p>In this telling, <strong>Urashima does not open the box.</strong></p>' +
+      '<p>He stands on the shore, grief-stricken, the world he knew turned to dust. The casket sits heavy in his hands. His fingers find the clasp. But he remembers the princess and her single instruction.</p>' +
+      '<p><em>Do not open it.</em></p>' +
+      '<p>He doesn\'t.</p>' +
+      '<p>Instead, he <strong>carries the box.</strong> For the rest of his long, unaging life, he walks the coast of Japan, the tamatebako held close. The years inside it — preserved, perfect, untouched by time.</p>' +
+      '<p>People come to him with their sorrows. He listens. And sometimes, when the sorrow is great enough, he opens the box — just a crack, just for a moment — and a single day of the Dragon Palace\'s warmth escapes into the world.</p>' +
+      '<p>The sorrow eases. The box closes. And Urashima walks on.</p>' +
+      '<p>He understands, now, what Otohime knew: the box was never a punishment. It was a <strong>reservoir of better days</strong> — carried through worse ones, opened sparingly, when the world needs it most.</p>' +
+      '<div class="tb-lore-divider">◆ ◆ ◆</div>' +
+      '<p style="text-align:center; font-size:1rem; color:var(--color-gold);">This is tebako.</p>' +
+      '<p style="text-align:center;">Not the box that destroys when opened. The box that <strong>preserves when carried.</strong></p>' +
+      '<p style="text-align:center; color:var(--color-mist); font-size:0.85rem;">Your code — held safe inside, ready to run wherever it is needed.</p>' +
+      '</div>' +
+      '<button class="tb-lore-close" type="button">Carry the box →</button>' +
+      '</div>'
+    document.body.appendChild(overlay)
+    overlay.querySelector('.tb-lore-close').addEventListener('click', function () {
+      overlay.classList.remove('visible')
+      setTimeout(function () { overlay.remove() }, 600)
+    })
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) {
+        overlay.classList.remove('visible')
+        setTimeout(function () { overlay.remove() }, 600)
+      }
+    })
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () { overlay.classList.add('visible') })
+    })
+  }
+
+  function sweepGem() {
+    const el = document.createElement('div')
+    const size = 14 + Math.random() * 50
+    const opacity = 0.12 + Math.random() * 0.68
+    const fromLeft = Math.random() > 0.5
+    const startX = fromLeft ? -size * 2 : window.innerWidth + size * 2
+    const endX = fromLeft ? window.innerWidth + size * 2 : -size * 2
+    const y = 5 + Math.random() * 90
+    const spin = (fromLeft ? 1 : -1) * (360 + Math.random() * 1080)
+    const duration = 2200 + Math.random() * 2600
+    const colors = ['#f8b883', '#d38370', '#c36242', '#ed0033', '#fbd9a8']
+    const color = colors[Math.floor(Math.random() * colors.length)]
+    const bobAmp = 8 + Math.random() * 20
+
+    el.style.cssText =
+      'position:fixed;z-index:9992;pointer-events:none;will-change:transform,opacity;' +
+      'width:' + size + 'px;height:' + size + 'px;' +
+      'top:' + y + '%;left:' + startX + 'px;' +
+      'color:' + color + ';' +
+      'filter:drop-shadow(0 0 ' + (size * 0.15) + 'px ' + color + ');'
+    el.innerHTML =
+      '<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">' +
+      '<path d="M10 2 L16 8 L10 18 L4 8 Z" fill="currentColor"/>' +
+      '<path d="M4 8 L16 8 M10 2 L10 18" stroke="currentColor" stroke-width="0.5" opacity="0.3"/>' +
+      '</svg>'
+
+    document.body.appendChild(el)
+
+    const dist = endX - startX
+    el.animate([
+      { transform: 'translateX(0) translateY(0) rotate(0deg)', opacity: 0 },
+      { transform: 'translateX(' + (dist * 0.15) + 'px) translateY(' + bobAmp + 'px) rotate(' + (spin * 0.15) + 'deg)', opacity: opacity, offset: 0.15 },
+      { transform: 'translateX(' + (dist * 0.4) + 'px) translateY(' + (-bobAmp * 0.8) + 'px) rotate(' + (spin * 0.4) + 'deg)', opacity: opacity, offset: 0.4 },
+      { transform: 'translateX(' + (dist * 0.6) + 'px) translateY(' + (bobAmp * 0.6) + 'px) rotate(' + (spin * 0.6) + 'deg)', opacity: opacity, offset: 0.6 },
+      { transform: 'translateX(' + (dist * 0.85) + 'px) translateY(' + (-bobAmp * 0.4) + 'px) rotate(' + (spin * 0.85) + 'deg)', opacity: opacity, offset: 0.85 },
+      { transform: 'translateX(' + dist + 'px) translateY(0) rotate(' + spin + 'deg)', opacity: 0 },
+    ], { duration: duration, easing: 'linear' }).onfinish = function () { el.remove() }
+  }
+
+  function initGems() {
+    const found = getFound()
+    document.querySelectorAll('[data-gem-id]').forEach((el) => {
+      const id = el.dataset.gemId
+      if (found.has(id)) {
+        el.classList.add('found')
+      } else {
+        el.classList.remove('found')
+        el.addEventListener('click', handleGemClick, { once: true })
+        el.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            handleGemClick({ currentTarget: el })
+          }
+        })
+      }
+    })
+    initWisdomGems()
+    var combined = getFound().size + getWisdomFound().size
+    if (combined > 0) updateBadge(combined)
+  }
+
+  function getWisdomFound() {
+    try { return new Set(JSON.parse(localStorage.getItem('tb-wisdom-found') || '[]')) }
+    catch { return new Set() }
+  }
+
+  function saveWisdomFound(found) {
+    try { localStorage.setItem('tb-wisdom-found', JSON.stringify([...found])) }
+    catch {}
+  }
+
+  function initWisdomGems() {
+    const found = getWisdomFound()
+    document.querySelectorAll('[data-wisdom-id]').forEach((el) => {
+      const id = el.dataset.wisdomId
+      if (found.has(id)) {
+        el.classList.add('collected')
+      } else {
+        el.classList.remove('collected')
+        el.addEventListener('click', handleWisdomClick, { once: true })
+        el.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            handleWisdomClick({ currentTarget: el })
+          }
+        })
+      }
+    })
+  }
+
+  function handleWisdomClick(e) {
+    const gem = e.currentTarget
+    if (!gem || gem.classList.contains('collected')) return
+    const quote = gem.dataset.quote || ''
+    const author = gem.dataset.author || ''
+    const id = gem.dataset.wisdomId
+
+    const rect = gem.getBoundingClientRect()
+    const cx = rect.left + rect.width / 2
+    const cy = rect.top + rect.height / 2
+
+    playChime(true)
+
+    gem.animate([
+      { transform: 'scale(1) rotate(0deg)' },
+      { transform: 'scale(1.8) rotate(15deg)', offset: 0.4 },
+      { transform: 'scale(1.5) rotate(-5deg)', offset: 0.7 },
+      { transform: 'scale(1.2) rotate(0deg)' },
+    ], { duration: 400, easing: 'cubic-bezier(0.34,1.56,0.64,1)' })
+
+    setTimeout(() => {
+      showQuoteCard(quote, author)
+      flyAway(cx, cy)
+      gem.classList.add('collected')
+      if (id) {
+        const found = getWisdomFound()
+        found.add(id)
+        saveWisdomFound(found)
+      }
+      var combined = getFound().size + getWisdomFound().size
+      updateBadge(combined)
+      checkFinale()
+    }, 350)
+  }
+
+  function showQuoteCard(quote, author) {
+    const card = document.createElement('div')
+    card.className = 'tb-quote-card'
+    const text = document.createElement('p')
+    text.className = 'tb-quote-text'
+    text.textContent = quote
+    card.appendChild(text)
+    if (author) {
+      const auth = document.createElement('p')
+      auth.className = 'tb-quote-author'
+      auth.textContent = '— ' + author
+      card.appendChild(auth)
+    }
+    card.style.opacity = '0'
+    card.style.transform = 'translate(-50%, -50%) scale(0.8)'
+    document.body.appendChild(card)
+    card.animate([
+      { opacity: 0, transform: 'translate(-50%, -50%) scale(0.8)' },
+      { opacity: 1, transform: 'translate(-50%, -50%) scale(1)' },
+    ], { duration: 500, easing: 'cubic-bezier(0.34,1.56,0.64,1)', fill: 'forwards' })
+    setTimeout(() => {
+      card.animate([
+        { opacity: 1, transform: 'translate(-50%, -50%) scale(1)' },
+        { opacity: 0, transform: 'translate(-50%, -50%) scale(0.95) translateY(-8px)' },
+      ], { duration: 600, easing: 'cubic-bezier(0.22,1,0.36,1)', fill: 'forwards' }).onfinish = () => card.remove()
+    }, 5500)
+  }
+
+  function flyAway(startX, startY) {
+    const flyer = document.createElement('div')
+    flyer.className = 'tb-wisdom-flyer'
+    flyer.innerHTML = '<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2 L16 8 L10 18 L4 8 Z" fill="currentColor"/><path d="M4 8 L16 8 M10 2 L10 18" stroke="currentColor" stroke-width="0.5" opacity="0.3"/></svg>'
+    flyer.style.left = startX + 'px'
+    flyer.style.top = startY + 'px'
+    flyer.style.transform = 'translate(-50%, -50%)'
+    document.body.appendChild(flyer)
+
+    const flyDist = window.innerHeight + 200
+    const drift = (Math.random() - 0.5) * 200
+
+    flyer.animate([
+      { transform: 'translate(-50%, -50%) scale(1.5) rotate(0deg)', opacity: 1 },
+      { transform: `translate(calc(-50% + ${drift * 0.3}px), calc(-50% - ${flyDist * 0.3}px)) scale(1.2) rotate(240deg)`, opacity: 0.8, offset: 0.3 },
+      { transform: `translate(calc(-50% + ${drift}px), calc(-50% - ${flyDist}px)) scale(0.2) rotate(720deg)`, opacity: 0 },
+    ], { duration: 1800, easing: 'cubic-bezier(0.5, 0, 0.75, 0)' }).onfinish = () => flyer.remove()
+
+    for (let i = 0; i < 6; i++) {
+      setTimeout(() => {
+        spawnBurst(
+          startX + (Math.random() - 0.5) * 24,
+          startY - i * 30 - 20
+        )
+      }, i * 120)
+    }
+  }
+
+  function typeSequence() {
+    const TARGET = 'tebako'
+    let buffer = ''
+    let triggered = false
+    window.addEventListener('keydown', (e) => {
+      const t = e.target
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
+      if (e.key.length === 1) {
+        buffer = (buffer + e.key.toLowerCase()).slice(-TARGET.length)
+        if (buffer === TARGET && !triggered) {
+          triggered = true
+          triggerTypeEffect()
+          setTimeout(() => { triggered = false }, 3000)
+        }
+      }
+    })
+  }
+
+  function triggerTypeEffect() {
+    playChime(true)
+    document.documentElement.classList.add('tb-flash-gold')
+    setTimeout(() => document.documentElement.classList.remove('tb-flash-gold'), 1500)
+    for (var i = 0; i < 22; i++) {
+      setTimeout(sweepGem, i * 40 + Math.random() * 300)
+    }
+    showToast('The jewels tumble forth.')
+  }
+
+  function cursorTrail() {
+    if (reduced()) return
+    const canvas = document.createElement('canvas')
+    canvas.className = 'tb-cursor-canvas'
+    document.body.appendChild(canvas)
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    const c = ctx
+    function resize() {
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
+    }
+    resize()
+    window.addEventListener('resize', resize)
+
+    const particles = []
+    let lastSpawn = 0
+    let mouseX = -100, mouseY = -100
+
+    window.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX
+      mouseY = e.clientY
+      const now = performance.now()
+      if (now - lastSpawn > 50) {
+        lastSpawn = now
+        particles.push({
+          x: mouseX + (Math.random() - 0.5) * 6,
+          y: mouseY + (Math.random() - 0.5) * 6,
+          vx: (Math.random() - 0.5) * 0.4,
+          vy: -0.4 - Math.random() * 0.6,
+          life: 1,
+          size: 1.5 + Math.random() * 2,
+          hue: 28 + Math.random() * 20,
+        })
+        if (particles.length > 30) particles.shift()
+      }
+    })
+
+    function tick() {
+      c.clearRect(0, 0, canvas.width, canvas.height)
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i]
+        p.x += p.vx
+        p.y += p.vy
+        p.life -= 0.022
+        if (p.life <= 0) { particles.splice(i, 1); continue }
+        const r = p.size * p.life
+        const grad = c.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 3)
+        grad.addColorStop(0, `hsla(${p.hue}, 85%, 68%, ${p.life * 0.7})`)
+        grad.addColorStop(1, `hsla(${p.hue}, 85%, 68%, 0)`)
+        c.fillStyle = grad
+        c.beginPath()
+        c.arc(p.x, p.y, r * 3, 0, Math.PI * 2)
+        c.fill()
+      }
+      requestAnimationFrame(tick)
+    }
+    tick()
+  }
+
+  function consoleArt() {
+    console.log(
+      '%c　玉　手　箱　',
+      'font-size:32px;font-weight:bold;color:#c36242;line-height:1.4;text-shadow:0 0 8px rgba(248,184,131,0.5);'
+    )
+    console.log(
+      '%cTebako — the jewel box for Ruby.',
+      'font-size:14px;color:#06394a;font-weight:600;'
+    )
+    console.log(
+      '%cType help() for a guide to hidden treasures.',
+      'font-size:12px;color:#d38370;font-style:italic;'
+    )
+  }
+
+  function init() {
+    consoleArt()
+    typeSequence()
+    cursorTrail()
+    initGems()
+  }
+
+  if (!window.__tbEasterEggsReady) {
+    window.__tbEasterEggsReady = true
+    document.addEventListener('astro:after-swap', initGems)
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init)
+    } else {
+      init()
+    }
+  } else {
+    initGems()
+  }
+  })()
+</script>

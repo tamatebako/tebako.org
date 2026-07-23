@@ -1,0 +1,82 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import HiddenGem from '../components/HiddenGem.astro'
+import WisdomGem from '../components/WisdomGem.astro'
+import { SITE } from '../config/site'
+
+const lifelines = [
+  { label: 'Home', href: '/', hint: 'Return to shore' },
+  { label: 'Blog', href: '/blog/', hint: 'Read the journal' },
+  { label: 'About', href: '/about/', hint: 'Learn the legend' },
+]
+---
+
+<BaseLayout title="404 — Lost at sea · Tebako" description="You've drifted too far from the Dragon Palace.">
+  <section class="relative flex min-h-[80vh] items-center justify-center overflow-hidden px-6 pt-32 pb-20">
+    <div class="pointer-events-none absolute inset-0" aria-hidden="true">
+      <span
+        class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 font-[var(--font-display)] leading-none text-[var(--tb-c-accent)] opacity-[0.03]"
+        style="font-size: clamp(30rem, 60vw, 60rem);"
+      >
+        海
+      </span>
+    </div>
+
+    <div class="pointer-events-none absolute inset-x-0 bottom-0 h-32 overflow-hidden opacity-30" aria-hidden="true">
+      <svg viewBox="0 0 1440 120" preserveAspectRatio="none" class="h-full w-full" style="animation: tb-wave-drift 8s ease-in-out infinite alternate;">
+        <path d="M0,60 C240,100 480,20 720,60 C960,100 1200,20 1440,60 L1440,120 L0,120 Z" fill="var(--tb-c-accent)" opacity="0.3" />
+        <path d="M0,80 C240,40 480,120 720,80 C960,40 1200,120 1440,80 L1440,120 L0,120 Z" fill="var(--color-ink)" opacity="0.5" />
+      </svg>
+    </div>
+
+    <div class="relative z-10 text-center">
+      <div class="mb-6 flex justify-center">
+        <svg viewBox="0 0 80 80" class="h-16 w-16 text-[var(--tb-c-accent)]" style="animation: tb-boat-rock 4s ease-in-out infinite alternate;" aria-hidden="true">
+          <path d="M20 45 L60 45 L52 58 L28 58 Z" fill="currentColor" opacity="0.7" />
+          <path d="M40 45 L40 18 M40 18 L55 30 L40 30 Z" fill="currentColor" opacity="0.5" />
+          <path d="M40 18 L25 30 L40 30 Z" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3" />
+        </svg>
+      </div>
+
+      <p class="tb-eyebrow mb-3">DRIFTED OFF COURSE</p>
+      <WisdomGem id="lost-wisdom" quote="Not all who wander are lost — but you might be." style="display:inline-block; margin-left:0.5rem; vertical-align:middle;" />
+      <h1 class="text-balance">
+        <span class="font-[var(--font-mono)] text-[var(--tb-c-text-3)]">404</span>
+        <br />
+        <span class="tb-text-gradient italic">Lost at sea.</span>
+      </h1>
+      <p class="mx-auto mt-6 max-w-md text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+        You've drifted too far from the Dragon Palace.
+        The tamatebako is nowhere in sight — but the shore is closer than you think.
+      </p>
+
+      <div class="mt-10 flex flex-wrap justify-center gap-4">
+        {lifelines.map((link) => (
+          <a href={link.href} class="tb-card group flex flex-col items-center gap-1 px-8 py-5 text-center">
+            <span class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">
+              {link.label}
+            </span>
+            <span class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">{link.hint}</span>
+          </a>
+        ))}
+      </div>
+
+      <p class="mt-12 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+        or ride the current back: <a href="/" class="tb-link-underline text-[var(--tb-c-accent)]">tebako.org</a>
+      </p>
+
+      <HiddenGem id="sea-404" style="position:absolute; top:15%; right:12%;" />
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  @keyframes tb-wave-drift {
+    0% { transform: translateX(-20px); }
+    100% { transform: translateX(20px); }
+  }
+  @keyframes tb-boat-rock {
+    0% { transform: rotate(-4deg) translateY(0); }
+    100% { transform: rotate(4deg) translateY(-4px); }
+  }
+</style>

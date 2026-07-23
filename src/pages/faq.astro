@@ -1,0 +1,92 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import HiddenGem from '../components/HiddenGem.astro'
+import WisdomGem from '../components/WisdomGem.astro'
+import { SITE } from '../config/site'
+
+const faqs = [
+  {
+    q: 'What is Tebako?',
+    a: 'Tebako is an executable packager for Ruby. It bundles your Ruby application — along with the Ruby runtime, gems, and native extensions — into a single self-contained executable file. The result runs on any compatible machine without Ruby installed.',
+  },
+  {
+    q: 'What platforms does it support?',
+    a: 'Linux (x86_64 and ARM64), macOS (Intel and Apple Silicon), and Windows. You can build for each target using GitHub Actions runners — including the macos-13 runner for Intel macOS builds.',
+  },
+  {
+    q: 'How does it work?',
+    a: 'Tebako uses DwarFS, a high-compression read-only filesystem, to pack your entire application tree into a mountable image. At runtime, this image is mounted transparently and your application runs as if it were in its original directory structure. The Ruby runtime is patched and embedded directly into the executable.',
+  },
+  {
+    q: 'Which Ruby versions are supported?',
+    a: 'Ruby 3.1 through 3.4. You specify the version with the --Ruby flag when packaging (e.g., --Ruby=3.4).',
+  },
+  {
+    q: 'How large are the resulting executables?',
+    a: 'Typically 14–20 MB for a simple application. Larger apps with many gems may reach 30–50 MB. DwarFS compression keeps the footprint manageable while preserving full functionality.',
+  },
+  {
+    q: 'Can I package web apps like Rails or Sinatra?',
+    a: 'Yes. Tebako packages any Ruby application, including web frameworks. The entire gem dependency tree, native extensions, and assets travel inside the executable. Host-folder mounting support also allows packaging apps that need runtime access to external files.',
+  },
+  {
+    q: 'How is Tebako different from Docker?',
+    a: 'Docker packages applications in containers that require a Docker runtime and daemon. Tebako produces a single native executable — no runtime, no container engine, no virtualization. End users download one file and run it directly.',
+  },
+  {
+    q: 'Is it free and open source?',
+    a: 'Yes. Tebako is open source under the BSD-2-Clause license, maintained by Ribose and the tamatebako organization on GitHub. Contributions are welcome.',
+  },
+  {
+    q: 'What does the name mean?',
+    a: 'Tebako (手箱) is short for tamatebako (玉手箱) — the legendary jewel box from the Japanese folktale of Urashima Tarō. Just as the box protected something precious, Tebako protects and carries your Ruby application. Read the full story on our About page.',
+  },
+]
+---
+
+<BaseLayout title="FAQ — Tebako" description="Common questions about Tebako, the Ruby executable packager.">
+  <section class="mx-auto max-w-3xl px-6 pb-20 pt-32">
+    <p class="tb-eyebrow tb-animate-rise">QUESTIONS &amp; ANSWERS</p>
+    <WisdomGem id="faq-wisdom" quote="The best questions are the ones you discover yourself." style="display:inline-block; margin-left:0.5rem; vertical-align:middle;" />
+    <h1 class="tb-animate-rise tb-delay-1 mt-3">Frequently asked.</h1>
+    <p class="tb-animate-rise tb-delay-2 mt-4 text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      Everything you need to know about packaging Ruby applications into
+      self-contained executables.
+    </p>
+
+    <div class="tb-animate-rise tb-delay-3 mt-12 divide-y divide-[var(--tb-c-divider)]">
+      {faqs.map((faq, i) => (
+        <details class="group py-6">
+          <summary class="flex cursor-pointer list-none items-start justify-between gap-4">
+            <h2 class="font-[var(--font-display)] text-xl font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">
+              {faq.q}
+            </h2>
+            <span class="mt-1 flex-shrink-0 text-[var(--tb-c-text-3)] transition-transform duration-300 group-open:rotate-45">
+              <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </span>
+          </summary>
+          <div class="mt-4 max-w-prose leading-relaxed text-[var(--tb-c-text-2)]">
+            {faq.a}
+          </div>
+        </details>
+      ))}
+    </div>
+
+    <div class="mt-16 rounded-[var(--radius-2xl)] border border-[var(--tb-c-divider)] p-8 text-center" style="background: var(--tb-c-bg-soft);">
+      <p class="font-[var(--font-display)] text-xl font-medium text-[var(--tb-c-text-1)]">
+        Still have questions?
+      </p>
+      <p class="mt-2 text-[var(--tb-c-text-2)]">
+        Open an issue on GitHub and the community will help.
+      </p>
+      <a href={`${SITE.github}/issues`} class="tb-btn tb-btn-primary mt-6">
+        Ask on GitHub
+        <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M5 12h14M13 6l6 6-6 6" />
+        </svg>
+      </a>
+    </div>
+  </section>
+</BaseLayout>

@@ -1,0 +1,90 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import WisdomGem from '../components/WisdomGem.astro'
+import { SITE } from '../config/site'
+
+const features = [
+  {
+    title: 'Self-contained executables',
+    kanji: '一',
+    description: 'Ruby runtime, gems, native C extensions, and configuration — all sealed inside a single binary. Your users never install Ruby.',
+  },
+  {
+    title: 'Cross-platform',
+    kanji: '界',
+    description: 'Build for Linux, macOS, and Windows from a single command. x86_64 and ARM64 architectures, desktop and server.',
+  },
+  {
+    title: 'DwarFS-powered',
+    kanji: '圧',
+    description: 'A high-compression read-only virtual filesystem bundles your entire app tree. Mounted transparently at startup — fast and tiny.',
+  },
+  {
+    title: 'Native extension support',
+    kanji: '拡',
+    description: 'C extensions, FFI libraries, and platform-specific gems all work inside the package. No compromises on functionality.',
+  },
+  {
+    title: 'Host folder mounting',
+    kanji: '載',
+    description: 'Package apps that need runtime access to external files. Mount host directories into the virtual filesystem at execution time.',
+  },
+  {
+    title: 'Split runtime packaging',
+    kanji: '分',
+    description: 'Separate the Ruby runtime from the application layer. Reuse pre-built runtime packages to speed up CI and reduce build times.',
+  },
+  {
+    title: 'CI/CD ready',
+    kanji: '速',
+    description: 'Works in Docker containers and GitHub Actions. Pre-built container images available for multi-architecture builds.',
+  },
+  {
+    title: 'Minimal footprint',
+    kanji: '小',
+    description: 'Typical binaries are 14–20 MB. DwarFS compression keeps the size manageable while preserving full application functionality.',
+  },
+]
+---
+
+<BaseLayout title="Features — Tebako" description="Self-contained executables, cross-platform support, DwarFS compression, and more.">
+  <section class="mx-auto max-w-7xl px-6 pb-20 pt-32">
+    <div class="max-w-2xl">
+      <p class="tb-eyebrow tb-animate-rise">CAPABILITIES</p>
+      <WisdomGem id="features-page-wisdom" quote="The best box is the one you forget you're carrying." style="display:inline-block; margin-left:0.5rem; vertical-align:middle;" />
+      <h1 class="tb-animate-rise tb-delay-1 mt-3">
+        Everything in <span class="tb-text-gradient italic">one box.</span>
+      </h1>
+      <p class="tb-animate-rise tb-delay-2 mt-4 text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+        Tebako turns your Ruby application into a single, portable executable.
+        Here is what travels inside.
+      </p>
+    </div>
+
+    <div class="tb-animate-rise tb-delay-3 mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      {features.map((f) => (
+        <article class="tb-card group relative overflow-hidden p-8">
+          <span
+            class="pointer-events-none absolute -right-4 -top-8 font-[var(--font-display)] text-8xl text-[var(--tb-c-accent)] opacity-10 transition-transform duration-500 group-hover:scale-110"
+            aria-hidden="true"
+          >
+            {f.kanji}
+          </span>
+          <h2 class="relative mb-3 font-[var(--font-display)] text-xl font-medium">
+            {f.title}
+          </h2>
+          <p class="relative text-[var(--tb-c-text-2)]">{f.description}</p>
+        </article>
+      ))}
+    </div>
+
+    <div class="mt-16 text-center">
+      <a href={SITE.docs} class="tb-btn tb-btn-primary">
+        Read the documentation
+        <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M5 12h14M13 6l6 6-6 6" />
+        </svg>
+      </a>
+    </div>
+  </section>
+</BaseLayout>

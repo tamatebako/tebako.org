@@ -1,0 +1,89 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import { getCollection } from 'astro:content'
+import { formatDate, readingTime } from '../../lib/format-date'
+
+export async function getStaticPaths() {
+  const posts = await getCollection('blog')
+  return posts.map((post) => ({
+    params: { slug: post.id },
+    props: { post },
+  }))
+}
+
+const { post } = Astro.props
+const html = post.rendered?.html ?? ''
+const date = formatDate(post.data.date)
+const readTime = readingTime(html)
+const authors = post.data.author
+---
+
+<BaseLayout title={`${post.data.title} — Tebako`} description={post.data.excerpt}>
+  <article class="mx-auto max-w-3xl px-6 pb-24 pt-32">
+    <a
+      href="/blog/"
+      class="mb-8 inline-flex items-center gap-2 font-[var(--font-mono)] text-sm text-[var(--tb-c-text-3)] transition-colors hover:text-[var(--tb-c-accent)]"
+    >
+      <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M19 12H5M11 18l-6-6 6-6" />
+      </svg>
+      All posts
+    </a>
+
+    <header class="mb-12">
+      <div class="mb-4 flex flex-wrap items-center gap-3 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+        <time datetime={post.data.date.toISOString()}>{date}</time>
+        <span aria-hidden="true">·</span>
+        <span>{readTime}</span>
+        {post.data.categories.map((cat) => (
+          <span class="rounded-full bg-[var(--tb-c-divider)] px-2.5 py-0.5">{cat}</span>
+        ))}
+      </div>
+      <h1 class="text-balance">{post.data.title}</h1>
+      {post.data.excerpt && (
+        <p class="mt-4 text-xl leading-relaxed text-[var(--tb-c-text-2)]">{post.data.excerpt}</p>
+      )}
+      {authors.length > 0 && (
+        <div class="mt-8 flex flex-wrap gap-6 border-t border-[var(--tb-c-divider)] pt-6">
+          {authors.map((author) => (
+            <div class="flex items-center gap-3">
+              {author.use_picture && (
+                <img
+                  src={`/assets/blog/authors/${author.email}.jpg`}
+                  alt=""
+                  class="h-10 w-10 rounded-full border border-[var(--tb-c-divider)] object-cover"
+                  loading="lazy"
+                />
+              )}
+              <div>
+                <p class="font-medium text-[var(--tb-c-text-1)]">{author.name}</p>
+                {author.social_links.length > 0 && (
+                  <a
+                    href={author.social_links[0]}
+                    class="text-xs text-[var(--tb-c-text-3)] hover:text-[var(--tb-c-accent)]"
+                  >
+                    {author.social_links[0].replace(/^https?:\/\//, '')}
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </header>
+
+    <div class="tb-prose" set:html={html} />
+
+    <footer class="mt-16 border-t border-[var(--tb-c-divider)] pt-8">
+      <a
+        href="/blog/"
+        class="tb-btn tb-btn-ghost"
+      >
+        <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M19 12H5M11 18l-6-6 6-6" />
+        </svg>
+        Back to blog
+      </a>
+    </footer>
+  </article>
+</BaseLayout>
