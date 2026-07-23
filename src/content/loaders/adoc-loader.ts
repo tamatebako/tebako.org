@@ -10,9 +10,10 @@ const asciidoctor: any = require('@asciidoctor/core')
 
 interface AdocLoaderOptions {
   base: string
+  attributes?: Record<string, string>
 }
 
-export function adocLoader({ base }: AdocLoaderOptions): Loader {
+export function adocLoader({ base, attributes = {} }: AdocLoaderOptions): Loader {
   return {
     name: 'adoc-loader',
     async load({ store, logger, parseData, generateDigest }) {
@@ -35,6 +36,7 @@ export function adocLoader({ base }: AdocLoaderOptions): Loader {
             idseparator: '-',
             imagesdir: '/assets/blog',
             'source-highlighter': 'html-pipeline',
+            ...attributes,
           },
         })) as string
 

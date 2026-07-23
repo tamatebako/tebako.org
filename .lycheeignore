@@ -5,3 +5,7 @@ https://twitter.com/RiboseUS
 (ht|f)tps?://.*\.?example\.(com|org).*
 https://.*\.?tebako\.(com|org).*
 https://gravatar.com/*
+/docs/INSTALLATION.adoc
+/docs/CONTRIBUTING.adoc
+/docs/CODE_OF_CONDUCT.adoc
+/docs/LICENSE.md
