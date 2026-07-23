@@ -54,7 +54,7 @@ packaged software as if it were using a mounted filesystem, eliminating the need
 for separate installation steps.
 
 As described in our earlier
-link:/blog/2023-02-24-tebako-technology-data-flow/[technology post],
+link:/blog/2023-02-25-tebako-technology-data-flow/[technology post],
 Tebako packages a patched, statically linked Ruby interpreter with an embedded
 DwarFS filesystem containing the application code and dependencies. This
 approach provides excellent portability but introduces architectural elements

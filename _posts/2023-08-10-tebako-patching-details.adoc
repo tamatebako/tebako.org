@@ -29,7 +29,7 @@ producing self-contained executables that don't rely on external dependencies at
 runtime.
 
 In our post about the
-link:/blog/2023-02-24-tebako-technology-data-flow/[technology used by Tebako packager],
+link:/blog/2023-02-25-tebako-technology-data-flow/[technology used by Tebako packager],
 we introduced the core components of our solution.
 
 This article explores the specific challenges we encountered with dependency
