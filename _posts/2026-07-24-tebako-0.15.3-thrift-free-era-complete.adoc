@@ -1,0 +1,95 @@
+---
+layout: post
+title:  "Tebako 0.15.3: the thrift-free era is complete — lean packages, prebuilt runtimes, Ruby 4.0"
+date:   2026-07-24 00:00:00 +0800
+categories:
+  - tebako
+  - packaging
+  - release
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: >-
+  The re-architecture is done end to end: a thrift-free engine, a three-part
+  package format (bootstrap + runtime + your images), prebuilt tebako-patched
+  Ruby runtimes downloaded on demand — now covering Ruby 3.1 through 4.0.
+---
+
+= Tebako 0.15.3: the thrift-free era is complete
+
+Two days ago we answered "is the project dead?" with
+link:/blog/tebako-is-alive-thrift-free-rearchitecture/[a plan]. Today the plan
+is shipped.
+
+== What you can do right now
+
+[source,console]
+----
+$ gem install tebako        # 0.15.3
+$ tebako press --root=myapp --entry-point=start.rb -o myapp.pkg
+$ ./myapp.pkg               # first run downloads the Ruby runtime once
+----
+
+The package you get is a *lean* three-part executable: the small
+https://github.com/tamatebako/tebako-bootstrap[tebako-bootstrap] launcher,
+your application image(s), and a manifest trailer naming the runtime it
+needs. At first run the launcher resolves the matching
+https://github.com/tamatebako/tebako-runtime-ruby/releases[prebuilt Ruby
+runtime], verifies it against the release index, and installs it into a
+machine-wide cache (`~/.tebako/runtimes`) shared with every other
+tebako-packed executable on the box. Later runs start instantly; the cache
+is inspectable with `tebako cache list` and `tebako cache prune`.
+
+No network at first run? Press with `--mode=fat` and the runtime rides
+inside the package as a payload slot. Want the classic single binary with
+everything embedded? `--mode=classic` stitches the app onto a prebuilt
+runtime, and `--mode=bundle --runtime=source` keeps the full source build.
+
+== The numbers that matter
+
+* **72 prebuilt runtime packages** in the v0.15.2 line alone: Ruby
+  3.1.6–3.4.2 across linux-gnu x86_64/arm64, linux-musl x86_64/arm64 and
+  macOS x86_64/arm64 — each with SHA256 verification and a machine-readable
+  `manifest.json`.
+* **Ruby 4.0 support** (4.0.0–4.0.6) lands in 0.15.3, alongside the 3.x
+  lines. 19 Ruby versions × 7 platform targets.
+* **Zero folly, zero Thrift** anywhere in the stack. The engine is
+  https://github.com/tamatebako/libtfs[libtfs] on
+  https://github.com/tamatebako/dwarfs-t[dwarfs-t], our DwarFS variant with
+  upstream FlatBuffers metadata — prebuilt for 7 platform/libc combinations
+  including musl-arm64, so a press never needs vcpkg.
+* **Fast iteration**: runtime-package pipelines slice by platform and Ruby
+  version (`env_filter`/`ruby_filter`), so one platform's debug cycle is
+  minutes, not a full-matrix rerun.
+
+== Bugs that used to bite, fixed
+
+* *Lean packages failed on any macOS other than the runtime's build image*
+  (`cannot load such file -- rbconfig`): Ruby's compiled-in search paths
+  embed the build machine's kernel version (`arm64-darwin24` vs your
+  `arm64-darwin23`). The press now aligns the application image to the
+  runtime's own layout, byte-for-byte where it matters.
+* *Precompiled gems broke inside packages*: bundler now always builds native
+  gems from source against the tebako environment (`force_ruby_platform` on
+  every platform, not just Windows).
+* *Windows runtime builds died twice over*: Ruby's unguarded
+  `clock_gettime`/`clock_getres` collided with modern winpthreads headers
+  (renamed at pass1), and the static OpenSSL's CAPI engine needed
+  `-lcrypt32` at extconf probe time (tebako#345). Windows runtime packages
+  are back in the matrix, advisory until the legs go fully green.
+
+== What is next
+
+* Windows runtime packages from advisory to supported
+  (https://github.com/tamatebako/tebako/issues/345[tebako#345]).
+* Runtime-release fallback resolution, so a gem patch release never blocks
+  your press on release day
+  (https://github.com/tamatebako/tebako/issues/346[tebako#346]).
+* More real-world app coverage in CI (metanorma, fontist and friends).
+
+The architecture page has the full picture:
+link:/architecture/[tebako.org/architecture]. The code is at
+https://github.com/tamatebako[github.com/tamatebako] — issues and PRs are
+welcome.
