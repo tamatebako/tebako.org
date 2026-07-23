@@ -12,34 +12,20 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - uses: ruby/setup-ruby@v1
+    - uses: actions/setup-node@v4
       with:
-        ruby-version: '3.3'
-        bundler-cache: true
+        node-version: '22'
+        cache: 'npm'
 
-    - name: Setup Pages
-      id: pages
-      uses: actions/configure-pages@v5
-      with:
-        enablement: true
+    - name: Install dependencies
+      run: npm ci
 
-    - name: Build with Jekyll
-      # Outputs to the './_site' directory by default
-      run: bundle exec jekyll build --verbose --trace --baseurl "${{ steps.pages.outputs.base_path }}"
-      env:
-        JEKYLL_ENV: production
+    - name: Build with Astro
+      run: npm run build
 
     - name: Link Checker
       id: lychee
       uses: lycheeverse/lychee-action@v2
       with:
-        args: --base _site/ --verbose --no-progress '_site/**/*.html'
+        args: --base dist/ --verbose --no-progress 'dist/**/*.html'
         fail: true
-
-    # - name: Create Issue From File
-    #   if: steps.lychee.outputs.exit_code != 0
-    #   uses: peter-evans/create-issue-from-file@v5
-    #   with:
-    #     title: Link Checker Report
-    #     content-filepath: ./lychee/out.md
-    #     labels: report, automated issue
