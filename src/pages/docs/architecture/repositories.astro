@@ -197,9 +197,10 @@ const gates = [
         <div class="tb-card p-6">
           <h3 class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">Releases are the interface</h3>
           <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-            Repos consume each other's published releases, never source trees. A runtime release
-            line (0.15.9) and a gem release (0.15.9) can move independently because the
-            manifest.json contract sits between them.
+            Repos consume each other's published releases, never source trees. The gem and
+            the runtime factory live in different repos with separate cadences — the
+            manifest.json contract sits between them, so the packager never hardcodes a
+            runtime matrix.
           </p>
         </div>
         <div class="tb-card p-6">
