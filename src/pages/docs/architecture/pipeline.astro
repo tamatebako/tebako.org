@@ -1,0 +1,255 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro'
+import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import StatusPill from '../../../components/docs/StatusPill.astro'
+
+const LINKS = {
+  rubyRepo: 'https://github.com/tamatebako/ruby',
+  rubyRel: 'https://github.com/tamatebako/ruby/releases/tag/v0.2.1',
+  rubyMonitor: 'https://github.com/tamatebako/ruby/blob/main/.github/workflows/release-monitor.yml',
+  runtimeRepo: 'https://github.com/tamatebako/tebako-runtime-ruby',
+  runtimeRel: 'https://github.com/tamatebako/tebako-runtime-ruby/releases/tag/v0.15.9',
+  runtimeManifest: 'https://github.com/tamatebako/tebako-runtime-ruby/releases/download/v0.15.9/manifest.json',
+  libtfsRepo: 'https://github.com/tamatebako/libtfs',
+  libtfsRel: 'https://github.com/tamatebako/libtfs/releases/tag/v0.13.0',
+  dwarfsRepo: 'https://github.com/tamatebako/dwarfs-t',
+  bootstrapRel: 'https://github.com/tamatebako/tebako-bootstrap/releases/tag/v0.2.0',
+  containersRepo: 'https://github.com/tamatebako/tebako-ci-containers',
+  gemRubygems: 'https://rubygems.org/gems/tebako',
+  rubyLang: 'https://www.ruby-lang.org/en/downloads/releases/',
+}
+
+const stages = [
+  {
+    stage: 'Upstream',
+    repo: 'ruby-lang.org',
+    href: LINKS.rubyLang,
+    ships: 'Official Ruby source tarballs — the ultimate input of the whole chain.',
+    status: 'external',
+  },
+  {
+    stage: 'Release monitor',
+    repo: 'tamatebako/ruby · release-monitor.yml',
+    href: LINKS.rubyMonitor,
+    ships: 'Daily cron: diffs official releases against versions.yml, onboards new rubies (lint → PR → tag → src release → runtime dispatch), files a named issue when a patch drifts.',
+    status: 'shipped',
+  },
+  {
+    stage: 'Patched source',
+    repo: 'tamatebako/ruby',
+    href: LINKS.rubyRel,
+    ships: 'v0.2.1: 76 scenario src tarballs — 19 rubies × { linux-gnu (unsuffixed), linux-musl, msys-pass1, msys-pass2 } — plus SHA256SUMS. The only place patches are ever applied.',
+    status: 'shipped',
+  },
+  {
+    stage: 'Runtime factory',
+    repo: 'tebako-runtime-ruby',
+    href: LINKS.runtimeRel,
+    ships: 'v0.15.9: 114 runtime packages (19 rubies × 6 POSIX platforms) + manifest.json + SHA256SUMS.txt. Builds patched source in tebako-ci-containers, links prebuilt libtfs, embeds the modern-API entry driver.',
+    status: 'shipped',
+  },
+  {
+    stage: 'VFS engine',
+    repo: 'libtfs',
+    href: LINKS.libtfsRel,
+    ships: 'v0.13.0: modern-only tebako_fs_* ABI (24 exports, multi-mount), pluggable dwarfs/squashfs/zip backends, and the mkdwarfs + tebakofs binaries the packager shells out to.',
+    status: 'shipped',
+  },
+  {
+    stage: 'Compression foundation',
+    repo: 'dwarfs-t',
+    href: LINKS.dwarfsRepo,
+    ships: 'The thrift-free DwarFS fork underneath libtfs. C++ forever by decision; never archived — it is the foundation, not a legacy repo.',
+    status: 'shipped',
+  },
+  {
+    stage: 'Bootstrap',
+    repo: 'tebako-bootstrap',
+    href: LINKS.bootstrapRel,
+    ships: 'v0.2.0: six platform launchers (32 KB – 908 KB) — part A of every lean/fat package.',
+    status: 'shipped',
+  },
+  {
+    stage: 'Build infrastructure',
+    repo: 'tebako-ci-containers',
+    href: LINKS.containersRepo,
+    ships: 'The container images the runtime matrix builds in.',
+    status: 'shipped',
+  },
+  {
+    stage: 'Packager',
+    repo: 'tebako gem',
+    href: LINKS.gemRubygems,
+    ships: 'press (lean/fat/classic), scenario + Gemfile handling, runtime/bootstrap resolution, cache CLI. The stable executable spec of press semantics.',
+    status: 'shipped',
+  },
+  {
+    stage: 'Cross-repo dispatch',
+    repo: 'libtfs → tebako-runtime-ruby',
+    href: LINKS.libtfsRepo,
+    ships: 'Today only ruby → src → runtime is automated (the monitor). A libtfs release triggering runtime rebuilds is designed but not yet wired.',
+    status: 'planned',
+  },
+]
+---
+
+<BaseLayout title="The release pipeline — Tebako architecture" description="From ruby-lang.org tarballs to a single executable: release monitor, patched source, runtime factory, press.">
+  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
+    <p class="tb-eyebrow">ARCHITECTURE · 02</p>
+    <h1 class="mt-3">The pipeline.</h1>
+    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      How an official Ruby release becomes a runtime package, and how a runtime package
+      becomes your single executable — across five repositories, each shipping its own
+      versioned artifact.
+    </p>
+
+    <ArchDocsNav />
+
+    <div class="mt-12 overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+      <svg viewBox="0 0 940 660" class="w-full min-w-[760px]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Release pipeline: ruby-lang.org to single executable">
+        <defs>
+          <marker id="pipe-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 Z" fill="var(--tb-c-accent)" />
+          </marker>
+          <marker id="pipe-arrow-side" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 Z" fill="var(--tb-c-text-3)" />
+          </marker>
+        </defs>
+
+        <!-- main chain -->
+        <g transform="translate(320, 8)">
+          <rect width="300" height="58" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+          <text x="150" y="26" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="14" font-weight="600" fill="var(--tb-c-text-1)">ruby-lang.org</text>
+          <text x="150" y="44" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10" fill="var(--tb-c-text-3)">official Ruby source tarballs</text>
+        </g>
+        <line x1="470" y1="70" x2="470" y2="98" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#pipe-arrow)" />
+        <text x="484" y="88" font-family="var(--font-mono), monospace" font-size="10" fill="var(--tb-c-accent)">release monitor · daily cron</text>
+
+        <g transform="translate(320, 104)">
+          <rect width="300" height="88" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+          <text x="150" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="14" font-weight="600" fill="var(--tb-c-text-1)">tamatebako/ruby</text>
+          <text x="150" y="42" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">canonical patches + versions.yml</text>
+          <text x="150" y="56" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">release-src → tfs-ruby-&lt;v&gt;-src-&lt;scenario&gt;.tar.gz</text>
+          <text x="150" y="74" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" font-weight="600" fill="var(--tb-c-accent)">v0.2.1 · 76 scenario assets · SHIPPED</text>
+        </g>
+        <line x1="470" y1="196" x2="470" y2="224" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#pipe-arrow)" />
+        <text x="484" y="214" font-family="var(--font-mono), monospace" font-size="10" fill="var(--tb-c-accent)">repository_dispatch</text>
+
+        <g transform="translate(320, 230)">
+          <rect width="300" height="88" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+          <text x="150" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="14" font-weight="600" fill="var(--tb-c-text-1)">tebako-runtime-ruby</text>
+          <text x="150" y="42" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">builds in tebako-ci-containers · links libtfs</text>
+          <text x="150" y="56" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">→ tebako-runtime-&lt;tebako&gt;-&lt;ruby&gt;-&lt;platform&gt;</text>
+          <text x="150" y="74" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" font-weight="600" fill="var(--tb-c-accent)">v0.15.9 · 114 packages + manifest.json · SHIPPED</text>
+        </g>
+        <line x1="470" y1="322" x2="470" y2="350" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#pipe-arrow)" />
+        <text x="484" y="340" font-family="var(--font-mono), monospace" font-size="10" fill="var(--tb-c-accent)">resolve via manifest.json</text>
+
+        <g transform="translate(320, 356)">
+          <rect width="300" height="88" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+          <text x="150" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="14" font-weight="600" fill="var(--tb-c-text-1)">tebako press · the gem</text>
+          <text x="150" y="42" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">mkdwarfs → app image</text>
+          <text x="150" y="56" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">tebakofs bundle → bootstrap + slots + trailer</text>
+          <text x="150" y="74" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" font-weight="600" fill="var(--tb-c-accent)">lean / fat / classic · SHIPPED</text>
+        </g>
+        <line x1="470" y1="448" x2="470" y2="476" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#pipe-arrow)" />
+
+        <g transform="translate(320, 482)">
+          <rect width="300" height="58" rx="10" fill="var(--tb-c-accent)" stroke="var(--tb-c-accent)" stroke-width="1.5" />
+          <text x="150" y="26" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="14" font-weight="600" fill="var(--color-paper)">single executable</text>
+          <text x="150" y="44" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10" fill="var(--color-paper)" opacity="0.85">one file · zero dependencies</text>
+        </g>
+
+        <!-- left column: dwarfs-t → libtfs -->
+        <g transform="translate(10, 104)">
+          <rect width="270" height="88" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+          <text x="135" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="14" font-weight="600" fill="var(--tb-c-text-1)">dwarfs-t</text>
+          <text x="135" y="42" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">thrift-free DwarFS fork · C++</text>
+          <text x="135" y="56" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">high-compression read-only FS</text>
+          <text x="135" y="74" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" font-weight="600" fill="var(--tb-c-accent)">foundation · SHIPPED</text>
+        </g>
+        <line x1="145" y1="196" x2="145" y2="224" stroke="var(--tb-c-text-3)" stroke-width="2" marker-end="url(#pipe-arrow-side)" />
+
+        <g transform="translate(10, 230)">
+          <rect width="270" height="88" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+          <text x="135" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="14" font-weight="600" fill="var(--tb-c-text-1)">libtfs</text>
+          <text x="135" y="42" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">tebako_fs_* ABI · 24 exports · multi-mount</text>
+          <text x="135" y="56" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">mkdwarfs · tebakofs binaries</text>
+          <text x="135" y="74" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" font-weight="600" fill="var(--tb-c-accent)">v0.13.0 · SHIPPED</text>
+        </g>
+
+        <!-- libtfs feeds the runtime build and the press -->
+        <line x1="280" y1="262" x2="312" y2="262" stroke="var(--tb-c-text-3)" stroke-width="2" marker-end="url(#pipe-arrow-side)" />
+        <text x="296" y="254" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">links</text>
+        <line x1="145" y1="318" x2="145" y2="400" stroke="var(--tb-c-text-3)" stroke-width="2" />
+        <line x1="145" y1="400" x2="312" y2="400" stroke="var(--tb-c-text-3)" stroke-width="2" marker-end="url(#pipe-arrow-side)" />
+        <text x="152" y="392" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">mkdwarfs · tebakofs</text>
+
+        <!-- right column: bootstrap -->
+        <g transform="translate(660, 356)">
+          <rect width="270" height="88" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+          <text x="135" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="14" font-weight="600" fill="var(--tb-c-text-1)">tebako-bootstrap</text>
+          <text x="135" y="42" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">the C99 launcher — part A of the</text>
+          <text x="135" y="56" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">three-part package</text>
+          <text x="135" y="74" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" font-weight="600" fill="var(--tb-c-accent)">v0.2.0 · 6 platforms · SHIPPED</text>
+        </g>
+        <line x1="660" y1="400" x2="628" y2="400" stroke="var(--tb-c-text-3)" stroke-width="2" marker-end="url(#pipe-arrow-side)" />
+
+        <text x="470" y="580" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="11" fill="var(--tb-c-text-3)">
+          Every arrow crosses a repository boundary — each stage consumes the previous stage's published release,
+        </text>
+        <text x="470" y="598" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="11" fill="var(--tb-c-text-3)">
+          never its source tree. Windows runtime legs ship once the msys scenario source (already published) is consumed.
+        </text>
+      </svg>
+    </div>
+
+    <div class="mt-16">
+      <h2 class="mb-3">Stage by stage.</h2>
+      <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
+        Each row names the artifact you can download and verify today — or marks the gap
+        as planned.
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
+        <table class="w-full min-w-[720px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider-strong)] font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+              <th class="px-5 py-3 font-medium">STAGE</th>
+              <th class="px-5 py-3 font-medium">REPO</th>
+              <th class="px-5 py-3 font-medium">WHAT IT SHIPS</th>
+              <th class="px-5 py-3 font-medium">STATUS</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)]">
+            {stages.map((s) => (
+              <tr>
+                <td class="px-5 py-3 font-medium text-[var(--tb-c-text-1)]">{s.stage}</td>
+                <td class="px-5 py-3 font-[var(--font-mono)] text-xs">
+                  <a href={s.href} class="tb-link-underline text-[var(--tb-c-accent)]">{s.repo}</a>
+                </td>
+                <td class="px-5 py-3 text-[var(--tb-c-text-2)]">{s.ships}</td>
+                <td class="px-5 py-3">
+                  {s.status === 'external'
+                    ? <span class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">EXTERNAL</span>
+                    : <StatusPill status={s.status as 'shipped' | 'planned'} />}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="mt-16 rounded-2xl border border-[var(--tb-c-divider)] p-8" style="background: var(--tb-c-bg-soft);">
+      <h2 class="font-[var(--font-display)] text-xl font-medium">Why so many repos?</h2>
+      <p class="mt-3 leading-relaxed text-[var(--tb-c-text-2)]">
+        Because each artifact has its own cadence and its own contract. Patched Ruby source
+        changes when Ruby changes; runtimes change when libtfs or the source changes; the gem
+        changes when press semantics change. Versioned releases at every boundary mean any
+        stage can be rebuilt, pinned, or audited without touching the others — and the{' '}
+        <a href={LINKS.runtimeManifest} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">manifest.json</a>
+        {' '}contract means the packager never hardcodes a runtime matrix.
+      </p>
+    </div>
+  </section>
+</BaseLayout>

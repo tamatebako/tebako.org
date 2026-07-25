@@ -1,0 +1,172 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro'
+import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import StatusPill from '../../../components/docs/StatusPill.astro'
+
+const LINKS = {
+  capiTests: 'https://github.com/tamatebako/libtfs/blob/main/tests/test_c_api.cpp',
+  versionsSchema: 'https://github.com/tamatebako/ruby/blob/main/schema/versions.schema.yml',
+  patchesSchema: 'https://github.com/tamatebako/ruby/blob/main/schema/patches.schema.yml',
+  versionsYml: 'https://github.com/tamatebako/ruby/blob/main/versions.yml',
+  lintWorkflow: 'https://github.com/tamatebako/ruby/blob/main/.github/workflows/lint-patches.yml',
+  monitorWorkflow: 'https://github.com/tamatebako/ruby/blob/main/.github/workflows/release-monitor.yml',
+  driftIssues: 'https://github.com/tamatebako/ruby/issues',
+  bootstrapVendored: 'https://github.com/tamatebako/tebako-bootstrap/blob/main/include/tebako/VENDORED.md',
+  gemLauncherAbi: 'https://github.com/tamatebako/tebako/blob/main/lib/tebako/launcher_abi.rb',
+  bootstrapSelfTest: 'https://github.com/tamatebako/tebako-bootstrap/blob/main/test/self-test.sh',
+  runtimeWorkflow: 'https://github.com/tamatebako/tebako-runtime-ruby/blob/main/.github/workflows/build-runtime-packages.yml',
+  libtfsWorkflows: 'https://github.com/tamatebako/libtfs/tree/main/.github/workflows',
+}
+
+const contracts = [
+  {
+    name: 'The ABI oracle — 493 tests',
+    body: 'The c_api test suite registers 493 tests under ctest and is the executable definition of tebako_fs_* behavior: errno mapping, mount semantics, dir cookies, pread position-independence, multi-mount isolation. Any change to libtfs is judged by it, and in the Rust track the same suite is imported — not rewritten — to run against both implementations.',
+    link: { href: LINKS.capiTests, label: 'tests/test_c_api.cpp' },
+    status: 'shipped',
+  },
+  {
+    name: 'The manifest schemas',
+    body: 'versions.yml is the single list of supported rubies: official URL, sha256, line, and shipped scenarios per version. Its shape is enforced by schema files, and the lint-patches matrix CI re-verifies on every change that every claimed patch still applies cleanly to the official tarball.',
+    link: { href: LINKS.versionsYml, label: 'versions.yml' },
+    extraLinks: [
+      { href: LINKS.versionsSchema, label: 'versions.schema.yml' },
+      { href: LINKS.patchesSchema, label: 'patches.schema.yml' },
+      { href: LINKS.lintWorkflow, label: 'lint-patches.yml' },
+    ],
+    status: 'shipped',
+  },
+  {
+    name: 'tpkg.h, vendored byte-for-byte',
+    body: 'The trailer format is owned by libtfs and vendored verbatim into tebako-bootstrap — the vendoring is documented and checked, not improvised. Changing the format means changing both, in the same breath, with the version field bumped.',
+    link: { href: LINKS.bootstrapVendored, label: 'VENDORED.md' },
+    status: 'shipped',
+  },
+  {
+    name: 'The launcher ABI, in two languages',
+    body: 'The gem\u2019s launcher_abi.rb carries the Ruby-side constants of the bootstrap→runtime handoff, with matching C++ constants in the runtime entry driver. The file itself warns: keep the two in sync, and bump VERSION on any incompatible change.',
+    link: { href: LINKS.gemLauncherAbi, label: 'launcher_abi.rb' },
+    status: 'shipped',
+  },
+]
+---
+
+<BaseLayout title="For contributors — Tebako architecture" description="How the tebako contract suites work, and how drift between upstream Ruby and the tebako patches is detected and fixed.">
+  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
+    <p class="tb-eyebrow">ARCHITECTURE · 06</p>
+    <h1 class="mt-3">For contributors.</h1>
+    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      Onboarding into any single repo starts with the same question: which contract does
+      this repo own, and which suite executes it? Then: how does the project notice when
+      the world drifts?
+    </p>
+
+    <ArchDocsNav />
+
+    <div class="mt-16">
+      <h2 class="mb-3">The contract suites.</h2>
+      <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
+        Every cross-repo claim in this architecture is backed by an executable check.
+        When you touch a boundary, these are the suites that will judge you.
+      </p>
+      <div class="space-y-4">
+        {contracts.map((c) => (
+          <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+            <div class="flex flex-wrap items-center gap-3">
+              <p class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)]">{c.name}</p>
+              <StatusPill status={c.status as 'shipped' | 'planned'} />
+            </div>
+            <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">{c.body}</p>
+            <p class="mt-3 flex flex-wrap gap-x-4 gap-y-1 font-[var(--font-mono)] text-xs">
+              <a href={c.link.href} class="tb-link-underline text-[var(--tb-c-accent)]">{c.link.label} →</a>
+              {c.extraLinks?.map((l) => (
+                <a href={l.href} class="tb-link-underline text-[var(--tb-c-accent)]">{l.label} →</a>
+              ))}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <div class="mt-16">
+      <div class="mb-3 flex flex-wrap items-center gap-3">
+        <h2>How drift is detected.</h2>
+        <StatusPill status="shipped" />
+      </div>
+      <p class="max-w-2xl text-[var(--tb-c-text-2)]">
+        Ruby upstream moves constantly; tebako's patches are pinned to exact tarballs.
+        The{' '}
+        <a href={LINKS.monitorWorkflow} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">release monitor</a>
+        {' '}runs on a daily cron in tamatebako/ruby and closes most of that gap unattended:
+      </p>
+      <pre class="mt-6 overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)] sm:text-sm" style="background: var(--tb-c-bg-soft);"><code>daily cron
+  1. detect    diff official ruby-lang.org releases against versions.yml
+  2. onboard   add to versions.yml → select patch set → git apply --check each patch
+  3a. clean    PR/commit → tag → release-src publishes tfs-ruby-&lt;v&gt;-src-*.tar.gz
+               → repository_dispatch tebako-runtime-ruby to build the runtime
+  3b. drift    any patch failing → open a named issue (version + failing patch)
+               — never a silent bad release</code></pre>
+      <p class="mt-4 max-w-2xl text-sm text-[var(--tb-c-text-3)]">
+        The{' '}
+        <a href={LINKS.driftIssues} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">open issues in tamatebako/ruby</a>
+        {' '}are the live example: each "Onboard ruby X.Y.Z: patches fail to apply" issue is
+        the monitor naming a version whose upstream changes broke a patch.
+      </p>
+    </div>
+
+    <div class="mt-16">
+      <div class="mb-3 flex flex-wrap items-center gap-3">
+        <h2>How drift gets fixed.</h2>
+        <StatusPill status="planned" />
+      </div>
+      <p class="max-w-2xl text-[var(--tb-c-text-2)]">
+        Detection is shipped; the closure loop is the designed next step. A drift-update
+        flow picks a drift issue, forks or updates the named patch for that version,
+        re-verifies with <code class="font-[var(--font-mono)] text-sm">git apply --check</code>,
+        and lands it via PR — on merge the version onboards (src publish + runtime build)
+        and the issue closes. Each drifted version ends with either an updated patch or an
+        explicit wontfix recorded on its issue. This is the most mechanical — and most
+        welcome — first contribution to the ecosystem.
+      </p>
+    </div>
+
+    <div class="mt-16">
+      <h2 class="mb-3">Where to run the checks.</h2>
+      <div class="grid gap-4 md:grid-cols-2">
+        <div class="tb-card p-6">
+          <h3 class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">libtfs</h3>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            Platform CI on ubuntu/alpine/macos/windows plus{' '}
+            <a href={LINKS.libtfsWorkflows} class="tb-link-underline text-[var(--tb-c-accent)]">verify-no-folly and test-static-linking</a>
+            {' '}— and the 493-test ctest suite as the ABI gate.
+          </p>
+        </div>
+        <div class="tb-card p-6">
+          <h3 class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">tamatebako/ruby</h3>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            The lint-patches matrix (every version in versions.yml) proves each patch applies
+            to its official tarball; release-src verifies published trees match apply-output
+            byte-for-byte.
+          </p>
+        </div>
+        <div class="tb-card p-6">
+          <h3 class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">tebako-runtime-ruby</h3>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            The{' '}
+            <a href={LINKS.runtimeWorkflow} class="tb-link-underline text-[var(--tb-c-accent)]">build-runtime-packages matrix</a>
+            {' '}(19 rubies × platforms) builds from patched source; release assembly publishes
+            manifest.json + SHA256SUMS.
+          </p>
+        </div>
+        <div class="tb-card p-6">
+          <h3 class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">tebako-bootstrap</h3>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            <a href={LINKS.bootstrapSelfTest} class="tb-link-underline text-[var(--tb-c-accent)]">self-test.sh</a>
+            {' '}stitches a lean package from a freshly built launcher and a fake runtime, then
+            exercises the download, cache-hit, offline, checksum-mismatch, and ABI-mismatch paths.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
