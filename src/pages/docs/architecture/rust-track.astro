@@ -1,0 +1,203 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro'
+import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import StatusPill from '../../../components/docs/StatusPill.astro'
+
+const LINKS = {
+  libtfsRel: 'https://github.com/tamatebako/libtfs/releases/tag/v0.13.0',
+  bootstrapRel: 'https://github.com/tamatebako/tebako-bootstrap/releases/tag/v0.2.0',
+  dwarfsRepo: 'https://github.com/tamatebako/dwarfs-t',
+  capiTests: 'https://github.com/tamatebako/libtfs/blob/main/tests/test_c_api.cpp',
+}
+
+const KB = 1024
+const CAP = 1024 * 1024
+const budgetRows = [
+  { platform: 'macos-arm64', baseline: 53536 },
+  { platform: 'macos-x86_64', baseline: 32512 },
+  { platform: 'linux-gnu-arm64', baseline: 646848 },
+  { platform: 'linux-gnu-x86_64', baseline: 908112 },
+  { platform: 'linux-musl-x86_64', baseline: 334440 },
+  { platform: 'windows-x86_64', baseline: 208384 },
+].map((r) => ({
+  ...r,
+  budget: Math.min(r.baseline + 512 * KB, CAP),
+  cappedBy: r.baseline + 512 * KB > CAP ? '1 MB cap' : '+512 KB',
+}))
+
+const fmt = (n: number) => n.toLocaleString('en-US')
+
+const crates = [
+  { name: 'tpkg', role: 'The manifest format — single source of truth, with cbindgen-generated tpkg.h for the C/C++ consumers. A Ruby tpkg.rb is formalized from the gem\u2019s trailer reading. No shelling a foreign binary to manipulate packages.' },
+  { name: 'tfs', role: 'libtfs-rs: the tebako_fs_* ABI in Rust. Crate name is "tfs" — the cdylib outputs libtfs.a/.so as a drop-in ("-rs" belongs on repos, not crates). Mount table, fd/dir tables, path dispatch, backends (dwarfs via dwarfs-rs, libzip, squashfs via -sys crates).' },
+  { name: 'tebako-pkg', role: 'Package surgery CLI: bundle / unbundle / reassemble / insert-image / remove-image / set-runtime / info. An honest rename of "tebakofs" — the released C++ binary keeps the old name for back-compat.' },
+  { name: 'tebako-cli', role: 'press / deploy / cache / resolve — the self-hosting packager. May link libtfs-rs directly instead of shelling tebako-pkg.' },
+  { name: 'tebako-bootstrap', role: 'The Rust bootstrap runner: a tiny static executable segment consumed as the bootstrap slot. Size-budgeted (below); links the tebako_fs_* ABI — C++ libtfs during the transition, libtfs-rs at parity.' },
+]
+
+const steps = [
+  'The dwarfs-t C binding lands first — inside dwarfs-t, co-versioned with the C++ it wraps, built and released by dwarfs-t\u2019s own CI.',
+  'tamatebako/dwarfs-rs is created: a standalone Rust binding (dwarfs-sys + safe wrapper) consuming that C API — never inside tebako-rs, crates.io-bound.',
+  'tebako-rs is created: tpkg + the tfs skeleton with the dwarfs backend via dwarfs-rs, running the imported 493-test contract suite against C++ libtfs as the oracle.',
+  'tfs reaches parity → tebako-rs v0.1.0 (libtfs + tebako-pkg replacements).',
+  'tebako-cli lands inside tebako-rs — the self-hosting packager.',
+  'Archival gates are evaluated for C++ libtfs and for the gem.',
+]
+---
+
+<BaseLayout title="The Rust track — Tebako architecture" description="The planned tebako-rs workspace: tpkg, tfs/libtfs-rs, tebako-pkg, tebako-cli, the Rust bootstrap, parity gates, and the size budget.">
+  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
+    <p class="tb-eyebrow">ARCHITECTURE · 05</p>
+    <h1 class="mt-3">The Rust track.</h1>
+    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      The C++ stack above is the shipped present. This page is the locked future: one Rust
+      workspace, a standalone dwarfs binding, hard parity gates, and a hard size budget.
+    </p>
+
+    <ArchDocsNav />
+
+    <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border p-5" style="border-color: var(--color-gold); background: color-mix(in srgb, var(--color-gold) 6%, transparent);">
+      <StatusPill status="planned" note="design locked July 2026" />
+      <p class="text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+        <strong class="text-[var(--tb-c-text-1)]">Nothing on this page has shipped.</strong>
+        {' '}There is no tebako-rs or dwarfs-rs repository yet; every crate name, gate, and
+        number below is the approved design, quoted so you can hold the project to it.
+        Where a baseline is cited, it links the shipped artifact it was measured from.
+      </p>
+    </div>
+
+    <div class="mt-16">
+      <h2 class="mb-3">Why Rust, and why a new repo.</h2>
+      <p class="max-w-2xl text-[var(--tb-c-text-2)]">
+        The bootstrap runs before Ruby, touches trailer bytes, the filesystem, the network,
+        and exec — memory safety pays off exactly there. A single static CLI removes the
+        bootstrap paradox (needing a Ruby to package Ruby) and dogfoods the single-binary
+        philosophy. And a fresh <code class="font-[var(--font-mono)] text-sm">tebako-rs</code>
+        {' '}workspace gets clean history, Rust-native CI (cargo + cross, no vcpkg), and a
+        release cadence decoupled from the C repos until parity.
+      </p>
+    </div>
+
+    <div class="mt-16">
+      <h2 class="mb-6">The tebako-rs workspace.</h2>
+      <pre class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)] sm:text-sm" style="background: var(--tb-c-bg-soft);"><code>tebako-rs/
+  crates/
+    tpkg/              # the manifest format — single source of truth (+ cbindgen tpkg.h)
+    tfs/               # libtfs-rs: the tebako_fs_* ABI as a cdylib drop-in (libtfs.a/.so)
+    tebako-pkg/        # package surgery: bundle/unbundle/insert-image/set-runtime/info
+    tebako-cli/        # press/deploy/cache/resolve — the self-hosting packager
+    tebako-bootstrap/  # the Rust bootstrap runner — static, size-budgeted
+  tests/contract/      # the imported 493-test c_api suite, run through the C ABI</code></pre>
+      <p class="mt-4 max-w-2xl text-sm text-[var(--tb-c-text-3)]">
+        Note what is <em>not</em> here: no dwarfs-sys. The dwarfs binding is its own repo,{' '}
+        <code class="font-[var(--font-mono)] text-xs">tamatebako/dwarfs-rs</code> — a
+        general-purpose binding other projects can use without knowing tebako exists, tracking{' '}
+        <a href={LINKS.dwarfsRepo} class="tb-link-underline text-[var(--tb-c-accent)]">dwarfs-t</a>
+        {' '}releases. Native library in its repo, language bindings in theirs. And dwarfs-t
+        itself stays C++ forever — a Rust DwarFS rewrite is explicitly out of scope.
+      </p>
+
+      <div class="mt-8 space-y-4">
+        {crates.map((c) => (
+          <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+            <p class="font-[var(--font-mono)] text-sm font-medium text-[var(--tb-c-accent)]">{c.name}</p>
+            <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">{c.role}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <div class="mt-16">
+      <h2 class="mb-3">The parity gates.</h2>
+      <p class="max-w-2xl text-[var(--tb-c-text-2)]">
+        Parity is executable, not aspirational. The{' '}
+        <a href={LINKS.capiTests} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">493-test c_api suite</a>
+        {' '}that guards <a href={LINKS.libtfsRel} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">libtfs v0.13.0</a>
+        {' '}is <em>imported</em> into tebako-rs — not rewritten — and runs through the C ABI
+        against <strong class="text-[var(--tb-c-text-1)]">both</strong> implementations; the C++
+        library is the oracle. On top of that, the same packaged-fixture set must run
+        identically under the C++ and Rust bootstraps: byte-level trailer handling, same
+        outputs, same exit codes. The Rust bootstrap is encouraged to land early precisely
+        because a second ABI consumer is cheap insurance for the parity claim.
+      </p>
+    </div>
+
+    <div class="mt-16">
+      <h2 class="mb-3">The bootstrap size budget.</h2>
+      <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
+        The bootstrap ships inside <em>every</em> package, so its size is a hard gate, not a
+        nice-to-have. Baselines measured from the{' '}
+        <a href={LINKS.bootstrapRel} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">tebako-bootstrap v0.2.0 release assets</a>;
+        the Rust build must land within <strong class="text-[var(--tb-c-text-1)]">baseline + 512 KB</strong>,
+        and never exceed <strong class="text-[var(--tb-c-text-1)]">1 MB absolute</strong>:
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
+        <table class="w-full min-w-[560px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider-strong)] font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+              <th class="px-5 py-3 font-medium">PLATFORM</th>
+              <th class="px-5 py-3 font-medium">C++ BASELINE (BYTES)</th>
+              <th class="px-5 py-3 font-medium">RUST BUDGET (BYTES)</th>
+              <th class="px-5 py-3 font-medium">BINDING RULE</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)]">
+            {budgetRows.map((r) => (
+              <tr>
+                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-1)]">{r.platform}</td>
+                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-2)]">{fmt(r.baseline)}</td>
+                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-2)]">≤ {fmt(r.budget)}</td>
+                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">{r.cappedBy}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-4 max-w-2xl text-sm text-[var(--tb-c-text-3)]">
+        Enforced by discipline: opt-level="z", fat LTO, one codegen unit, panic=abort, stripped
+        symbols; no async runtime, no clap, no logging framework; platform-native TLS preferred
+        for the lean download, with the decision recorded against measured numbers; a cargo-bloat
+        report in CI, which publishes the per-platform size table and fails on regression.
+        Apples-to-apples comparison only (musl static vs musl static, macOS dynamic vs macOS dynamic).
+      </p>
+      <div class="mt-6 rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+        <p class="text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          <strong class="text-[var(--tb-c-text-1)]">The fallback rule (locked):</strong> if the
+          Rust bootstrap misses the budget after optimization, the C++ bootstrap stays the
+          shipping default and Rust becomes an opt-in slot. No size regression is ever forced
+          on tpkg users.
+        </p>
+      </div>
+    </div>
+
+    <div class="mt-16">
+      <h2 class="mb-3">The self-hosting CLI.</h2>
+      <p class="mb-6 max-w-2xl text-[var(--tb-c-text-2)]">
+        <code class="font-[var(--font-mono)] text-sm">tebako-cli</code> replaces the gem's
+        frontend with one static binary per platform — no host Ruby, no gem environment.
+        Bundler is invoked, never reimplemented: the packaging Ruby <em>is</em> the downloaded
+        runtime itself, so Gemfile.lock semantics are inherited, not ported. All artifact
+        formats — runtime releases, src releases, tpkg, cache layout — stay unchanged; the
+        slimmed gem remains the reference implementation, ported flow by flow behind feature
+        flags.
+      </p>
+      <pre class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)] sm:text-sm" style="background: var(--tb-c-bg-soft);"><code>tebako-cli (Rust, static)
+  1. resolve    runtime manifest → download → sha256 → shared cache (same layout as the gem)
+  2. package    bundler install / gem deploy run UNDER the downloaded runtime
+  3. mkdwarfs   → app image (data images pass through)
+  4. bundle     bootstrap + runtime payload + image slot(s) + tpkg trailer → executable</code></pre>
+    </div>
+
+    <div class="mt-16">
+      <h2 class="mb-6">The execution order.</h2>
+      <ol class="space-y-4">
+        {steps.map((s, i) => (
+          <li class="flex gap-4">
+            <span class="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-[var(--tb-c-accent)] font-[var(--font-mono)] text-xs font-semibold text-[var(--tb-c-accent)]">{i + 1}</span>
+            <p class="text-sm leading-relaxed text-[var(--tb-c-text-2)]">{s}</p>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </section>
+</BaseLayout>

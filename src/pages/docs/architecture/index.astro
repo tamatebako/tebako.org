@@ -1,0 +1,295 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro'
+import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import StatusPill from '../../../components/docs/StatusPill.astro'
+
+const LINKS = {
+  bootstrapRepo: 'https://github.com/tamatebako/tebako-bootstrap',
+  bootstrapRel: 'https://github.com/tamatebako/tebako-bootstrap/releases/tag/v0.2.0',
+  bootstrapTpkg: 'https://github.com/tamatebako/tebako-bootstrap/blob/main/include/tebako/tpkg.h',
+  runtimeRel: 'https://github.com/tamatebako/tebako-runtime-ruby/releases/tag/v0.15.9',
+  libtfsTpkg: 'https://github.com/tamatebako/libtfs/blob/main/include/tebako/tpkg.h',
+  gemRepo: 'https://github.com/tamatebako/tebako',
+  gemLauncherAbi: 'https://github.com/tamatebako/tebako/blob/main/lib/tebako/launcher_abi.rb',
+  gemRubygems: 'https://rubygems.org/gems/tebako',
+}
+
+const trailerFields = [
+  { offset: '0', size: '10', field: 'magic', meaning: '"TEBAKOTFS\\0" — absent-vs-corrupt is told apart by the "TEBA" prefix' },
+  { offset: '10', size: '4', field: 'version', meaning: 'tpkg format version (currently 1)' },
+  { offset: '14', size: '4', field: 'package_flags', meaning: 'bit 0 = TPKG_FLAG_LEAN (three-part package; unset = classic bundle)' },
+  { offset: '18', size: '4', field: 'slot_count', meaning: '1–8 slots (TPKG_MAX_SLOTS)' },
+  { offset: '30', size: '128', field: 'runtime_ref', meaning: '"<type>@<version>;tebako=<abi>", e.g. ruby@3.3.7;tebako=0.15.0 — fat appends ;sha256=<hex>' },
+  { offset: '158', size: '4', field: 'launcher_abi', meaning: 'launcher ABI the package requires (currently 1)' },
+  { offset: '162', size: '4', field: 'header_crc32', meaning: 'CRC32 over header bytes [0, 162)' },
+]
+---
+
+<BaseLayout title="Architecture concepts — Tebako" description="The three-part tebako package, press modes, the shared runtime cache, and press-time vs run-time resolution.">
+  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
+    <p class="tb-eyebrow">ARCHITECTURE · 01</p>
+    <h1 class="mt-3">Concepts.</h1>
+    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      The pieces every other page in this section builds on: the three-part package
+      format, the three press modes, the machine-wide runtime cache, and the two
+      distinct moments at which a runtime gets resolved.
+    </p>
+
+    <ArchDocsNav />
+
+    <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
+      <span class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">HOW TO READ THIS SECTION:</span>
+      <StatusPill status="shipped" />
+      <span class="text-sm text-[var(--tb-c-text-2)]">released and downloadable today — every claim links its artifact</span>
+      <StatusPill status="planned" />
+      <span class="text-sm text-[var(--tb-c-text-2)]">locked design, not yet shipped</span>
+    </div>
+
+    <div class="mt-16">
+      <div class="mb-3 flex flex-wrap items-center gap-3">
+        <h2>The three-part package.</h2>
+        <StatusPill status="shipped" />
+      </div>
+      <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
+        Every modern tebako product is a composition of three independently distributable
+        parts — a bootstrap launcher, a language runtime, and one or more filesystem
+        images — glued together by a manifest trailer appended to the end of the file.
+        The definition lives in the{' '}
+        <a href={LINKS.bootstrapRepo} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">tebako-bootstrap README</a>.
+      </p>
+
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+        <svg viewBox="0 0 940 210" class="w-full min-w-[720px]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three-part package byte layout">
+          <text x="10" y="24" font-family="var(--font-mono), monospace" font-size="11" fill="var(--tb-c-text-3)">byte 0 →</text>
+          <text x="930" y="24" text-anchor="end" font-family="var(--font-mono), monospace" font-size="11" fill="var(--tb-c-text-3)">→ EOF</text>
+
+          <g transform="translate(10, 40)">
+            <rect width="170" height="110" rx="10" fill="var(--color-ink)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="85" y="30" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--color-mist-pale)">A · Bootstrap</text>
+            <text x="85" y="50" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-mist)" opacity="0.8">tebako-bootstrap</text>
+            <text x="85" y="64" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-mist)" opacity="0.8">32 KB – 908 KB</text>
+            <text x="85" y="88" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-gold)">the executable part</text>
+          </g>
+
+          <g transform="translate(190, 40)">
+            <rect width="200" height="110" rx="10" fill="var(--tb-c-accent)" opacity="0.12" stroke="var(--tb-c-accent)" stroke-width="1.5" />
+            <text x="100" y="30" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--tb-c-accent)">C · Image slot 0</text>
+            <text x="100" y="50" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">.tfs image — the application</text>
+            <text x="100" y="64" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">dwarfs / squashfs / zip</text>
+            <text x="100" y="88" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">mounted at run time</text>
+          </g>
+
+          <g transform="translate(400, 40)">
+            <rect width="170" height="110" rx="10" fill="var(--tb-c-accent)" opacity="0.06" stroke="var(--tb-c-accent)" stroke-width="1" stroke-dasharray="4 3" />
+            <text x="85" y="30" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--tb-c-accent)">C · Image slot 1…7</text>
+            <text x="85" y="50" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">optional extra images</text>
+            <text x="85" y="64" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">data, assets, …</text>
+            <text x="85" y="88" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">multi-mount, own mount point</text>
+          </g>
+
+          <g transform="translate(580, 40)">
+            <rect width="180" height="110" rx="10" fill="var(--color-gold)" opacity="0.1" stroke="var(--color-gold)" stroke-width="1" stroke-dasharray="4 3" />
+            <text x="90" y="30" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--color-gold)">B · Runtime payload</text>
+            <text x="90" y="50" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">fat packages only</text>
+            <text x="90" y="64" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">format_id = TPKG_FORMAT_RUNTIME</text>
+            <text x="90" y="88" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">installed, never mounted</text>
+          </g>
+
+          <g transform="translate(770, 40)">
+            <rect width="160" height="110" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-accent)" stroke-width="1.5" />
+            <text x="80" y="30" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--tb-c-accent)">tpkg trailer</text>
+            <text x="80" y="50" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">166 B header at EOF</text>
+            <text x="80" y="64" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">+ slot records (280 B each)</text>
+            <text x="80" y="88" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">magic · CRC · runtime_ref</text>
+          </g>
+
+          <text x="470" y="190" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="11" fill="var(--tb-c-text-3)">
+            lean = A + C + trailer · fat = A + B + C + trailer · classic = runtime and image stitched into one binary (no bootstrap, no trailer)
+          </text>
+        </svg>
+      </div>
+
+      <div class="mt-8 grid gap-4 sm:grid-cols-3">
+        <div class="tb-card p-6">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">PART A</p>
+          <h3 class="mt-1 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">Bootstrap</h3>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            A tiny C99 launcher — no libtfs, no dependencies beyond the C runtime. It parses
+            the trailer of its own executable, resolves the runtime into the shared cache
+            (cache → embedded payload → download), and execs it.{' '}
+            <a href={LINKS.bootstrapRel} class="tb-link-underline text-[var(--tb-c-accent)]">v0.2.0</a>
+            {' '}ships six platform binaries, 32&nbsp;KB (macos-x86_64) to 908&nbsp;KB (linux-gnu-x86_64).
+          </p>
+        </div>
+        <div class="tb-card p-6">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">PART B</p>
+          <h3 class="mt-1 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">Language runtime</h3>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            A patched Ruby plus the tebako entry driver and libtfs, built and published by
+            tebako-runtime-ruby —{' '}
+            <a href={LINKS.runtimeRel} class="tb-link-underline text-[var(--tb-c-accent)]">v0.15.9</a>
+            {' '}carries 114 packages (19 rubies × 6 POSIX platforms) plus a manifest.json
+            index. Lean packages download it on first run; fat packages carry it as a
+            payload slot and install it offline.
+          </p>
+        </div>
+        <div class="tb-card p-6">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">PART C</p>
+          <h3 class="mt-1 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">Data image(s)</h3>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            <code class="font-[var(--font-mono)] text-xs">.tfs</code> filesystem images —
+            the application tree, gems, extra data — produced by mkdwarfs and embedded as
+            trailer-described slots. The runtime mounts each slot straight out of the
+            package file: no extraction, no temp copies.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-16">
+      <div class="mb-3 flex flex-wrap items-center gap-3">
+        <h2>The tpkg trailer.</h2>
+        <StatusPill status="shipped" note="format v1" />
+      </div>
+      <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
+        The trailer is the byte-level contract of the whole stack. It is defined once —{' '}
+        <a href={LINKS.libtfsTpkg} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">include/tebako/tpkg.h in libtfs</a>
+        {' '}— and <a href={LINKS.bootstrapTpkg} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">vendored byte-for-byte into tebako-bootstrap</a>.
+        The reader checks magic and CRC, then walks the slot table backwards from EOF.
+      </p>
+
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
+        <table class="w-full min-w-[640px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider-strong)] font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+              <th class="px-5 py-3 font-medium">OFFSET</th>
+              <th class="px-5 py-3 font-medium">BYTES</th>
+              <th class="px-5 py-3 font-medium">FIELD</th>
+              <th class="px-5 py-3 font-medium">MEANING</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)]">
+            {trailerFields.map((f) => (
+              <tr>
+                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">{f.offset}</td>
+                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">{f.size}</td>
+                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-accent)]">{f.field}</td>
+                <td class="px-5 py-2.5 text-[var(--tb-c-text-2)]">{f.meaning}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-4 max-w-2xl text-sm text-[var(--tb-c-text-3)]">
+        Each slot record (280 bytes) carries the image's offset and size inside the package
+        file, a format_id (0 auto · 1 dwarfs · 2 squashfs · 3 zip · 4 runtime payload) and
+        its mount point. Corrupt magic or CRC is a hard startup error — never partial behavior.
+      </p>
+    </div>
+
+    <div class="mt-16">
+      <div class="mb-3 flex flex-wrap items-center gap-3">
+        <h2>Press modes.</h2>
+        <StatusPill status="shipped" />
+      </div>
+      <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
+        <code class="rounded bg-[var(--tb-c-divider)] px-1.5 py-0.5 font-[var(--font-mono)] text-sm text-[var(--tb-c-accent)]">tebako press</code>
+        {' '}from the <a href={LINKS.gemRubygems} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">tebako gem</a>
+        {' '}produces all three package shapes. See the <a href="/docs/" class="tb-link-underline font-medium text-[var(--tb-c-accent)]">manual</a> for the full CLI reference.
+      </p>
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div class="tb-card p-6">
+          <h3 class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">Lean <span class="ml-1 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">default</span></h3>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            Bootstrap + image slot(s) + trailer (<code class="font-[var(--font-mono)] text-xs">TPKG_FLAG_LEAN</code>,{' '}
+            <code class="font-[var(--font-mono)] text-xs">runtime_ref</code> filled).
+            The smallest download; the first run resolves the runtime into the shared cache.
+          </p>
+        </div>
+        <div class="tb-card p-6">
+          <h3 class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">Fat</h3>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            A lean package that additionally carries the runtime itself as a payload slot.
+            First run installs the payload into the shared cache — SHA256-verified — so fat
+            packages never touch the network.
+          </p>
+        </div>
+        <div class="tb-card p-6">
+          <h3 class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">Classic</h3>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            The application image stitched onto a prebuilt runtime: one monolithic binary,
+            no bootstrap, no trailer. The original tebako package shape, fully supported.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-16">
+      <div class="mb-3 flex flex-wrap items-center gap-3">
+        <h2>The shared runtime cache.</h2>
+        <StatusPill status="shipped" />
+      </div>
+      <p class="max-w-2xl text-[var(--tb-c-text-2)]">
+        Runtimes are installed once per machine, not once per package. The cache root is{' '}
+        <code class="rounded bg-[var(--tb-c-divider)] px-1.5 py-0.5 font-[var(--font-mono)] text-sm text-[var(--tb-c-accent)]">$TEBAKO_HOME</code>
+        {' '}(default <code class="font-[var(--font-mono)] text-sm">~/.tebako</code>,{' '}
+        <code class="font-[var(--font-mono)] text-sm">%LOCALAPPDATA%\tebako</code> on Windows), with entries of the form{' '}
+        <code class="font-[var(--font-mono)] text-sm">runtimes/&lt;type&gt;-&lt;version&gt;-&lt;tebakoabi&gt;-&lt;platform&gt;/</code>.
+        Installs are atomic (build in <code class="font-[var(--font-mono)] text-sm">tmp/</code>, then rename) and guarded by
+        per-entry locks, so concurrent first runs of many tebako packages are safe and partial
+        installs are impossible. Every tebako package on the machine — gem-pressed or not —
+        shares the same cache.
+      </p>
+    </div>
+
+    <div class="mt-16">
+      <h2 class="mb-3">Press-time vs run-time resolution.</h2>
+      <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
+        Two different actors can fetch a runtime, at two different moments. They are kept
+        deliberately distinct — conflating them is a locked-off design error.
+      </p>
+      <div class="grid gap-4 md:grid-cols-2">
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">PRESS-TIME · PACKAGER SIDE</p>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            The <a href={LINKS.gemRepo} class="tb-link-underline text-[var(--tb-c-accent)]">gem</a> (and later the Rust CLI)
+            downloads the runtime into the shared cache <em>while packaging</em> — needed for
+            classic stitching and for running bundler under the target runtime. Resolution
+            reads the runtime release's <code class="font-[var(--font-mono)] text-xs">manifest.json</code>.
+          </p>
+        </div>
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">RUN-TIME · BOOTSTRAP SIDE</p>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            The <a href={LINKS.bootstrapRepo} class="tb-link-underline text-[var(--tb-c-accent)]">bootstrap</a> resolves the
+            runtime <em>when the packaged binary is run</em>: cache hit → exec; fat payload →
+            verify + install; otherwise download from the runtime release.{' '}
+            <code class="font-[var(--font-mono)] text-xs">TEBAKO_OFFLINE=1</code> forces cache-only
+            mode; <code class="font-[var(--font-mono)] text-xs">TEBAKO_RUNTIME_MIRROR</code> redirects downloads.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-16">
+      <div class="mb-3 flex flex-wrap items-center gap-3">
+        <h2>The launcher ABI.</h2>
+        <StatusPill status="shipped" note="v1" />
+      </div>
+      <p class="mb-6 max-w-2xl text-[var(--tb-c-text-2)]">
+        The bootstrap never mounts anything — it hands the image slots to the runtime by
+        reference. The handoff is versioned (currently v1) and specified in the gem's{' '}
+        <a href={LINKS.gemLauncherAbi} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">launcher_abi.rb</a>,
+        with matching constants in the runtime entry driver:
+      </p>
+      <pre class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-sm leading-relaxed text-[var(--tb-c-text-2)]" style="background: var(--tb-c-bg-soft);"><code>&lt;runtime&gt; --tebako-image &lt;file&gt;:&lt;slot&gt;:&lt;mount-point&gt; … \
+          --tebako-entry &lt;original-argv0&gt; &lt;user args…&gt;</code></pre>
+      <p class="mt-4 max-w-2xl text-sm text-[var(--tb-c-text-3)]">
+        One --tebako-image per image slot (runtime payload slots are never handed over).
+        Parsers split on the last two colons, so Windows drive letters in paths are safe.
+        A package whose launcher_abi exceeds what the runtime supports is refused, naming
+        both versions.
+      </p>
+    </div>
+  </section>
+</BaseLayout>

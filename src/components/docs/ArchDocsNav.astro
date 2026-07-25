@@ -1,0 +1,31 @@
+---
+const items = [
+  { label: 'Concepts', href: '/docs/architecture/' },
+  { label: 'Pipeline', href: '/docs/architecture/pipeline/' },
+  { label: 'VFS model', href: '/docs/architecture/vfs/' },
+  { label: 'Repositories', href: '/docs/architecture/repositories/' },
+  { label: 'Rust track', href: '/docs/architecture/rust-track/' },
+  { label: 'Contributors', href: '/docs/architecture/contributors/' },
+]
+
+const pathname = Astro.url.pathname
+const isActive = (href: string) => pathname === href
+---
+
+<nav aria-label="Architecture documentation" class="mt-10 flex flex-wrap items-center gap-2">
+  {items.map((item, i) => (
+    <a
+      href={item.href}
+      aria-current={isActive(item.href) ? 'page' : undefined}
+      class:list={[
+        'rounded-full px-4 py-2 font-[var(--font-mono)] text-xs font-medium transition-colors duration-200',
+        isActive(item.href)
+          ? 'bg-[var(--tb-c-accent)] text-[var(--color-paper)]'
+          : 'border border-[var(--tb-c-divider)] text-[var(--tb-c-text-2)] hover:border-[var(--tb-c-accent)] hover:text-[var(--tb-c-accent)]',
+      ]}
+    >
+      <span class="opacity-60">{String(i + 1).padStart(2, '0')}</span>
+      <span class="ml-1.5">{item.label}</span>
+    </a>
+  ))}
+</nav>

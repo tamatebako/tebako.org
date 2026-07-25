@@ -1,0 +1,222 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro'
+import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import StatusPill from '../../../components/docs/StatusPill.astro'
+
+const GH = 'https://github.com/tamatebako'
+
+const repos = [
+  {
+    name: 'dwarfs-t',
+    href: `${GH}/dwarfs-t`,
+    role: 'Thrift-free DwarFS fork — the high-compression read-only filesystem at the bottom of the stack.',
+    state: 'Active',
+    fate: 'C++ forever by decision (it tracks upstream DwarFS format evolution). Never archived — the foundation, not a legacy repo.',
+    status: 'shipped',
+  },
+  {
+    name: 'libtfs',
+    href: `${GH}/libtfs`,
+    role: 'The VFS engine: tebako_fs_* C ABI (24 exports, multi-mount), dwarfs/squashfs/zip backends, mkdwarfs + tebakofs binaries. Currently v0.13.0.',
+    state: 'Active',
+    fate: 'Maintenance (security/critical fixes only) once tebako-rs ships tebako_fs_* parity releases AND tebako-runtime-ruby consumes them. Archival gate below.',
+    status: 'shipped',
+  },
+  {
+    name: 'ruby',
+    href: `${GH}/ruby`,
+    role: 'Canonical patches + versions.yml + the patched-source pipeline (release monitor, lint matrix, release-src). Currently v0.2.1 — 76 scenario assets.',
+    state: 'Active',
+    fate: 'Never archived — build/metadata tooling, language-correct as-is (not C++).',
+    status: 'shipped',
+  },
+  {
+    name: 'tebako-runtime-ruby',
+    href: `${GH}/tebako-runtime-ruby`,
+    role: 'The runtime factory: builds patched source per ruby × platform, publishes runtime packages + manifest.json. Currently v0.15.9 — 114 packages.',
+    state: 'Active',
+    fate: 'Never archived — build/metadata tooling (not C++).',
+    status: 'shipped',
+  },
+  {
+    name: 'tebako',
+    href: `${GH}/tebako`,
+    role: 'The gem: press (lean/fat/classic), scenario + Gemfile handling, runtime/bootstrap resolution, cache CLI. The executable spec of press semantics.',
+    state: 'Active',
+    fate: 'Maintenance once tebako-cli reaches lean/fat/classic press parity. Archival gate below.',
+    status: 'shipped',
+  },
+  {
+    name: 'tebako-bootstrap',
+    href: `${GH}/tebako-bootstrap`,
+    role: 'The C99 launcher (part A of the three-part package). Currently v0.2.0 — six platform binaries, 32–908 KB.',
+    state: 'Active',
+    fate: 'Maintenance (tiny C++; may be re-done in Rust). Archived only if a Rust bootstrap ships and is consumed.',
+    status: 'shipped',
+  },
+  {
+    name: 'tebako-ci-containers',
+    href: `${GH}/tebako-ci-containers`,
+    role: 'Container images the runtime matrix builds in.',
+    state: 'Active',
+    fate: 'Never archived.',
+    status: 'shipped',
+  },
+  {
+    name: 'tebako-samples',
+    href: `${GH}/tebako-samples`,
+    role: 'Sample applications and packaging tutorials.',
+    state: 'Active',
+    fate: 'Never archived.',
+    status: 'shipped',
+  },
+  {
+    name: 'tebako.org',
+    href: `${GH}/tebako.org`,
+    role: 'This website.',
+    state: 'Active',
+    fate: 'Never archived.',
+    status: 'shipped',
+  },
+  {
+    name: 'fmem',
+    href: `${GH}/fmem`,
+    role: 'Cross-platform memory-backed libc streams — a dependency of the legacy stack.',
+    state: 'Orphaned',
+    fate: 'No longer consumed by any repo in the modern stack (libtfs mounts images from memory directly). Archival candidate; not yet archived on GitHub.',
+    status: 'shipped',
+  },
+  {
+    name: 'tebako-rs',
+    href: `${GH}`,
+    role: 'The Rust workspace: crates tpkg, tfs (libtfs-rs), tebako-pkg, tebako-cli, tebako-bootstrap, plus the imported contract suite.',
+    state: 'Planned',
+    fate: 'The future home of the CLI, the ABI implementation, and the bootstrap — see the Rust track.',
+    status: 'planned',
+  },
+  {
+    name: 'dwarfs-rs',
+    href: `${GH}`,
+    role: 'Standalone Rust binding (dwarfs-sys + safe wrapper) for the C API that will live inside dwarfs-t — crates.io-bound, its own CI, never inside tebako-rs.',
+    state: 'Planned',
+    fate: 'Active forever once created — a general-purpose binding, not tebako-specific.',
+    status: 'planned',
+  },
+]
+
+const gates = [
+  {
+    repo: 'libtfs (C++)',
+    href: `${GH}/libtfs`,
+    gate: 'libtfs-rs parity sustained for 2 consecutive releases + tebako-runtime-ruby pinned to tebako-rs + the gem/CLI fully off C-libtfs.',
+  },
+  {
+    repo: 'tebako (gem)',
+    href: `${GH}/tebako`,
+    gate: 'tebako-cli press parity (lean/fat/classic) green end-to-end on 3 platforms + one full release cycle of dual availability.',
+  },
+  {
+    repo: 'tebako-bootstrap',
+    href: `${GH}/tebako-bootstrap`,
+    gate: 'Only if a Rust bootstrap ships and is consumed by tebako-pkg/tebako-cli as the bootstrap slot.',
+  },
+]
+---
+
+<BaseLayout title="Repository map and lifecycle — Tebako architecture" description="Every tamatebako repository, its role, its shipped state, and its archival gate.">
+  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
+    <p class="tb-eyebrow">ARCHITECTURE · 04</p>
+    <h1 class="mt-3">Repository map &amp; lifecycle.</h1>
+    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      The stack is a fleet of small repos, each owning one artifact and one contract.
+      None of them is disposable by default — archival is an end state with explicit
+      gates, never a starting move.
+    </p>
+
+    <ArchDocsNav />
+
+    <div class="mt-12 overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
+      <table class="w-full min-w-[820px] text-left text-sm">
+        <thead>
+          <tr class="border-b border-[var(--tb-c-divider-strong)] font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+            <th class="px-5 py-3 font-medium">REPO</th>
+            <th class="px-5 py-3 font-medium">ROLE</th>
+            <th class="px-5 py-3 font-medium">STATE</th>
+            <th class="px-5 py-3 font-medium">FATE</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-[var(--tb-c-divider)]">
+          {repos.map((r) => (
+            <tr>
+              <td class="px-5 py-3 font-[var(--font-mono)] text-xs whitespace-nowrap">
+                {r.name === 'tebako-rs' || r.name === 'dwarfs-rs'
+                  ? <span class="text-[var(--tb-c-text-2)]">{r.name}</span>
+                  : <a href={r.href} class="tb-link-underline text-[var(--tb-c-accent)]">{r.name}</a>}
+              </td>
+              <td class="px-5 py-3 text-[var(--tb-c-text-2)]">{r.role}</td>
+              <td class="px-5 py-3 whitespace-nowrap">
+                {r.status === 'planned'
+                  ? <StatusPill status="planned" />
+                  : <span class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-2)]">{r.state}</span>}
+              </td>
+              <td class="px-5 py-3 text-[var(--tb-c-text-2)]">{r.fate}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="mt-16">
+      <h2 class="mb-3">Archival gates.</h2>
+      <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
+        A repo is archived only when its gate is fully met — existing released artifacts
+        must remain reproducible until every consumer has migrated off them. Three repos
+        carry gates; the rest are either permanent foundations or not C++ at all.
+      </p>
+      <div class="space-y-4">
+        {gates.map((g) => (
+          <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+            <p class="font-[var(--font-mono)] text-sm font-medium text-[var(--tb-c-accent)]">{g.repo}</p>
+            <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">{g.gate}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <div class="mt-16">
+      <h2 class="mb-3">The lifecycle rules.</h2>
+      <div class="grid gap-4 md:grid-cols-2">
+        <div class="tb-card p-6">
+          <h3 class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">Contracts outlive implementations</h3>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            The <code class="font-[var(--font-mono)] text-xs">tebako_fs_*</code> ABI and the tpkg
+            trailer are byte-level contracts. Consumers don't care which repo ships them — that's
+            what makes a Rust reimplementation possible without flag days.
+          </p>
+        </div>
+        <div class="tb-card p-6">
+          <h3 class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">Releases are the interface</h3>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            Repos consume each other's published releases, never source trees. A runtime release
+            line (0.15.9) and a gem release (0.15.9) can move independently because the
+            manifest.json contract sits between them.
+          </p>
+        </div>
+        <div class="tb-card p-6">
+          <h3 class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">Maintenance mode is a state, not a graveyard</h3>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            A maintenance-mode repo still gets security and critical fixes. It stops getting
+            features — and it leaves maintenance mode if its replacement slips.
+          </p>
+        </div>
+        <div class="tb-card p-6">
+          <h3 class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">dwarfs-t is not legacy</h3>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            A Rust DwarFS reader/writer is explicitly out of scope. The only Rust-consumable
+            surface will be a C API inside dwarfs-t itself, co-versioned with the C++ it wraps.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
