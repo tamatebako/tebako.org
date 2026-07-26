@@ -16,6 +16,8 @@ const LINKS = {
   bootstrapRel: 'https://github.com/tamatebako/tebako-bootstrap/releases/tag/v0.2.0',
   containersRepo: 'https://github.com/tamatebako/tebako-ci-containers',
   gemRubygems: 'https://rubygems.org/gems/tebako',
+  rsRepo: 'https://github.com/tamatebako/tebako-rs',
+  rsCli: 'https://github.com/tamatebako/tebako-rs/tree/main/crates/tebako-cli',
   rubyLang: 'https://www.ruby-lang.org/en/downloads/releases/',
 }
 
@@ -45,14 +47,14 @@ const stages = [
     stage: 'Runtime factory',
     repo: 'tebako-runtime-ruby',
     href: LINKS.runtimeRel,
-    ships: 'v0.15.9: 114 runtime packages (19 rubies × 6 POSIX platforms) + manifest.json + SHA256SUMS.txt. Builds patched source in tebako-ci-containers, links prebuilt libtfs, embeds the modern-API entry driver.',
+    ships: 'v0.15.9: 114 runtime packages (19 rubies × 6 POSIX platforms) + manifest.json + SHA256SUMS.txt. Builds patched source in tebako-ci-containers, links prebuilt libtfs, embeds the modern-API entry driver. Rolling out: a .tfs runtime image published alongside each executable (the runtime-as-image split).',
     status: 'shipped',
   },
   {
     stage: 'VFS engine',
     repo: 'libtfs',
     href: LINKS.libtfsRel,
-    ships: 'v0.13.0: modern-only tebako_fs_* ABI (24 exports, multi-mount), pluggable dwarfs/squashfs/zip backends, and the mkdwarfs + tebakofs binaries the packager shells out to.',
+    ships: 'v0.13.0: modern-only tebako_fs_* ABI (24 exports, multi-mount), pluggable dwarfs/squashfs/zip backends, and the mkdwarfs + tebakofs binaries — now also the parity oracle for the Rust tfs crate.',
     status: 'shipped',
   },
   {
@@ -80,7 +82,14 @@ const stages = [
     stage: 'Packager',
     repo: 'tebako gem',
     href: LINKS.gemRubygems,
-    ships: 'press (lean/fat/classic), scenario + Gemfile handling, runtime/bootstrap resolution, cache CLI. The stable executable spec of press semantics.',
+    ships: 'press (lean/fat/classic), scenario + Gemfile handling, runtime/bootstrap resolution, cache CLI. The reference implementation of press semantics — retires at 0.15.x once the Rust CLI ships releases.',
+    status: 'shipped',
+  },
+  {
+    stage: 'Packager (Rust)',
+    repo: 'tebako-rs · tebako-cli',
+    href: LINKS.rsCli,
+    ships: 'The self-hosting CLI: lean/fat press + cache, golden byte-parity with the gem, everything in-process (tebako-http downloads, dwarfs-t Writer images). Code shipped; distribution arrives with the tebako-rs release pipeline.',
     status: 'shipped',
   },
   {
@@ -99,8 +108,8 @@ const stages = [
     <h1 class="mt-3">The pipeline.</h1>
     <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
       How an official Ruby release becomes a runtime package, and how a runtime package
-      becomes your single executable — across five repositories, each shipping its own
-      versioned artifact.
+      becomes your single executable — across the tamatebako fleet, each repo shipping
+      its own versioned artifact.
     </p>
 
     <ArchDocsNav />
@@ -139,7 +148,7 @@ const stages = [
           <rect width="300" height="88" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
           <text x="150" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="14" font-weight="600" fill="var(--tb-c-text-1)">tebako-runtime-ruby</text>
           <text x="150" y="42" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">builds in tebako-ci-containers · links libtfs</text>
-          <text x="150" y="56" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">→ tebako-runtime-&lt;tebako&gt;-&lt;ruby&gt;-&lt;platform&gt;</text>
+          <text x="150" y="56" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">→ executable + .tfs image (rolling out)</text>
           <text x="150" y="74" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" font-weight="600" fill="var(--tb-c-accent)">v0.15.9 · 114 packages + manifest.json · SHIPPED</text>
         </g>
         <line x1="470" y1="322" x2="470" y2="350" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#pipe-arrow)" />
@@ -147,9 +156,9 @@ const stages = [
 
         <g transform="translate(320, 356)">
           <rect width="300" height="88" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
-          <text x="150" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="14" font-weight="600" fill="var(--tb-c-text-1)">tebako press · the gem</text>
-          <text x="150" y="42" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">mkdwarfs → app image</text>
-          <text x="150" y="56" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">tebakofs bundle → bootstrap + slots + trailer</text>
+          <text x="150" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="14" font-weight="600" fill="var(--tb-c-text-1)">press · gem + tebako-cli</text>
+          <text x="150" y="42" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">image the app · bundle bootstrap + slots</text>
+          <text x="150" y="56" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">+ trailer — golden byte-parity, both packagers</text>
           <text x="150" y="74" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" font-weight="600" fill="var(--tb-c-accent)">lean / fat / classic · SHIPPED</text>
         </g>
         <line x1="470" y1="448" x2="470" y2="476" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#pipe-arrow)" />

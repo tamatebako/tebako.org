@@ -1,0 +1,201 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro'
+import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import StatusPill from '../../../components/docs/StatusPill.astro'
+
+const LINKS = {
+  doc: 'https://github.com/tamatebako/tebako-rs/blob/main/docs/runtime-as-image.md',
+  tebakoRs: 'https://github.com/tamatebako/tebako-rs',
+  bootstrapCrate: 'https://github.com/tamatebako/tebako-rs/tree/main/crates/tebako-bootstrap',
+  cliCrate: 'https://github.com/tamatebako/tebako-rs/tree/main/crates/tebako-cli',
+  runtimeRel: 'https://github.com/tamatebako/tebako-runtime-ruby/releases/tag/v0.15.9',
+  dwarfsTRs: 'https://github.com/tamatebako/dwarfs-t-rs',
+  driverPatch: 'https://github.com/tamatebako/tebako-rs/blob/main/docs/tebako-main.cpp.30b.patch',
+}
+---
+
+<BaseLayout title="Runtime as image — Tebako architecture" description="The runtime splits into interpreter + .tfs image: the ;image runtime_ref flag, mount-instead-of-extract, and an immutable cache.">
+  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
+    <p class="tb-eyebrow">ARCHITECTURE · 04</p>
+    <h1 class="mt-3">Runtime as image.</h1>
+    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      The prebuilt runtime stops being one fat binary with an embedded filesystem. It
+      splits into an interpreter plus a <code class="font-[var(--font-mono)] text-base">.tfs</code>
+      image that is downloaded once, verified, and <em>mounted</em> — never extracted.
+    </p>
+
+    <ArchDocsNav />
+
+    <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
+      <StatusPill status="shipped" note="consumer side — tebako-rs" />
+      <span class="text-sm text-[var(--tb-c-text-2)]">bootstrap resolution + press emission implemented and proven end-to-end</span>
+      <StatusPill status="planned" note="producer publish · trust wrap (30c)" />
+      <span class="text-sm text-[var(--tb-c-text-2)]">official dual-publish of .tfs assets is rolling out; CAS dedup + signed images are next</span>
+    </div>
+
+    <div class="mt-16">
+      <h2 class="mb-3">Why split the runtime.</h2>
+      <p class="max-w-2xl text-[var(--tb-c-text-2)]">
+        A prebuilt runtime has always been a ~24&nbsp;MB binary with its runtime image embedded
+        (incbin) — already better than a tarball, but with three costs: every fat package
+        duplicates the same image bytes in its payload slot; integrity is one whole-binary
+        checksum with no per-block verification; and the press/deploy flow extracts the
+        runtime's layout into the cache — a mutable directory tree built from an immutable
+        artifact. The split removes all three: the image becomes a first-class,
+        content-verified, immutable object that is mounted like any other TFS image.
+      </p>
+    </div>
+
+    <div class="mt-16">
+      <div class="mb-3 flex flex-wrap items-center gap-3">
+        <h2>Two artifacts, one runtime.</h2>
+        <StatusPill status="shipped" note="in tebako-rs" />
+      </div>
+      <p class="mb-6 max-w-2xl text-[var(--tb-c-text-2)]">
+        The exact semantics are specified in{' '}
+        <a href={LINKS.doc} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">docs/runtime-as-image.md</a>
+        {' '}in tebako-rs. The runtime becomes:
+      </p>
+      <div class="grid gap-4 md:grid-cols-2">
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">THE INTERPRETER — UNCHANGED</p>
+          <p class="mt-3 font-[var(--font-mono)] text-sm text-[var(--tb-c-accent)]">tebako-runtime-&lt;ver&gt;-&lt;ruby&gt;-&lt;platform&gt;[.exe]</p>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            The existing runtime executable: same resolution, same launcher-ABI-v1 handoff.
+            Today's <a href={LINKS.runtimeRel} class="tb-link-underline text-[var(--tb-c-accent)]">v0.15.9 executables</a>
+            {' '}keep working untouched — they ignore the image env and use their embedded image
+            (graceful degradation, no republish needed).
+          </p>
+        </div>
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">THE RUNTIME IMAGE — NEW</p>
+          <p class="mt-3 font-[var(--font-mono)] text-sm text-[var(--tb-c-accent)]">tebako-runtime-&lt;ver&gt;-&lt;ruby&gt;-&lt;platform&gt;.tfs</p>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            The runtime's files (lib/ruby, gems, /local/stub.rb) as one dwarfs-t-native image.
+            Immutable (installed 0444), sha256-verified at install, mounted by the runtime at
+            boot — the same <code class="font-[var(--font-mono)] text-xs">tebako_fs_*</code>
+            {' '}mechanism any packaged app uses. No special case, no embedded copy.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-16">
+      <h2 class="mb-3">Why <code class="font-[var(--font-mono)]">.tfs</code> and not <code class="font-[var(--font-mono)]">.dwarfs</code>.</h2>
+      <p class="max-w-2xl text-[var(--tb-c-text-2)]">
+        The image's metadata is serialized with <strong class="text-[var(--tb-c-text-1)]">FlatBuffers</strong>
+        {' '}— the default of the dwarfs-t writer in our builds — which upstream DwarFS cannot
+        read. A format upstream can't open doesn't get upstream's extension:{' '}
+        <code class="font-[var(--font-mono)] text-sm">.tfs</code> marks a TFS image (readable
+        via libtfs / dwarfs-t / TFS tooling, content-detected by the reader regardless of
+        extension), while <code class="font-[var(--font-mono)] text-sm">.dwarfs</code> stays
+        reserved for upstream-compatible (thrift-metadata) images. The writer binding lives in{' '}
+        <a href={LINKS.dwarfsTRs} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">dwarfs-t-rs</a>
+        {' '}— image creation is in-process, never a shelled mkdwarfs.
+      </p>
+    </div>
+
+    <div class="mt-16">
+      <div class="mb-3 flex flex-wrap items-center gap-3">
+        <h2>The <code class="font-[var(--font-mono)]">;image</code> runtime_ref flag.</h2>
+        <StatusPill status="shipped" note="launcher ABI stays v1" />
+      </div>
+      <p class="mb-6 max-w-2xl text-[var(--tb-c-text-2)]">
+        The trailer's <code class="font-[var(--font-mono)] text-sm">runtime_ref</code> learns
+        one bare flag — an additive change, not an ABI bump:
+      </p>
+      <pre class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-sm leading-relaxed text-[var(--tb-c-text-2)]" style="background: var(--tb-c-bg-soft);"><code>ruby@&lt;ruby-version&gt;;tebako=&lt;tebako-version&gt;[;image][;sha256=&lt;64 hex&gt;]</code></pre>
+      <div class="mt-6 space-y-3">
+        <p class="max-w-2xl text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          <strong class="text-[var(--tb-c-text-1)]">A bare flag, on purpose.</strong> The image's
+          expected sha256 comes from the release index (manifest.json's <code class="font-[var(--font-mono)] text-xs">image</code>
+          {' '}key, else the SHA256SUMS line) — exactly the trust source the executable's own
+          checksum already uses. Encoding it as <code class="font-[var(--font-mono)] text-xs">;image=&lt;sha&gt;</code>
+          {' '}would blow the 127-byte runtime_ref budget for image-era fat refs; the bare flag fits.
+        </p>
+        <p class="max-w-2xl text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          <strong class="text-[var(--tb-c-text-1)]">Byte-identical without the flag.</strong> A
+          v1 ref resolves and execs exactly as before — no image lookup, no download, no env.
+          tebako-cli's press emits <code class="font-[var(--font-mono)] text-xs">;image</code>
+          {' '}only when the release index carries an image entry, so golden parity with the gem
+          is preserved for v1-era releases.
+        </p>
+      </div>
+    </div>
+
+    <div class="mt-16">
+      <div class="mb-3 flex flex-wrap items-center gap-3">
+        <h2>The cache in the image era.</h2>
+        <StatusPill status="shipped" note="tebako-rs" />
+      </div>
+      <p class="mb-6 max-w-2xl text-[var(--tb-c-text-2)]">
+        The shared cache stops holding an extracted layout tree. An entry holds immutable
+        artifacts and their trusted markers — nothing else:
+      </p>
+      <pre class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)] sm:text-sm" style="background: var(--tb-c-bg-soft);"><code>runtimes/ruby-&lt;rv&gt;-&lt;ver&gt;-&lt;platform&gt;/
+  tebako-runtime-&lt;ver&gt;-&lt;rv&gt;-&lt;platform&gt;[.exe]      # interpreter (0755)
+  sha256 / origin                                 # executable metadata
+  tebako-runtime-&lt;ver&gt;-&lt;rv&gt;-&lt;platform&gt;.tfs        # runtime image (0444, immutable)
+  tebako-runtime-&lt;…&gt;.tfs.sha256                 # trusted marker: "&lt;sha&gt;  &lt;file&gt;\n"
+  tebako-runtime-&lt;…&gt;.tfs.origin                 # the URL it was fetched from</code></pre>
+      <p class="mt-4 max-w-2xl text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+        The <code class="font-[var(--font-mono)] text-xs">.tfs.sha256</code> marker <em>is</em> the
+        trust anchor: its presence means the image was sha256-verified at install; the image is
+        re-verified only when re-fetched, never per run. When the press side needs the runtime's
+        files (the packaging environment), it extracts the cached <code class="font-[var(--font-mono)] text-xs">.tfs</code>
+        {' '}<strong class="text-[var(--tb-c-text-1)]">in-process through the tfs C ABI</strong> into
+        the build prefix — rebuilt per press, never stored in the cache. A checksum mismatch on
+        download deletes the download and leaves the cache untouched.
+      </p>
+    </div>
+
+    <div class="mt-16">
+      <div class="mb-3 flex flex-wrap items-center gap-3">
+        <h2>The handoff.</h2>
+        <StatusPill status="shipped" note="additive env, same options" />
+      </div>
+      <p class="max-w-2xl text-[var(--tb-c-text-2)]">
+        The v1 exec handoff is unchanged — <code class="font-[var(--font-mono)] text-sm">--tebako-image</code>
+        {' '}options exactly as before — with one additive environment variable when the ref
+        carried <code class="font-[var(--font-mono)] text-sm">;image</code>:{' '}
+        <code class="rounded bg-[var(--tb-c-divider)] px-1.5 py-0.5 font-[var(--font-mono)] text-sm text-[var(--tb-c-accent)]">TEBAKO_RUNTIME_IMAGE=&lt;abs path to the cached .tfs&gt;</code>.
+        {' '}The runtime driver change is a few lines — prefer the env image over the incbin
+        image at startup (<a href={LINKS.driverPatch} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">docs/tebako-main.cpp.30b.patch</a>)
+        — and it is needed only for runtime builds that stop embedding. App images are
+        self-contained and mount as today; the lean handoff is untouched.
+      </p>
+    </div>
+
+    <div class="mt-16">
+      <h2 class="mb-6">Compatibility, stated plainly.</h2>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
+        <table class="w-full min-w-[640px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider-strong)] font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+              <th class="px-5 py-3 font-medium">COMBINATION</th>
+              <th class="px-5 py-3 font-medium">BEHAVIOR</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)]">
+            <tr>
+              <td class="px-5 py-3 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-1)]">v1 package (no ;image)</td>
+              <td class="px-5 py-3 text-[var(--tb-c-text-2)]">Byte-identical resolve + exec; no image is fetched even when the release publishes one.</td>
+            </tr>
+            <tr>
+              <td class="px-5 py-3 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-1)]">;image ref against a v1-era release (no image in the index)</td>
+              <td class="px-5 py-3 text-[var(--tb-c-text-2)]">Cannot arise from tebako-cli (no entry → no flag emitted); a hand-stitched ref fails resolution with the named "no checksum" error.</td>
+            </tr>
+            <tr>
+              <td class="px-5 py-3 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-1)]">Fat payloads</td>
+              <td class="px-5 py-3 text-[var(--tb-c-text-2)]">Unchanged — the payload slot carries the interpreter; ;image additionally resolves the image from the mirror at first run. (Carrying the .tfs inside the package is 30c's CAS work — planned.)</td>
+            </tr>
+            <tr>
+              <td class="px-5 py-3 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-1)]">Today's v0.15.9 executables</td>
+              <td class="px-5 py-3 text-[var(--tb-c-text-2)]">Ignore TEBAKO_RUNTIME_IMAGE, use the embedded image — no republish needed.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

@@ -16,13 +16,30 @@ const LINKS = {
   bootstrapSelfTest: 'https://github.com/tamatebako/tebako-bootstrap/blob/main/test/self-test.sh',
   runtimeWorkflow: 'https://github.com/tamatebako/tebako-runtime-ruby/blob/main/.github/workflows/build-runtime-packages.yml',
   libtfsWorkflows: 'https://github.com/tamatebako/libtfs/tree/main/.github/workflows',
+  rsContract: 'https://github.com/tamatebako/tebako-rs/tree/main/tests/contract',
+  rsParity: 'https://github.com/tamatebako/tebako-rs/blob/main/docs/parity.md',
+  rsPkg: 'https://github.com/tamatebako/tebako-rs/tree/main/crates/tebako-pkg',
+  rsCli: 'https://github.com/tamatebako/tebako-rs/tree/main/crates/tebako-cli',
+  rsTpkg: 'https://github.com/tamatebako/tebako-rs/tree/main/crates/tpkg',
+  rsCi: 'https://github.com/tamatebako/tebako-rs/blob/main/.github/workflows/ci.yml',
 }
 
 const contracts = [
   {
     name: 'The ABI oracle — 493 tests',
-    body: 'The c_api test suite registers 493 tests under ctest and is the executable definition of tebako_fs_* behavior: errno mapping, mount semantics, dir cookies, pread position-independence, multi-mount isolation. Any change to libtfs is judged by it, and in the Rust track the same suite is imported — not rewritten — to run against both implementations.',
+    body: 'The c_api test suite registers 493 tests under ctest and is the executable definition of tebako_fs_* behavior: errno mapping, mount semantics, dir cookies, pread position-independence, multi-mount isolation. Any change to libtfs is judged by it. In tebako-rs the ported cases run through the Rust C ABI — 164 today in tests/contract (the full sweep follows the same pattern; what was ported and why is audited in docs/parity.md), with the C++ library as the oracle.',
     link: { href: LINKS.capiTests, label: 'tests/test_c_api.cpp' },
+    extraLinks: [
+      { href: LINKS.rsContract, label: 'tebako-rs tests/contract' },
+      { href: LINKS.rsParity, label: 'docs/parity.md' },
+    ],
+    status: 'shipped',
+  },
+  {
+    name: 'Golden CLI parity — tebako-pkg & tebako-cli',
+    body: 'The Rust package tools are diffed byte-for-byte against their oracles: tebako-pkg\u2019s bundle/info/unbundle/reassemble/insert/remove/set-runtime output must equal the released C++ tebakofs (auto-detected via TEBAKOFS_CPP, skipped without it), and tebako-cli\u2019s lean/fat press — stdout and the packaged binaries\u2019 output — must equal the reference gem\u2019s in a side-by-side CI leg. A byte difference is a failed build, not a discussion.',
+    link: { href: LINKS.rsPkg, label: 'crates/tebako-pkg' },
+    extraLinks: [{ href: LINKS.rsCli, label: 'crates/tebako-cli' }],
     status: 'shipped',
   },
   {
@@ -37,14 +54,15 @@ const contracts = [
     status: 'shipped',
   },
   {
-    name: 'tpkg.h, vendored byte-for-byte',
-    body: 'The trailer format is owned by libtfs and vendored verbatim into tebako-bootstrap — the vendoring is documented and checked, not improvised. Changing the format means changing both, in the same breath, with the version field bumped.',
+    name: 'tpkg, in three languages',
+    body: 'The trailer format is owned by libtfs\u2019s C tpkg.h and vendored verbatim into tebako-bootstrap — the vendoring is documented and checked, not improvised. tebako-rs\u2019s crates/tpkg is byte-exact with it (golden vectors asserted offset-by-offset) and carries the v2 chain-of-trust extension; v2 is flagged, not version-bumped, so v1 readers parse on untouched. Changing the format means moving all sides in the same breath.',
     link: { href: LINKS.bootstrapVendored, label: 'VENDORED.md' },
+    extraLinks: [{ href: LINKS.rsTpkg, label: 'crates/tpkg' }],
     status: 'shipped',
   },
   {
     name: 'The launcher ABI, in two languages',
-    body: 'The gem\u2019s launcher_abi.rb carries the Ruby-side constants of the bootstrap→runtime handoff, with matching C++ constants in the runtime entry driver. The file itself warns: keep the two in sync, and bump VERSION on any incompatible change.',
+    body: 'The gem\u2019s launcher_abi.rb carries the Ruby-side constants of the bootstrap→runtime handoff, with matching C++ constants in the runtime entry driver. The file itself warns: keep the two in sync, and bump VERSION on any incompatible change. The additive ;image runtime_ref flag (runtime as image) is the standing example of evolving the handoff WITHOUT a bump.',
     link: { href: LINKS.gemLauncherAbi, label: 'launcher_abi.rb' },
     status: 'shipped',
   },
@@ -53,7 +71,7 @@ const contracts = [
 
 <BaseLayout title="For contributors — Tebako architecture" description="How the tebako contract suites work, and how drift between upstream Ruby and the tebako patches is detected and fixed.">
   <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">ARCHITECTURE · 06</p>
+    <p class="tb-eyebrow">ARCHITECTURE · 09</p>
     <h1 class="mt-3">For contributors.</h1>
     <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
       Onboarding into any single repo starts with the same question: which contract does
@@ -164,6 +182,16 @@ const contracts = [
             <a href={LINKS.bootstrapSelfTest} class="tb-link-underline text-[var(--tb-c-accent)]">self-test.sh</a>
             {' '}stitches a lean package from a freshly built launcher and a fake runtime, then
             exercises the download, cache-hit, offline, checksum-mismatch, and ABI-mismatch paths.
+          </p>
+        </div>
+        <div class="tb-card p-6">
+          <h3 class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">tebako-rs</h3>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            <a href={LINKS.rsCi} class="tb-link-underline text-[var(--tb-c-accent)]">CI</a>
+            {' '}runs the workspace tests on ubuntu-24.04 + macos-14 (vendored vcpkg baseline
+            pinned, archive cache keyed on both manifests) plus a pure-cargo
+            --no-default-features leg, the golden-parity legs against the C++ oracles, and
+            the bootstrap size gate — per-platform sizes published, failing at ≥ 3 MB.
           </p>
         </div>
       </div>
