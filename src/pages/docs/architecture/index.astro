@@ -58,56 +58,14 @@ const trailerFields = [
         <a href={LINKS.bootstrapRepo} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">tebako-bootstrap README</a>.
       </p>
 
-      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
-        <svg viewBox="0 0 940 210" class="w-full min-w-[720px]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three-part package byte layout">
-          <text x="10" y="24" font-family="var(--font-mono), monospace" font-size="11" fill="var(--tb-c-text-3)">byte 0 →</text>
-          <text x="930" y="24" text-anchor="end" font-family="var(--font-mono), monospace" font-size="11" fill="var(--tb-c-text-3)">→ EOF</text>
-
-          <g transform="translate(10, 40)">
-            <rect width="170" height="110" rx="10" fill="var(--color-ink)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
-            <text x="85" y="30" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--color-mist-pale)">A · Bootstrap</text>
-            <text x="85" y="50" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-mist)" opacity="0.8">tebako-bootstrap</text>
-            <text x="85" y="64" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-mist)" opacity="0.8">32 KB – 908 KB</text>
-            <text x="85" y="88" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-gold)">the executable part</text>
-          </g>
-
-          <g transform="translate(190, 40)">
-            <rect width="200" height="110" rx="10" fill="var(--tb-c-accent)" opacity="0.12" stroke="var(--tb-c-accent)" stroke-width="1.5" />
-            <text x="100" y="30" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--tb-c-accent)">C · Image slot 0</text>
-            <text x="100" y="50" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">.tfs image — the application</text>
-            <text x="100" y="64" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">dwarfs / squashfs / zip</text>
-            <text x="100" y="88" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">mounted at run time</text>
-          </g>
-
-          <g transform="translate(400, 40)">
-            <rect width="170" height="110" rx="10" fill="var(--tb-c-accent)" opacity="0.06" stroke="var(--tb-c-accent)" stroke-width="1" stroke-dasharray="4 3" />
-            <text x="85" y="30" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--tb-c-accent)">C · Image slot 1…7</text>
-            <text x="85" y="50" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">optional extra images</text>
-            <text x="85" y="64" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">data, assets, …</text>
-            <text x="85" y="88" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">multi-mount, own mount point</text>
-          </g>
-
-          <g transform="translate(580, 40)">
-            <rect width="180" height="110" rx="10" fill="var(--color-gold)" opacity="0.1" stroke="var(--color-gold)" stroke-width="1" stroke-dasharray="4 3" />
-            <text x="90" y="30" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--color-gold)">B · Runtime payload</text>
-            <text x="90" y="50" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">fat packages only</text>
-            <text x="90" y="64" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">format_id = TPKG_FORMAT_RUNTIME</text>
-            <text x="90" y="88" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">installed, never mounted</text>
-          </g>
-
-          <g transform="translate(770, 40)">
-            <rect width="160" height="110" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-accent)" stroke-width="1.5" />
-            <text x="80" y="30" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--tb-c-accent)">tpkg trailer</text>
-            <text x="80" y="50" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">166 B header at EOF</text>
-            <text x="80" y="64" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">+ slot records (280 B each)</text>
-            <text x="80" y="88" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">magic · CRC · runtime_ref</text>
-          </g>
-
-          <text x="470" y="190" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="11" fill="var(--tb-c-text-3)">
-            lean = A + C + trailer · fat = A + B + C + trailer · classic = runtime and image stitched into one binary (no bootstrap, no trailer)
-          </text>
-        </svg>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-2" style="background: var(--tb-c-bg-soft);">
+        <img src="/assets/diagrams/package-anatomy.svg" alt="Anatomy of a tebako package: bootstrap portion, runtime image (fat packages only), payload image slots, the optional v2 signature extension, and the tpkg trailer header at EOF — three parts stitched in one executable" class="mx-auto w-full max-w-[960px]" loading="lazy" />
       </div>
+      <p class="mt-3 max-w-2xl text-sm text-[var(--tb-c-text-3)]">
+        lean = A + C + trailer · fat adds B · classic = runtime and image stitched into one
+        binary (no bootstrap, no trailer). This figure is part of the standalone diagram set
+        under <code class="font-[var(--font-mono)] text-xs">public/assets/diagrams/</code>.
+      </p>
 
       <div class="mt-8 grid gap-4 sm:grid-cols-3">
         <div class="tb-card p-6">
@@ -228,6 +186,10 @@ const trailerFields = [
             no bootstrap, no trailer. The original tebako package shape, fully supported.
           </p>
         </div>
+      </div>
+
+      <div class="mt-8 overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-2" style="background: var(--tb-c-bg-soft);">
+        <img src="/assets/diagrams/lean-vs-fat.svg" alt="Lean versus fat flows: a lean package resolves the runtime from the shared machine cache, downloading it once on a cache miss; a fat package embeds the runtime and installs it offline — both land in the same machine-wide cache shared by every tebako app" class="mx-auto w-full max-w-[960px]" loading="lazy" />
       </div>
     </div>
 

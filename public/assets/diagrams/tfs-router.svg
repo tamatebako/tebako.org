@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 530" role="img" aria-labelledby="title desc">
+  <title id="title">The TFS router</title>
+  <desc id="desc">Calls enter through the tebako_fs_* C ABI; the Rust TFS router dispatches by longest mount-point prefix onto read-only backends (dwarfs-t, squashfs, tar, zip). A Rust copy-on-write overlay sits above the backends; paths outside every mount pass through to the host filesystem.</desc>
+  <style>
+    .bg{fill:#fdf9e8}
+    .card{fill:#ffffff;stroke:#06394a;stroke-opacity:.2;stroke-width:1.5}
+    .inkbox{fill:#06394a;stroke:#06394a;stroke-opacity:.25;stroke-width:1.5}
+    .acctint{fill:#c36242;fill-opacity:.12;stroke:#c36242;stroke-width:1.5}
+    .golddash{fill:#f8b883;fill-opacity:.08;stroke:#f8b883;stroke-width:1.5;stroke-dasharray:6 4}
+    .t1{fill:#1a2b34}
+    .t2{fill:#4a5b66}
+    .t3{fill:#7a8b94}
+    .acc{fill:#c36242}
+    .plan{fill:#a3691a}
+    .mistpale{fill:#c5d3db}
+    .mist{fill:#96abb8}
+    .arw{stroke:#c36242;stroke-width:2}
+    .arwfill{fill:#c36242}
+    .arwg{stroke:#f8b883;stroke-width:2}
+    .arwgfill{fill:#f8b883}
+    .fd{font-family:ui-sans-serif,system-ui,sans-serif;font-weight:600}
+    .fm{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .fs{font-family:ui-sans-serif,system-ui,sans-serif}
+    @media (prefers-color-scheme: dark){
+      .bg{fill:#062a38}
+      .card{fill:#0a3548;stroke:#f5edd0;stroke-opacity:.2}
+      .acctint{fill:#f8b883;fill-opacity:.14;stroke:#f8b883}
+      .t1{fill:#e8dfc6}
+      .t2{fill:#a8b8c0}
+      .t3{fill:#6a8b9a}
+      .acc{fill:#f8b883}
+      .plan{fill:#f8b883}
+      .arw{stroke:#f8b883}
+      .arwfill{fill:#f8b883}
+    }
+  </style>
+  <defs>
+    <marker id="arw" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 Z" class="arwfill"/>
+    </marker>
+    <marker id="arwg" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 Z" class="arwgfill"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" width="960" height="530" rx="12"/>
+
+  <!-- C ABI bar -->
+  <g transform="translate(16, 20)">
+    <rect class="inkbox" width="928" height="48" rx="10"/>
+    <text x="464" y="30" text-anchor="middle" class="fm mistpale" font-size="11.5">tebako_fs_* C ABI — open / read / pread / stat / opendir / readdir / dlmap2file … — 33 exports, one seam</text>
+  </g>
+
+  <text x="480" y="92" text-anchor="middle" class="fm t3" font-size="10.5">open("/__app__/config/boot.rb") → longest mount-point prefix wins</text>
+
+  <!-- router -->
+  <g transform="translate(16, 104)">
+    <rect class="acctint" width="928" height="86" rx="12"/>
+    <text x="464" y="28" text-anchor="middle" class="fd acc" font-size="14">THE TFS ROUTER — the Rust tfs crate</text>
+    <text x="170" y="58" text-anchor="middle" class="fm t2" font-size="10.5">/__runtime__   → mount 0</text>
+    <text x="480" y="58" text-anchor="middle" class="fm t2" font-size="10.5">/__layers__/gtk → mount 1</text>
+    <text x="790" y="58" text-anchor="middle" class="fm t2" font-size="10.5">/__app__       → mount 2</text>
+    <text x="464" y="76" text-anchor="middle" class="fm t3" font-size="9.5">multi-mount, per-mount backend instances; nested mount points allowed · duplicates → EEXIST</text>
+  </g>
+
+  <line x1="480" y1="192" x2="480" y2="212" class="arw" marker-end="url(#arw)"/>
+
+  <!-- COW overlay -->
+  <g transform="translate(60, 218)">
+    <rect class="golddash" width="820" height="86" rx="12"/>
+    <text x="410" y="28" text-anchor="middle" class="fd plan" font-size="13.5">RUST COW OVERLAY — PLANNED</text>
+    <text x="410" y="50" text-anchor="middle" class="fm t2" font-size="10">copy-on-write lives ONLY in the Rust TFS core — never in a backend, never in C++</text>
+    <text x="410" y="66" text-anchor="middle" class="fm t2" font-size="10">writes land in the overlay; layer export → a NEW image via the dwarfs-t creation-time Writer</text>
+  </g>
+
+  <!-- overlay → backends -->
+  <line x1="140" y1="306" x2="140" y2="324" class="arwg" marker-end="url(#arwg)"/>
+  <line x1="365" y1="306" x2="365" y2="324" class="arwg" marker-end="url(#arwg)"/>
+  <line x1="590" y1="306" x2="590" y2="324" class="arwg" marker-end="url(#arwg)"/>
+  <line x1="815" y1="306" x2="815" y2="324" class="arwg" marker-end="url(#arwg)"/>
+
+  <!-- backends -->
+  <g transform="translate(50, 330)">
+    <rect class="card" width="180" height="118" rx="10"/>
+    <text x="90" y="28" text-anchor="middle" class="fd t1" font-size="13">dwarfs-t</text>
+    <text x="90" y="50" text-anchor="middle" class="fm t2" font-size="9.5">READ-ONLY format</text>
+    <text x="90" y="64" text-anchor="middle" class="fm t2" font-size="9.5">via dwarfs-t-rs</text>
+    <text x="90" y="92" text-anchor="middle" class="fm t3" font-size="9">creation-time Writer only —</text>
+    <text x="90" y="105" text-anchor="middle" class="fm t3" font-size="9">no runtime write path</text>
+  </g>
+  <g transform="translate(275, 330)">
+    <rect class="card" width="180" height="118" rx="10"/>
+    <text x="90" y="28" text-anchor="middle" class="fd t1" font-size="13">squashfs</text>
+    <text x="90" y="50" text-anchor="middle" class="fm t2" font-size="9.5">READ-ONLY</text>
+    <text x="90" y="64" text-anchor="middle" class="fm t2" font-size="9.5">via sqfs-sys (FFI)</text>
+    <text x="90" y="92" text-anchor="middle" class="fm t3" font-size="9">bridge for existing</text>
+    <text x="90" y="105" text-anchor="middle" class="fm t3" font-size="9">tebako-era images</text>
+  </g>
+  <g transform="translate(500, 330)">
+    <rect class="card" width="180" height="118" rx="10"/>
+    <text x="90" y="28" text-anchor="middle" class="fd t1" font-size="13">tar / tar.gz / tar.zst</text>
+    <text x="90" y="50" text-anchor="middle" class="fm t2" font-size="9.5">READ-ONLY</text>
+    <text x="90" y="64" text-anchor="middle" class="fm t2" font-size="9.5">stream-indexed</text>
+    <text x="90" y="92" text-anchor="middle" class="fm plan" font-size="9.5">PLANNED adapter</text>
+  </g>
+  <g transform="translate(725, 330)">
+    <rect class="card" width="180" height="118" rx="10"/>
+    <text x="90" y="28" text-anchor="middle" class="fd t1" font-size="13">zip</text>
+    <text x="90" y="50" text-anchor="middle" class="fm t2" font-size="9.5">READ-ONLY</text>
+    <text x="90" y="64" text-anchor="middle" class="fm t2" font-size="9.5">pure Rust</text>
+    <text x="90" y="92" text-anchor="middle" class="fm t3" font-size="9">same backend trait —</text>
+    <text x="90" y="105" text-anchor="middle" class="fm t3" font-size="9">nothing else changes</text>
+  </g>
+
+  <!-- passthrough arrow -->
+  <path d="M928 192 L928 464" fill="none" class="arw" marker-end="url(#arw)"/>
+  <text transform="rotate(-90 916 300)" x="916" y="300" text-anchor="middle" class="fm t3" font-size="9.5">outside mounts → host FS</text>
+
+  <!-- bottom notes -->
+  <g transform="translate(60, 468)">
+    <rect class="card" width="410" height="48" rx="10"/>
+    <text x="205" y="20" text-anchor="middle" class="fd t1" font-size="11.5">host FS passthrough</text>
+    <text x="205" y="37" text-anchor="middle" class="fm t2" font-size="9.5">cwd, writes outside mounts, mkdir, unlink — the host, untouched</text>
+  </g>
+  <g transform="translate(500, 468)">
+    <rect class="card" width="380" height="48" rx="10"/>
+    <text x="190" y="20" text-anchor="middle" class="fd t1" font-size="11.5">backends never learn to write</text>
+    <text x="190" y="37" text-anchor="middle" class="fm t2" font-size="9.5">every backend is RO; overlay + export is the only write story</text>
+  </g>
+</svg>

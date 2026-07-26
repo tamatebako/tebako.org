@@ -91,6 +91,10 @@ const chainSteps = [
       </p>
     </div>
 
+    <div class="mt-12 overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-2" style="background: var(--tb-c-bg-soft);">
+      <img src="/assets/diagrams/trust-chain.svg" alt="The chain of trust end to end: an offline root key signs release keys, release keys sign the release manifest, the manifest carries per-artifact sha256 digests — and each package carries its own tpkg v2 trailer with per-slot sha256 and an OpenPGP signature, verified once at install; a merkle root per image is planned" class="mx-auto w-full max-w-[960px]" loading="lazy" />
+    </div>
+
     <div class="mt-16">
       <h2 class="mb-6">The chain, link by link.</h2>
       <div class="space-y-4">

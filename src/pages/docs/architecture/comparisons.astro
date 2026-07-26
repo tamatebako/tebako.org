@@ -1,0 +1,558 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro'
+import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import StatusPill from '../../../components/docs/StatusPill.astro'
+
+const LINKS = {
+  tebakoRs: 'https://github.com/tamatebako/tebako-rs',
+  cliCrate: 'https://github.com/tamatebako/tebako-rs/tree/main/crates/tebako-cli',
+  bootstrapCrate: 'https://github.com/tamatebako/tebako-rs/tree/main/crates/tebako-bootstrap',
+  runtimeRel: 'https://github.com/tamatebako/tebako-runtime-ruby/releases/tag/v0.15.9',
+  runtimeRepo: 'https://github.com/tamatebako/tebako-runtime-ruby',
+  rubyRepo: 'https://github.com/tamatebako/ruby',
+  dwarfsRepo: 'https://github.com/tamatebako/dwarfs-t',
+  gemRepo: 'https://github.com/tamatebako/tebako',
+}
+
+const axes = [
+  { name: 'Install footprint', body: 'What lands on the machine to make the app run — megabytes, trees, daemons, hypervisors.' },
+  { name: 'Runtime sharing', body: 'Whether N apps on one machine carry N copies of their runtime, or one.' },
+  { name: 'Startup cost', body: 'What happens between the user pressing enter and the app running — per run.' },
+  { name: 'Isolation / jails', body: 'What the app can see and touch beyond itself, and who enforces that.' },
+  { name: 'Integrity model', body: 'How you know the bytes are the bytes the publisher shipped — checksums, signatures, chains of trust.' },
+  { name: 'Offline behavior', body: 'What works with the network cable pulled — first run and steady state.' },
+  { name: 'Cross-platform reach', body: 'Which operating systems and libcs the same story covers, and at what cost per target.' },
+  { name: 'Transparency', body: 'What the end user has to know, install, or run before the app — ideally: nothing.' },
+]
+
+const matrix = [
+  {
+    tool: 'tebako (standalone)',
+    cells: [
+      'one file; runtime lands in the cache once',
+      'machine-wide cache — one runtime for ALL tebako apps',
+      'exec + in-process mount; no extraction, no per-run hashing',
+      'RO memfs today; declarative ro/rw jails — planned',
+      'opt-in OpenPGP + per-slot sha256, fail closed',
+      'fat: always; lean: after first fetch (TEBAKO_OFFLINE=1)',
+      'linux gnu/musl · macOS · Windows — one static binary each',
+      'total — the user need not know tebako exists',
+    ],
+    highlight: true,
+  },
+  {
+    tool: 'rbenv / rvm',
+    cells: [
+      'git clone + build toolchain + per-machine ruby builds',
+      'rubies shared across projects',
+      'a shim re-exec hop, then native',
+      'none',
+      'source tarball checksums at build; gems ride TLS',
+      'yes, once rubies are built',
+      'POSIX only — no Windows',
+      'developers only',
+    ],
+  },
+  {
+    tool: 'homebrew',
+    cells: [
+      'host-wide /opt tree plus dependency kegs',
+      'kegs shared host-wide',
+      'native exec — nothing between',
+      'none — install scripts run as you, services higher',
+      'sha256-pinned formulae, signed bottles, attestations',
+      'no — network to install or update',
+      'macOS + Linux; no Windows',
+      'the user installs brew first',
+    ],
+  },
+  {
+    tool: 'rubygems / bundler',
+    cells: [
+      'gems per interpreter, per machine, per deploy',
+      'duplicated per ruby version on the box',
+      'gem activation at every process start',
+      'none',
+      'TLS + the rubygems.org service; X.509 gem signing is rare',
+      'vendor/cache makes deploys offline-capable',
+      'anywhere ruby runs — genuinely universal',
+      'developers and servers, not end users',
+    ],
+  },
+  {
+    tool: '.dmg / .msi',
+    cells: [
+      'a per-app bundle with the runtime embedded',
+      'none — every app re-carries its interpreter/framework',
+      'native exec',
+      'only what the OS sandbox gives an opted-in app',
+      'Apple notarization / Authenticode — real PKI, always checked',
+      'yes — the installer itself is the offline artifact',
+      'one OS (and arch) per artifact',
+      'total — drag, click, run',
+    ],
+  },
+  {
+    tool: 'dnf / rpm / apt',
+    cells: [
+      'a root-owned system tree',
+      'system libraries shared across every app on the box',
+      'native exec',
+      'none — packages own system paths, scripts run as root',
+      'signed repo metadata (InRelease / repomd), always on',
+      'local mirrors and offline media are first-class',
+      'per-distro, per-release; linux only',
+      'invisible after install — for admins',
+    ],
+  },
+  {
+    tool: 'docker / OCI',
+    cells: [
+      'an engine plus a GB-scale content store',
+      'layer dedup across images sharing a base',
+      'container create + start through the daemon',
+      'namespaces + cgroups — shipped, real',
+      'content digests; cosign / notary signing opt-in',
+      'yes, after the first pull',
+      'any engine; linux images via a VM layer on macOS/Windows',
+      'the user installs docker',
+    ],
+  },
+  {
+    tool: 'VMs',
+    cells: [
+      'gigabytes per guest, plus a hypervisor',
+      'nothing shared between guests',
+      'a guest OS boot — seconds to minutes',
+      'a kernel boundary — the strongest on this page',
+      'whatever the guest\u2019s own stack does',
+      'yes, once provisioned',
+      'any guest OS on any host',
+      'ops teams, never end users',
+    ],
+  },
+]
+---
+
+<BaseLayout title="Comparisons — Tebako architecture" description="Tebako vs rbenv/rvm, Homebrew, RubyGems, DMG/MSI installers, dnf/rpm + apt, Docker/OCI, and VMs — install footprint, runtime sharing, startup, isolation, integrity, offline, reach, transparency.">
+  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
+    <p class="tb-eyebrow">ARCHITECTURE · 11</p>
+    <h1 class="mt-3">Comparisons.</h1>
+    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      Seven tools you already use solve one overlapping job — getting an application from
+      the developer's machine to the user's — in seven different ways. None of them is a
+      strawman here: each wins somewhere, and this page says where. Tebako's answer is
+      one portable application that shares its runtime machine-wide and hides itself from
+      the end user.
+    </p>
+
+    <ArchDocsNav />
+
+    <div class="mt-12 rounded-2xl border p-6" style="border-color: var(--color-gold); background: color-mix(in srgb, var(--color-gold) 6%, transparent);">
+      <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">STATED PLAINLY</p>
+      <p class="mt-2 leading-relaxed text-[var(--tb-c-text-2)]">
+        <strong class="text-[var(--tb-c-text-1)]">Tebako is not a replacement for your toolchain.</strong>
+        {' '}You still develop against your own ruby, your own gems, your own OS packages.
+        Tebako enters at the distribution seam: the moment a resolved, working app has to
+        run on a machine you don't control. Where a comparison touches machinery that is
+        designed but not yet shipped — the jails, the managed-mode dispatcher, the CAS —
+        the page badges it <em>planned</em> rather than borrowing the future.
+      </p>
+    </div>
+
+    <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
+      <StatusPill status="shipped" />
+      <span class="text-sm text-[var(--tb-c-text-2)]">exists in released artifacts or in tebako-rs today</span>
+      <StatusPill status="planned" />
+      <span class="text-sm text-[var(--tb-c-text-2)]">locked design, not yet implemented — quoted, not claimed</span>
+    </div>
+
+    <!-- ================= THE AXES ================= -->
+    <div class="mt-16">
+      <h2 class="mb-6">The eight axes.</h2>
+      <div class="grid gap-4 sm:grid-cols-2">
+        {axes.map((a, i) => (
+          <div class="rounded-2xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+            <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-accent)]">{String(i + 1).padStart(2, '0')} · {a.name.toUpperCase()}</p>
+            <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">{a.body}</p>
+          </div>
+        ))}
+      </div>
+      <p class="mt-4 max-w-2xl text-sm text-[var(--tb-c-text-3)]">
+        "Runtime sharing" deserves its own sentence, because it is tebako's structural
+        difference: a tebako runtime — the interpreter plus its{' '}
+        <a href="/docs/architecture/runtime-as-image/" class="tb-link-underline text-[var(--tb-c-accent)]">.tfs image</a>
+        {' '}— is downloaded <strong class="text-[var(--tb-c-text-1)]">once per machine</strong>{' '}
+        and reused by <strong class="text-[var(--tb-c-text-1)]">every tebako application on it</strong>.
+        Not once per app, not once per project: once. The cache is content-verified,
+        installed read-only (0444), and shared by design.
+      </p>
+    </div>
+
+    <!-- ================= 1 · RBENV / RVM ================= -->
+    <div class="mt-16">
+      <h2 class="mb-3">1 · rbenv / rvm — the version managers.</h2>
+      <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
+        They manage rubies <em>for the developer</em>; tebako delivers apps <em>to the
+        user</em>. The overlap — "which ruby runs this program" — is real but thin.
+      </p>
+      <div class="grid gap-4 md:grid-cols-2">
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">WHERE RBENV / RVM WIN</p>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            Interactive development, full stop. A real ruby per project on your machine —
+            you <code class="font-[var(--font-mono)] text-xs">gem install</code> into it,
+            irb against it, bisect against head builds. rbenv's shims are tiny, rvm's
+            gemsets are genuinely useful, ruby-build compiles anything. Rubies are shared
+            across all your projects, and the whole thing works offline once built. If
+            your job is <em>developing ruby</em>, this is the right tool and tebako does
+            not replace it.
+          </p>
+        </div>
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">WHERE TEBAKO WINS</p>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            The receiving end. No compile toolchain, no per-machine builds, no{' '}
+            <code class="font-[var(--font-mono)] text-xs">eval "$(rbenv init -)"</code>
+            {' '}in every shell: a prebuilt runtime (ruby 3.x and 4.0 lines) downloads
+            once into the machine-wide cache and every tebako app reuses it — mounted,
+            never extracted. The planned dispatcher reads the project pin file itself —
+            one shims dir on PATH, no per-shell hooks (the mise model). And a standalone
+            package's user needs none of it, on Windows too, where rbenv/rvm don't reach.
+          </p>
+        </div>
+      </div>
+      <p class="mt-4 max-w-2xl text-sm text-[var(--tb-c-text-3)]">
+        Honest line: today tebako's version-manager side is a locked design (
+        <a href="/docs/architecture/version-manager/" class="tb-link-underline text-[var(--tb-c-accent)]">the version manager</a>
+        {' '}— planned). What is shipped is the standalone side: per-platform packages whose
+        runtimes self-resolve into the shared cache.
+      </p>
+    </div>
+
+    <!-- ================= 2 · HOMEBREW ================= -->
+    <div class="mt-16">
+      <h2 class="mb-3">2 · Homebrew — the system package manager.</h2>
+      <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
+        Brew manages <em>the host</em>; tebako's rule is that the host is never touched.
+      </p>
+      <div class="grid gap-4 md:grid-cols-2">
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">WHERE HOMEBREW WINS</p>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            Breadth and stewardship: thousands of formulae and casks, real dependency
+            resolution, services, native GUI apps, a maintained update channel. Its
+            integrity story is solid and always on — sha256-pinned formulae, CI-built
+            signed bottles, artifact attestations — and kegs are shared host-wide, so one
+            openssl serves everything. If the goal is <em>managing your Mac/Linux
+            machine</em>, use brew. Tebako is not in that business.
+          </p>
+        </div>
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">WHERE TEBAKO WINS</p>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            Zero host side effects. Payloads live in a user-owned cache as read-only,
+            content-verified artifacts; nothing writes to a root-adjacent{' '}
+            <code class="font-[var(--font-mono)] text-xs">/opt</code> tree, no install
+            scripts execute with elevated privileges, and uninstall is a cache prune that
+            leaves nothing behind. The same app ships to linux (gnu and musl), macOS, and
+            Windows — brew has no Windows story — and the end user doesn't need brew, or
+            anything else, installed.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 3 · RUBYGEMS ================= -->
+    <div class="mt-16">
+      <h2 class="mb-3">3 · RubyGems / bundler — per-interpreter gems.</h2>
+      <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
+        Gems install into a ruby you must already have — on every machine, on every
+        deploy. Tebako presses the resolved bundle into an image <em>once</em> — and it
+        presses it <em>with bundler</em>, invoked under the target runtime at press time,
+        never reimplemented.
+      </p>
+      <div class="grid gap-4 md:grid-cols-2">
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">WHERE RUBYGEMS WINS</p>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            It <em>is</em> the ecosystem: dependency resolution, the Gemfile workflow,
+            version ranges, yanking, the development loop — and it runs anywhere ruby
+            runs, which is everywhere. For development and for servers you control,
+            per-machine <code class="font-[var(--font-mono)] text-xs">bundle install</code>
+            {' '}is exactly right, and <code class="font-[var(--font-mono)] text-xs">vendor/cache</code>
+            {' '}already makes those deploys offline-capable. Tebako competes with none
+            of this; it consumes its output.
+          </p>
+        </div>
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">WHERE TEBAKO WINS</p>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            Distribution. One resolved tree — app, gems, native extensions compiled once
+            per platform — pressed into a signed, read-only{' '}
+            <code class="font-[var(--font-mono)] text-xs">.tfs</code> image. No gem
+            activation cost replayed on N machines, no "works on my ruby" drift at the
+            user's end, no build tools needed where the app runs. Integrity moves from
+            "TLS to the gem server, per machine, forever" to a per-slot sha256 verified
+            at install with an opt-in OpenPGP signature — fail closed, with named exit
+            codes. Gem signing exists (X.509) but is rare in practice; that is the honest
+            baseline this improves on.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 4 · DMG / MSI ================= -->
+    <div class="mt-16">
+      <h2 class="mb-3">4 · .dmg / .msi — the per-app installers.</h2>
+      <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
+        The transparency gold standard — drag to Applications, click through a wizard.
+        Tebako's standalone mode matches that bar and then asks what one artifact could
+        carry beyond it.
+      </p>
+      <div class="grid gap-4 md:grid-cols-2">
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">WHERE DMG / MSI WIN</p>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            OS-native depth. Code signing with real PKI — Apple notarization through
+            Gatekeeper, Authenticode through SmartScreen — checked by the OS, always on.
+            Enterprise deployment (GPO, transforms, per-machine installs), auto-update
+            frameworks, store distribution, OS-integrated uninstall. A notarized .dmg
+            from a known developer is a genuinely strong integrity story — stronger than
+            an <em>unsigned</em> single-file binary from anywhere, tebako's included.
+          </p>
+        </div>
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">WHERE TEBAKO WINS</p>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            One contract across three operating systems instead of three packaging
+            disciplines (and none at all for linux). Versions and runtime constraints
+            travel inside the artifact; runtimes are shared machine-wide instead of every
+            app embedding its own interpreter copy (the per-app Electron-chromium
+            problem); and opt-in signing verifies the payload slots themselves, not just
+            the outer wrapper. A tebako package is also just a file — no installer, no
+            uninstaller, nothing in the registry.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 5 · DNF / APT ================= -->
+    <div class="mt-16">
+      <h2 class="mb-3">5 · dnf / rpm / apt — the distro channel.</h2>
+      <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
+        The serious incumbent: it manages the <em>whole machine</em>, as root, with an
+        always-on chain of trust. Tebako manages payloads, per user, per process.
+      </p>
+      <div class="grid gap-4 md:grid-cols-2">
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">WHERE DNF / APT WIN</p>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            Everything that comes with owning the OS: GPG-signed repository metadata
+            (InRelease, repomd) verified on every transaction — not opt-in; security
+            update channels with CVE tracking and unattended upgrades; system service
+            integration; shared system libraries deduped across every app on the box;
+            offline mirrors and installation media as first-class citizens. For servers
+            and OS components, nothing on this page competes — tebako included. Its
+            integrity model is stronger than tebako's <em>by default</em>, because it is
+            mandatory.
+          </p>
+        </div>
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">WHERE TEBAKO WINS</p>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            The distro becomes irrelevant. No root anywhere; no dependency resolution
+            against whatever the distro happens to ship this release — the app's exact
+            tree is pressed into the image at build time. The same artifact form runs on
+            any distro, on musl, on macOS, on Windows. Mounts are per-process, so two
+            apps never fight over a system path, and removal leaves no orphans behind.
+            What tebako concedes: signing is opt-in (with a loud legacy-warning
+            transition), where the distro's is compulsory.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 6 · DOCKER ================= -->
+    <div class="mt-16">
+      <h2 class="mb-3">6 · Docker / OCI — user-space containers.</h2>
+      <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
+        Containers virtualize the userland <em>around</em> the app; tebako mounts the
+        app <em>inside</em> the process. Both are "image + run" — at very different
+        weights.
+      </p>
+      <div class="grid gap-4 md:grid-cols-2">
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">WHERE DOCKER WINS</p>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            The platform around the container: registries, compose, kubernetes,
+            networking, volumes, secrets — a language-agnostic ecosystem with a giant
+            image library and dev/prod parity. Layer dedup means ten images on one base
+            cost one base. And the isolation is <em>shipped</em>: namespaces and cgroups
+            are real boundaries today, while tebako's jails are a locked design (planned).
+            If you operate services, this is the tool — tebako has no orchestration
+            answer and doesn't pretend to.
+          </p>
+        </div>
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">WHERE TEBAKO WINS</p>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            Weight and reach. No daemon, no root-equivalent docker group, no engine per
+            host, no Linux-VM tax on macOS/Windows — one file, or one shim, running
+            native on linux gnu/musl, macOS, and Windows. The image mounts in-process
+            through a userland VFS: startup is exec + mount, not a container lifecycle;
+            footprint is megabytes, not a GB-scale content store. And a dockerized
+            desktop app still tells the user to install Docker first — a tebako app's
+            user never learns the word tebako.
+          </p>
+        </div>
+      </div>
+      <p class="mt-4 max-w-2xl text-sm text-[var(--tb-c-text-3)]">
+        Isolation, stated plainly: tebako today is <em>not</em> a security boundary — the
+        memfs is read-only, but host cwd and writes pass through by design. The planned
+        jails declare docker-inspired bind semantics —{' '}
+        <code class="font-[var(--font-mono)] text-xs">binds: [&#123; host_path, mount_path, mode: ro|rw &#125;]</code>,
+        {' '}<code class="font-[var(--font-mono)] text-xs">cwd: rw</code>,{' '}
+        <code class="font-[var(--font-mono)] text-xs">args_only</code> — enforced in the
+        TFS layer: paths outside granted binds are ENOENT, writes to ro binds are EROFS.
+        Until that ships, "container-like isolation" is Docker's win and this page says so.
+      </p>
+    </div>
+
+    <!-- ================= 7 · VMS ================= -->
+    <div class="mt-16">
+      <h2 class="mb-3">7 · VMs — hardware-grade isolation.</h2>
+      <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
+        A VM carries a whole guest OS to run one app safely. Tebako's boundary is the
+        ABI, not a machine.
+      </p>
+      <div class="grid gap-4 md:grid-cols-2">
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">WHERE VMS WIN</p>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            The strongest isolation on this page — a separate kernel and OS behind a
+            hardware boundary, with snapshots, live migration, and a compliance story
+            auditors already accept. A guest can be a <em>different operating system</em>
+            entirely. When hostile code is in scope, nothing lighter is the answer:
+            don't run adversaries in a tebako package; that's what VMs are for.
+          </p>
+        </div>
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">WHERE TEBAKO WINS</p>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            Everything the hypervisor costs: megabytes instead of gigabytes per app, no
+            guest boot (startup is an exec, not a POST), native performance, no
+            hypervisor to install or license — and the artifact is still one file the
+            user double-clicks. A VM isolates a machine; tebako packages an application.
+            They compose better than they compete: tebako apps run fine <em>inside</em>
+            VMs.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= THE MATRIX ================= -->
+    <div class="mt-16">
+      <h2 class="mb-3">The matrix.</h2>
+      <p class="mb-6 max-w-2xl text-[var(--tb-c-text-2)]">
+        Eight axes, eight answers, one line each. Tebako's row mixes shipped behavior and
+        badged plans exactly as the sections above do.
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
+        <table class="w-full min-w-[1240px] text-left text-xs">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider-strong)] font-[var(--font-mono)] text-[0.625rem] text-[var(--tb-c-text-3)]">
+              <th class="px-4 py-3 font-medium">TOOL</th>
+              {axes.map((a) => (
+                <th class="px-4 py-3 font-medium">{a.name.toUpperCase()}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)]">
+            {matrix.map((row) => (
+              <tr style={row.highlight ? 'background: color-mix(in srgb, var(--tb-c-accent) 6%, transparent);' : undefined}>
+                <td class="px-4 py-3 font-[var(--font-mono)] font-medium text-[var(--tb-c-accent)] whitespace-nowrap">{row.tool}</td>
+                {row.cells.map((c) => (
+                  <td class="px-4 py-3 leading-relaxed text-[var(--tb-c-text-2)]">{c}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ================= WHERE TEBAKO LOSES ================= -->
+    <div class="mt-16">
+      <h2 class="mb-3">Where tebako loses, stated plainly.</h2>
+      <ul class="max-w-3xl list-disc space-y-2 pl-6 text-[var(--tb-c-text-2)] marker:text-[var(--tb-c-accent)]">
+        <li>
+          <strong class="text-[var(--tb-c-text-1)]">It is ruby-shaped today.</strong> The
+          published runtimes cover the ruby 3.x and 4.0 lines, built by{' '}
+          <a href={LINKS.runtimeRepo} class="tb-link-underline text-[var(--tb-c-accent)]">tebako-runtime-ruby</a>
+          {' '}from the patched sources at{' '}
+          <a href={LINKS.rubyRepo} class="tb-link-underline text-[var(--tb-c-accent)]">tamatebako/ruby</a>.
+          The contracts are language-neutral; the artifacts are not — yet.
+        </li>
+        <li>
+          <strong class="text-[var(--tb-c-text-1)]">The product is mid-migration.</strong>{' '}
+          The product is the <a href={LINKS.tebakoRs} class="tb-link-underline text-[var(--tb-c-accent)]">tebako-rs</a>
+          {' '}Rust workspace — <a href={LINKS.cliCrate} class="tb-link-underline text-[var(--tb-c-accent)]">tebako-cli</a>
+          {' '}the packager, <a href={LINKS.bootstrapCrate} class="tb-link-underline text-[var(--tb-c-accent)]">tebako-bootstrap</a>
+          {' '}the &lt;3&nbsp;MB runner, plus the tpkg / tfs / tfs-cli / tebako-pkg /
+          tebako-http / tebako-signer crates — parity-verified, but without downloadable
+          releases yet. The old Ruby gem CLI is retired to maintenance mode and remains
+          the released packager until the Rust release pipeline ships. C/C++ survives
+          only in the three factory repos: patched ruby sources, the runtime factory,
+          and <a href={LINKS.dwarfsRepo} class="tb-link-underline text-[var(--tb-c-accent)]">dwarfs-t</a>,
+          {' '}the format library.
+        </li>
+        <li>
+          <strong class="text-[var(--tb-c-text-1)]">No orchestration, no dev loop.</strong>{' '}
+          There is no compose, no kubernetes, no registry of public apps — the planned
+          resolver speaks a deliberately MECE reference syntax (
+          <code class="font-[var(--font-mono)] text-xs">tfs:github:</code> /{' '}
+          <code class="font-[var(--font-mono)] text-xs">tfs:gitlab:</code> /{' '}
+          <code class="font-[var(--font-mono)] text-xs">tfs:bb:</code> for services,{' '}
+          <code class="font-[var(--font-mono)] text-xs">tfs+git://</code> and{' '}
+          <code class="font-[var(--font-mono)] text-xs">tfs+https://</code> for protocols,{' '}
+          <code class="font-[var(--font-mono)] text-xs">file://</code> locally,{' '}
+          <code class="font-[var(--font-mono)] text-xs">?sha256=</code> digest pins on any
+          scheme, and <em>no default service</em>) — not a store. And tebako doesn't
+          develop with you: it presses a finished, resolved app; it is not where you hack.
+        </li>
+        <li>
+          <strong class="text-[var(--tb-c-text-1)]">Per-platform artifacts.</strong>{' '}
+          A standalone package is native code — one artifact per platform triplet, built
+          in a matrix CI job. (The planned registry payload collapses this for pure-ruby
+          apps: one universal image; per-platform only for native extensions.)
+        </li>
+        <li>
+          <strong class="text-[var(--tb-c-text-1)]">The integrity story is opt-in.</strong>{' '}
+          Signing and encryption are the publisher's choice; an unsigned package runs
+          with a loud legacy warning. The distro channel's always-on signed metadata is
+          the stronger default, and this page won't pretend otherwise — tebako's answer
+          is that verification, when a signature exists, is strict and fails closed with
+          named exit codes, never a skip flag.
+        </li>
+      </ul>
+    </div>
+
+    <!-- ============ KEEP READING ============ -->
+    <div class="mt-16 rounded-2xl border border-[var(--tb-c-divider)] p-8" style="background: var(--tb-c-bg-soft);">
+      <h2 class="font-[var(--font-display)] text-xl font-medium">Keep reading.</h2>
+      <p class="mt-3 max-w-2xl leading-relaxed text-[var(--tb-c-text-2)]">
+        <a href="/docs/architecture/overview/" class="tb-link-underline text-[var(--tb-c-accent)]">The overview</a>
+        {' '}for the platform story ·{' '}
+        <a href="/docs/architecture/features/" class="tb-link-underline text-[var(--tb-c-accent)]">the feature surface</a>
+        {' '}for the one-line version of these comparisons ·{' '}
+        <a href="/docs/architecture/chain-of-trust/" class="tb-link-underline text-[var(--tb-c-accent)]">the chain of trust</a>
+        {' '}for the integrity machinery ·{' '}
+        <a href="/docs/architecture/runtime-as-image/" class="tb-link-underline text-[var(--tb-c-accent)]">runtime as image</a>
+        {' '}for the shared cache ·{' '}
+        <a href="/docs/architecture/rust-track/" class="tb-link-underline text-[var(--tb-c-accent)]">the Rust track</a>
+        {' '}for what ships in code today.
+      </p>
+    </div>
+  </section>
+</BaseLayout>

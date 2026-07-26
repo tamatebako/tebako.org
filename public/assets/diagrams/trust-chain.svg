@@ -1,0 +1,147 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 460" role="img" aria-labelledby="title desc">
+  <title id="title">The tebako chain of trust</title>
+  <desc id="desc">An offline root key signs release keys; release keys sign the release manifest; the manifest carries per-artifact SHA256 digests; the package trailer carries per-slot SHA256 and an OpenPGP signature. A merkle root per image is planned.</desc>
+  <style>
+    .bg{fill:#fdf9e8}
+    .card{fill:#ffffff;stroke:#06394a;stroke-opacity:.2;stroke-width:1.5}
+    .inkbox{fill:#06394a;stroke:#06394a;stroke-opacity:.25;stroke-width:1.5}
+    .acctint{fill:#c36242;fill-opacity:.12;stroke:#c36242;stroke-width:1.5}
+    .golddash{fill:#f8b883;fill-opacity:.08;stroke:#f8b883;stroke-width:1;stroke-dasharray:4 3}
+    .t1{fill:#1a2b34}
+    .t2{fill:#4a5b66}
+    .t3{fill:#7a8b94}
+    .acc{fill:#c36242}
+    .plan{fill:#a3691a}
+    .mistpale{fill:#c5d3db}
+    .mist{fill:#96abb8}
+    .goldtext{fill:#f8b883}
+    .arw{stroke:#c36242;stroke-width:2}
+    .arwfill{fill:#c36242}
+    .arwg{stroke:#f8b883;stroke-width:2}
+    .arwgfill{fill:#f8b883}
+    .fd{font-family:ui-sans-serif,system-ui,sans-serif;font-weight:600}
+    .fm{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .fs{font-family:ui-sans-serif,system-ui,sans-serif}
+    @media (prefers-color-scheme: dark){
+      .bg{fill:#062a38}
+      .card{fill:#0a3548;stroke:#f5edd0;stroke-opacity:.2}
+      .acctint{fill:#f8b883;fill-opacity:.14;stroke:#f8b883}
+      .t1{fill:#e8dfc6}
+      .t2{fill:#a8b8c0}
+      .t3{fill:#6a8b9a}
+      .acc{fill:#f8b883}
+      .plan{fill:#f8b883}
+      .arw{stroke:#f8b883}
+      .arwfill{fill:#f8b883}
+    }
+  </style>
+  <defs>
+    <marker id="arw" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 Z" class="arwfill"/>
+    </marker>
+    <marker id="arwg" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 Z" class="arwgfill"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" width="960" height="460" rx="12"/>
+
+  <text x="16" y="28" class="fm t3" font-size="10.5">RELEASE SIDE — one OpenPGP mechanism (rnp-rs) end to end</text>
+
+  <!-- root key -->
+  <g transform="translate(16, 42)">
+    <rect class="inkbox" width="204" height="96" rx="10"/>
+    <text x="102" y="28" text-anchor="middle" class="fd mistpale" font-size="13.5">ROOT KEY</text>
+    <text x="102" y="48" text-anchor="middle" class="fm mist" font-size="9.5">offline · hardware-held</text>
+    <text x="102" y="62" text-anchor="middle" class="fm mist" font-size="9.5">fingerprint published on tebako.org</text>
+    <text x="102" y="84" text-anchor="middle" class="fm goldtext" font-size="9.5">PLANNED — key ceremony</text>
+  </g>
+  <line x1="222" y1="90" x2="240" y2="90" class="arwg" marker-end="url(#arwg)"/>
+  <text x="231" y="80" text-anchor="middle" class="fm t3" font-size="9.5">signs</text>
+
+  <!-- release key -->
+  <g transform="translate(246, 42)">
+    <rect class="card" width="204" height="96" rx="10"/>
+    <text x="102" y="28" text-anchor="middle" class="fd t1" font-size="13.5">RELEASE KEY</text>
+    <text x="102" y="48" text-anchor="middle" class="fm t2" font-size="9.5">signs each release</text>
+    <text x="102" y="62" text-anchor="middle" class="fm t2" font-size="9.5">rotation = signed successor-key stmt</text>
+    <text x="102" y="84" text-anchor="middle" class="fm acc" font-size="9.5">rotation machinery SHIPPED</text>
+  </g>
+  <line x1="452" y1="90" x2="470" y2="90" class="arwg" marker-end="url(#arwg)"/>
+  <text x="461" y="80" text-anchor="middle" class="fm t3" font-size="9.5">signs</text>
+
+  <!-- release manifest -->
+  <g transform="translate(476, 42)">
+    <rect class="card" width="220" height="96" rx="10"/>
+    <text x="110" y="28" text-anchor="middle" class="fd t1" font-size="13.5">RELEASE MANIFEST</text>
+    <text x="110" y="48" text-anchor="middle" class="fm t2" font-size="9.5">manifest.json / SHA256SUMS</text>
+    <text x="110" y="62" text-anchor="middle" class="fm t2" font-size="9.5">per-artifact sha256 digests</text>
+    <text x="110" y="84" text-anchor="middle" class="fm plan" font-size="9.5">PLANNED — signed release manifest</text>
+  </g>
+  <line x1="698" y1="90" x2="716" y2="90" class="arw" marker-end="url(#arw)"/>
+  <text x="707" y="80" text-anchor="middle" class="fm t3" font-size="9.5">verifies</text>
+
+  <!-- artifact -->
+  <g transform="translate(722, 42)">
+    <rect class="acctint" width="222" height="96" rx="10"/>
+    <text x="111" y="28" text-anchor="middle" class="fd acc" font-size="13.5">THE ARTIFACT</text>
+    <text x="111" y="48" text-anchor="middle" class="fm t2" font-size="9.5">runtime image · bootstrap · package</text>
+    <text x="111" y="62" text-anchor="middle" class="fm t2" font-size="9.5">bytes, checked against the manifest</text>
+    <text x="111" y="84" text-anchor="middle" class="fm acc" font-size="9.5">sha256-verified download SHIPPED</text>
+  </g>
+
+  <text x="16" y="176" class="fm t3" font-size="10.5">PACKAGE SIDE — shipped in tebako-rs</text>
+
+  <!-- tpkg v2 trailer -->
+  <g transform="translate(16, 186)">
+    <rect class="card" width="300" height="108" rx="10"/>
+    <text x="150" y="28" text-anchor="middle" class="fd acc" font-size="13">tpkg v2 trailer — SHIPPED</text>
+    <text x="150" y="50" text-anchor="middle" class="fm t2" font-size="9.5">per-slot sha256 array (8 × 32 B)</text>
+    <text x="150" y="64" text-anchor="middle" class="fm t2" font-size="9.5">signer keyid (8 B) · OpenPGP detached signature</text>
+    <text x="150" y="78" text-anchor="middle" class="fm t2" font-size="9.5">canonical bytes signed — flagged, not version-bumped</text>
+    <text x="150" y="96" text-anchor="middle" class="fm t3" font-size="9.5">opt-in: tebako-pkg bundle --sign</text>
+  </g>
+  <line x1="318" y1="240" x2="336" y2="240" class="arw" marker-end="url(#arw)"/>
+
+  <!-- first-run verification -->
+  <g transform="translate(342, 186)">
+    <rect class="card" width="300" height="108" rx="10"/>
+    <text x="150" y="28" text-anchor="middle" class="fd acc" font-size="13">first-run verification — SHIPPED</text>
+    <text x="150" y="50" text-anchor="middle" class="fm t2" font-size="9.5">signature vs the TOFU keyring (trusted.pgp)</text>
+    <text x="150" y="64" text-anchor="middle" class="fm t2" font-size="9.5">then each slot's sha256 — one streaming pass</text>
+    <text x="150" y="82" text-anchor="middle" class="fm acc" font-size="9.5">fail closed: exit 70 sha · 71 sig · 72 trust</text>
+    <text x="150" y="96" text-anchor="middle" class="fm t3" font-size="9.5">named errors, never crashes</text>
+  </g>
+  <line x1="644" y1="240" x2="662" y2="240" class="arw" marker-end="url(#arw)"/>
+
+  <!-- install and run -->
+  <g transform="translate(668, 186)">
+    <rect class="acctint" width="276" height="108" rx="10"/>
+    <text x="138" y="28" text-anchor="middle" class="fd acc" font-size="13">install → run</text>
+    <text x="138" y="50" text-anchor="middle" class="fm t2" font-size="9.5">cache 0444 + .sha256 / .origin markers</text>
+    <text x="138" y="64" text-anchor="middle" class="fm t2" font-size="9.5">re-verify on re-fetch only</text>
+    <text x="138" y="82" text-anchor="middle" class="fm acc" font-size="9.5">no per-run hashing, no per-run ceremony</text>
+  </g>
+
+  <!-- artifact → trailer connector -->
+  <path d="M833 140 L833 162 L166 162 L166 184" fill="none" class="arw" marker-end="url(#arw)"/>
+  <text x="500" y="154" text-anchor="middle" class="fm t3" font-size="9.5">the package carries its own integrity material</text>
+
+  <!-- merkle note -->
+  <g transform="translate(16, 330)">
+    <rect class="golddash" width="460" height="104" rx="10"/>
+    <text x="230" y="30" text-anchor="middle" class="fd plan" font-size="13">merkle root — PLANNED</text>
+    <text x="230" y="52" text-anchor="middle" class="fm t2" font-size="9.5">per-block hash tree, signed root in the manifest</text>
+    <text x="230" y="66" text-anchor="middle" class="fm t2" font-size="9.5">verify-on-read · partial trust of large images</text>
+    <text x="230" y="88" text-anchor="middle" class="fm t3" font-size="9.5">manifests carry merkle roots; the chain above signs them</text>
+  </g>
+
+  <!-- honesty notes -->
+  <g transform="translate(500, 330)">
+    <rect class="golddash" width="444" height="104" rx="10"/>
+    <text x="222" y="30" text-anchor="middle" class="fd plan" font-size="13">honesty notes</text>
+    <text x="222" y="52" text-anchor="middle" class="fm t2" font-size="9.5">crc32 is a corruption check, never authenticity</text>
+    <text x="222" y="66" text-anchor="middle" class="fm t2" font-size="9.5">signing is opt-in — unsigned v1 runs with a loud legacy warning</text>
+    <text x="222" y="88" text-anchor="middle" class="fm t3" font-size="9.5">TEBAKO_REQUIRE_SIGNED=1 rejects legacy — opt-in hardening</text>
+  </g>
+</svg>

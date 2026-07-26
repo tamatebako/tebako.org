@@ -140,6 +140,16 @@ const routing = [
         mounts safe. Images can be mounted from a package slot (file + offset + length),
         from a standalone file, or from memory.
       </p>
+
+      <div class="mt-8 overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-2" style="background: var(--tb-c-bg-soft);">
+        <img src="/assets/diagrams/tfs-router.svg" alt="The TFS router: calls enter through the tebako_fs_* C ABI, the Rust tfs crate dispatches by longest mount-point prefix onto read-only backends — dwarfs-t, squashfs, tar (planned), zip — with the Rust copy-on-write overlay planned above them; paths outside every mount pass through to the host filesystem" class="mx-auto w-full max-w-[960px]" loading="lazy" />
+      </div>
+      <p class="mt-3 max-w-2xl text-sm text-[var(--tb-c-text-3)]">
+        The same dispatch, drawn with the Rust tfs crate in the middle. Every backend is
+        read-only: the copy-on-write overlay is planned and lives <em>only</em> in the Rust
+        TFS core — never in a backend, never in C++ — and dwarfs-t itself is a read-only
+        format whose only write path is the creation-time Writer.
+      </p>
     </div>
 
     <div class="mt-16">
