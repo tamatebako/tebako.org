@@ -131,6 +131,45 @@ const matrix = [
       'ops teams, never end users',
     ],
   },
+  {
+    tool: 'snap',
+    cells: [
+      'the snapd daemon plus per-app squashfs packages',
+      'base and content snaps shared between apps',
+      'cold-start latency: mount + confinement setup',
+      'AppArmor/seccomp — full strength on Ubuntu, varies by host',
+      'store-signed assertions, verified by snapd at install',
+      'installs need the store; installed apps run offline',
+      'linux only — best on Ubuntu',
+      'the user needs snapd and the store',
+    ],
+  },
+  {
+    tool: 'flatpak',
+    cells: [
+      'the flatpak daemon, an ostree repo, and portals',
+      'runtimes shared; ostree dedups content between apps',
+      'near-native once installed',
+      'bubblewrap + portals — a real sandbox, host-dependent',
+      'ostree GPG signatures; Flathub builds from manifests',
+      'needs a remote to install; runs offline after',
+      'desktop linux only',
+      'the user installs flatpak plus a remote',
+    ],
+  },
+  {
+    tool: 'AppImage',
+    cells: [
+      'one file per app — the whole world bundled inside',
+      'none — every app re-carries its runtime',
+      'exec plus a FUSE mount of the embedded image',
+      'none in the format (firejail is a separate add-on)',
+      'no signatures, no chain of trust',
+      'yes — the file is the whole app',
+      'linux only',
+      'total on linux — chmod +x and run',
+    ],
+  },
 ]
 ---
 
@@ -451,11 +490,93 @@ const matrix = [
       </div>
     </div>
 
+    <!-- ================= 8 · SNAP / FLATPAK ================= -->
+    <div class="mt-16">
+      <h2 class="mb-3">8 · snap / flatpak — the store-daemon models.</h2>
+      <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
+        Desktop linux's two store answers: a system daemon, a central (or central-ish)
+        store, sandboxed packages. The sandbox and the update channel are real; so is
+        the machinery tax.
+      </p>
+      <div class="grid gap-4 md:grid-cols-2">
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">WHERE SNAP / FLATPAK WIN</p>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            Discoverability and lifecycle. A store users actually browse — GNOME
+            Software, KDE Discover, the snap store — with ratings, screenshots, and
+            one-click install; daemon-managed auto-updates with rollback, so the
+            publisher ships zero update infrastructure. The sandboxing is <em>shipped</em>:
+            snap's AppArmor/seccomp confinement, flatpak's bubblewrap + portals — real
+            boundaries today, while tebako's jails are planned. Flatpak shares runtimes
+            and dedups content between apps; snap has base and content snaps. And
+            flatpak's model is community-governed with multiple remotes, where the snap
+            store is centrally operated.
+          </p>
+        </div>
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">WHERE TEBAKO WINS</p>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            No daemon, no store gate, no linux-only story. Tebako needs no snapd or
+            flatpak service running, no root, no portals — one file or one shim, the same
+            on linux gnu/musl, macOS, and Windows, where snap/flatpak are desktop-linux
+            only. Distribution is a file from anywhere — your own releases, a mirror, a
+            USB stick; the planned resolver deliberately has <em>no default service</em>,
+            while the snap store is centrally controlled. Startup is exec + in-process
+            mount — not snap's notorious cold-start of squashfs-mount plus confinement
+            setup. And confinement there varies with the host kernel (full AppArmor
+            strength on Ubuntu, degraded elsewhere); tebako's model is identical on every
+            platform because it is per-process userland, not kernel-mediated.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 9 · APPIMAGE ================= -->
+    <div class="mt-16">
+      <h2 class="mb-3">9 · AppImage — the closest neighbor.</h2>
+      <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
+        One file, <code class="font-[var(--font-mono)] text-sm">chmod +x</code>, run. This
+        is the honest neighbor of tebako's standalone mode — the comparison is nearly a
+        hug, and the differences are what the platform adds on top of the trick.
+      </p>
+      <div class="grid gap-4 md:grid-cols-2">
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">WHERE APPIMAGE WINS</p>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            The simplicity is the feature, and AppImage got there first: download one
+            file, make it executable, run it — no daemon, no store, no root, genuinely
+            transparent to the end user. It is a community standard with mature tooling
+            (appimagetool, linuxdeploy), a large catalog, and an optional delta-update
+            companion (AppImageUpdate). For "ship a linux desktop binary," it is the
+            incumbent answer and a good one.
+          </p>
+        </div>
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">WHERE TEBAKO WINS</p>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            Everything around the file. AppImage is linux-only; tebako's contract covers
+            macOS and Windows too. Every AppImage bundles its whole world — no shared
+            runtimes, so ten apps carry ten copies; tebako's lean mode shares one runtime
+            machine-wide. The format has no integrity model — no signatures, no chain of
+            trust — where tebako offers opt-in OpenPGP with per-slot sha256, fail closed.
+            No version management, no jail, no constraint algebra. And the AppImage
+            runtime needs FUSE (or an extract fallback); tebako's VFS is in-process and
+            needs nothing.
+          </p>
+        </div>
+      </div>
+      <p class="mt-4 max-w-2xl text-sm text-[var(--tb-c-text-3)]">
+        Fairness note: AppImage's "bundle the world" is exactly tebako's <em>fat</em>
+        mode — the delta is everything fat mode adds: verification, the shared cache,
+        and the platform contract around the single file.
+      </p>
+    </div>
+
     <!-- ================= THE MATRIX ================= -->
     <div class="mt-16">
       <h2 class="mb-3">The matrix.</h2>
       <p class="mb-6 max-w-2xl text-[var(--tb-c-text-2)]">
-        Eight axes, eight answers, one line each. Tebako's row mixes shipped behavior and
+        Eight axes, eleven answers, one line each. Tebako's row mixes shipped behavior and
         badged plans exactly as the sections above do.
       </p>
       <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
@@ -542,8 +663,11 @@ const matrix = [
     <div class="mt-16 rounded-2xl border border-[var(--tb-c-divider)] p-8" style="background: var(--tb-c-bg-soft);">
       <h2 class="font-[var(--font-display)] text-xl font-medium">Keep reading.</h2>
       <p class="mt-3 max-w-2xl leading-relaxed text-[var(--tb-c-text-2)]">
-        <a href="/docs/architecture/overview/" class="tb-link-underline text-[var(--tb-c-accent)]">The overview</a>
-        {' '}for the platform story ·{' '}
+        The normative spec:{' '}
+        <a href="https://github.com/tamatebako/tebako-rs/blob/main/docs/spec/12-comparisons.md" class="tb-link-underline text-[var(--tb-c-accent)]">docs/spec/12-comparisons.md in tebako-rs</a>
+        {' '}— this page is the friendly version. Then the platform story:{' '}
+        <a href="/docs/architecture/overview/" class="tb-link-underline text-[var(--tb-c-accent)]">the overview</a>
+        {' '}·{' '}
         <a href="/docs/architecture/features/" class="tb-link-underline text-[var(--tb-c-accent)]">the feature surface</a>
         {' '}for the one-line version of these comparisons ·{' '}
         <a href="/docs/architecture/chain-of-trust/" class="tb-link-underline text-[var(--tb-c-accent)]">the chain of trust</a>
