@@ -31,22 +31,23 @@ const html = manual?.rendered?.html ?? ''
     </div>
 
     <a
-      href="/docs/architecture/"
+      href="/docs/architecture/overview/"
       class="group mb-12 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]"
       style="background: var(--tb-c-bg-soft);"
     >
       <div>
-        <p class="tb-eyebrow">NEW · DEEP DIVE</p>
+        <p class="tb-eyebrow">START HERE · PLATFORM OVERVIEW</p>
         <p class="mt-2 font-[var(--font-display)] text-xl font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">
-          The architecture documentation
+          What is Tebako?
         </p>
         <p class="mt-1 max-w-xl text-sm text-[var(--tb-c-text-2)]">
-          The three-part package, the release pipeline, the VFS model, runtime-as-image,
-          the chain of trust, the shipped Rust track, the repo map, the version manager
-          design, and how the contract suites keep it all honest.
+          A portable-application platform: package any Ruby app once, run it anywhere — as a
+          single transparent executable, or as a managed, versioned, signed payload with
+          shared runtimes. Then go deeper: concepts, pipeline, VFS, runtime-as-image, the
+          chain of trust, the Rust track, the repo map, the version manager.
         </p>
       </div>
-      <span class="tb-btn tb-btn-ghost">Read the architecture →</span>
+      <span class="tb-btn tb-btn-ghost">Read the overview →</span>
     </a>
 
     <div class="tb-prose tb-prose-docs" set:html={html} />
