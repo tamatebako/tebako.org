@@ -138,9 +138,12 @@ const trailerFields = [
           <h3 class="mt-1 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">Data image(s)</h3>
           <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
             <code class="font-[var(--font-mono)] text-xs">.tfs</code> filesystem images —
-            the application tree, gems, extra data — produced by mkdwarfs and embedded as
+            the application tree, gems, extra data — created in-process via the dwarfs-t
+            Writer binding (mkdwarfs remains the human-facing tool) and embedded as
             trailer-described slots. The runtime mounts each slot straight out of the
-            package file: no extraction, no temp copies.
+            package file: no extraction, no temp copies. The runtime's own files ship as
+            a <code class="font-[var(--font-mono)] text-xs">.tfs</code> too — see{' '}
+            <a href="/docs/architecture/runtime-as-image/" class="tb-link-underline text-[var(--tb-c-accent)]">runtime as image</a>.
           </p>
         </div>
       </div>
@@ -156,6 +159,9 @@ const trailerFields = [
         <a href={LINKS.libtfsTpkg} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">include/tebako/tpkg.h in libtfs</a>
         {' '}— and <a href={LINKS.bootstrapTpkg} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">vendored byte-for-byte into tebako-bootstrap</a>.
         The reader checks magic and CRC, then walks the slot table backwards from EOF.
+        A signed <strong class="text-[var(--tb-c-text-1)]">v2 extension</strong> (per-slot
+        sha256 + OpenPGP signature, flagged — the version field stays 1) now exists in
+        tebako-rs: see <a href="/docs/architecture/chain-of-trust/" class="tb-link-underline font-medium text-[var(--tb-c-accent)]">the chain of trust</a>.
       </p>
 
       <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
@@ -195,7 +201,8 @@ const trailerFields = [
       <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
         <code class="rounded bg-[var(--tb-c-divider)] px-1.5 py-0.5 font-[var(--font-mono)] text-sm text-[var(--tb-c-accent)]">tebako press</code>
         {' '}from the <a href={LINKS.gemRubygems} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">tebako gem</a>
-        {' '}produces all three package shapes. See the <a href="/docs/" class="tb-link-underline font-medium text-[var(--tb-c-accent)]">manual</a> for the full CLI reference.
+        {' '}produces all three package shapes (the Rust tebako-cli presses lean/fat with golden
+        byte-parity). See the <a href="/docs/" class="tb-link-underline font-medium text-[var(--tb-c-accent)]">manual</a> for the full CLI reference.
       </p>
       <div class="grid gap-4 sm:grid-cols-3">
         <div class="tb-card p-6">
@@ -240,6 +247,20 @@ const trailerFields = [
         installs are impossible. Every tebako package on the machine — gem-pressed or not —
         shares the same cache.
       </p>
+      <div class="mt-6 rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+        <p class="text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          <strong class="text-[var(--tb-c-text-1)]">The image-era form.</strong> With the{' '}
+          <a href="/docs/architecture/runtime-as-image/" class="tb-link-underline font-medium text-[var(--tb-c-accent)]">runtime-as-image split</a>,
+          an entry holds immutable artifacts and their trusted markers only: the interpreter,
+          the <code class="font-[var(--font-mono)] text-xs">.tfs</code> image (read-only, 0444),
+          and <code class="font-[var(--font-mono)] text-xs">.sha256</code>/<code class="font-[var(--font-mono)] text-xs">.origin</code>
+          {' '}markers proving it was verified at install. No extracted{' '}
+          <code class="font-[var(--font-mono)] text-xs">layout/</code> tree lives in the cache
+          anymore — when the press side needs the runtime's files it extracts the image
+          in-process, per press, into the build prefix. The marker is the trust anchor:
+          re-verify on re-fetch, never per run.
+        </p>
+      </div>
     </div>
 
     <div class="mt-16">

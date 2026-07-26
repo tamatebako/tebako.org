@@ -9,6 +9,7 @@ const LINKS = {
   capiHeader: 'https://github.com/tamatebako/libtfs/blob/main/include/tebako/fs/c_api.h',
   capiTests: 'https://github.com/tamatebako/libtfs/blob/main/tests/test_c_api.cpp',
   dwarfsRepo: 'https://github.com/tamatebako/dwarfs-t',
+  rsTfs: 'https://github.com/tamatebako/tebako-rs/tree/main/crates/tfs',
   rubyRepo: 'https://github.com/tamatebako/ruby',
 }
 
@@ -75,7 +76,13 @@ const routing = [
         was removed, leaving exactly 24 exports, declared in{' '}
         <a href={LINKS.capiHeader} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">include/tebako/fs/c_api.h</a>.
         Because the contract is a C ABI, consumers don't care which implementation — or which
-        repository — ships it.
+        repository — ships it. Two implementations now exist: the C++ one below, and the Rust{' '}
+        <a href={LINKS.rsTfs} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">tfs crate</a>
+        {' '}in tebako-rs — a drop-in libtfs.so/.dylib/.dll/.a exporting exactly 33{' '}
+        <code class="font-[var(--font-mono)] text-xs">tebako_*</code> symbols, nm-verified
+        (the 24-function contract surface plus{' '}
+        <code class="font-[var(--font-mono)] text-xs">tebako_fs_abi_version</code> and eight
+        compat/introspection helpers — nothing else leaks).
       </p>
 
       <div class="space-y-4">
@@ -94,7 +101,9 @@ const routing = [
       <p class="mt-4 max-w-2xl text-sm text-[var(--tb-c-text-3)]">
         The full behavior contract is executable: the{' '}
         <a href={LINKS.capiTests} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">c_api test suite</a>
-        {' '}registers 493 tests under ctest — the same suite the Rust reimplementation must pass as its parity gate.
+        {' '}registers 493 tests under ctest on the C++ side — the parity oracle. The Rust
+        workspace runs the ported cases through its own C ABI (164 today, the full sweep
+        following the same pattern; the audit is in tebako-rs's docs/parity.md).
       </p>
     </div>
 
