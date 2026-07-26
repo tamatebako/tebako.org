@@ -1,0 +1,223 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro'
+import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import StatusPill from '../../../components/docs/StatusPill.astro'
+
+const LINKS = {
+  tpkgLib: 'https://github.com/tamatebako/tebako-rs/blob/main/crates/tpkg/src/lib.rs',
+  signer: 'https://github.com/tamatebako/tebako-rs/blob/main/crates/tebako-signer/src/lib.rs',
+  bootstrapCrate: 'https://github.com/tamatebako/tebako-rs/tree/main/crates/tebako-bootstrap',
+  pkgCrate: 'https://github.com/tamatebako/tebako-rs/tree/main/crates/tebako-pkg',
+  rnpRs: 'https://github.com/rnpgp/rnp-rs',
+}
+
+const exitCodes = [
+  { code: '65', meaning: 'manifest missing, corrupt, or structurally invalid', kind: 'v1' },
+  { code: '66', meaning: 'launcher ABI mismatch (package requires newer bootstrap)', kind: 'v1' },
+  { code: '67', meaning: 'runtime_ref missing or unparsable', kind: 'v1' },
+  { code: '69', meaning: 'runtime unavailable: not cached and unreachable / offline / lock timeout', kind: 'v1' },
+  { code: '70', meaning: 'SHA256 mismatch — downloaded or embedded payload deleted, cache untouched', kind: 'v1' },
+  { code: '71', meaning: 'signature verification failed — the package\u2019s OpenPGP signature does not verify', kind: 'v2' },
+  { code: '72', meaning: 'trust error — the signer key is not in the trusted keyring', kind: 'v2' },
+  { code: '74', meaning: 'local I/O failure (cache not writable, exec failed, …)', kind: 'v1' },
+]
+
+const chainSteps = [
+  {
+    name: 'Root of trust',
+    body: 'One signature mechanism for the whole project: OpenPGP via rnp/rnp-rs over librnp. The tamatebako release keypair\u2019s root fingerprint is to be published on tebako.org and embedded in the artifacts; rotation happens via a signed successor-key statement, with a documented revocation procedure.',
+    status: 'planned',
+  },
+  {
+    name: 'Production (releases)',
+    body: 'Every released part — runtime packages, bootstrap, src tarballs, libtfs packages — ships a detached .asc per artifact plus a signed release manifest: one verify path for all. This is the release-side phase; the format and verifier below are ready for it.',
+    status: 'planned',
+  },
+  {
+    name: 'tpkg trailer v2',
+    body: 'The trailer gains a per-slot sha256 array, the signer keyid, and an OpenPGP signature block over the canonical trailer bytes. crc32 stays as the cheap corruption check — documented as non-authentic. v1 trailers still parse; the version field stays 1.',
+    status: 'shipped',
+  },
+  {
+    name: 'Press-time verification',
+    body: 'tebako-cli verifies release signatures before using any part — fail closed. The trusted keyring lives in $TEBAKO_HOME/keyring/trusted.pgp; additional signer keys are TOFU-registered with a named prompt.',
+    status: 'shipped',
+  },
+  {
+    name: 'Bundle-time signing — OPT-IN',
+    body: 'tebako-pkg bundle --sign[=keyid] signs; without it the package carries no v2 extension at all — no key, no prompt, no ceremony. A press-local Ed25519 key is generated under $TEBAKO_HOME/keys only on the first explicit --sign, and auto-registered locally so dev iteration never produces or accepts unsigned artifacts.',
+    status: 'shipped',
+  },
+  {
+    name: 'First-run verification',
+    body: 'The bootstrap verifies the trailer signature against the keyring, then each slot\u2019s sha256 before mounting or extracting it — one streaming pass at install time, with a trusted-cache marker avoiding re-hashing every run. Failures are named exit codes, never crashes.',
+    status: 'shipped',
+  },
+  {
+    name: 'Fail closed everywhere',
+    body: 'No insecure-skip flag exists. Verification of signed packages is always strict; only the presence of a signature is optional.',
+    status: 'shipped',
+  },
+  {
+    name: 'The v1-legacy rule',
+    body: 'Unsigned v1 packages exist in the wild and must not become un-runnable: a v2-verify bootstrap accepts them as LEGACY with a loud stderr warning (recorded in its audit journal), while v2-signed packages get full verification. Rejecting legacy is a separate explicit opt-in — TEBAKO_REQUIRE_SIGNED=1 — for hardened environments, never the default during transition.',
+    status: 'shipped',
+  },
+]
+---
+
+<BaseLayout title="The chain of trust — Tebako architecture" description="Binary-part integrity and authenticity: tpkg v2, opt-in OpenPGP signing, named verification exit codes, and the v1-legacy rule.">
+  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
+    <p class="tb-eyebrow">ARCHITECTURE · 05</p>
+    <h1 class="mt-3">The chain of trust.</h1>
+    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      Package parts travel over mirrors and get shared between machines. How do we know
+      they were not messed with? The answer is a chain: one root key, one signature
+      mechanism, and verification at every hand-off — with honesty about what a checksum
+      can and cannot prove.
+    </p>
+
+    <ArchDocsNav />
+
+    <div class="mt-12 rounded-2xl border p-6" style="border-color: var(--color-gold); background: color-mix(in srgb, var(--color-gold) 6%, transparent);">
+      <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">STATED PLAINLY</p>
+      <p class="mt-2 leading-relaxed text-[var(--tb-c-text-2)]">
+        <strong class="text-[var(--tb-c-text-1)]">crc32 in the tpkg trailer is not authenticity.</strong>
+        {' '}It is an accident-integrity check — it catches a truncated download or a flipped
+        byte, and nothing more. Likewise, HTTPS + a sha256 from the <em>same channel</em> as
+        the download protects the transport, not the object: whoever swaps the artifact swaps
+        the manifest too. Authenticity starts at the OpenPGP signature — anything short of it
+        is a corruption check, and these docs call it that.
+      </p>
+    </div>
+
+    <div class="mt-16">
+      <h2 class="mb-6">The chain, link by link.</h2>
+      <div class="space-y-4">
+        {chainSteps.map((s, i) => (
+          <div class="flex gap-4 rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+            <span class="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-[var(--tb-c-accent)] font-[var(--font-mono)] text-xs font-semibold text-[var(--tb-c-accent)]">{i + 1}</span>
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-3">
+                <p class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)]">{s.name}</p>
+                <StatusPill status={s.status as 'shipped' | 'planned'} />
+              </div>
+              <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">{s.body}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      <p class="mt-4 max-w-2xl text-sm text-[var(--tb-c-text-3)]">
+        "Shipped" here means implemented and tested in{' '}
+        <a href={LINKS.pkgCrate} class="tb-link-underline text-[var(--tb-c-accent)]">tebako-rs</a>
+        {' '}— the workspace's own release pipeline (the distribution channel) is still planned,
+        so these binaries are not yet downloadable.
+      </p>
+    </div>
+
+    <div class="mt-16">
+      <div class="mb-3 flex flex-wrap items-center gap-3">
+        <h2>tpkg v2: the wire layout.</h2>
+        <StatusPill status="shipped" note="crates/tpkg" />
+      </div>
+      <p class="mb-6 max-w-2xl text-[var(--tb-c-text-2)]">
+        v2 puts the integrity material <em>between</em> the slot table and the header, keeping
+        the header exactly where v1 readers expect it — at EOF, version field still 1. Signing
+        is flagged by <code class="font-[var(--font-mono)] text-sm">TPKG_FLAG_SIGNED_V2</code>
+        {' '}(bit 1 of package_flags), which old readers pass through untouched: v1-era runtimes
+        keep reading v2 packages exactly as before; they just don't verify. The authoritative
+        reference is{' '}
+        <a href={LINKS.tpkgLib} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">crates/tpkg/src/lib.rs</a>.
+      </p>
+      <pre class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)] sm:text-sm" style="background: var(--tb-c-bg-soft);"><code>[payload][slot records][v2 extension][trailer header (166 B, at EOF)]
+
+v2 extension — 268 B fixed + variable signature (all-new numerics big-endian):
+  offset        size  field
+       0        256   slot sha256 digests: 8 × 32 B — digest of slot i's bytes
+                      at i*32; entries beyond slot_count are zeroed
+     256          8   signer keyid (low 64 bits of the OpenPGP fingerprint, BE)
+     264    sig_len   OpenPGP detached signature (binary packets)
+264+sig_len      4    u32be signature length (1..TPKG_SIG_MAX)
+
+canonical signed bytes = slot table ‖ digest array ‖ keyid ‖ trailer header
+(everything except the signature and its length field)</code></pre>
+      <p class="mt-4 max-w-2xl text-sm text-[var(--tb-c-text-3)]">
+        Detection: parse the v1 header at EOF as always; if the signed flag is set, an
+        extension of exactly 256 + 8 + sig_len + 4 bytes must fill the gap between the slot
+        table and the header, with the digest tail zeroed. A flag-clear trailer has no
+        extension and parses exactly as v1 — the legacy-unsigned case below.
+      </p>
+    </div>
+
+    <div class="mt-16">
+      <div class="mb-3 flex flex-wrap items-center gap-3">
+        <h2>The signer.</h2>
+        <StatusPill status="shipped" note="crates/tebako-signer" />
+      </div>
+      <p class="max-w-2xl text-[var(--tb-c-text-2)]">
+        <a href={LINKS.signer} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">crates/tebako-signer</a>
+        {' '}is the one OpenPGP half of the chain —{' '}
+        <a href={LINKS.rnpRs} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">rnp-rs</a>
+        {' '}over librnp, <code class="font-[var(--font-mono)] text-sm">#![forbid(unsafe_code)]</code>.
+        It owns the press-local Ed25519 key (generated once per machine under{' '}
+        <code class="font-[var(--font-mono)] text-sm">$TEBAKO_HOME/keys</code>), the trusted
+        keyring (<code class="font-[var(--font-mono)] text-sm">trusted.pgp</code>, TOFU
+        registration with named outcomes), and detached sign/verify that classifies into
+        Trusted / Untrusted / Invalid — the outcomes the named trust errors map onto.
+        Rewrite operations (insert-image / remove-image / set-runtime / reassemble) preserve
+        the input's signing state.
+      </p>
+    </div>
+
+    <div class="mt-16">
+      <div class="mb-3 flex flex-wrap items-center gap-3">
+        <h2>Named failure exits.</h2>
+        <StatusPill status="shipped" note="tebako-bootstrap (Rust)" />
+      </div>
+      <p class="mb-6 max-w-2xl text-[var(--tb-c-text-2)]">
+        Verification failures are named exit codes with full message bodies — never silent,
+        never a crash. The v2 codes join the v1 set unchanged:
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
+        <table class="w-full min-w-[560px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider-strong)] font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+              <th class="px-5 py-3 font-medium">CODE</th>
+              <th class="px-5 py-3 font-medium">MEANING</th>
+              <th class="px-5 py-3 font-medium">SINCE</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)]">
+            {exitCodes.map((e) => (
+              <tr>
+                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs font-semibold text-[var(--tb-c-accent)]">{e.code}</td>
+                <td class="px-5 py-2.5 text-[var(--tb-c-text-2)]">{e.meaning}</td>
+                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">{e.kind}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-4 max-w-2xl text-sm text-[var(--tb-c-text-3)]">
+        End-to-end behavior: a tampered runtime download is refused with the sha error; a
+        tampered image slot names its sha256 mismatch at first run; an unregistered signer
+        key is exit 72 — a trust error, not a crash.
+      </p>
+    </div>
+
+    <div class="mt-16">
+      <div class="mb-3 flex flex-wrap items-center gap-3">
+        <h2>What is still planned.</h2>
+        <StatusPill status="planned" note="phase 2 — release side" />
+      </div>
+      <p class="max-w-2xl text-[var(--tb-c-text-2)]">
+        The package-side machinery is shipped in tebako-rs; the release-side wrap is not:
+        publication of the tamatebako root fingerprint on this site, detached{' '}
+        <code class="font-[var(--font-mono)] text-sm">.asc</code> signatures per released
+        artifact plus a signed release manifest, key rotation and revocation procedures, and
+        signing of the runtime download manifest itself. Until then, the chain's release link
+        rests on the sha256-verified release index — transport-checked, not yet object-signed.
+      </p>
+    </div>
+  </section>
+</BaseLayout>
