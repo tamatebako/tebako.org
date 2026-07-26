@@ -9,17 +9,33 @@ const repos = [
   {
     name: 'dwarfs-t',
     href: `${GH}/dwarfs-t`,
-    role: 'Thrift-free DwarFS fork — the high-compression read-only filesystem at the bottom of the stack.',
+    role: 'Thrift-free DwarFS fork — the high-compression read-only filesystem at the bottom of the stack, plus the dwarfs_c_* C ABI (writer included) that Rust binds.',
     state: 'Active',
     fate: 'C++ forever by decision (it tracks upstream DwarFS format evolution). Never archived — the foundation, not a legacy repo.',
     status: 'shipped',
   },
   {
+    name: 'dwarfs-t-rs',
+    href: `${GH}/dwarfs-t-rs`,
+    role: 'Standalone Rust binding to dwarfs-t: the safe dwarfs-t crate (reader + in-process Writer) over dwarfs-t-sys\u2019s hand-pinned FFI. Consumed by tebako-rs as an ordinary external dependency.',
+    state: 'Active',
+    fate: 'Active forever — general-purpose, crates.io-bound (tags + cargo publish + docs.rs when it publishes). Never inside tebako-rs.',
+    status: 'shipped',
+  },
+  {
     name: 'libtfs',
     href: `${GH}/libtfs`,
-    role: 'The VFS engine: tebako_fs_* C ABI (24 exports, multi-mount), dwarfs/squashfs/zip backends, mkdwarfs + tebakofs binaries. Currently v0.13.0.',
+    role: 'The C++ VFS engine: tebako_fs_* C ABI (24 exports, multi-mount), dwarfs/squashfs/zip backends, mkdwarfs + tebakofs binaries. Currently v0.13.0 — the parity oracle for the Rust tfs crate.',
+    state: 'Active (oracle)',
+    fate: 'Maintenance (security/critical fixes only) once tebako-rs ships tebako_fs_* parity RELEASES AND tebako-runtime-ruby consumes them — the tfs crate is at parity in the workspace; the releases are the pending step. Archival gate below.',
+    status: 'shipped',
+  },
+  {
+    name: 'tebako-rs',
+    href: `${GH}/tebako-rs`,
+    role: 'The Rust workspace: tpkg, tfs, tebako-pkg, tfs-cli, tebako-cli, tebako-bootstrap, tebako-http, tebako-signer, sqfs-sys — all shipped and oracle-verified. No downloadable releases yet.',
     state: 'Active',
-    fate: 'Maintenance (security/critical fixes only) once tebako-rs ships tebako_fs_* parity releases AND tebako-runtime-ruby consumes them. Archival gate below.',
+    fate: 'The future home of the CLI, the ABI implementation, the bootstrap, and the shim. Release pipeline (signed per-platform binaries) is the open item.',
     status: 'shipped',
   },
   {
@@ -33,7 +49,7 @@ const repos = [
   {
     name: 'tebako-runtime-ruby',
     href: `${GH}/tebako-runtime-ruby`,
-    role: 'The runtime factory: builds patched source per ruby × platform, publishes runtime packages + manifest.json. Currently v0.15.9 — 114 packages.',
+    role: 'The runtime factory: builds patched source per ruby × platform, publishes runtime packages + manifest.json. Currently v0.15.9 — 114 packages; dual-publish of .tfs runtime images alongside the executables is rolling out.',
     state: 'Active',
     fate: 'Never archived — build/metadata tooling (not C++).',
     status: 'shipped',
@@ -41,17 +57,17 @@ const repos = [
   {
     name: 'tebako',
     href: `${GH}/tebako`,
-    role: 'The gem: press (lean/fat/classic), scenario + Gemfile handling, runtime/bootstrap resolution, cache CLI. The executable spec of press semantics.',
-    state: 'Active',
-    fate: 'Maintenance once tebako-cli reaches lean/fat/classic press parity. Archival gate below.',
+    role: 'The gem: press (lean/fat/classic), scenario + Gemfile handling, runtime/bootstrap resolution, cache CLI. The reference implementation tebako-cli was ported against (golden byte-parity).',
+    state: 'Maintenance-bound',
+    fate: 'Retires at 0.15.x with a deprecation note once tebako-cli ships releases (owner decision 2026-07-26: tebako-cli IS the product; a pure-Ruby installer shim may preserve the gem-install habit — an FFI wrapper was evaluated and rejected). Archival gate below.',
     status: 'shipped',
   },
   {
     name: 'tebako-bootstrap',
     href: `${GH}/tebako-bootstrap`,
-    role: 'The C99 launcher (part A of the three-part package). Currently v0.2.0 — six platform binaries, 32–908 KB.',
-    state: 'Active',
-    fate: 'Maintenance (tiny C++; may be re-done in Rust). Archived only if a Rust bootstrap ships and is consumed.',
+    role: 'The C99 launcher (part A of the three-part package), v0.2.0 — six platform binaries, 32–908 KB. Now the behavioral oracle for the Rust tebako-bootstrap crate.',
+    state: 'Maintenance',
+    fate: 'Stays the released default until the tebako-rs release pipeline ships; archived only when the Rust bootstrap ships and is consumed as the bootstrap slot.',
     status: 'shipped',
   },
   {
@@ -83,24 +99,8 @@ const repos = [
     href: `${GH}/fmem`,
     role: 'Cross-platform memory-backed libc streams — a dependency of the legacy stack.',
     state: 'Orphaned',
-    fate: 'No longer consumed by any repo in the modern stack (libtfs mounts images from memory directly). Archival candidate; not yet archived on GitHub.',
+    fate: 'The archival candidate: no longer consumed by any repo in the modern stack (libtfs mounts images from memory directly). Still not archived on GitHub as of this writing — it goes when the owners pull the trigger, not before.',
     status: 'shipped',
-  },
-  {
-    name: 'tebako-rs',
-    href: `${GH}`,
-    role: 'The Rust workspace: crates tpkg, tfs (libtfs-rs), tebako-pkg, tebako-cli, tebako-bootstrap, plus the imported contract suite.',
-    state: 'Planned',
-    fate: 'The future home of the CLI, the ABI implementation, and the bootstrap — see the Rust track.',
-    status: 'planned',
-  },
-  {
-    name: 'dwarfs-rs',
-    href: `${GH}`,
-    role: 'Standalone Rust binding (dwarfs-sys + safe wrapper) for the C API that will live inside dwarfs-t — crates.io-bound, its own CI, never inside tebako-rs.',
-    state: 'Planned',
-    fate: 'Active forever once created — a general-purpose binding, not tebako-specific.',
-    status: 'planned',
   },
 ]
 
@@ -108,24 +108,24 @@ const gates = [
   {
     repo: 'libtfs (C++)',
     href: `${GH}/libtfs`,
-    gate: 'libtfs-rs parity sustained for 2 consecutive releases + tebako-runtime-ruby pinned to tebako-rs + the gem/CLI fully off C-libtfs.',
+    gate: 'libtfs-rs parity sustained for 2 consecutive releases + tebako-runtime-ruby pinned to tebako-rs + the gem/CLI fully off C-libtfs. Progress: the tfs crate is at parity in the workspace — the releases do not exist yet.',
   },
   {
     repo: 'tebako (gem)',
     href: `${GH}/tebako`,
-    gate: 'tebako-cli press parity (lean/fat/classic) green end-to-end on 3 platforms + one full release cycle of dual availability.',
+    gate: 'tebako-cli press parity (lean/fat/classic) green end-to-end on 3 platforms + one full release cycle of dual availability. Progress: golden byte-parity for lean/fat is proven in CI; classic mode and the tebako-rs releases are pending.',
   },
   {
     repo: 'tebako-bootstrap',
     href: `${GH}/tebako-bootstrap`,
-    gate: 'Only if a Rust bootstrap ships and is consumed by tebako-pkg/tebako-cli as the bootstrap slot.',
+    gate: 'Only if a Rust bootstrap ships and is consumed by tebako-pkg/tebako-cli as the bootstrap slot. Progress: the Rust bootstrap is behavior-complete and size-gated in the workspace; tebako-cli already defaults to it in-workspace — consumption via released binaries is the pending step.',
   },
 ]
 ---
 
 <BaseLayout title="Repository map and lifecycle — Tebako architecture" description="Every tamatebako repository, its role, its shipped state, and its archival gate.">
   <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">ARCHITECTURE · 04</p>
+    <p class="tb-eyebrow">ARCHITECTURE · 07</p>
     <h1 class="mt-3">Repository map &amp; lifecycle.</h1>
     <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
       The stack is a fleet of small repos, each owning one artifact and one contract.
@@ -149,15 +149,11 @@ const gates = [
           {repos.map((r) => (
             <tr>
               <td class="px-5 py-3 font-[var(--font-mono)] text-xs whitespace-nowrap">
-                {r.name === 'tebako-rs' || r.name === 'dwarfs-rs'
-                  ? <span class="text-[var(--tb-c-text-2)]">{r.name}</span>
-                  : <a href={r.href} class="tb-link-underline text-[var(--tb-c-accent)]">{r.name}</a>}
+                <a href={r.href} class="tb-link-underline text-[var(--tb-c-accent)]">{r.name}</a>
               </td>
               <td class="px-5 py-3 text-[var(--tb-c-text-2)]">{r.role}</td>
               <td class="px-5 py-3 whitespace-nowrap">
-                {r.status === 'planned'
-                  ? <StatusPill status="planned" />
-                  : <span class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-2)]">{r.state}</span>}
+                <span class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-2)]">{r.state}</span>
               </td>
               <td class="px-5 py-3 text-[var(--tb-c-text-2)]">{r.fate}</td>
             </tr>
@@ -191,7 +187,8 @@ const gates = [
           <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
             The <code class="font-[var(--font-mono)] text-xs">tebako_fs_*</code> ABI and the tpkg
             trailer are byte-level contracts. Consumers don't care which repo ships them — that's
-            what makes a Rust reimplementation possible without flag days.
+            what made the Rust reimplementation possible without flag days, and the C++ side now
+            serves as the parity oracle for exactly that reason.
           </p>
         </div>
         <div class="tb-card p-6">
@@ -207,14 +204,16 @@ const gates = [
           <h3 class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">Maintenance mode is a state, not a graveyard</h3>
           <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
             A maintenance-mode repo still gets security and critical fixes. It stops getting
-            features — and it leaves maintenance mode if its replacement slips.
+            features — and it leaves maintenance mode if its replacement slips. The C++
+            bootstrap is exactly here: released default, oracle for its Rust successor.
           </p>
         </div>
         <div class="tb-card p-6">
           <h3 class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">dwarfs-t is not legacy</h3>
           <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
             A Rust DwarFS reader/writer is explicitly out of scope. The only Rust-consumable
-            surface will be a C API inside dwarfs-t itself, co-versioned with the C++ it wraps.
+            surface is the C API inside dwarfs-t itself, co-versioned with the C++ it wraps —
+            which is what dwarfs-t-rs binds.
           </p>
         </div>
       </div>
