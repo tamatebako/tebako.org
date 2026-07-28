@@ -658,12 +658,15 @@ jobs:
         <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
           <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">02 · THE IMAGE ERA</p>
           <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-            Everything is a <code class="font-[var(--font-mono)] text-xs">.tfs</code> image now — your app,
-            and the runtime itself — with dwarfs-t-native (FlatBuffers) metadata, built in-process: no
-            mkdwarfs binary anywhere, no FUSE, no extraction. Cache entries hold the image plus{' '}
+            Your app ships as a <code class="font-[var(--font-mono)] text-xs">.tfs</code> image with
+            dwarfs-t-native (FlatBuffers) metadata, built in-process: no mkdwarfs binary anywhere,
+            no FUSE, no extraction. The runtime is transitioning to the same form — image-era releases
+            carry it as a <code class="font-[var(--font-mono)] text-xs">.tfs</code> with{' '}
             <code class="font-[var(--font-mono)] text-xs">.sha256</code>/{' '}
-            <code class="font-[var(--font-mono)] text-xs">.origin</code> trust markers instead of an
-            extracted tree. Details: <a href={LINKS.runtimeAsImage} class="tb-link-underline text-[var(--tb-c-accent)]">runtime as image</a>.
+            <code class="font-[var(--font-mono)] text-xs">.origin</code> trust markers; where a release
+            still ships the classic package, the cache keeps an extracted layout instead. Both forms
+            share the same cache and the same packages run against either. Details:{' '}
+            <a href={LINKS.runtimeAsImage} class="tb-link-underline text-[var(--tb-c-accent)]">runtime as image</a>.
           </p>
         </div>
         <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
@@ -768,21 +771,29 @@ entries:
           <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
             <code class="font-[var(--font-mono)] text-xs">tebako press --suite suite.yaml -o myproduct</code>{' '}
             (lean only; <code class="font-[var(--font-mono)] text-xs">-r</code>/{' '}
-            <code class="font-[var(--font-mono)] text-xs">-e</code> come from the suite file).
+            <code class="font-[var(--font-mono)] text-xs">-e</code> come from the suite file). Verified:
+            the package runs entries[0] by default, and a symlink named after an entry runs that entry.
           </p>
         </div>
         <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
           <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">JAILS · HOST-ACCESS POLICY</p>
           <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-            v1 packages saw the host filesystem with no policy at all. v2 enforces docker{' '}
-            <code class="font-[var(--font-mono)] text-xs">-v</code>-style jails at the VFS layer
-            (denied paths fail EPERM, writes to read-only grants fail EROFS):
+            v1 packages saw the host filesystem with no policy at all. v2 has the enforcement engine
+            in the VFS layer (docker <code class="font-[var(--font-mono)] text-xs">-v</code> semantics;
+            denied paths fail EPERM, writes to read-only grants fail EROFS;{' '}
+            <code class="font-[var(--font-mono)] text-xs">tfs exec &lt;image&gt; --jail &lt;spec&gt; -- &lt;cmd&gt;</code>{' '}
+            is the shipped surface for native binaries under the preload shim):
           </p>
-          <pre class="mt-3 overflow-x-auto rounded-xl border border-[var(--tb-c-divider)] p-4 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)]"><code>TEBAKO_JAIL='deny;/home/u/src:/work:rw;@/home/u/input.csv' ./myapp
-#  default open|deny ; host:mount:ro|rw grants ; @file = read-only arg file</code></pre>
+          <pre class="mt-3 overflow-x-auto rounded-xl border border-[var(--tb-c-divider)] p-4 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)]"><code>#  spec grammar: default open|deny ; host:mount:ro|rw grants ; @file = read-only arg file
+tfs exec app.tfs:/__tebako_memfs__ --jail 'deny;/home/u/src:/work:rw' -- /bin/tool in.csv</code></pre>
           <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-            Filesystem-only, honestly scoped: no network confinement, and statically-linked binaries
-            outside the shim are not covered.
+            Honestly scoped, with two limits a v1 user should know today. It is filesystem-only (no
+            network confinement). And it does not reach pressed packages yet:{' '}
+            <strong class="text-[var(--tb-c-text-1)]">a pressed app ignores{' '}
+            <code class="font-[var(--font-mono)] text-xs">TEBAKO_JAIL</code></strong> (verified — the
+            package reads the host unaffected by it), and in our Linux container the shim's mount of a
+            dwarfs-t app image answered ENOTSUP. The dispatch-surface and manifest integration are the
+            planned next step (spec 08); treat jails as in-flight, not as a migration blocker.
           </p>
         </div>
       </div>
