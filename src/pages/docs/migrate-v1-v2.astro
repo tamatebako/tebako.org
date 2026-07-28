@@ -1,0 +1,833 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro'
+
+const LINKS = {
+  v2repo: 'https://github.com/tamatebako/tebako',
+  v2releases: 'https://github.com/tamatebako/tebako/releases',
+  v2releaseYml: 'https://github.com/tamatebako/tebako/blob/main/.github/workflows/release.yml',
+  v1repo: 'https://github.com/tamatebako/tebako-v1',
+  gem: 'https://rubygems.org/gems/tebako',
+  runtimeRepo: 'https://github.com/tamatebako/tebako-runtime-ruby',
+  specIndex: 'https://github.com/tamatebako/tebako/blob/main/docs/spec/00-INDEX.md',
+  fontistFixture: 'https://github.com/tamatebako/tebako/tree/main/crates/tebako-cli/tests/fixtures/fontist-app',
+  runtimeAsImage: '/docs/architecture/runtime-as-image/',
+  concepts: '/docs/architecture/',
+}
+
+const flagMap = [
+  { v1: '-r, --root', v2: '-r, --root', note: 'unchanged' },
+  { v1: '-e, --entry-point (--entry)', v2: '-e, --entry-point (--entry)', note: 'unchanged' },
+  { v1: '-o, --output', v2: '-o, --output', note: 'unchanged (entry-point base name in the current folder by default)' },
+  { v1: '-p, --prefix', v2: '-p, --prefix', note: 'unchanged (packaging work area, ~/.tebako by default)' },
+  { v1: '-c, --cwd', v2: '-c, --cwd', note: 'unchanged (packaged app’s working directory, relative to root)' },
+  { v1: '-R, --Ruby', v2: '-R, --Ruby', note: 'same role, but limited to the rubies the prebuilt runtime release carries (3.1.6–4.0.6 at v0.15.9 — no 2.7/3.0)' },
+  { v1: '-l, --log-level', v2: '-l, --log-level', note: 'unchanged (error|warn|debug|trace)' },
+  { v1: '-m, --mode bundle|both|runtime|application', v2: '-m, --mode lean|fat', note: 'see the mode map below' },
+  { v1: '-P, --patchelf', v2: '—', note: 'removed (v1 dropped it in 0.14 too): the GLIBC_PRIVATE/patchelf era ended with prebuilt runtimes' },
+  { v1: '-u, --ref', v2: '—', note: 'removed: named an external runtime package; a v2 lean package carries its runtime reference automatically' },
+  { v1: '-t, --tebafile', v2: '—', note: 'removed: v2 exits with “.tebako.yml is not supported by the tebako-rs CLI (pass the options directly)”' },
+  { v1: '-D, --devmode', v2: '-D, --devmode', note: 'unchanged (skips the cache version guard)' },
+  { v1: '--image <path>:<mount> (v1 ≥ 0.14)', v2: '--image <path>:<mount>', note: 'unchanged, repeatable' },
+]
+
+const removedCommands = [
+  { v1: 'tebako setup', v2: 'nothing', note: 'there is no environment to build — runtimes are prebuilt downloads. v2 answers “’tebako setup’ is a later tebako-rs milestone”.' },
+  { v1: 'tebako clean', v2: 'tebako cache prune [--all]', note: 'prune covers the runtime cache; the packaging prefix is disposable — delete the directory.' },
+  { v1: 'tebako clean_ruby', v2: '—', note: 'gone with the in-gem Ruby source build.' },
+  { v1: 'tebako hash', v2: '—', note: 'no build script to cache-key; key CI caches on the Ruby version instead.' },
+  { v1: 'tebako cache list / prune', v2: 'tebako cache list [--json] / prune', note: 'same commands; --json adds a machine-readable contract (the banner moves to stderr).' },
+]
+
+const newSurface = [
+  { flag: '--suite <suite.yaml>', note: 'one package, N commands: per-entry images and slots, one runtime per entry. Lean only; -r/-e are not accepted with it.' },
+  { flag: '--bootstrap <path>', note: 'override the bootstrap binary (default: the tebako-bootstrap next to the tebako binary, else a downloaded release; $TEBAKO_BOOTSTRAP also works).' },
+  { flag: '--tebako-version <v>', note: 'pin the runtime release to press against (default 0.15.9).' },
+  { flag: '--prefer-local', note: 'restores the gem-era bundle install --prefer-local (resolution prefers the runtime’s own gems). Off by default; a no-op with a complete Gemfile.lock.' },
+  { flag: 'tebako install / uninstall', note: 'install a published payload (.tfs) from a registry and register its shims.' },
+  { flag: 'tebako add-registry / list-registries / update-registries', note: 'the registry surface behind tebako install.' },
+  { flag: 'tebako publish', note: 'press → sign → upload → registry entry → tap formula (the developer/publisher flow).' },
+]
+---
+
+<BaseLayout title="Migrate from tebako v1 (gem) to v2 (Rust) — Tebako" description="The migration guide for existing tebako gem users: the press flag map, lean vs fat packages, three verified CI before/afters, and the behavior differences that bite.">
+  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
+    <p class="tb-eyebrow">GUIDES · MIGRATION</p>
+    <h1 class="mt-3">Migrate from v1 to v2.</h1>
+    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      You know tebako as the Ruby gem: <code class="rounded bg-[var(--tb-c-divider)] px-1.5 py-0.5 font-[var(--font-mono)] text-sm text-[var(--tb-c-accent)]">gem install tebako</code>,
+      a <code class="font-[var(--font-mono)] text-sm">tebako setup</code> that built Ruby from source, and a
+      <code class="font-[var(--font-mono)] text-sm">tebako press</code> that produced one monolithic binary
+      with the runtime embedded. v2 is the same press, rebuilt in Rust: one static binary, no gem, no CMake,
+      no setup step — and a package format that can share one runtime between every tebako app on a machine.
+      This page maps your v1 workflow onto v2: flags, outputs, CI, and the behavior differences that bite.
+    </p>
+    <p class="mt-4 max-w-2xl text-sm leading-relaxed text-[var(--tb-c-text-3)]">
+      Every v2 command and workflow on this page was executed end-to-end — CLI build, press, run —
+      in a clean <code class="font-[var(--font-mono)] text-xs">ubuntu:24.04</code> container against
+      <a href={LINKS.v2repo} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">tamatebako/tebako</a>
+      (<code class="font-[var(--font-mono)] text-xs">ec12734</code>, the tip of main at writing time).
+      Where v2 does not yet cover a v1 behavior, this page says so plainly instead of papering over it.
+    </p>
+
+    <!-- ============ the short version ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">The short version.</h2>
+      <div class="grid gap-4 md:grid-cols-2">
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">V1 · THE GEM (≤ 0.13.x)</p>
+          <pre class="mt-3 overflow-x-auto font-[var(--font-mono)] text-sm leading-relaxed text-[var(--tb-c-text-2)]"><code>gem install tebako
+tebako setup        # first time, up to 1 h
+tebako press -r ./myapp -e start.rb -o myapp.tebako
+./myapp.tebako      # monolith: runtime embedded, runs anywhere</code></pre>
+        </div>
+        <div class="rounded-2xl border border-[var(--tb-c-accent)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">V2 · THE RUST CLI</p>
+          <pre class="mt-3 overflow-x-auto font-[var(--font-mono)] text-sm leading-relaxed text-[var(--tb-c-text-2)]"><code># install the tebako binary (next section)
+tebako press -r ./myapp -e start.rb -o myapp.tebako
+./myapp.tebako      # lean: runtime fetched once, then cached
+tebako press -m fat -r ./myapp -e start.rb -o myapp-fat   # ≈ the v1 monolith</code></pre>
+        </div>
+      </div>
+      <p class="mt-4 max-w-2xl text-sm text-[var(--tb-c-text-3)]">
+        The press flags you type every day — <code class="font-[var(--font-mono)] text-xs">-r</code>,{' '}
+        <code class="font-[var(--font-mono)] text-xs">-e</code>, <code class="font-[var(--font-mono)] text-xs">-o</code>,{' '}
+        <code class="font-[var(--font-mono)] text-xs">-p</code>, <code class="font-[var(--font-mono)] text-xs">-c</code>,{' '}
+        <code class="font-[var(--font-mono)] text-xs">-R</code>, <code class="font-[var(--font-mono)] text-xs">-l</code> —
+        are spelled exactly the same. What changed is what they produce and what no longer exists.
+      </p>
+    </div>
+
+    <!-- ============ installing v2 ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Installing v2.</h2>
+      <p class="mb-6 max-w-2xl text-[var(--tb-c-text-2)]">
+        v2 is a single static binary (plus its <code class="font-[var(--font-mono)] text-sm">tebako-bootstrap</code> companion).
+        Prebuilt binaries for the six POSIX platforms land with the first tagged release — the
+        <a href={LINKS.v2releaseYml} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">release pipeline</a>
+        {' '}is in final validation on main. Until the
+        <a href={LINKS.v2releases} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">releases page</a>
+        {' '}carries <code class="font-[var(--font-mono)] text-xs">tebako-&lt;version&gt;-&lt;platform&gt;</code> assets,
+        build from source — once, 20–40 minutes, no Ruby required:
+      </p>
+      <pre class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-sm leading-relaxed text-[var(--tb-c-text-2)]" style="background: var(--tb-c-bg-soft);"><code># Debian/Ubuntu (macOS: brew the same list, minus build-essential)
+sudo apt-get install -y build-essential cmake ninja-build pkg-config git \
+  autoconf automake autoconf-archive libtool curl zip unzip tar ca-certificates \
+  python3 clang libclang-dev zlib1g-dev libbz2-dev
+
+curl -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.94.1
+. "$HOME/.cargo/env"
+
+git clone https://github.com/tamatebako/tebako tebako-rs
+git clone --recurse-submodules https://github.com/tamatebako/dwarfs-rs   # sibling path dep
+git clone https://github.com/microsoft/vcpkg
+git -C vcpkg checkout f14401ca0f2754347c3864da7488a9b955b4e47a           # the CI pin
+vcpkg/bootstrap-vcpkg.sh -disableMetrics
+
+cd tebako-rs
+# Cargo.lock is not tracked upstream; a fresh resolve today pulls a broken
+# rnp-rs 0.1.9 (its vendored Botan build fails) — pin the version the
+# workspace's own builds use:
+cargo update -p rnp-rs --precise 0.1.7
+TRIPLET=x64-linux-static; [ "$(uname -m)" = "aarch64" ] &amp;&amp; TRIPLET=arm64-linux-static
+../vcpkg/vcpkg install --vcpkg-root "$PWD/../vcpkg" --x-wait-for-lock \
+  --x-manifest-root crates/sqfs-sys --x-install-root "$PWD/../.sqfs-installed" \
+  --triplet "$TRIPLET" \
+  --overlay-triplets crates/sqfs-sys/vcpkg_triplets \
+  --overlay-ports crates/sqfs-sys/vcpkg_ports
+# static Botan for the OpenPGP signer (rnp-rs links -lbotan-3 and no
+# prebuilt ships the archive — the release legs provide it the same way):
+../vcpkg/vcpkg install botan --vcpkg-root "$PWD/../vcpkg" --x-wait-for-lock \
+  --x-install-root "$PWD/../.crypto-vcpkg" --triplet "$TRIPLET" \
+  --overlay-triplets ../dwarfs-rs/dwarfs-t/vcpkg_triplets
+mkdir -p .crypto-static &amp;&amp; cp "../.crypto-vcpkg/$TRIPLET/lib/libbotan-3.a" .crypto-static/
+
+SQFS_SYS_VCPKG_INSTALLED_DIR="$PWD/../.sqfs-installed/$TRIPLET" \
+DWARFS_RS_VCPKG_ROOT="$PWD/../vcpkg" \
+RUSTFLAGS="-L $PWD/.crypto-static" \
+  cargo build --release -p tebako-cli -p tebako-bootstrap
+
+sudo install -m755 target/release/tebako target/release/tebako-bootstrap /usr/local/bin/
+tebako --version   # Tebako executable packager version 0.15.9
+
+# On Linux, also make cc clang if you will press apps whose gems build
+# from source (json/bigdecimal/brotli & co. — “behavior differences” 07):
+sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang 50</code></pre>
+      <p class="mt-4 max-w-2xl text-sm text-[var(--tb-c-text-3)]">
+        Keep <code class="font-[var(--font-mono)] text-xs">tebako</code> and{' '}
+        <code class="font-[var(--font-mono)] text-xs">tebako-bootstrap</code> side by side — the press picks
+        the bootstrap up from next to the CLI (override with{' '}
+        <code class="font-[var(--font-mono)] text-xs">--bootstrap</code> or{' '}
+        <code class="font-[var(--font-mono)] text-xs">$TEBAKO_BOOTSTRAP</code>). The v1 gem can stay
+        installed; the two do not interfere, and they share the same{' '}
+        <code class="font-[var(--font-mono)] text-xs">~/.tebako</code> runtime cache.
+      </p>
+    </div>
+
+    <!-- ============ concept map ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">The concept map: <code class="font-[var(--font-mono)]">tebako press</code>, flag by flag.</h2>
+      <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
+        The v1 column is the long-lived gem surface (≤ 0.13.x, the releases most production CI
+        encodes). If you are on v1 0.14–0.15 — the short prebuilt-runtime transition — your flags
+        already look like v2's; the differences for you are only{' '}
+        <code class="font-[var(--font-mono)] text-sm">classic</code> mode,{' '}
+        <code class="font-[var(--font-mono)] text-sm">setup/clean/hash</code>, and the tebafile,
+        all covered below.
+      </p>
+
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
+        <table class="w-full min-w-[720px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider-strong)] font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+              <th class="px-5 py-3 font-medium">V1 (GEM ≤ 0.13)</th>
+              <th class="px-5 py-3 font-medium">V2 (RUST)</th>
+              <th class="px-5 py-3 font-medium">WHAT CHANGED</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)]">
+            {flagMap.map((f) => (
+              <tr>
+                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-2)]">{f.v1}</td>
+                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-accent)]">{f.v2}</td>
+                <td class="px-5 py-2.5 text-[var(--tb-c-text-2)]">{f.note}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="mt-10">
+        <h3 class="mb-3 font-[var(--font-display)] text-lg font-medium">The mode map.</h3>
+        <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
+          <table class="w-full min-w-[640px] text-left text-sm">
+            <thead>
+              <tr class="border-b border-[var(--tb-c-divider-strong)] font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+                <th class="px-5 py-3 font-medium">V1 MODE</th>
+                <th class="px-5 py-3 font-medium">V2 EQUIVALENT</th>
+                <th class="px-5 py-3 font-medium">WHY</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[var(--tb-c-divider)]">
+              <tr>
+                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-2)]">bundle (default) — one monolith, runtime embedded</td>
+                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-accent)]">-m fat</td>
+                <td class="px-5 py-2.5 text-[var(--tb-c-text-2)]">fat carries the runtime as a payload slot; the first run installs it into the shared cache with no network — the monolith's offline guarantee.</td>
+              </tr>
+              <tr>
+                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-2)]">application / runtime — split app and runtime files</td>
+                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-accent)]">-m lean (default)</td>
+                <td class="px-5 py-2.5 text-[var(--tb-c-text-2)]">lean <em>is</em> the split form, productized: the runtime is named in the package trailer and resolved into the machine cache on first run — no --ref, no separate file to ship.</td>
+              </tr>
+              <tr>
+                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-2)]">both</td>
+                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-accent)]">press twice (lean + fat)</td>
+                <td class="px-5 py-2.5 text-[var(--tb-c-text-2)]">the two modes are cheap enough to run as two presses.</td>
+              </tr>
+              <tr>
+                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-2)]">classic (v1 0.14–0.15) — app image stitched onto a prebuilt runtime</td>
+                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-accent)]">not yet</td>
+                <td class="px-5 py-2.5 text-[var(--tb-c-text-2)]">named but rejected: “the 'classic' press mode is a later tebako-rs milestone (use --mode=lean or --mode=fat)”. Use fat for the one-file shape.</td>
+              </tr>
+              <tr>
+                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-2)]">runtime</td>
+                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-accent)]">exit 133</td>
+                <td class="px-5 py-2.5 text-[var(--tb-c-text-2)]">same answer as late v1: runtime packages come from the <a href={LINKS.runtimeRepo} class="tb-link-underline text-[var(--tb-c-accent)]">tebako-runtime-ruby</a> pipeline, never from a press.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="mt-10 grid gap-4 md:grid-cols-2">
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">REMOVED COMMANDS</p>
+          <ul class="mt-3 space-y-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            {removedCommands.map((c) => (
+              <li>
+                <code class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-1)]">{c.v1}</code>
+                {' → '}
+                <code class="font-[var(--font-mono)] text-xs text-[var(--tb-c-accent)]">{c.v2}</code>
+                <span class="text-[var(--tb-c-text-3)]"> — {c.note}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">NEW IN V2</p>
+          <ul class="mt-3 space-y-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            {newSurface.map((c) => (
+              <li>
+                <code class="font-[var(--font-mono)] text-xs text-[var(--tb-c-accent)]">{c.flag}</code>
+                <span class="text-[var(--tb-c-text-3)]"> — {c.note}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ what a press produces ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">What a press produces now.</h2>
+      <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
+        A v1 press gave you one thing: a monolithic binary with the runtime embedded — big, and
+        identical on every machine. A v2 press gives you a three-part package (bootstrap + your app
+        as a filesystem image + a trailer naming the runtime), in two flavors. The anatomy is
+        detailed in the <a href={LINKS.concepts} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">concepts page</a>;
+        what matters for the migration is the choice:
+      </p>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="tb-card p-6">
+          <h3 class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">lean <span class="ml-1 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">default</span></h3>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            Bootstrap (&lt; 3 MB) + your app image + trailer. Small enough to attach to every CI build.
+            The first run on a machine downloads the runtime once into{' '}
+            <code class="font-[var(--font-mono)] text-xs">~/.tebako</code> (SHA-256-verified) — every
+            tebako app on that machine reuses it from then on.
+          </p>
+        </div>
+        <div class="tb-card p-6">
+          <h3 class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">fat</h3>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            Lean <em>plus</em> the runtime itself as a payload slot. The first run installs the payload
+            into the same cache, verified, with zero network. This is the v1 monolith's distribution
+            shape: one file, runs anywhere, sized like the v1 binary.
+          </p>
+        </div>
+      </div>
+      <div class="mt-6 rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+        <p class="text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          <strong class="text-[var(--tb-c-text-1)]">How to choose.</strong> Pick{' '}
+          <strong class="text-[var(--tb-c-text-1)]">fat</strong> when you hand the binary to machines you
+          don't control, when the first run must work air-gapped, or when “download it and it just runs”
+          is the contract (that was v1's contract). Pick{' '}
+          <strong class="text-[var(--tb-c-text-1)]">lean</strong> when artifact size matters, when you ship
+          several apps that can share one Ruby, or when first-run network access is acceptable. Either way
+          the runtime lands in the same cache — a machine that already ran any tebako app runs your lean
+          package offline. <code class="font-[var(--font-mono)] text-xs">TEBAKO_OFFLINE=1</code> forces
+          cache-only resolution; <code class="font-[var(--font-mono)] text-xs">TEBAKO_RUNTIME_MIRROR</code>{' '}
+          redirects downloads to your own mirror;{' '}
+          <code class="font-[var(--font-mono)] text-xs">TEBAKO_HOME</code> moves the cache root.
+        </p>
+      </div>
+      <p class="mt-4 max-w-2xl text-sm text-[var(--tb-c-text-3)]">
+        One mental shift: in v1 the runtime was <em>yours</em> — built by your setup, embedded in your
+        binary. In v2 the runtime is a <em>shared, versioned system resource</em> — built by the
+        tebako-runtime-ruby pipeline, fetched once per machine, and referred to by every package.
+        Your v1 binaries keep their embedded runtime forever; nothing about v2 reaches back into them.
+      </p>
+    </div>
+
+    <!-- ============ CI migration ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">CI migration: the three shapes everyone runs.</h2>
+      <p class="mb-4 max-w-2xl text-[var(--tb-c-text-2)]">
+        The three v1 CI shapes below cover nearly every gem-era workflow in the wild. Each “after”
+        was executed end-to-end in a clean container (build the CLI, press, run the package) —
+        the exact <code class="font-[var(--font-mono)] text-sm">run:</code> lines you see.
+      </p>
+      <p class="mb-10 max-w-2xl text-sm text-[var(--tb-c-text-3)]">
+        The install-tebako block is identical in all three workflows and is inlined once, in pair A —
+        copy it verbatim into B and C where marked. It builds from source because no binary release
+        exists yet; when the first tagged v2 release lands, the whole block collapses to a two-line
+        download of <code class="font-[var(--font-mono)] text-xs">tebako</code> and{' '}
+        <code class="font-[var(--font-mono)] text-xs">tebako-bootstrap</code>.
+      </p>
+
+      <!-- pair A -->
+      <div class="mt-10">
+        <h3 class="mb-4 font-[var(--font-display)] text-lg font-medium">A · Press in CI <span class="ml-1 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">a script app, no Gemfile</span></h3>
+        <div class="grid gap-4 lg:grid-cols-2">
+          <div class="rounded-2xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+            <p class="mb-3 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">BEFORE · V1 GEM</p>
+            <pre class="overflow-x-auto font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)]"><code>name: package
+on: [push]
+jobs:
+  press:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+      - name: Install tebako
+        run: gem install tebako -v 0.13.4
+      - name: Cache the packaging environment
+        uses: actions/cache@v4
+        with:
+          path: ~/.tebako
+          key: tebako-v1-$&#123;&#123; runner.os &#125;&#125;-0.13.4
+      - name: Build the packaging environment
+        #  cache miss = a from-source Ruby build, up to 1 h
+        run: tebako setup
+      - name: Press
+        run: tebako press -r . -e start.rb -o dist/myapp
+      - name: Smoke-test the package
+        run: ./dist/myapp
+      - uses: actions/upload-artifact@v4
+        with:
+          name: myapp-linux
+          path: dist/myapp</code></pre>
+          </div>
+          <div class="rounded-2xl border border-[var(--tb-c-accent)] p-5" style="background: var(--tb-c-bg-soft);">
+            <p class="mb-3 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">AFTER · V2 RUST CLI</p>
+            <pre class="overflow-x-auto font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)]"><code>name: package
+on: [push]
+jobs:
+  press:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: app        # keep the app root clean of build trees
+
+      # --- begin: install tebako v2 (source build, until the
+      #     first binary release — then two download lines) ---
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config git \
+            autoconf automake autoconf-archive libtool \
+            curl zip unzip tar ca-certificates python3 clang libclang-dev \
+            zlib1g-dev libbz2-dev
+      - uses: dtolnay/rust-toolchain@1.94.1
+      - name: Check out the tebako v2 sources
+        uses: actions/checkout@v4
+        with:
+          repository: tamatebako/tebako
+          path: tebako-rs
+      - name: Check out dwarfs-rs (sibling path dependency)
+        uses: actions/checkout@v4
+        with:
+          repository: tamatebako/dwarfs-rs
+          path: dwarfs-rs
+          submodules: recursive
+      - name: Set up vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg "$RUNNER_TEMP/vcpkg"
+          git -C "$RUNNER_TEMP/vcpkg" checkout \
+            f14401ca0f2754347c3864da7488a9b955b4e47a
+          "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+      - name: Pre-install squashfs-tools-ng
+        working-directory: tebako-rs
+        run: |
+          TRIPLET=x64-linux-static
+          [ "$(uname -m)" = "aarch64" ] &amp;&amp; TRIPLET=arm64-linux-static
+          "$RUNNER_TEMP/vcpkg/vcpkg" install \
+            --vcpkg-root "$RUNNER_TEMP/vcpkg" --x-wait-for-lock \
+            --x-manifest-root crates/sqfs-sys \
+            --x-install-root "$RUNNER_TEMP/.sqfs-installed" \
+            --triplet "$TRIPLET" \
+            --overlay-triplets crates/sqfs-sys/vcpkg_triplets \
+            --overlay-ports crates/sqfs-sys/vcpkg_ports
+          echo "SQFS_SYS_VCPKG_INSTALLED_DIR=$RUNNER_TEMP/.sqfs-installed/$TRIPLET" \
+            >> "$GITHUB_ENV"
+      - name: Build the tebako CLI
+        working-directory: tebako-rs
+        env:
+          DWARFS_RS_VCPKG_ROOT: $&#123;&#123; runner.temp &#125;&#125;/vcpkg
+        run: |
+          # Cargo.lock is untracked upstream; fresh resolves pull a
+          # broken rnp-rs 0.1.9 — pin the version CI builds with:
+          cargo update -p rnp-rs --precise 0.1.7
+          # static Botan for the OpenPGP signer (rnp-rs links -lbotan-3):
+          TRIPLET=x64-linux-static
+          [ "$(uname -m)" = "aarch64" ] &amp;&amp; TRIPLET=arm64-linux-static
+          "$RUNNER_TEMP/vcpkg/vcpkg" install botan \
+            --vcpkg-root "$RUNNER_TEMP/vcpkg" --x-wait-for-lock \
+            --x-install-root "$RUNNER_TEMP/.crypto-vcpkg" \
+            --triplet "$TRIPLET" \
+            --overlay-triplets ../dwarfs-rs/dwarfs-t/vcpkg_triplets
+          mkdir -p .crypto-static
+          cp "$RUNNER_TEMP/.crypto-vcpkg/$TRIPLET/lib/libbotan-3.a" .crypto-static/
+          RUSTFLAGS="-L $PWD/.crypto-static" \
+            cargo build --release -p tebako-cli -p tebako-bootstrap
+      - name: Put tebako on PATH
+        run: echo "$GITHUB_WORKSPACE/tebako-rs/target/release" >> "$GITHUB_PATH"
+      # --- end: install tebako v2 ---
+
+      - name: Press (lean — the default; add -m fat for the v1 shape)
+        run: tebako press -r app -e start.rb -o dist/myapp
+      - name: Smoke-test the package
+        run: ./dist/myapp
+      - uses: actions/upload-artifact@v4
+        with:
+          name: myapp-linux
+          path: dist/myapp</code></pre>
+          </div>
+        </div>
+        <p class="mt-3 max-w-2xl text-sm text-[var(--tb-c-text-3)]">
+          What fell away: the Ruby install, the gem install, the{' '}
+          <code class="font-[var(--font-mono)] text-xs">~/.tebako</code> cache dance, and the setup
+          hour. What appeared: a one-time CLI build (cache{' '}
+          <code class="font-[var(--font-mono)] text-xs">~/.cache/vcpkg</code> and{' '}
+          <code class="font-[var(--font-mono)] text-xs">tebako-rs/target</code> if you run this often)
+          and a press-time runtime download that replaces the setup hour with a minute.
+        </p>
+      </div>
+
+      <!-- pair B -->
+      <div class="mt-12">
+        <h3 class="mb-4 font-[var(--font-display)] text-lg font-medium">B · Press from a Gemfile <span class="ml-1 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">a bundled app — the fontist fixture</span></h3>
+        <div class="grid gap-4 lg:grid-cols-2">
+          <div class="rounded-2xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+            <p class="mb-3 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">BEFORE · V1 GEM</p>
+            <pre class="overflow-x-auto font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)]"><code>name: package
+on: [push]
+jobs:
+  press:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4   # Gemfile + Gemfile.lock + main.rb
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+      - name: Install tebako
+        run: gem install tebako -v 0.13.4
+      - name: Cache the packaging environment
+        uses: actions/cache@v4
+        with:
+          path: ~/.tebako
+          key: tebako-v1-$&#123;&#123; runner.os &#125;&#125;-0.13.4
+      - name: Build the packaging environment
+        run: tebako setup -R 3.3.7
+      - name: Press (the Gemfile is picked up automatically)
+        run: tebako press -r . -e main.rb -o dist/fontist-app -R 3.3.7
+      - name: Smoke-test the package
+        run: ./dist/fontist-app    # =&gt; fontist 3.0.10
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fontist-app-linux
+          path: dist/fontist-app</code></pre>
+          </div>
+          <div class="rounded-2xl border border-[var(--tb-c-accent)] p-5" style="background: var(--tb-c-bg-soft);">
+            <p class="mb-3 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">AFTER · V2 RUST CLI</p>
+            <pre class="overflow-x-auto font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)]"><code>name: package
+on: [push]
+jobs:
+  press:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: app
+
+      # … the identical "install tebako v2" steps — copy them
+      # from pair A above …
+
+      - name: Prefer clang as the system cc
+        #  the prebuilt runtimes are compiled with clang, and a press that
+        #  builds a native gem from source replays their build flags
+        #  against the host cc — gcc rejects -fdeclspec and the press dies
+        #  in mkmf. This lockfile pins ruby-platform-only natives
+        #  (json, bigdecimal, brotli), so clang is required here.
+        run: sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang 50
+      - name: Press (the Gemfile is still picked up automatically)
+        run: tebako press -r app -e main.rb -o dist/fontist-app
+        #  the Ruby version comes from the Gemfile's ruby directive
+        #  (or -R); no host Ruby is involved at all
+      - name: Smoke-test the package
+        run: ./dist/fontist-app    # =&gt; fontist 3.0.10
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fontist-app-linux
+          path: dist/fontist-app</code></pre>
+          </div>
+        </div>
+        <p class="mt-3 max-w-2xl text-sm text-[var(--tb-c-text-3)]">
+          Verified against the <a href={LINKS.fontistFixture} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">fontist fixture</a>
+          {' '}(fontist 3.0.10 on Ruby 3.3.7 — the package prints <code class="font-[var(--font-mono)] text-xs">fontist 3.0.10</code>).
+          Bundler runs <em>inside the target runtime</em> during the press, so the host's Ruby and
+          bundler versions are irrelevant — delete the ruby/setup-ruby and bundler-cache steps.
+          Commit your <code class="font-[var(--font-mono)] text-xs">Gemfile.lock</code>: locked specs
+          install exactly as resolved, and the lockfile pins the bundler version too.
+        </p>
+      </div>
+
+      <!-- pair C -->
+      <div class="mt-12">
+        <h3 class="mb-4 font-[var(--font-display)] text-lg font-medium">C · Native-extension gems <span class="ml-1 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">nokogiri, ffi &amp; co.</span></h3>
+        <div class="grid gap-4 lg:grid-cols-2">
+          <div class="rounded-2xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+            <p class="mb-3 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">BEFORE · V1 GEM</p>
+            <pre class="overflow-x-auto font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)]"><code>name: package
+on: [push]
+jobs:
+  press:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+      - name: Install build tools
+        #  v1 built every native extension from source
+        #  (force_ruby_platform) — a C toolchain is required
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential
+      - name: Install tebako
+        run: gem install tebako -v 0.13.4
+      - name: Cache the packaging environment
+        uses: actions/cache@v4
+        with:
+          path: ~/.tebako
+          key: tebako-v1-$&#123;&#123; runner.os &#125;&#125;-0.13.4
+      - name: Build the packaging environment
+        run: tebako setup -R 3.3.7
+      - name: Press
+        run: tebako press -r . -e main.rb -o dist/nokogiri-app -R 3.3.7
+      - name: Smoke-test the package
+        run: ./dist/nokogiri-app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nokogiri-app-linux
+          path: dist/nokogiri-app</code></pre>
+          </div>
+          <div class="rounded-2xl border border-[var(--tb-c-accent)] p-5" style="background: var(--tb-c-bg-soft);">
+            <p class="mb-3 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">AFTER · V2 RUST CLI</p>
+            <pre class="overflow-x-auto font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)]"><code>name: package
+on: [push]
+jobs:
+  press:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: app
+
+      # … the identical "install tebako v2" steps — copy them
+      # from pair A above …
+
+      - name: Prefer clang as the system cc
+        #  no lockfile here: resolution pulls the newest racc, which only
+        #  ships as a ruby-platform source gem — its press-time build
+        #  needs clang as cc (gcc rejects the replayed -fdeclspec flag).
+        #  Alternatives: commit a Gemfile.lock with precompiled pins, or
+        #  press with --prefer-local to use the runtime's bundled racc.
+        run: sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang 50
+      - name: Press
+        run: tebako press -r app -e main.rb -o dist/nokogiri-app
+        #  nokogiri installs as the PRECOMPILED platform gem —
+        #  no compiler, no source build, no extra flags
+      - name: Smoke-test the package
+        run: ./dist/nokogiri-app
+        #  =&gt; Hello from nokogiri app with nokogiri 1.19.4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nokogiri-app-linux
+          path: dist/nokogiri-app</code></pre>
+          </div>
+        </div>
+        <p class="mt-3 max-w-2xl text-sm text-[var(--tb-c-text-3)]">
+          The inversion: v1 forced every native gem into a source build inside the packaging
+          environment; v2 resolves through the modern compact index and installs precompiled
+          platform gems (nokogiri, ffi) as-is — the C toolchain usually disappears from CI.
+          Gems that only exist as Ruby-platform sources build during the press against an
+          auto-provisioned Runtime SDK (a network fetch; mirror it with{' '}
+          <code class="font-[var(--font-mono)] text-xs">TEBAKO_SDK_SRC_MIRROR</code>,{' '}
+          <code class="font-[var(--font-mono)] text-xs">file://</code> works offline).{' '}
+          <code class="font-[var(--font-mono)] text-xs">--prefer-local</code> is the escape hatch when
+          you want the runtime's own bundled/default gems used in place.
+        </p>
+      </div>
+    </div>
+
+    <!-- ============ behavior differences ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Behavior differences that bite.</h2>
+      <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
+        The flags look the same; these are the places the ground moved under them.
+      </p>
+      <div class="space-y-4">
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">01 · PRESS-TIME NETWORK</p>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            A v2 press downloads the target runtime into the shared cache on a cold machine — the deploy
+            (your <code class="font-[var(--font-mono)] text-xs">bundle install</code>) runs <em>inside that
+            runtime</em>, not under your host Ruby. First press on a fresh CI runner needs network (or a
+            warm <code class="font-[var(--font-mono)] text-xs">~/.tebako</code>, or{' '}
+            <code class="font-[var(--font-mono)] text-xs">TEBAKO_RUNTIME_MIRROR</code>). The packaged
+            binary then downloads the runtime again on its own first run unless you pressed fat or the
+            machine's cache is warm.
+          </p>
+        </div>
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">02 · THE IMAGE ERA</p>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            Everything is a <code class="font-[var(--font-mono)] text-xs">.tfs</code> image now — your app,
+            and the runtime itself — with dwarfs-t-native (FlatBuffers) metadata, built in-process: no
+            mkdwarfs binary anywhere, no FUSE, no extraction. Cache entries hold the image plus{' '}
+            <code class="font-[var(--font-mono)] text-xs">.sha256</code>/{' '}
+            <code class="font-[var(--font-mono)] text-xs">.origin</code> trust markers instead of an
+            extracted tree. Details: <a href={LINKS.runtimeAsImage} class="tb-link-underline text-[var(--tb-c-accent)]">runtime as image</a>.
+          </p>
+        </div>
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">03 · .tebako.yml IS NOT READ</p>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            v1 auto-loaded <code class="font-[var(--font-mono)] text-xs">$PWD/.tebako.yml</code> and merged
+            its <code class="font-[var(--font-mono)] text-xs">options:</code> map under your CLI flags — an
+            invisible configuration layer. v2 does not read it, and{' '}
+            <code class="font-[var(--font-mono)] text-xs">-t/--tebafile</code> exits with an explicit error.
+            Migration: paste the tebafile's options into the press command line (or your CI step) directly.
+          </p>
+        </div>
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">04 · EXIT CODES</p>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            The packaging error table is unchanged — 106 (entry point missing), 107 (root missing),
+            120–125 (runtime resolution), 133 (the removed runtime mode), and the{' '}
+            <code class="font-[var(--font-mono)] text-xs">Tebako script failed: &lt;message&gt; [&lt;code&gt;]</code>{' '}
+            line your CI may grep for. Usage errors exit 1 in both worlds. New codes you may meet:
+            134 (fat mode needs a payload-capable bootstrap) and 135 (Runtime SDK provisioning failed).
+            <code class="font-[var(--font-mono)] text-xs">tebako cache list --json</code> is a machine
+            contract — stdout is the JSON document alone, the banner moves to stderr.
+          </p>
+        </div>
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">05 · BUNDLER BEHAVIOR, MODERNIZED</p>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            v1 passed <code class="font-[var(--font-mono)] text-xs">--prefer-local</code> unconditionally,
+            which could silently degrade a remote resolution (fontist 3.0.10 came out as the
+            dependency-free 0.1.0), and forced <code class="font-[var(--font-mono)] text-xs">force_ruby_platform=true</code>,
+            which doomed precompiled gems to source builds. v2 resolves through the compact index,
+            installs precompiled platform gems, and keeps{' '}
+            <code class="font-[var(--font-mono)] text-xs">--prefer-local</code> as an opt-in flag
+            (a no-op with a complete lockfile). If your v1 press “worked” but produced a strangely
+            old gem set — this is why, and it is fixed.
+          </p>
+        </div>
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">06 · PLATFORM REALITY CHECK</p>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            Rubies: v2 presses only the rubies the pinned runtime release carries (3.1.6–4.0.6 at
+            v0.15.9) — the 2.7/3.0 lines were v1 source-build-only. Windows: the v2 loader ships
+            macOS/Linux today; the Windows release leg is in flight — keep v1 for Windows targets
+            until it lands. Gem/gemspec press scenarios (packaging a gem itself) are not yet ported.
+            On macOS the deploy re-signs ad-hoc after stripping, so precompiled{' '}
+            <code class="font-[var(--font-mono)] text-xs">.bundle</code> files keep loading.
+          </p>
+        </div>
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">07 · ON LINUX, SOURCE BUILDS NEED clang AS cc</p>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            The prebuilt runtimes are compiled with clang. When a press must build a native gem from
+            source (a gem that only ships as a ruby-platform source — json, bigdecimal, brotli in the
+            verified fixture), the Runtime SDK replays the runtime's recorded build flags against your
+            host <code class="font-[var(--font-mono)] text-xs">cc</code> — and gcc rejects{' '}
+            <code class="font-[var(--font-mono)] text-xs">-fdeclspec</code>, dying in mkmf with
+            “The compiler failed to generate an executable file”. macOS is unaffected (cc is clang
+            there). On Linux, point cc at clang before pressing:{' '}
+            <code class="font-[var(--font-mono)] text-xs">sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang 50</code>.
+            Verified: with clang as cc, the fontist fixture builds json 2.7.2, bigdecimal 3.1.5 and
+            brotli 0.8.0 from source inside the press and runs.
+          </p>
+        </div>
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">08 · EVERY RUN OF AN UNSIGNED PACKAGE WARNS</p>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            v1 binaries start silently. The v2 bootstrap prints a two-line warning on{' '}
+            <em>every run</em> of a package whose trailer is unsigned (the v1-era legacy form):
+          </p>
+          <pre class="mt-3 overflow-x-auto rounded-xl border border-[var(--tb-c-divider)] p-4 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)]"><code>tebako-bootstrap: WARNING: ./myapp.tebako carries an unsigned v1 (legacy) tpkg trailer
+  — accepted for compatibility; re-bundle the package for integrity protection</code></pre>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            It goes to stderr, the exit code is unaffected, and unsigned packages stay first-class —
+            but your users will see it, so say so in your release notes (or sign the package; see{' '}
+            <a href="/docs/architecture/chain-of-trust/" class="tb-link-underline text-[var(--tb-c-accent)]">the chain of trust</a>).
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ new in v2: suites and jails ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">New capability you could not do in v1.</h2>
+      <div class="grid gap-4 md:grid-cols-2">
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">SUITES · ONE PACKAGE, N COMMANDS</p>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            v1 pressed one entry point per package. v2's{' '}
+            <code class="font-[var(--font-mono)] text-xs">--suite</code> presses several apps — each with
+            its own root, entry point, and even its own runtime — into one file whose binary name selects
+            the command (shim/symlink dispatch):
+          </p>
+          <pre class="mt-3 overflow-x-auto rounded-xl border border-[var(--tb-c-divider)] p-4 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)]"><code># suite.yaml
+name: myproduct
+entries:
+  - name: app
+    root: ./app
+    entry: bin/app
+  - name: worker
+    root: ./worker
+    entry: bin/worker</code></pre>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            <code class="font-[var(--font-mono)] text-xs">tebako press --suite suite.yaml -o myproduct</code>{' '}
+            (lean only; <code class="font-[var(--font-mono)] text-xs">-r</code>/{' '}
+            <code class="font-[var(--font-mono)] text-xs">-e</code> come from the suite file).
+          </p>
+        </div>
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">JAILS · HOST-ACCESS POLICY</p>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            v1 packages saw the host filesystem with no policy at all. v2 enforces docker{' '}
+            <code class="font-[var(--font-mono)] text-xs">-v</code>-style jails at the VFS layer
+            (denied paths fail EPERM, writes to read-only grants fail EROFS):
+          </p>
+          <pre class="mt-3 overflow-x-auto rounded-xl border border-[var(--tb-c-divider)] p-4 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)]"><code>TEBAKO_JAIL='deny;/home/u/src:/work:rw;@/home/u/input.csv' ./myapp
+#  default open|deny ; host:mount:ro|rw grants ; @file = read-only arg file</code></pre>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            Filesystem-only, honestly scoped: no network confinement, and statically-linked binaries
+            outside the shim are not covered.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ staying on v1 ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Staying on v1 — and what its status is.</h2>
+      <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+        <ul class="space-y-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          <li>
+            <strong class="text-[var(--tb-c-text-1)]">The gem is not going away.</strong> Every v1 release
+            stays published on <a href={LINKS.gem} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">rubygems.org</a>
+            {' '}— nothing is yanked, nothing is sabotaged. <code class="font-[var(--font-mono)] text-xs">gem install tebako</code>
+            {' '}keeps working, and binaries you already pressed keep running (they are self-contained;
+            0.15.9 is the final v1 release).
+          </li>
+          <li>
+            <strong class="text-[var(--tb-c-text-1)]">The v1 codebase is archived.</strong> It lives on as{' '}
+            <a href={LINKS.v1repo} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">tamatebako/tebako-v1</a>,
+            read-only — the history, tags, and issues remain readable; development happens only in{' '}
+            <a href={LINKS.v2repo} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">tamatebako/tebako</a>.
+          </li>
+          <li>
+            <strong class="text-[var(--tb-c-text-1)]">Support status, plainly:</strong> v1 is unmaintained —
+            no further releases, fixes, or reviewed PRs. If your v1 setup works, it keeps working; migrate
+            when you need what v2 adds (shared runtimes, suites, jails, signing, active support) or when a
+            future Ruby/platform change leaves the v1 pipeline behind.
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ============ footer links ============ -->
+    <div class="mt-16 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--tb-c-divider)] pt-8">
+      <p class="max-w-xl text-sm text-[var(--tb-c-text-3)]">
+        Deeper detail lives in the normative{' '}
+        <a href={LINKS.specIndex} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">spec set</a>
+        {' '}(wire format, resolution, cache, shims, jails) and the{' '}
+        <a href="/docs/" class="tb-link-underline font-medium text-[var(--tb-c-accent)]">manual</a>.
+        Hit a migration case this page misses?{' '}
+        <a href={`${LINKS.v2repo}/issues`} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">Open an issue</a>
+        {' '}— the guide is maintained with v2.
+      </p>
+      <a href="/docs/" class="tb-btn tb-btn-ghost">Back to the manual</a>
+    </div>
+  </section>
+</BaseLayout>
