@@ -1,0 +1,154 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+
+const personas = [
+  {
+    title: 'Developers',
+    kanji: '開',
+    heading: 'Ship the app, not the runtime conversation.',
+    points: [
+      'Press once, and your users run it. Your README stops saying "install Ruby first" — the runtime downloads itself on first run, or rides inside the package.',
+      'One file per platform, or a registry payload with shims and version pins. Your entry points become ordinary commands on your users\' PATH.',
+      'Native extensions are not a caveat. Compiled gems, FFI libraries, and platform-specific code mount and run inside the package.',
+    ],
+  },
+  {
+    title: 'Organizations',
+    kanji: '組',
+    heading: 'One artifact per platform, on your own infrastructure.',
+    points: [
+      'Self-hosted by construction: a registry is a YAML index plus your own GitHub releases. No store to operate, no third party between you and your users.',
+      'Signed slices, verified at install time with keys you control. Run workloads you do not fully trust inside jails — the filesystem view is read-only unless you grant more.',
+      'No daemon, no root, no background service. The artifact is a file; the runtime is a directory; the audit journal is a log line per event.',
+    ],
+  },
+  {
+    title: 'Open-source projects',
+    kanji: '放',
+    heading: 'Your releases are the store.',
+    points: [
+      'Publish from your own repository\'s releases page — there is no submission queue, no review gate, no namespace to defend.',
+      'Your users run two commands: tebako add-registry you, then tebako install your-app. They get a PATH shim, version pins, and upgrades for free.',
+      'Your identity stays yours: artifacts are signed with your key and pinned by your users on first contact, with out-of-band confirmation.',
+    ],
+  },
+]
+
+const comparison = [
+  ['Runs on a clean machine', 'with a daemon installed', 'yes', 'yes'],
+  ['Shares the common parts', 'layers, server-side', 'no — every binary carries its world', 'yes — one runtime per machine, shared'],
+  ['Isolation', 'kernel namespaces', 'none', 'user-space jails: mount views, read-only by default'],
+  ['Distribution', 'registry infrastructure', 'any file host', 'any file host, plus a small YAML index'],
+  ['Background services', 'a daemon, often root', 'none', 'none'],
+  ['Trust', 'optional signing tooling', 'OS code-signing only', 'per-slice signatures with pinned publisher keys'],
+]
+---
+
+<BaseLayout title="Who it's for — Tebako" description="Tebako for developers, organizations, and open-source projects: the portable packaging format with container semantics and a single file's weight.">
+  <section class="mx-auto max-w-7xl px-6 pb-20 pt-32">
+    <div class="max-w-2xl">
+      <p class="tb-eyebrow tb-animate-rise">WHO IT'S FOR</p>
+      <h1 class="tb-animate-rise tb-delay-1 mt-3">
+        Built for people who <span class="tb-text-gradient italic">ship software.</span>
+      </h1>
+      <p class="tb-animate-rise tb-delay-2 mt-4 text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+        Tebako packages an application and everything it needs into one file that runs
+        anywhere — with the isolation and portability of a container, and the weight of
+        a file you can email. Here is who that helps, and why.
+      </p>
+    </div>
+
+    {personas.map((p) => (
+      <div class="mt-16 grid gap-6 md:grid-cols-[auto_1fr] md:gap-10">
+        <div class="flex h-16 w-16 items-center justify-center rounded-2xl border border-[var(--tb-c-divider)] text-2xl" style="background: var(--tb-c-bg-soft);">
+          <span class="tb-text-gradient">{p.kanji}</span>
+        </div>
+        <div>
+          <p class="tb-eyebrow">{p.title.toUpperCase()}</p>
+          <h2 class="mt-2">{p.heading}</h2>
+          <ul class="mt-4 space-y-3">
+            {p.points.map((point) => (
+              <li class="flex gap-3 leading-relaxed text-[var(--tb-c-text-2)]">
+                <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tb-c-accent)]"></span>
+                <span>{point}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    ))}
+
+    <div class="mt-24">
+      <p class="tb-eyebrow">THE POSITION</p>
+      <h2 class="mt-2">A container's promises, at a file's weight.</h2>
+      <p class="mt-4 max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
+        Containers made three promises: run anywhere, carry everything, stay isolated.
+        Tebako keeps all three for applications — without the daemon, the layered
+        tarballs, or the registry infrastructure they normally ride on.
+      </p>
+      <div class="mt-8 overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]">
+        <table class="w-full text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
+              <th class="px-5 py-3 font-medium"></th>
+              <th class="px-5 py-3 font-medium">Container</th>
+              <th class="px-5 py-3 font-medium">Static binary</th>
+              <th class="px-5 py-3 font-medium tb-text-gradient">Tebako</th>
+            </tr>
+          </thead>
+          <tbody>
+            {comparison.map(([aspect, container, statik, tebako]) => (
+              <tr class="border-b border-[var(--tb-c-divider)] last:border-0">
+                <td class="px-5 py-3 font-medium text-[var(--tb-c-text-1)]">{aspect}</td>
+                <td class="px-5 py-3 text-[var(--tb-c-text-2)]">{container}</td>
+                <td class="px-5 py-3 text-[var(--tb-c-text-2)]">{statik}</td>
+                <td class="px-5 py-3 text-[var(--tb-c-text-1)]">{tebako}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="mt-24 max-w-3xl">
+      <p class="tb-eyebrow">HONEST BOUNDARIES</p>
+      <h2 class="mt-2">What it is not.</h2>
+      <ul class="mt-4 space-y-3">
+        <li class="flex gap-3 leading-relaxed text-[var(--tb-c-text-2)]">
+          <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tb-c-accent)]"></span>
+          <span><strong class="text-[var(--tb-c-text-1)]">Not a security sandbox for hostile code.</strong> Jails control what a payload can see and write on the filesystem — they do not meter CPU, memory, or network.</span>
+        </li>
+        <li class="flex gap-3 leading-relaxed text-[var(--tb-c-text-2)]">
+          <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tb-c-accent)]"></span>
+          <span><strong class="text-[var(--tb-c-text-1)]">Not server orchestration.</strong> Tebako distributes command-line tools, developer tooling, and desktop applications. It does not schedule services across a fleet.</span>
+        </li>
+        <li class="flex gap-3 leading-relaxed text-[var(--tb-c-text-2)]">
+          <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tb-c-accent)]"></span>
+          <span><strong class="text-[var(--tb-c-text-1)]">Not a central store.</strong> There is no tebako-run repository of record, and there never will be. Registries are files you host; trust is pinned by the user, not granted by a platform.</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="mt-24 rounded-2xl border border-[var(--tb-c-divider)] px-8 py-10" style="background: var(--tb-c-bg-soft);">
+      <h2>Try it on your machine.</h2>
+      <p class="mt-3 max-w-2xl leading-relaxed text-[var(--tb-c-text-2)]">
+        One install, no daemon, nothing running in the background.
+      </p>
+      <div class="mt-6 grid gap-4 md:grid-cols-2">
+        <div class="rounded-xl border border-[var(--tb-c-divider)] p-5">
+          <p class="font-[var(--font-mono)] text-xs uppercase tracking-wider text-[var(--tb-c-text-2)]">Homebrew (macOS, Linux)</p>
+          <pre class="mt-3 overflow-x-auto font-[var(--font-mono)] text-sm"><code>brew install tamatebako/tap/tebako</code></pre>
+        </div>
+        <div class="rounded-xl border border-[var(--tb-c-divider)] p-5">
+          <p class="font-[var(--font-mono)] text-xs uppercase tracking-wider text-[var(--tb-c-text-2)]">Shell (any Unix)</p>
+          <pre class="mt-3 overflow-x-auto font-[var(--font-mono)] text-sm"><code>curl -fsSL https://tebako.org/install.sh | sh</code></pre>
+        </div>
+      </div>
+      <p class="mt-6 text-sm text-[var(--tb-c-text-2)]">
+        Then: <code class="font-[var(--font-mono)]">tebako add-registry tfs:github:tamatebako/hello</code> and
+        <code class="font-[var(--font-mono)]">tebako install hello</code> — a first packaged command in about a minute.
+        The <a class="underline decoration-[var(--tb-c-accent)] underline-offset-4" href="/docs/architecture/overview/">architecture documentation</a> explains what just happened.
+      </p>
+    </div>
+  </section>
+</BaseLayout>
