@@ -1,0 +1,580 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro'
+import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import StatusPill from '../../../components/docs/StatusPill.astro'
+
+const LINKS = {
+  runtimeRepo: 'https://github.com/tamatebako/tebako-runtime-ruby',
+  runtimeReleases: 'https://github.com/tamatebako/tebako-runtime-ruby/releases',
+  rubyRepo: 'https://github.com/tamatebako/ruby',
+  productRepo: 'https://github.com/tamatebako/tebako',
+  bootstrapRepo: 'https://github.com/tamatebako/tebako',
+  dwarfsT: 'https://github.com/tamatebako/dwarfs-t',
+  packagesOrg: 'https://github.com/tebako-packages',
+}
+
+const exitCodes = [
+  { code: '65', name: 'manifest', meaning: 'the trailer or a manifest is missing, corrupt, or names no usable entrypoint' },
+  { code: '66', name: 'launcher ABI', meaning: 'the package speaks a handoff wire format this runtime predates' },
+  { code: '67', name: 'runtime reference', meaning: 'the runtime reference in the trailer cannot be parsed or honored' },
+  { code: '69', name: 'unavailable', meaning: 'the runtime cannot be resolved — offline miss, download failure, or a reference to a release that does not exist' },
+  { code: '70', name: 'checksum', meaning: 'a SHA-256 verification failed; nothing was installed' },
+  { code: '71', name: 'signature', meaning: 'a signature is invalid — or the package is unsigned and TEBAKO_REQUIRE_SIGNED=1 was set' },
+  { code: '72', name: 'trust', meaning: 'the signing key is not in the trusted keyring, or key continuity broke' },
+  { code: '73', name: 'jail', meaning: 'the jail policy is malformed; the run fails closed, nothing mounts' },
+  { code: '74', name: 'I/O', meaning: 'a filesystem, lock, or install operation failed' },
+  { code: '75', name: 'contract', meaning: 'the runtime speaks a handoff contract this loader does not — it names both generations and the remedy' },
+  { code: '76', name: 'install', meaning: 'installation was refused — the publisher froze the package, or the verb belongs to the CLI' },
+  { code: '77', name: 'era', meaning: 'the artifact comes from a different tebako generation, in either direction' },
+  { code: '78', name: 'layout', meaning: 'the env image does not match the layout the interpreter was compiled for' },
+]
+---
+
+<BaseLayout title="How a Tebako package works — Tebako architecture" description="The anatomy of a tebako package: bootstrap, two-artifact runtime, payload slices, the tpkg trailer, co-mounting, the dispatch sequence, the contract model, and named failures.">
+  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
+    <p class="tb-eyebrow">ARCHITECTURE · ANATOMY</p>
+    <h1 class="mt-3">How a Tebako package works.</h1>
+    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      One file, three parts, no installation. This is the whole mechanism — what the
+      file contains, how the parts meet at run time, and what happens when something
+      does not fit.
+    </p>
+
+    <ArchDocsNav />
+
+    <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
+      <StatusPill status="shipped" />
+      <span class="text-sm text-[var(--tb-c-text-2)]">everything on this page is the shipping v2 behavior</span>
+    </div>
+
+    <!-- ============ THE THREE PARTS ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Three parts, glued by a trailer.</h2>
+      <p class="mb-8 max-w-3xl text-[var(--tb-c-text-2)]">
+        A tebako package is a composition of independently distributable parts. Each
+        part has its own release line, its own publisher, and its own trust anchor;
+        the executable you download is where they meet.
+      </p>
+      <div class="space-y-6">
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-8" style="background: var(--tb-c-bg-soft);">
+          <h3 class="font-[var(--font-display)] text-xl font-medium text-[var(--tb-c-text-1)]">A · The bootstrap — the loader</h3>
+          <p class="mt-3 max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
+            A small, static Rust binary — under 3&nbsp;MB, a budget enforced in CI on every
+            platform — that is the process entry point of every package. It reads the trailer
+            at the end of its own file, verifies what it finds, resolves the runtime (from the
+            machine-wide cache, or by downloading it once), and hands off. It carries its own
+            HTTP, TLS, and archive handling: nothing shells out to curl, git, or any tool on
+            your machine. The bootstrap is a published artifact —{' '}
+            <strong class="text-[var(--tb-c-text-1)]">we build it, you never do</strong> — and
+            the same bytes are shared by every package pressed for a platform.
+          </p>
+        </div>
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-8" style="background: var(--tb-c-bg-soft);">
+          <h3 class="font-[var(--font-display)] text-xl font-medium text-[var(--tb-c-text-1)]">B · The runtime — two artifacts</h3>
+          <p class="mt-3 max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
+            A runtime is the interpreter plus everything its load paths expect, and v2 ships
+            it as <strong class="text-[var(--tb-c-text-1)]">two artifacts</strong>: the
+            interpreter executable itself, and an <em>env image</em> — a single{' '}
+            <code class="font-[var(--font-mono)] text-sm">.tfs</code> file holding the standard
+            library, gems, and support files. The pair is downloaded once per machine into the
+            shared cache, SHA-256 verified, and <strong class="text-[var(--tb-c-text-1)]">mounted,
+            never extracted</strong>. Every tebako application on the machine reuses the same
+            copy; upgrading the runtime never rebuilds an application. Ruby is the first
+            runtime; the model is language-agnostic.
+          </p>
+        </div>
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-8" style="background: var(--tb-c-bg-soft);">
+          <h3 class="font-[var(--font-display)] text-xl font-medium text-[var(--tb-c-text-1)]">C · The payload slices — bare images</h3>
+          <p class="mt-3 max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
+            Your application, your data, your native tools — each a bare{' '}
+            <code class="font-[var(--font-mono)] text-sm">.tfs</code> image, self-describing
+            through a manifest inside the image at{' '}
+            <code class="font-[var(--font-mono)] text-sm">/__tpkg__/manifest.yaml</code>.
+            The manifest declares what the slice is (<em>app</em>, <em>data</em>,{' '}
+            <em>toolkit</em>, <em>runtime</em>), what it provides (commands, libraries, a
+            runtime), and what it requires (a runtime constraint, other slices at mount
+            points). Slices are published, versioned, and verified independently — and they
+            co-mount into one process.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ DIAGRAM: THREE-PART COMPOSITION ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">One executable, laid out.</h2>
+      <p class="mb-8 max-w-3xl text-[var(--tb-c-text-2)]">
+        The package file is the bootstrap followed by payload slots, a slot table, optional
+        extension blocks, and a 166-byte trailer header at the very end — read last, first.
+        A <em>fat</em> package carries its runtime in a slot and never touches the network;
+        a <em>lean</em> package references the runtime and resolves it at run time.
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+        <svg viewBox="0 0 940 430" class="w-full min-w-[760px]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Byte layout of a tebako package: bootstrap, payload slots, slot table, extension blocks, trailer header">
+          <!-- byte map bar -->
+          <text x="20" y="30" font-family="var(--font-mono), monospace" font-size="10.5" font-weight="600" fill="var(--tb-c-text-3)">OFFSET 0</text>
+          <text x="920" y="30" text-anchor="end" font-family="var(--font-mono), monospace" font-size="10.5" font-weight="600" fill="var(--tb-c-text-3)">END OF FILE</text>
+
+          <g transform="translate(20, 44)">
+            <!-- bootstrap -->
+            <rect width="170" height="72" rx="8" fill="var(--color-ink)" stroke="var(--tb-c-accent)" stroke-width="1.5" />
+            <text x="85" y="30" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--color-mist-pale)">bootstrap</text>
+            <text x="85" y="48" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-gold)">Rust loader · &lt; 3 MB</text>
+            <text x="85" y="62" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-mist)" opacity="0.85">the process entry point</text>
+            <!-- slot 0 -->
+            <rect x="170" width="240" height="72" rx="0" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="290" y="26" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--tb-c-text-1)">slot 0 · app payload</text>
+            <text x="290" y="44" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">.tfs image — code, gems, manifest</text>
+            <text x="290" y="58" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">mounts at the app root</text>
+            <!-- slot 1 -->
+            <rect x="410" width="200" height="72" rx="0" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="510" y="26" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--tb-c-text-1)">slot 1 · toolkit</text>
+            <text x="510" y="44" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">e.g. inkscape, a JRE, fonts</text>
+            <text x="510" y="58" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">mounts at its declared path</text>
+            <!-- slot table -->
+            <rect x="610" width="120" height="72" rx="0" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="670" y="26" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12" font-weight="600" fill="var(--tb-c-text-1)">slot table</text>
+            <text x="670" y="44" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">280 B per slot</text>
+            <text x="670" y="58" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">offset·size·format·mount</text>
+            <!-- ext block -->
+            <rect x="730" width="90" height="72" rx="0" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" stroke-dasharray="5 3" />
+            <text x="775" y="26" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12" font-weight="600" fill="var(--tb-c-text-1)">ext</text>
+            <text x="775" y="44" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">package manifest</text>
+            <text x="775" y="58" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">signature</text>
+            <!-- trailer -->
+            <rect x="820" width="80" height="72" rx="8" fill="var(--tb-c-accent)" stroke="var(--tb-c-accent)" stroke-width="1.5" />
+            <text x="860" y="26" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12" font-weight="600" fill="var(--color-paper)">trailer</text>
+            <text x="860" y="44" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-paper)" opacity="0.9">166 B, at EOF</text>
+            <text x="860" y="58" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-paper)" opacity="0.9">magic·flags·refs</text>
+          </g>
+
+          <!-- callouts -->
+          <g font-family="var(--font-mono), monospace" font-size="9.5">
+            <line x1="105" y1="116" x2="105" y2="150" stroke="var(--tb-c-text-3)" stroke-width="1" />
+            <text x="105" y="166" text-anchor="middle" fill="var(--tb-c-text-2)">identical bytes in every</text>
+            <text x="105" y="180" text-anchor="middle" fill="var(--tb-c-text-2)">package for the platform</text>
+
+            <line x1="290" y1="116" x2="290" y2="150" stroke="var(--tb-c-text-3)" stroke-width="1" />
+            <text x="290" y="166" text-anchor="middle" fill="var(--tb-c-text-2)">1–8 slots · mounted,</text>
+            <text x="290" y="180" text-anchor="middle" fill="var(--tb-c-text-2)">never extracted</text>
+
+            <line x1="775" y1="116" x2="775" y2="150" stroke="var(--tb-c-text-3)" stroke-width="1" />
+            <text x="775" y="166" text-anchor="middle" fill="var(--tb-c-text-2)">composition + trust live</text>
+            <text x="775" y="180" text-anchor="middle" fill="var(--tb-c-text-2)">outside the images</text>
+
+            <line x1="860" y1="116" x2="860" y2="150" stroke="var(--tb-c-text-3)" stroke-width="1" />
+            <text x="860" y="166" text-anchor="middle" fill="var(--tb-c-text-2)">runtime reference +</text>
+            <text x="860" y="180" text-anchor="middle" fill="var(--tb-c-text-2)">package flags</text>
+          </g>
+
+          <!-- lean vs fat -->
+          <g transform="translate(20, 216)">
+            <rect width="440" height="88" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="220" y="26" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--tb-c-text-1)">LEAN — the default</text>
+            <text x="220" y="46" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">the trailer names the runtime; the first run downloads it</text>
+            <text x="220" y="60" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">once into the shared cache, verified — every later package</text>
+            <text x="220" y="74" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">on the machine reuses it</text>
+          </g>
+          <g transform="translate(480, 216)">
+            <rect width="440" height="88" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="220" y="26" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--tb-c-text-1)">FAT — zero network, ever</text>
+            <text x="220" y="46" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">the runtime rides in a slot, pinned by its SHA-256 in the</text>
+            <text x="220" y="60" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">runtime reference — the package runs on an air-gapped</text>
+            <text x="220" y="74" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">machine, at the cost of carrying the runtime in every copy</text>
+          </g>
+
+          <text x="470" y="340" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="11" fill="var(--tb-c-text-3)">The format version is 1 and stays 1: new capabilities arrive as flags and extension blocks, so older readers</text>
+          <text x="470" y="358" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="11" fill="var(--tb-c-text-3)">keep reading newer packages — and refuse, by name, only what they genuinely cannot honor.</text>
+          <text x="470" y="392" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10" fill="var(--tb-c-text-3)">inspect any package: tebako inspect &lt;file&gt; — slots, mounts, runtime reference, trust state</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- ============ WHERE THE RUNTIME COMES FROM ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Where the runtime comes from.</h2>
+      <p class="mb-8 max-w-3xl text-[var(--tb-c-text-2)]">
+        Runtimes are factory products, not local builds. An official Ruby release flows
+        through two factories before any user machine sees it, and every boundary is a
+        published, checksummed release — each stage consumes the previous stage's
+        artifacts, never its source tree. The full stage-by-stage table is on{' '}
+        <a href="/docs/architecture/pipeline/" class="tb-link-underline text-[var(--tb-c-accent)]">the pipeline page</a>.
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+        <svg viewBox="0 0 940 330" class="w-full min-w-[760px]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Release chain: ruby-lang.org tarball, source factory, runtime factory, product, user machine">
+          <defs>
+            <marker id="rc-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 Z" fill="var(--tb-c-accent)" />
+            </marker>
+          </defs>
+
+          <g transform="translate(10, 30)">
+            <rect width="160" height="96" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="80" y="26" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--tb-c-text-1)">ruby-lang.org</text>
+            <text x="80" y="46" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">official source tarball</text>
+            <text x="80" y="60" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">+ published SHA-256</text>
+            <text x="80" y="80" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">37 versions · 3.1 – 4.0</text>
+          </g>
+          <line x1="172" y1="78" x2="196" y2="78" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#rc-arrow)" />
+
+          <g transform="translate(200, 30)">
+            <rect width="170" height="96" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="85" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--tb-c-text-1)">source factory</text>
+            <text x="85" y="40" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">tamatebako/ruby</text>
+            <text x="85" y="58" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">canonical patches → patched-src</text>
+            <text x="85" y="72" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">tarballs per version × scenario</text>
+            <text x="85" y="88" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">+ SHA256SUMS</text>
+          </g>
+          <line x1="372" y1="78" x2="396" y2="78" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#rc-arrow)" />
+
+          <g transform="translate(400, 30)">
+            <rect width="180" height="96" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="90" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--tb-c-text-1)">runtime factory</text>
+            <text x="90" y="40" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">tebako-runtime-ruby</text>
+            <text x="90" y="58" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">per version × platform triplet:</text>
+            <text x="90" y="72" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">interpreter exe + env .tfs image</text>
+            <text x="90" y="88" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">+ manifest.json + SHA256SUMS</text>
+          </g>
+          <line x1="582" y1="78" x2="606" y2="78" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#rc-arrow)" />
+
+          <g transform="translate(610, 30)">
+            <rect width="150" height="96" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="75" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--tb-c-text-1)">the product</text>
+            <text x="75" y="40" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">tamatebako/tebako</text>
+            <text x="75" y="58" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">bootstrap · shim · CLI · tfs</text>
+            <text x="75" y="72" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">press resolves runtimes from</text>
+            <text x="75" y="86" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">the factory index</text>
+          </g>
+          <line x1="762" y1="78" x2="786" y2="78" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#rc-arrow)" />
+
+          <g transform="translate(790, 30)">
+            <rect width="140" height="96" rx="10" fill="var(--tb-c-accent)" stroke="var(--tb-c-accent)" stroke-width="1.5" />
+            <text x="70" y="26" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--color-paper)">your machine</text>
+            <text x="70" y="46" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-paper)" opacity="0.9">downloads once,</text>
+            <text x="70" y="60" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-paper)" opacity="0.9">verifies, caches,</text>
+            <text x="70" y="76" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-paper)" opacity="0.9">shares machine-wide</text>
+          </g>
+
+          <!-- the platform matrix -->
+          <text x="470" y="166" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10.5" font-weight="600" fill="var(--tb-c-text-3)">EVERY STAGE PUBLISHES PER PLATFORM — THE SEVEN TRIPLETS</text>
+          <g font-family="var(--font-mono), monospace" font-size="10">
+            <g transform="translate(40, 182)"><rect width="200" height="30" rx="6" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" /><text x="100" y="19" text-anchor="middle" fill="var(--tb-c-text-2)">aarch64-macos · arm64</text></g>
+            <g transform="translate(260, 182)"><rect width="200" height="30" rx="6" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" /><text x="100" y="19" text-anchor="middle" fill="var(--tb-c-text-2)">x86_64-macos · target 11.0</text></g>
+            <g transform="translate(480, 182)"><rect width="200" height="30" rx="6" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" /><text x="100" y="19" text-anchor="middle" fill="var(--tb-c-text-2)">x86_64-linux-gnu · glibc 2.31+</text></g>
+            <g transform="translate(700, 182)"><rect width="200" height="30" rx="6" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" /><text x="100" y="19" text-anchor="middle" fill="var(--tb-c-text-2)">aarch64-linux-gnu · glibc 2.31+</text></g>
+            <g transform="translate(40, 222)"><rect width="200" height="30" rx="6" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" /><text x="100" y="19" text-anchor="middle" fill="var(--tb-c-text-2)">x86_64-linux-musl · static</text></g>
+            <g transform="translate(260, 222)"><rect width="200" height="30" rx="6" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" /><text x="100" y="19" text-anchor="middle" fill="var(--tb-c-text-2)">aarch64-linux-musl · static</text></g>
+            <g transform="translate(480, 222)"><rect width="200" height="30" rx="6" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" /><text x="100" y="19" text-anchor="middle" fill="var(--tb-c-text-2)">x86_64-windows-ucrt · Win 10+</text></g>
+            <g transform="translate(700, 222)"><rect width="200" height="30" rx="6" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-dasharray="4 3" /><text x="100" y="19" text-anchor="middle" fill="var(--tb-c-text-3)">aarch64-windows-ucrt · reserved</text></g>
+          </g>
+          <text x="470" y="286" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="11" fill="var(--tb-c-text-3)">The musl builds are fully static — the universal Linux artifacts. Pure-language payloads ship once as <tspan font-family="var(--font-mono), monospace">universal</tspan>;</text>
+          <text x="470" y="304" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="11" fill="var(--tb-c-text-3)">only payloads with native code multiply across the matrix.</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- ============ HOW A RUN WORKS ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">How a run works.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        There are two front doors and one mechanism behind them. <strong class="text-[var(--tb-c-text-1)]">Standalone:</strong>
+        you execute a package file directly — the bootstrap inside reads its own trailer and
+        resolves the runtime. <strong class="text-[var(--tb-c-text-1)]">Managed:</strong> you invoke
+        a command name on <code class="font-[var(--font-mono)] text-sm">PATH</code> — a shim link
+        to the dispatcher, which picks the payload version and the runtime per invocation.
+        Either way, the same handoff happens at the end: the runtime executable starts with a
+        list of images to mount and an entrypoint to run.
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+        <svg viewBox="0 0 940 560" class="w-full min-w-[760px]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Dispatch sequence: invocation name, version chain, runtime resolution, exec handoff, driver mounts, entrypoint">
+          <defs>
+            <marker id="ds-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 Z" fill="var(--tb-c-accent)" />
+            </marker>
+          </defs>
+
+          <!-- lane labels -->
+          <rect x="20" y="14" width="420" height="530" rx="14" fill="none" stroke="var(--tb-c-divider-strong)" stroke-width="1" stroke-dasharray="4 3" />
+          <text x="230" y="38" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10" font-weight="600" fill="var(--tb-c-text-3)">THE LOADER — shim or bootstrap, per invocation</text>
+          <rect x="500" y="14" width="420" height="530" rx="14" fill="none" stroke="var(--tb-c-divider-strong)" stroke-width="1" stroke-dasharray="4 3" />
+          <text x="710" y="38" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10" font-weight="600" fill="var(--tb-c-text-3)">THE RUNTIME PROCESS — the driver inside the interpreter exe</text>
+
+          <!-- loader steps -->
+          <g transform="translate(50, 56)">
+            <rect width="360" height="62" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="180" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--tb-c-text-1)">argv0 selects the payload</text>
+            <text x="180" y="42" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">the command name IS the selector — one dispatcher,</text>
+            <text x="180" y="55" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">one link per command in ~/.tebako/shims</text>
+          </g>
+          <line x1="230" y1="120" x2="230" y2="140" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#ds-arrow)" />
+
+          <g transform="translate(50, 146)">
+            <rect width="360" height="88" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="180" y="22" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--tb-c-text-1)">version chain — first hit wins</text>
+            <text x="180" y="40" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">1 · TEBAKO_&lt;TOOL&gt;_VERSION environment override</text>
+            <text x="180" y="54" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">2 · nearest .tebako-tools.yaml walking up from cwd</text>
+            <text x="180" y="68" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">3 · your default in ~/.tebako/config.yaml</text>
+            <text x="180" y="82" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">4 · the registry's declared default</text>
+          </g>
+          <line x1="230" y1="236" x2="230" y2="256" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#ds-arrow)" />
+
+          <g transform="translate(50, 262)">
+            <rect width="360" height="88" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="180" y="22" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--tb-c-text-1)">runtime resolution — cache first</text>
+            <text x="180" y="40" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">the entrypoint's constraint → newest COMPATIBLE</text>
+            <text x="180" y="54" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">cached runtime (no download) → else download once,</text>
+            <text x="180" y="68" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">SHA-256 verify, cache, share machine-wide</text>
+            <text x="180" y="82" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">native-extension payloads lock to the ruby ABI line</text>
+          </g>
+          <line x1="230" y1="352" x2="230" y2="372" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#ds-arrow)" />
+
+          <g transform="translate(50, 378)">
+            <rect width="360" height="100" rx="10" fill="var(--color-ink)" stroke="var(--tb-c-accent)" stroke-width="1.5" />
+            <text x="180" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--color-mist-pale)">the handoff — exec</text>
+            <text x="180" y="44" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-gold)">runtime-exe --tebako-image img:slot:mount …</text>
+            <text x="180" y="58" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-gold)">          --tebako-entry &lt;entrypoint&gt; &lt;your args…&gt;</text>
+            <text x="180" y="76" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-mist)" opacity="0.85">+ TEBAKO_RUNTIME_IMAGE (the env image) + the jail policy</text>
+            <text x="180" y="90" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-mist)" opacity="0.85">unix: the process BECOMES the runtime — signals and exit</text>
+          </g>
+
+          <line x1="410" y1="428" x2="494" y2="428" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#ds-arrow)" />
+
+          <!-- driver steps -->
+          <g transform="translate(530, 56)">
+            <rect width="360" height="76" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="180" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--tb-c-text-1)">mount the env image, whole</text>
+            <text x="180" y="42" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">TEBAKO_RUNTIME_IMAGE at the interpreter's compiled-in</text>
+            <text x="180" y="56" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">root — /__tfs__ (POSIX) · A:/__tfs__ (Windows)</text>
+            <text x="180" y="70" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">stdlib + gems appear; nothing is extracted</text>
+          </g>
+          <line x1="710" y1="134" x2="710" y2="154" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#ds-arrow)" />
+
+          <g transform="translate(530, 160)">
+            <rect width="360" height="76" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="180" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--tb-c-text-1)">mount each payload, in order</text>
+            <text x="180" y="42" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">every --tebako-image triple at its declared mount point;</text>
+            <text x="180" y="56" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">nesting allowed · duplicate mount point refused ·</text>
+            <text x="180" y="70" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">any failure unmounts everything — never a partial mount</text>
+          </g>
+          <line x1="710" y1="238" x2="710" y2="258" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#ds-arrow)" />
+
+          <g transform="translate(530, 264)">
+            <rect width="360" height="62" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="180" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--tb-c-text-1)">install the jail, after the mounts</text>
+            <text x="180" y="42" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">the declared host-filesystem policy ∩ your tightening —</text>
+            <text x="180" y="56" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">fail-closed: a malformed policy stops the run, not the policy</text>
+          </g>
+          <line x1="710" y1="328" x2="710" y2="348" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#ds-arrow)" />
+
+          <g transform="translate(530, 354)">
+            <rect width="360" height="62" rx="10" fill="var(--tb-c-accent)" stroke="var(--tb-c-accent)" stroke-width="1.5" />
+            <text x="180" y="26" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--color-paper)">argv rewrites to the entrypoint</text>
+            <text x="180" y="44" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-paper)" opacity="0.9">resolved inside the first image mount; the interpreter runs</text>
+            <text x="180" y="58" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-paper)" opacity="0.9">your program — the loader is gone from the picture</text>
+          </g>
+
+          <text x="710" y="452" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="11" fill="var(--tb-c-text-3)">Every step names its failure. Nothing guesses,</text>
+          <text x="710" y="470" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="11" fill="var(--tb-c-text-3)">nothing falls back silently, nothing half-mounts.</text>
+          <text x="710" y="500" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10" fill="var(--tb-c-text-3)">preview any dispatch: tebako-shim which &lt;tool&gt;</text>
+          <text x="230" y="514" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10" fill="var(--tb-c-text-3)">windows: spawn + wait, child's exit code propagated</text>
+        </svg>
+      </div>
+      <p class="mt-6 max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
+        Two consequences worth internalizing. First, <strong class="text-[var(--tb-c-text-1)]">a run is
+        a run</strong>: executing a package never installs its slices — installation is the
+        explicit verb, <code class="font-[var(--font-mono)] text-sm">tebako install</code>.
+        Second, verification happens <strong class="text-[var(--tb-c-text-1)]">at fetch and install,
+        never per run</strong> — a cached, verified artifact starts at full speed every time.
+      </p>
+    </div>
+
+    <!-- ============ THE MOUNT MODEL ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">One process, many images: the mount model.</h2>
+      <p class="mb-8 max-w-3xl text-[var(--tb-c-text-2)]">
+        Inside the running process there is one virtual filesystem. The env image mounts
+        whole at the runtime root — the path the interpreter was compiled to live at — and
+        every payload mounts at the path its consumer declared. A path lookup resolves
+        against the <strong class="text-[var(--tb-c-text-1)]">longest matching mount
+        prefix</strong>; mounts may nest; and the host filesystem is visible only where the
+        jail allows it. Payload images are always read-only.
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+        <svg viewBox="0 0 940 470" class="w-full min-w-[760px]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mount model: env image at the runtime root, payloads at declared mounts, longest-prefix dispatch">
+          <!-- the VFS tree -->
+          <rect x="20" y="14" width="560" height="440" rx="14" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+          <text x="300" y="40" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10" font-weight="600" fill="var(--tb-c-text-3)">WHAT THE PROCESS SEES — ONE NAMESPACE</text>
+
+          <g font-family="var(--font-mono), monospace" font-size="11">
+            <!-- app payload at / -->
+            <text x="48" y="76" fill="var(--tb-c-text-1)" font-weight="600">/</text>
+            <text x="120" y="76" fill="var(--tb-c-accent)" font-size="9.5">◀ slot 0: the app payload — the entrypoint lives here</text>
+            <text x="72" y="100" fill="var(--tb-c-text-2)">├── bin/metanorma</text>
+            <text x="72" y="122" fill="var(--tb-c-text-2)">├── lib/metanorma/…</text>
+
+            <!-- env image, nested -->
+            <text x="72" y="158" fill="var(--tb-c-text-1)" font-weight="600">├── /__tfs__</text>
+            <text x="220" y="158" fill="var(--tb-c-accent)" font-size="9.5">◀ env image, mounted WHOLE at the runtime root</text>
+            <text x="96" y="180" fill="var(--tb-c-text-2)">│&#160;&#160; ├── bin/ruby</text>
+            <text x="96" y="200" fill="var(--tb-c-text-2)">│&#160;&#160; ├── lib/ruby/3.3.0/…</text>
+            <text x="96" y="220" fill="var(--tb-c-text-2)">│&#160;&#160; └── lib/ruby/gems/…</text>
+
+            <!-- toolkit mounts -->
+            <text x="72" y="256" fill="var(--tb-c-text-1)" font-weight="600">├── /opt/inkscape</text>
+            <text x="220" y="256" fill="var(--tb-c-accent)" font-size="9.5">◀ toolkit slice, mount declared by the consumer</text>
+            <text x="96" y="278" fill="var(--tb-c-text-2)">│&#160;&#160; └── bin/inkscape</text>
+            <text x="72" y="312" fill="var(--tb-c-text-1)" font-weight="600">├── /opt/openjdk</text>
+            <text x="220" y="312" fill="var(--tb-c-accent)" font-size="9.5">◀ toolkit slice, independently published + versioned</text>
+            <text x="96" y="334" fill="var(--tb-c-text-2)">│&#160;&#160; └── bin/java</text>
+
+            <!-- host -->
+            <text x="72" y="372" fill="var(--tb-c-text-1)" font-weight="600">└── /work</text>
+            <text x="220" y="372" fill="var(--tb-c-gold)" font-size="9.5">◀ the host, only where the jail grants it (here: ro)</text>
+            <text x="96" y="394" fill="var(--tb-c-text-2)">&#160;&#160;&#160; └── document.adoc <tspan fill="var(--tb-c-text-3)">— your file</tspan></text>
+          </g>
+
+            <!-- toolkit mounts -->
+            <text x="48" y="264" fill="var(--tb-c-text-1)" font-weight="600">/opt/inkscape</text>
+            <text x="180" y="264" fill="var(--tb-c-accent)" font-size="9.5">◀ toolkit slice, mount declared by the consumer</text>
+            <text x="72" y="286" fill="var(--tb-c-text-2)">└── bin/inkscape</text>
+            <text x="48" y="322" fill="var(--tb-c-text-1)" font-weight="600">/opt/openjdk</text>
+            <text x="180" y="322" fill="var(--tb-c-accent)" font-size="9.5">◀ toolkit slice, independently published + versioned</text>
+            <text x="72" y="344" fill="var(--tb-c-text-2)">└── bin/java</text>
+
+            <!-- host -->
+            <text x="48" y="382" fill="var(--tb-c-text-1)" font-weight="600">/work</text>
+            <text x="180" y="382" fill="var(--tb-c-gold)" font-size="9.5">◀ the host, only where the jail grants it (here: ro)</text>
+            <text x="72" y="404" fill="var(--tb-c-text-2)">└── document.adoc <tspan fill="var(--tb-c-text-3)">— your file</tspan></text>
+          </g>
+
+          <!-- longest prefix explainer -->
+          <g transform="translate(610, 14)">
+            <rect width="310" height="440" rx="14" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="155" y="40" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10" font-weight="600" fill="var(--tb-c-text-3)">LONGEST-PREFIX DISPATCH</text>
+            <text x="155" y="66" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="10.5" fill="var(--tb-c-text-2)">a lookup for</text>
+            <text x="155" y="88" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10" fill="var(--tb-c-text-1)">/opt/inkscape/bin/inkscape</text>
+            <text x="155" y="110" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="10.5" fill="var(--tb-c-text-2)">matches two mounts; the longest</text>
+            <text x="155" y="126" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="10.5" fill="var(--tb-c-text-2)">prefix on a path-component</text>
+            <text x="155" y="142" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="10.5" fill="var(--tb-c-text-2)">boundary wins:</text>
+
+            <g font-family="var(--font-mono), monospace" font-size="9.5">
+              <rect x="35" y="158" width="240" height="26" rx="6" fill="none" stroke="var(--tb-c-divider-strong)" />
+              <text x="155" y="175" text-anchor="middle" fill="var(--tb-c-text-3)">/ — the app payload</text>
+              <rect x="35" y="192" width="240" height="26" rx="6" fill="none" stroke="var(--tb-c-divider-strong)" opacity="0.4" />
+              <text x="155" y="209" text-anchor="middle" fill="var(--tb-c-text-3)" opacity="0.55">/__tfs__ — not a prefix here</text>
+              <rect x="35" y="226" width="240" height="26" rx="6" fill="var(--tb-c-accent)" opacity="0.92" />
+              <text x="155" y="243" text-anchor="middle" fill="var(--color-paper)" font-weight="600">/opt/inkscape — WINS</text>
+            </g>
+
+            <text x="155" y="286" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="10.5" fill="var(--tb-c-text-2)">Rules that keep this sane:</text>
+            <g font-family="var(--font-sans), sans-serif" font-size="10" fill="var(--tb-c-text-2)">
+              <text x="35" y="310">· env image first, payloads in order</text>
+              <text x="35" y="330">· nested mounts are legal</text>
+              <text x="35" y="350">· duplicate mount point: refused by name</text>
+              <text x="35" y="370">· any failure unmounts everything</text>
+              <text x="35" y="390">· payloads are always read-only</text>
+              <text x="35" y="410">· a mount point is declared by the</text>
+              <text x="47" y="426">consumer, never by the slice itself</text>
+            </g>
+          </g>
+        </svg>
+      </div>
+      <p class="mt-6 max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
+        The consumer-declared mount is the dependency mechanism: an application's manifest
+        says <em>I need inkscape, this version range, at <code class="font-[var(--font-mono)] text-sm">/opt/inkscape</code></em> —
+        the slice itself stays location-agnostic, and one installed copy serves every
+        application that mounts it. The worked example on{' '}
+        <a href="/who/" class="tb-link-underline text-[var(--tb-c-accent)]">the audience page</a>
+        {' '}runs this end to end; the manifest grammar is on{' '}
+        <a href="/docs/architecture/features/" class="tb-link-underline text-[var(--tb-c-accent)]">the feature surface</a>.
+      </p>
+    </div>
+
+    <!-- ============ THE CONTRACT MODEL ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Generations meet fail-closed: the contract model.</h2>
+      <div class="max-w-3xl space-y-4 text-[var(--tb-c-text-2)]">
+        <p>
+          The loader and the runtime are separate artifacts with separate release lines, so
+          they can drift apart. Tebako's answer is a declared <strong class="text-[var(--tb-c-text-1)]">handoff
+          contract</strong>: every runtime release states which handoff semantics it speaks, and the
+          loader checks the declaration <em>before downloading, before mounting, before running
+          anything</em>. A combination that cannot work is refused by name — the error tells you
+          both generations and the remedy — instead of failing later as a corrupted environment
+          or a segfault.
+        </p>
+        <p>
+          The same rule covers packages and payloads: every artifact belongs to a declared
+          generation, and anything that predates declarations is treated as the oldest one and
+          refused by name when it no longer fits. The failure you meet in practice is a sentence
+          like <em>"this package was pressed by a newer tebako — upgrade your CLI"</em> or{' '}
+          <em>"this runtime is too old for this package — pin an older payload or upgrade the
+          runtime"</em>: a named error with an exit code, never a silent fallback and never a
+          half-installed cache.
+        </p>
+      </div>
+    </div>
+
+    <!-- ============ NAMED FAILURES ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Every failure has a name.</h2>
+      <p class="mb-8 max-w-3xl text-[var(--tb-c-text-2)]">
+        The loader and the runtime's mount driver share a small, stable set of refusal
+        codes. Scripts can branch on them; humans get a one-line message that says what
+        was refused and why.
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]">
+        <table class="w-full min-w-[640px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider)] text-[var(--tb-c-text-1)]">
+              <th class="px-5 py-3 font-medium">Exit</th>
+              <th class="px-5 py-3 font-medium">Refusal</th>
+              <th class="px-5 py-3 font-medium">What it means</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)] text-[var(--tb-c-text-2)]">
+            {exitCodes.map((e) => (
+              <tr>
+                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-accent)]">{e.code}</td>
+                <td class="px-5 py-2.5 font-medium text-[var(--tb-c-text-1)]">{e.name}</td>
+                <td class="px-5 py-2.5">{e.meaning}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-4 max-w-3xl text-sm text-[var(--tb-c-text-3)]">
+        Once the interpreter is running, its own exit codes are the program's — the loader is
+        out of the picture by then.
+      </p>
+    </div>
+
+    <!-- ============ THREE NEIGHBORS ============ -->
+    <div class="mt-16 grid gap-6 md:grid-cols-3">
+      <a href="/docs/architecture/store/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+        <p class="tb-eyebrow">NEXT · THE STORE</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">Where everything lives</h3>
+        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          <code class="font-[var(--font-mono)] text-xs">~/.tebako</code> — content-addressed,
+          SHA-256 anchored, shared machine-wide. Install vs run, locking, offline.
+        </p>
+      </a>
+      <a href="/docs/architecture/chain-of-trust/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+        <p class="tb-eyebrow">NEXT · TRUST</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">The chain of trust</h3>
+        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          Unverified-first with loud warnings, opt-in signing, strict verification of
+          anything signed.
+        </p>
+      </a>
+      <a href="/docs/architecture/exec-tiers/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+        <p class="tb-eyebrow">NEXT · EXEC TIERS</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">Running binaries from images</h3>
+        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          Preload, wrapped, TFS-native, static — how a toolkit executable runs, and how
+          to choose.
+        </p>
+      </a>
+    </div>
+  </section>
+</BaseLayout>
