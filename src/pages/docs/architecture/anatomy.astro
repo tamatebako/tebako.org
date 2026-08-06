@@ -76,7 +76,9 @@ const exitCodes = [
             it as <strong class="text-[var(--tb-c-text-1)]">two artifacts</strong>: the
             interpreter executable itself, and an <em>env image</em> — a single{' '}
             <code class="font-[var(--font-mono)] text-sm">.tfs</code> file holding the standard
-            library, gems, and support files. The pair is downloaded once per machine into the
+            library, gems, and support files. (The windows runtime adds a third: the shared
+            ruby DLL the exe imports, installed beside it under its declared PE name.) The
+            set is downloaded once per machine into the
             shared cache, SHA-256 verified, and <strong class="text-[var(--tb-c-text-1)]">mounted,
             never extracted</strong>. Every tebako application on the machine reuses the same
             copy; upgrading the runtime never rebuilds an application. Ruby is the first
