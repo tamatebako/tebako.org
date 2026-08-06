@@ -1,0 +1,197 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro'
+import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import StatusPill from '../../../components/docs/StatusPill.astro'
+---
+
+<BaseLayout title="Migrating from Tebako v1 — Tebako architecture" description="The v1→v2 migration guide: what changed, what to do, and the mapping from gem-era commands to the Rust platform.">
+  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
+    <p class="tb-eyebrow">ARCHITECTURE · 12</p>
+    <h1 class="mt-3">Migrating from Tebako v1.</h1>
+    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      Tebako v2 is a re-architecture, not a patch release. The C++/CMake era is
+      archived; the platform is Rust, the runtime is two artifacts, and payloads
+      are self-describing slices. This page is the map from there to here.
+    </p>
+
+    <ArchDocsNav />
+
+    <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
+      <StatusPill status="shipped" />
+      <span class="text-sm text-[var(--tb-c-text-2)]">ships with v2.0.0 — the migration path below is live</span>
+    </div>
+
+    <!-- ============ THE SHORT VERSION ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">The short version.</h2>
+      <div class="max-w-3xl space-y-4 text-[var(--tb-c-text-2)]">
+        <p>
+          <strong class="text-[var(--tb-c-text-1)]">If you run tebako packages:</strong> uninstall the
+          gem-era tooling, install the v2 CLI, and keep working. Packages pressed with v1
+          must be re-pressed — v1 embedded images do not load in v2.
+        </p>
+        <p>
+          <strong class="text-[var(--tb-c-text-1)]">If you press packages:</strong> your workflow no
+          longer needs CMake, compilers, or system libraries on the packager's machine.
+          The packaging tools arrive as binaries.
+        </p>
+        <p>
+          <strong class="text-[var(--tb-c-text-1)]">If you pinned a Ruby version:</strong> the pin
+          becomes a runtime constraint in the payload manifest
+          (<code class="font-[var(--font-mono)] text-xs">runtime_requirement: ruby "~&gt; 3.3.0"</code>).
+          Runtimes download once and are shared by every package on the machine.
+        </p>
+      </div>
+    </div>
+
+    <!-- ============ WHAT CHANGED ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">What changed, in one table.</h2>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]">
+        <table class="w-full min-w-[640px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider)] text-[var(--tb-c-text-1)]">
+              <th class="px-5 py-3 font-medium">Area</th>
+              <th class="px-5 py-3 font-medium">v1 (archived)</th>
+              <th class="px-5 py-3 font-medium">v2 (current)</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)] text-[var(--tb-c-text-2)]">
+            <tr>
+              <td class="px-5 py-3 font-medium text-[var(--tb-c-text-1)]">Implementation</td>
+              <td class="px-5 py-3">C++ (tebako-main, libtfs) + the tebako gem</td>
+              <td class="px-5 py-3">Rust end to end (bootstrap, shim, driver, tfs, tpkg, CLI)</td>
+            </tr>
+            <tr>
+              <td class="px-5 py-3 font-medium text-[var(--tb-c-text-1)]">Runtime</td>
+              <td class="px-5 py-3">one merged environment+app image, embedded</td>
+              <td class="px-5 py-3">interpreter exe + separate env image; shared, downloaded once</td>
+            </tr>
+            <tr>
+              <td class="px-5 py-3 font-medium text-[var(--tb-c-text-1)]">Payloads</td>
+              <td class="px-5 py-3">opaque embedded images</td>
+              <td class="px-5 py-3">self-describing slices (<code class="font-[var(--font-mono)] text-xs">/__tpkg__/manifest.yaml</code>), co-mounted</td>
+            </tr>
+            <tr>
+              <td class="px-5 py-3 font-medium text-[var(--tb-c-text-1)]">Packaging tools</td>
+              <td class="px-5 py-3">compiled on your machine (CMake + system libs)</td>
+              <td class="px-5 py-3">prebuilt binaries per platform</td>
+            </tr>
+            <tr>
+              <td class="px-5 py-3 font-medium text-[var(--tb-c-text-1)]">Distribution</td>
+              <td class="px-5 py-3">one fat binary only</td>
+              <td class="px-5 py-3">fat/lean binaries <em>and</em> the managed store (registries, shims, version manager)</td>
+            </tr>
+            <tr>
+              <td class="px-5 py-3 font-medium text-[var(--tb-c-text-1)]">Native tools</td>
+              <td class="px-5 py-3">not supported</td>
+              <td class="px-5 py-3">zero-runtime payloads (Inkscape, JRE, hello) as first-class slices</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ============ COMMAND MAP ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">The command map.</h2>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]">
+        <table class="w-full min-w-[640px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider)] text-[var(--tb-c-text-1)]">
+              <th class="px-5 py-3 font-medium">v1 (gem)</th>
+              <th class="px-5 py-3 font-medium">v2</th>
+              <th class="px-5 py-3 font-medium">Notes</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)] text-[var(--tb-c-text-2)]">
+            <tr>
+              <td class="px-5 py-3 font-[var(--font-mono)] text-xs">gem install tebako</td>
+              <td class="px-5 py-3 font-[var(--font-mono)] text-xs">brew install tamatebako/tap/tebako</td>
+              <td class="px-5 py-3">prebuilt per platform; no compilers</td>
+            </tr>
+            <tr>
+              <td class="px-5 py-3 font-[var(--font-mono)] text-xs">tebako press … <span class="text-[var(--tb-c-text-3)]">(the gem)</span></td>
+              <td class="px-5 py-3 font-[var(--font-mono)] text-xs">tebako press … <span class="text-[var(--tb-c-text-3)]">(the Rust CLI)</span></td>
+              <td class="px-5 py-3">same verb, prebuilt binary; lean/fat — classic mode is gone</td>
+            </tr>
+            <tr>
+              <td class="px-5 py-3 font-[var(--font-mono)] text-xs">— (no install verb)</td>
+              <td class="px-5 py-3 font-[var(--font-mono)] text-xs">tebako add-registry … && tebako install …</td>
+              <td class="px-5 py-3">the managed flow: registries, store, shims</td>
+            </tr>
+            <tr>
+              <td class="px-5 py-3 font-[var(--font-mono)] text-xs">RUBY VERSION pin</td>
+              <td class="px-5 py-3 font-[var(--font-mono)] text-xs">runtime_requirement: ruby "~&gt; 3.3.0"</td>
+              <td class="px-5 py-3">in the payload manifest; the dispatcher resolves it</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ============ STEPS ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">The steps, in order.</h2>
+      <ol class="max-w-3xl list-decimal space-y-4 pl-6 text-[var(--tb-c-text-2)]">
+        <li>
+          <strong class="text-[var(--tb-c-text-1)]">Remove the gem-era install.</strong>
+          {' '}<code class="font-[var(--font-mono)] text-xs">gem uninstall tebako</code> and drop any
+          v1 build trees. The v1 repo is archived at
+          <a href="https://github.com/tamatebako/tebako-v1" class="tb-link-underline text-[var(--tb-c-accent)]">tamatebako/tebako-v1</a>
+          — read-only reference, no new development.
+        </li>
+        <li>
+          <strong class="text-[var(--tb-c-text-1)]">Install the v2 CLI.</strong>
+          {' '}<code class="font-[var(--font-mono)] text-xs">brew install tamatebako/tap/tebako</code>
+          {' '}(or the per-platform release asset from
+          <a href="https://github.com/tamatebako/tebako/releases" class="tb-link-underline text-[var(--tb-c-accent)]">tamatebako/tebako</a>).
+        </li>
+        <li>
+          <strong class="text-[var(--tb-c-text-1)]">Re-press your payloads.</strong> v1 images do not
+          load in v2. For a Ruby app: declare the runtime constraint in the manifest, press with
+          {' '}<code class="font-[var(--font-mono)] text-xs">tebako press</code> (lean or fat), and
+          either ship the stitched executable or publish the payload to a registry for the
+          managed flow. Data and toolkit slices are built with
+          {' '}<code class="font-[var(--font-mono)] text-xs">tfs mkimage</code>.
+        </li>
+        <li>
+          <strong class="text-[var(--tb-c-text-1)]">First run downloads the runtime once.</strong>
+          {' '}It lands in <code class="font-[var(--font-mono)] text-xs">~/.tebako/runtimes/</code>,
+          SHA-256 verified, shared by every tebako package on the machine. Subsequent runs are
+          silent cache hits; <code class="font-[var(--font-mono)] text-xs">TEBAKO_OFFLINE=1</code>
+          {' '}makes that explicit.
+        </li>
+      </ol>
+    </div>
+
+    <!-- ============ GOTCHAS ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Worth knowing.</h2>
+      <ul class="max-w-3xl list-disc space-y-3 pl-6 text-[var(--tb-c-text-2)]">
+        <li>
+          <strong class="text-[var(--tb-c-text-1)]">The env image is not your app.</strong> v1
+          merged them; v2 never does. The runtime's env image is the interpreter's stdlib and
+          gems — your app is a separate payload slice mounted over it.
+        </li>
+        <li>
+          <strong class="text-[var(--tb-c-text-1)]">Native tools are slices now.</strong> If your
+          app shells out to a binary (Inkscape, a JRE, ffmpeg), package it as a toolkit payload
+          and declare it in <code class="font-[var(--font-mono)] text-xs">requires:</code> with a
+          mount point. Your users stop installing it by hand.
+        </li>
+        <li>
+          <strong class="text-[var(--tb-c-text-1)]">A run never installs.</strong> Executing a
+          package reads and runs only; <code class="font-[var(--font-mono)] text-xs">tebako install</code>
+          {' '}is the explicit verb that populates the store and registers shims.
+        </li>
+        <li>
+          <strong class="text-[var(--tb-c-text-1)]">Unsigned is first-class, loud.</strong>
+          {' '}Unsigned payloads install with a warning and a journal line;
+          {' '}<code class="font-[var(--font-mono)] text-xs">TEBAKO_REQUIRE_SIGNED=1</code> fails
+          closed. Signing is opt-in per package.
+        </li>
+      </ul>
+    </div>
+  </section>
+</BaseLayout>

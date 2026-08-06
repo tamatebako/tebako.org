@@ -92,6 +92,78 @@ const chainSteps = [
     </div>
 
     <div class="mt-16">
+      <h2 class="mb-3">The flow, from release page to run.</h2>
+      <p class="mb-8 max-w-3xl text-[var(--tb-c-text-2)]">
+        Verification happens at fetch and install — <strong class="text-[var(--tb-c-text-1)]">never
+        per run</strong>. What lands in the store carries its proof with it; what runs has
+        already been believed, exactly once.
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+        <svg viewBox="0 0 940 420" class="w-full min-w-[760px]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The trust flow: published artifact plus sha256 sidecar, verified install, unsigned runs loud">
+          <defs>
+            <marker id="tf-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 Z" fill="var(--tb-c-accent)" />
+            </marker>
+          </defs>
+
+          <g transform="translate(20, 40)">
+            <rect width="200" height="110" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="100" y="26" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--tb-c-text-1)">the release page</text>
+            <text x="100" y="46" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">payload-1.2.3.tfs</text>
+            <text x="100" y="62" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-accent)">+ .sha256 — the anchor</text>
+            <text x="100" y="78" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">+ .asc — opt-in signature</text>
+            <text x="100" y="98" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">on the publisher's OWN host</text>
+          </g>
+          <line x1="222" y1="95" x2="262" y2="95" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#tf-arrow)" />
+          <text x="242" y="84" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">fetch</text>
+
+          <g transform="translate(268, 40)">
+            <rect width="200" height="110" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="100" y="26" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--tb-c-text-1)">verify at install</text>
+            <text x="100" y="46" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">sha256 of the bytes vs the</text>
+            <text x="100" y="60" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">anchor; signature if present</text>
+            <text x="100" y="80" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-accent)">mismatch → named error (70/71/72),</text>
+            <text x="100" y="94" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-accent)">nothing enters the store</text>
+          </g>
+          <line x1="470" y1="95" x2="510" y2="95" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#tf-arrow)" />
+          <text x="490" y="84" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">rename</text>
+
+          <g transform="translate(516, 40)">
+            <rect width="200" height="110" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="100" y="26" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--tb-c-text-1)">the store entry</text>
+            <text x="100" y="46" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">~/.tebako/payloads/…/1.2.3.tfs</text>
+            <text x="100" y="62" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-accent)">+ .sha256 sidecar = "verified"</text>
+            <text x="100" y="78" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">read-only 0444 · byte-identical</text>
+            <text x="100" y="94" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">with the published artifact</text>
+          </g>
+          <line x1="718" y1="95" x2="758" y2="95" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#tf-arrow)" />
+
+          <g transform="translate(764, 40)">
+            <rect width="156" height="110" rx="10" fill="var(--tb-c-accent)" stroke="var(--tb-c-accent)" stroke-width="1.5" />
+            <text x="78" y="30" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--color-paper)">every run</text>
+            <text x="78" y="52" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-paper)" opacity="0.9">no re-verification —</text>
+            <text x="78" y="66" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-paper)" opacity="0.9">that is what makes</text>
+            <text x="78" y="80" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-paper)" opacity="0.9">startup fast</text>
+          </g>
+
+          <!-- unsigned lane -->
+          <g transform="translate(268, 216)">
+            <rect width="448" height="120" rx="10" fill="var(--tb-c-card)" stroke="var(--color-gold)" stroke-width="1.5" stroke-dasharray="5 3" />
+            <text x="224" y="28" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--color-gold)">UNSIGNED IS FIRST-CLASS — AND LOUD</text>
+            <text x="224" y="52" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-2)">an unsigned artifact installs and runs — with a loud stderr warning</text>
+            <text x="224" y="68" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-2)">and a line in the audit journal, every time. Signing is per-package</text>
+            <text x="224" y="84" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-2)">opt-in; verification of anything signed is always strict.</text>
+            <text x="224" y="106" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-accent)">TEBAKO_REQUIRE_SIGNED=1 — unsigned fails closed (exit 71). Never the default.</text>
+          </g>
+          <line x1="368" y1="150" x2="368" y2="212" stroke="var(--color-gold)" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#tf-arrow)" />
+
+          <text x="470" y="386" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="11" fill="var(--tb-c-text-3)">Trust survives redistribution: the anchor travels with the object, so a mirror, a CDN, or a USB stick</text>
+          <text x="470" y="404" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="11" fill="var(--tb-c-text-3)">is untrusted infrastructure — the verification never touches the network again.</text>
+        </svg>
+      </div>
+    </div>
+
+    <div class="mt-16">
       <h2 class="mb-6">The chain, link by link.</h2>
       <div class="space-y-4">
         {chainSteps.map((s, i) => (

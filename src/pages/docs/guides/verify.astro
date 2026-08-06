@@ -1,0 +1,134 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro'
+import GuidesNav from '../../../components/docs/GuidesNav.astro'
+---
+
+<BaseLayout title="Verify integrity — Tebako guides" description="Tebako verification: the SHA-256 sidecar anchor, verify-at-install semantics, tebako inspect --verify, tebako-pkg validate and sign, and TEBAKO_REQUIRE_SIGNED.">
+  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
+    <p class="tb-eyebrow">GUIDES · VERIFY</p>
+    <h1 class="mt-3">Verify integrity.</h1>
+    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      The model fits in one sentence: every artifact carries a SHA-256 anchor, verification
+      happens at fetch and install time — never per run — and anything signed is verified
+      strictly.
+    </p>
+
+    <GuidesNav />
+
+    <!-- ============ THE ANCHOR ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">The anchor: the .sha256 sidecar.</h2>
+      <p class="max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
+        Next to every cached artifact sits a{' '}
+        <code class="font-[var(--font-mono)] text-sm">.sha256</code> sidecar — the value the
+        artifact was verified against when it landed. The sidecar is the trust anchor: its
+        presence means <em>verified at install</em>. Runs never re-verify, which is what makes
+        them fast.
+      </p>
+    </div>
+
+    <!-- ============ WHAT INSTALL DID ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">What install already did for you.</h2>
+      <div class="max-w-3xl space-y-4 text-[var(--tb-c-text-2)]">
+        <p>
+          <code class="font-[var(--font-mono)] text-sm">tebako install</code> downloaded the
+          payload to a temporary location, hashed it, compared the digest against the
+          registry-published SHA-256, and only then renamed it into place — read-only, with
+          its sidecar beside it. A mismatch aborts with exit 70 and installs nothing; a
+          partial install is invisible by construction.
+        </p>
+        <p>
+          The same happens for runtimes on first run, and for registry indexes on refresh.
+          A registry added with a{' '}
+          <code class="font-[var(--font-mono)] text-sm">?sha256=</code> pin is verified on
+          every refresh, not just the first.
+        </p>
+      </div>
+    </div>
+
+    <!-- ============ BY HAND ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Check an artifact by hand.</h2>
+      <div class="max-w-3xl rounded-xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+        <pre class="overflow-x-auto font-[var(--font-mono)] text-sm"><code>{`$ shasum -a 256 acme-fonts-2.1.0.tfs    # macOS
+$ sha256sum acme-fonts-2.1.0.tfs          # Linux`}</code></pre>
+      </div>
+      <p class="mt-4 max-w-3xl text-[var(--tb-c-text-2)]">
+        Compare the digest against the value the publisher printed at publish time — it is
+        mirrored into the registry index and into the{' '}
+        <code class="font-[var(--font-mono)] text-sm">SHA256SUMS</code> on the release.
+      </p>
+    </div>
+
+    <!-- ============ INSPECT ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Ask tebako to re-verify.</h2>
+      <div class="max-w-3xl rounded-xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+        <pre class="overflow-x-auto font-[var(--font-mono)] text-sm"><code>{`$ tebako inspect ./myapp                  # kind, slots, trust lines
+$ tebako inspect --verify ./myapp           # re-run the checks now
+$ echo $?
+0`}</code></pre>
+      </div>
+      <p class="mt-4 max-w-3xl text-[var(--tb-c-text-2)]">
+        <code class="font-[var(--font-mono)] text-sm">inspect</code> auto-detects a package
+        (trailer present) versus a bare image.{' '}
+        <code class="font-[var(--font-mono)] text-sm">--verify</code> exits 0 on pass, or a
+        named failure: 65 malformed · 70 SHA-256 mismatch · 71 signature invalid (or unsigned
+        under <code class="font-[var(--font-mono)] text-sm">TEBAKO_REQUIRE_SIGNED=1</code>) ·
+        72 trust failure — the key is not in your trusted set.{' '}
+        <code class="font-[var(--font-mono)] text-sm">--require-signed</code> implies{' '}
+        <code class="font-[var(--font-mono)] text-sm">--verify</code> and treats unsigned as a
+        failure.
+      </p>
+      <div class="mt-4 max-w-3xl rounded-xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+        <pre class="overflow-x-auto font-[var(--font-mono)] text-sm"><code>{`$ tebako-pkg validate ./myapp                # package trailers; adds 77 (era mismatch)
+$ tfs info --verify ./acme-fonts-2.1.0.tfs     # bare images`}</code></pre>
+      </div>
+    </div>
+
+    <!-- ============ SIGN YOUR OWN ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Sign your own artifacts.</h2>
+      <div class="max-w-3xl rounded-xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+        <pre class="overflow-x-auto font-[var(--font-mono)] text-sm"><code>{`$ tebako-pkg sign ./acme-fonts-2.1.0.tfs`}</code></pre>
+      </div>
+      <p class="mt-4 max-w-3xl text-[var(--tb-c-text-2)]">
+        On first use this generates the press-local key under{' '}
+        <code class="font-[var(--font-mono)] text-sm">$TEBAKO_HOME/keys</code> and registers
+        its public half automatically. The output is a detached signature —{' '}
+        <code class="font-[var(--font-mono)] text-sm">acme-fonts-2.1.0.tfs.asc</code> — plus a
+        signed <code class="font-[var(--font-mono)] text-sm">SHA256SUMS</code>.{' '}
+        <code class="font-[var(--font-mono)] text-sm">{`--key <keyid>`}</code> or{' '}
+        <code class="font-[var(--font-mono)] text-sm">{`--key-file <path>`}</code> selects a
+        different key; <code class="font-[var(--font-mono)] text-sm">--no-sums</code> skips
+        the sums file. Recipients verify with:
+      </p>
+      <div class="mt-3 max-w-3xl rounded-xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+        <pre class="overflow-x-auto font-[var(--font-mono)] text-sm"><code>{`$ tebako-pkg verify --key-file ./acme-press.pub ./acme-fonts-2.1.0.tfs`}</code></pre>
+      </div>
+      <p class="mt-4 max-w-3xl text-sm text-[var(--tb-c-text-3)]">
+        The flag is <code class="font-[var(--font-mono)] text-xs">--key-file</code>. The tool's
+        usage line currently prints <code class="font-[var(--font-mono)] text-xs">--keyring</code>;
+        the parser accepts <code class="font-[var(--font-mono)] text-xs">--key-file</code> only.
+      </p>
+    </div>
+
+    <!-- ============ HARDENED ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Hardened environments.</h2>
+      <p class="max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
+        Set <code class="font-[var(--font-mono)] text-sm">TEBAKO_REQUIRE_SIGNED=1</code> and
+        unsigned artifacts fail closed — exit 71 — at fetch and install. Without it, unsigned
+        is first-class: a loud warning, a journal entry, and the run proceeds.
+      </p>
+    </div>
+
+    <p class="mt-16 border-t border-[var(--tb-c-divider)] pt-6 text-sm text-[var(--tb-c-text-2)]">
+      See also:
+      <a href="/docs/guides/publish/" class="tb-link-underline text-[var(--tb-c-accent)]">Publish to your own registry</a> ·
+      <a href="/docs/guides/info-inspect/" class="tb-link-underline text-[var(--tb-c-accent)]">info &amp; inspect</a> ·
+      <a href="/docs/architecture/chain-of-trust/" class="tb-link-underline text-[var(--tb-c-accent)]">The chain of trust</a>
+    </p>
+  </section>
+</BaseLayout>

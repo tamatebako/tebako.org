@@ -1,0 +1,148 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro'
+import GuidesNav from '../../../components/docs/GuidesNav.astro'
+---
+
+<BaseLayout title="Create a data payload — Tebako guides" description="Turn a directory of files into a versioned, mountable .tfs data payload: the in-image manifest, tfs mkimage, and the consumer-declared mount rule.">
+  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
+    <p class="tb-eyebrow">GUIDES · DATA</p>
+    <h1 class="mt-3">Create a data payload.</h1>
+    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      A data payload is a directory of files — fonts, datasets, word lists — pressed into a
+      <code class="font-[var(--font-mono)]">.tfs</code> image with a manifest. No toolchain:
+      imaging runs in-process inside the <code class="font-[var(--font-mono)]">tfs</code> CLI.
+    </p>
+
+    <GuidesNav />
+
+    <!-- ============ LAYOUT ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Lay out the directory.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        The files as you want them mounted, plus one extra: the manifest, at{' '}
+        <code class="font-[var(--font-mono)] text-sm">/__tpkg__/manifest.yaml</code> inside the
+        image.
+      </p>
+      <div class="max-w-3xl rounded-xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+        <pre class="overflow-x-auto font-[var(--font-mono)] text-sm"><code>{`acme-fonts/
+├── __tpkg__/
+│   └── manifest.yaml
+├── AcmeSans-Regular.otf
+├── AcmeSans-Bold.otf
+└── LICENSE`}</code></pre>
+      </div>
+    </div>
+
+    <!-- ============ MANIFEST ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Write the manifest.</h2>
+      <div class="max-w-3xl rounded-xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+        <pre class="overflow-x-auto font-[var(--font-mono)] text-sm"><code>{`schema_version: 1
+kind: data
+name: acme-fonts
+version: 2.1.0
+producer: {tool: tfs, tool_version: "2.0.0"}
+created: "2026-08-01T00:00:00Z"
+digest: {tree_hash: "…", blob_sha256: "…"}
+signing: {state: unsigned}
+encryption: {state: none}
+mount_semantics: {suggested: /usr/share/fonts/acme}
+capabilities: {exec: false, read: true}
+platforms: universal`}</code></pre>
+      </div>
+      <ul class="mt-4 max-w-3xl space-y-3 text-[var(--tb-c-text-2)]">
+        <li class="flex gap-3 leading-relaxed">
+          <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tb-c-accent)]"></span>
+          <span><code class="font-[var(--font-mono)] text-sm">kind: data</code> declares that
+            nothing here executes; <code class="font-[var(--font-mono)] text-sm">capabilities.exec: false</code>{' '}
+            makes that a fact the loader enforces, not a courtesy.</span>
+        </li>
+        <li class="flex gap-3 leading-relaxed">
+          <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tb-c-accent)]"></span>
+          <span><code class="font-[var(--font-mono)] text-sm">platforms: universal</code> — one
+            image serves every OS. Platform-split payloads name their triplets instead.</span>
+        </li>
+        <li class="flex gap-3 leading-relaxed">
+          <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tb-c-accent)]"></span>
+          <span><code class="font-[var(--font-mono)] text-sm">mount_semantics.suggested</code>{' '}
+            is a hint, not a rule — the consumer decides the mount point (see the mount rule
+            below).</span>
+        </li>
+        <li class="flex gap-3 leading-relaxed">
+          <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tb-c-accent)]"></span>
+          <span><code class="font-[var(--font-mono)] text-sm">mkimage</code> fills in the
+            digests; <code class="font-[var(--font-mono)] text-sm">signing</code> stays{' '}
+            <code class="font-[var(--font-mono)] text-sm">unsigned</code> until you sign — see{' '}
+            <a href="/docs/guides/verify/" class="tb-link-underline text-[var(--tb-c-accent)]">the verify guide</a>.</span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- ============ IMAGE IT ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Image it.</h2>
+      <div class="max-w-3xl rounded-xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+        <pre class="overflow-x-auto font-[var(--font-mono)] text-sm"><code>{`$ tfs mkimage --format dwarfs acme-fonts/ -o acme-fonts-2.1.0.tfs`}</code></pre>
+      </div>
+      <p class="mt-4 max-w-3xl text-[var(--tb-c-text-2)]">
+        <code class="font-[var(--font-mono)] text-sm">dwarfs</code> is the tebako image
+        format. Imaging happens in-process — there is no external tool to install and nothing
+        to compile.
+      </p>
+    </div>
+
+    <!-- ============ CHECK IT ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Check the image.</h2>
+      <div class="max-w-3xl rounded-xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+        <pre class="overflow-x-auto font-[var(--font-mono)] text-sm"><code>{`$ tfs info --manifest acme-fonts-2.1.0.tfs
+$ tfs ls acme-fonts-2.1.0.tfs
+$ tfs ls -r -l acme-fonts-2.1.0.tfs`}</code></pre>
+      </div>
+      <p class="mt-4 max-w-3xl text-[var(--tb-c-text-2)]">
+        <code class="font-[var(--font-mono)] text-sm">tfs info --manifest</code> prints the
+        manifest back as parsed — the fastest way to catch a YAML mistake.{' '}
+        <code class="font-[var(--font-mono)] text-sm">tfs ls</code> lists the tree without
+        extracting anything.
+      </p>
+    </div>
+
+    <!-- ============ THE MOUNT RULE ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">The mount rule.</h2>
+      <div class="max-w-3xl space-y-4 text-[var(--tb-c-text-2)]">
+        <p>
+          A slice never decides where it lives. The <em>consumer's</em> manifest declares the
+          dependency in its <code class="font-[var(--font-mono)] text-sm">requires</code> — the
+          payload, a version range, and the mount point — so one installed copy of{' '}
+          <code class="font-[var(--font-mono)] text-sm">acme-fonts</code> can serve every
+          application that mounts it, each at its own path.
+        </p>
+        <p>
+          Two ways consumers attach your payload: their manifest's{' '}
+          <code class="font-[var(--font-mono)] text-sm">requires</code> (resolved from the
+          store, shared machine-wide), or{' '}
+          <code class="font-[var(--font-mono)] text-sm">{`tebako press --image <path>:<mount>`}</code>{' '}
+          (carried inside their package). Either way, your image ships location-agnostic.
+        </p>
+      </div>
+    </div>
+
+    <!-- ============ PUBLISH ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Ship it.</h2>
+      <p class="max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
+        The image is the artifact. Publish it on your own releases with a registry index your
+        users can add — the walkthrough is in{' '}
+        <a href="/docs/guides/publish/" class="tb-link-underline text-[var(--tb-c-accent)]">Publish to your own registry</a>.
+      </p>
+    </div>
+
+    <p class="mt-16 border-t border-[var(--tb-c-divider)] pt-6 text-sm text-[var(--tb-c-text-2)]">
+      See also:
+      <a href="/docs/guides/publish/" class="tb-link-underline text-[var(--tb-c-accent)]">Publish to your own registry</a> ·
+      <a href="/docs/guides/info-inspect/" class="tb-link-underline text-[var(--tb-c-accent)]">info &amp; inspect</a> ·
+      <a href="/docs/architecture/anatomy/" class="tb-link-underline text-[var(--tb-c-accent)]">The mount model, in the architecture docs</a>
+    </p>
+  </section>
+</BaseLayout>

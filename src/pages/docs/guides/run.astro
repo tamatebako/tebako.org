@@ -1,0 +1,125 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro'
+import GuidesNav from '../../../components/docs/GuidesNav.astro'
+---
+
+<BaseLayout title="Run a packaged app — Tebako guides" description="Three ways to run a tebako package: the file itself, tebako run with jail and mount overrides, or the managed flow with registries and PATH shims.">
+  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
+    <p class="tb-eyebrow">GUIDES · RUN</p>
+    <h1 class="mt-3">Run a packaged app.</h1>
+    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      A tebako package is an executable file. There are three ways to run one, and they
+      differ only in how much machinery you want around the run.
+    </p>
+
+    <GuidesNav />
+
+    <!-- ============ A: DIRECT ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">A · Execute the file.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        No tebako install, no setup: the package carries its own loader. The first run on a
+        machine resolves the runtime — downloaded once, verified, cached, and shared by every
+        package that can use it.
+      </p>
+      <div class="max-w-3xl rounded-xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+        <pre class="overflow-x-auto font-[var(--font-mono)] text-sm"><code>{`$ chmod +x ./metanorma-1.2.3-macos-arm64
+$ ./metanorma-1.2.3-macos-arm64 compile site.adoc
+resolving runtime: ruby >= 3.3, < 5.0 (macos-arm64)
+downloading tebako-runtime-3.3.7 (exe + env image)
+verifying sha256
+installing (locked)
+installed ruby-3.3.7 — cached at ~/.tebako/runtimes/ruby-3.3-3.3.7-macos-arm64`}</code></pre>
+      </div>
+      <p class="mt-4 max-w-3xl text-[var(--tb-c-text-2)]">
+        Every later run on that machine prints one line and starts immediately:
+      </p>
+      <div class="mt-3 max-w-3xl rounded-xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+        <pre class="overflow-x-auto font-[var(--font-mono)] text-sm"><code>{`runtime ruby-3.3.7 (cached)`}</code></pre>
+      </div>
+      <p class="mt-4 max-w-3xl text-sm text-[var(--tb-c-text-3)]">
+        The runtime is shared infrastructure, not part of the package: a second package that
+        accepts the same ruby line reuses the cached copy. Output abridged.
+      </p>
+    </div>
+
+    <!-- ============ B: TEBAKO RUN ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">B · Drive it with tebako run.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        <code class="font-[var(--font-mono)] text-sm">tebako run</code> wraps the same
+        execution with per-run controls. Everything after{' '}
+        <code class="font-[var(--font-mono)] text-sm">--</code> (or the first non-flag token)
+        goes to the payload verbatim; the flags before it shape this run only.
+      </p>
+      <div class="max-w-3xl rounded-xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+        <pre class="overflow-x-auto font-[var(--font-mono)] text-sm"><code>{`$ tebako run ./myapp -- --help
+$ tebako run ./myapp --jail deny -- --help
+$ tebako run ./myapp --mount "$HOME/data:/data:ro" -- process /data
+$ tebako run ./myapp --no-host -- status`}</code></pre>
+      </div>
+      <div class="mt-4 max-w-3xl space-y-2 text-[var(--tb-c-text-2)]">
+        <p>
+          <code class="font-[var(--font-mono)] text-sm">{`--jail <spec>`}</code> tightens the
+          filesystem policy for this run.{' '}
+          <code class="font-[var(--font-mono)] text-sm">{`--mount <host:mount:ro|rw>`}</code>{' '}
+          adds a one-off host directory grant, read-only or read-write; repeat it for each
+          grant. <code class="font-[var(--font-mono)] text-sm">--no-host</code> drops every
+          host grant the package requested. The full grammar is in the{' '}
+          <a href="/docs/guides/jails/" class="tb-link-underline text-[var(--tb-c-accent)]">jails guide</a>.
+        </p>
+      </div>
+    </div>
+
+    <!-- ============ C: MANAGED ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">C · The managed way: registry, install, shim.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        When the tool is something you use every day, let tebako manage it: a registry to
+        resolve names and versions, an explicit install into the store, and a shim on PATH
+        so the payload is an ordinary command.
+      </p>
+      <div class="max-w-3xl rounded-xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+        <pre class="overflow-x-auto font-[var(--font-mono)] text-sm"><code>{`$ tebako add-registry tfs:github:tebako-packages/metanorma
+$ tebako install metanorma
+installed metanorma 1.2.3 -> ~/.tebako/payloads/metanorma/1.2.3.tfs
+shim ~/.tebako/shims/metanorma
+$ tebako-shim install-shell    # once per machine
+$ metanorma compile site.adoc`}</code></pre>
+      </div>
+      <p class="mt-4 max-w-3xl text-[var(--tb-c-text-2)]">
+        The shim picks the payload version and a compatible runtime per invocation — env
+        overrides, project pins, and defaults are covered in{' '}
+        <a href="/docs/guides/shims/" class="tb-link-underline text-[var(--tb-c-accent)]">Shims &amp; versions</a>.
+        {' '}Output versions shown are representative.
+      </p>
+    </div>
+
+    <!-- ============ OFFLINE / RUN VS INSTALL ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Two rules worth knowing.</h2>
+      <ul class="max-w-3xl space-y-3 text-[var(--tb-c-text-2)]">
+        <li class="flex gap-3 leading-relaxed">
+          <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tb-c-accent)]"></span>
+          <span><strong class="text-[var(--tb-c-text-1)]">Offline is a mode.</strong> With{' '}
+            <code class="font-[var(--font-mono)] text-sm">TEBAKO_OFFLINE=1</code>, a run is a
+            cache hit or a named error (exit 69) — never a surprise fetch.</span>
+        </li>
+        <li class="flex gap-3 leading-relaxed">
+          <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tb-c-accent)]"></span>
+          <span><strong class="text-[var(--tb-c-text-1)]">A run never installs.</strong>{' '}
+            Executing a package resolves the shared runtime, but nothing from the package's
+            payload enters the store. Installation is the explicit verb:{' '}
+            <code class="font-[var(--font-mono)] text-sm">tebako install</code>.</span>
+        </li>
+      </ul>
+    </div>
+
+    <p class="mt-16 border-t border-[var(--tb-c-divider)] pt-6 text-sm text-[var(--tb-c-text-2)]">
+      See also:
+      <a href="/docs/guides/install/" class="tb-link-underline text-[var(--tb-c-accent)]">Install tebako</a> ·
+      <a href="/docs/guides/jails/" class="tb-link-underline text-[var(--tb-c-accent)]">Set a jail policy</a> ·
+      <a href="/docs/architecture/store/" class="tb-link-underline text-[var(--tb-c-accent)]">The store, in the architecture docs</a>
+    </p>
+  </section>
+</BaseLayout>
