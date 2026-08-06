@@ -10,7 +10,8 @@ import StatusPill from '../../../components/docs/StatusPill.astro'
     <h1 class="mt-3">Migrating from Tebako v1.</h1>
     <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
       Tebako v2 is a re-architecture, not a patch release. The C++/CMake era is
-      archived; the platform is Rust, the runtime is two artifacts, and payloads
+      archived; the platform is Rust, the runtime is a small artifact set (exe +
+      env image, plus the ruby DLL on windows), and payloads
       are self-describing slices. This page is the map from there to here.
     </p>
 
