@@ -1,0 +1,186 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro'
+import GuidesNav from '../../../components/docs/GuidesNav.astro'
+---
+
+<BaseLayout title="Shims & versions — Tebako guides" description="Tebako shims put packaged commands on PATH with per-invocation version dispatch: the version chain, enable/disable, which, doctor, and install-shell.">
+  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
+    <p class="tb-eyebrow">GUIDES · SHIMS</p>
+    <h1 class="mt-3">Shims &amp; versions.</h1>
+    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      A shim is an ordinary command on your PATH. Behind it: a link in{' '}
+      <code class="font-[var(--font-mono)]">~/.tebako/shims</code> pointing at the dispatcher,
+      and the link's own name as the selector — argv0 decides which payload, which version,
+      and which runtime this invocation gets.
+    </p>
+
+    <GuidesNav />
+
+    <!-- ============ PATH ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Put the shim directory on PATH, once.</h2>
+      <div class="max-w-3xl rounded-xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+        <pre class="overflow-x-auto font-[var(--font-mono)] text-sm"><code>{`$ tebako-shim install-shell            # detects your shell
+$ tebako-shim install-shell --shell zsh  # or name it: bash|zsh|fish|csh`}</code></pre>
+      </div>
+      <p class="mt-4 max-w-3xl text-[var(--tb-c-text-2)]">
+        <code class="font-[var(--font-mono)] text-sm">install-shell</code> prepends{' '}
+        <code class="font-[var(--font-mono)] text-sm">~/.tebako/shims</code> to PATH inside a
+        managed block in your shell startup file — idempotent, and removed by{' '}
+        <code class="font-[var(--font-mono)] text-sm">tebako-shim uninstall-shell</code>. On
+        Windows the shim directory goes on the user PATH in the registry (HKCU). Open a new
+        shell afterwards.
+      </p>
+    </div>
+
+    <!-- ============ WHERE SHIMS COME FROM ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Where shims come from.</h2>
+      <p class="max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
+        <code class="font-[var(--font-mono)] text-sm">tebako install</code> registers them —
+        registry installs always do; installing a local package file does it only with{' '}
+        <code class="font-[var(--font-mono)] text-sm">--shims</code>.{' '}
+        <code class="font-[var(--font-mono)] text-sm">tebako uninstall &lt;name&gt;</code>{' '}
+        removes the shims and the cache entry. There is no{' '}
+        <code class="font-[var(--font-mono)] text-sm">tebako shim add/remove/list</code> — the
+        read-side verb is <code class="font-[var(--font-mono)] text-sm">tebako-shim list</code>.
+      </p>
+    </div>
+
+    <!-- ============ VERSION CHAIN ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">The version chain: four levels, first hit wins.</h2>
+      <p class="mb-8 max-w-3xl text-[var(--tb-c-text-2)]">
+        Every invocation re-evaluates the chain. The environment beats the project, the
+        project beats your config, your config beats the publisher's default.
+      </p>
+      <div class="space-y-4">
+        <div class="rounded-xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs uppercase tracking-wider text-[var(--tb-c-text-2)]">1 · Environment — one shell, one pin</p>
+          <pre class="mt-3 overflow-x-auto font-[var(--font-mono)] text-sm"><code>{`$ export TEBAKO_METANORMA_VERSION=1.2.2`}</code></pre>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            The variable name is the tool name uppercased, non-alphanumerics replaced with
+            underscores — a tool <code class="font-[var(--font-mono)] text-xs">mn-cli</code>{' '}
+            answers to <code class="font-[var(--font-mono)] text-xs">TEBAKO_MN_CLI_VERSION</code>.
+            Highest precedence, easiest to undo.
+          </p>
+        </div>
+        <div class="rounded-xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs uppercase tracking-wider text-[var(--tb-c-text-2)]">2 · Project file — pinned with the code</p>
+          <pre class="mt-3 overflow-x-auto font-[var(--font-mono)] text-sm"><code>{`# .tebako-tools.yaml, at the project root
+metanorma: 1.2.1`}</code></pre>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            The dispatcher walks up from the current directory; the nearest file that pins the
+            command wins. A nearer file that does not mention the command does{' '}
+            <em>not</em> shadow a farther one that does. Commit the file with the project.
+          </p>
+        </div>
+        <div class="rounded-xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs uppercase tracking-wider text-[var(--tb-c-text-2)]">3 · Your defaults — ~/.tebako/config.yaml</p>
+          <pre class="mt-3 overflow-x-auto font-[var(--font-mono)] text-sm"><code>{`defaults:
+  metanorma: 1.2.3`}</code></pre>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            Hand-edited. The only command that ever writes this file is{' '}
+            <code class="font-[var(--font-mono)] text-xs">tebako add-registry</code>; there is
+            no <code class="font-[var(--font-mono)] text-xs">tebako use</code>.
+          </p>
+        </div>
+        <div class="rounded-xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs uppercase tracking-wider text-[var(--tb-c-text-2)]">4 · Registry default — the publisher's word</p>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            If nothing above pins a version, the registry's own{' '}
+            <code class="font-[var(--font-mono)] text-xs">default:</code> entry decides.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ RUNTIME RESOLUTION ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Then the runtime.</h2>
+      <p class="max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
+        The chosen entrypoint declares a runtime requirement. The dispatcher picks the newest
+        <em>compatible</em> runtime already in the cache — no download — or, if none fits,
+        downloads, verifies, and caches one. Pure-language payloads declare a range
+        (<code class="font-[var(--font-mono)] text-sm">{`>= 3.3, < 5.0`}</code>);
+        native-extension payloads pin an ABI line (
+        <code class="font-[var(--font-mono)] text-sm">~&gt; 3.3.0</code>) plus a platform ABI
+        string, and a wrong line is a named error, never a segfault. Entrypoints that need no
+        interpreter — native tools — declare no runtime and get none.
+      </p>
+    </div>
+
+    <!-- ============ PREVIEW & DIAGNOSE ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Preview and diagnose.</h2>
+      <div class="max-w-3xl rounded-xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+        <pre class="overflow-x-auto font-[var(--font-mono)] text-sm"><code>{`$ tebako-shim which metanorma
+payload     metanorma 1.2.3
+version     defaults: in ~/.tebako/config.yaml
+image       ~/.tebako/payloads/metanorma/1.2.3.tfs
+entrypoint  /bin/metanorma — ruby >= 3.3, < 5.0
+runtime     ruby 3.3.7 (cached)
+mounts      / (app) · /opt/inkscape · /opt/openjdk
+exec        tebako-runtime-… --tebako-image … --tebako-entry metanorma`}</code></pre>
+      </div>
+      <p class="mt-4 max-w-3xl text-[var(--tb-c-text-2)]">
+        <code class="font-[var(--font-mono)] text-sm">which</code> is read-only: it shows what
+        this invocation <em>would</em> dispatch — payload, where the version came from, image,
+        entrypoint, runtime, mounts, and the final exec argv — without running anything.
+        Output above is representative.
+      </p>
+      <div class="mt-4 max-w-3xl rounded-xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+        <pre class="overflow-x-auto font-[var(--font-mono)] text-sm"><code>{`$ tebako-shim doctor`}</code></pre>
+      </div>
+      <p class="mt-4 max-w-3xl text-[var(--tb-c-text-2)]">
+        <code class="font-[var(--font-mono)] text-sm">doctor</code> checks that the shim
+        directory is on PATH, that every shim resolves, that payload records and their trust
+        anchors exist, that the config parses, that registries are fresh, and that the runtime
+        cache is intact. It ends with <em>no problems found</em> (exit 0) or a problem count
+        (exit 1). Note the binary: there is no{' '}
+        <code class="font-[var(--font-mono)] text-sm">tebako doctor</code> — the verb is{' '}
+        <code class="font-[var(--font-mono)] text-sm">tebako-shim doctor</code>.
+      </p>
+    </div>
+
+    <!-- ============ PARKING ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Park a version, or a whole tool.</h2>
+      <div class="max-w-3xl rounded-xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+        <pre class="overflow-x-auto font-[var(--font-mono)] text-sm"><code>{`$ tebako-shim disable metanorma@1.2.2   # one version
+$ tebako-shim disable metanorma          # every version
+$ tebako-shim enable metanorma           # bring it back`}</code></pre>
+      </div>
+      <p class="mt-4 max-w-3xl text-[var(--tb-c-text-2)]">
+        <code class="font-[var(--font-mono)] text-sm">disable</code> parks a version — or the
+        whole tool — so dispatch no longer selects it;{' '}
+        <code class="font-[var(--font-mono)] text-sm">enable</code> restores it. The state
+        lives in <code class="font-[var(--font-mono)] text-sm">~/.tebako/shims/.disabled.yaml</code>:
+        a plain YAML file you can read or edit.
+      </p>
+    </div>
+
+    <!-- ============ DISPATCH-TIME OVERRIDES ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Per-run overrides at the shim.</h2>
+      <div class="max-w-3xl rounded-xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+        <pre class="overflow-x-auto font-[var(--font-mono)] text-sm"><code>{`$ metanorma --jail deny:arg compile site.adoc
+$ metanorma --mount "$HOME/extra:/extra:ro" compile site.adoc`}</code></pre>
+      </div>
+      <p class="mt-4 max-w-3xl text-[var(--tb-c-text-2)]">
+        Leading <code class="font-[var(--font-mono)] text-sm">--jail</code>,{' '}
+        <code class="font-[var(--font-mono)] text-sm">--mount</code>, and{' '}
+        <code class="font-[var(--font-mono)] text-sm">--no-host</code> tokens are consumed by
+        the dispatcher; everything after them reaches the payload verbatim. The policy grammar
+        is in <a href="/docs/guides/jails/" class="tb-link-underline text-[var(--tb-c-accent)]">the jails guide</a>.
+      </p>
+    </div>
+
+    <p class="mt-16 border-t border-[var(--tb-c-divider)] pt-6 text-sm text-[var(--tb-c-text-2)]">
+      See also:
+      <a href="/docs/guides/jails/" class="tb-link-underline text-[var(--tb-c-accent)]">Set a jail policy</a> ·
+      <a href="/docs/guides/debug/" class="tb-link-underline text-[var(--tb-c-accent)]">Debug &amp; logging</a> ·
+      <a href="/docs/architecture/version-manager/" class="tb-link-underline text-[var(--tb-c-accent)]">The version manager, in the architecture docs</a>
+    </p>
+  </section>
+</BaseLayout>

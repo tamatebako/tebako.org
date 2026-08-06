@@ -50,6 +50,25 @@ const html = manual?.rendered?.html ?? ''
       <span class="tb-btn tb-btn-ghost">Read the overview →</span>
     </a>
 
+    <a
+      href="/docs/guides/"
+      class="group mb-12 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]"
+      style="background: var(--tb-c-bg-soft);"
+    >
+      <div>
+        <p class="tb-eyebrow">HOW TO… · THE GUIDES</p>
+        <p class="mt-2 font-[var(--font-display)] text-xl font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">
+          Task-shaped guides, copy-paste ready
+        </p>
+        <p class="mt-1 max-w-xl text-sm text-[var(--tb-c-text-2)]">
+          Install tebako, run a packaged app, press a Ruby app lean or fat, build a data
+          payload, publish to your own registry, manage shims and versions, set a jail,
+          verify integrity, debug, and inspect anything.
+        </p>
+      </div>
+      <span class="tb-btn tb-btn-ghost">Open the guides →</span>
+    </a>
+
     <div class="tb-prose tb-prose-docs" set:html={html} />
 
     <div class="mt-16 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--tb-c-divider)] pt-8">

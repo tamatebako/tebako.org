@@ -1,0 +1,176 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro'
+import GuidesNav from '../../../components/docs/GuidesNav.astro'
+
+const exitCodes = [
+  { code: '65', name: 'manifest', meaning: 'the trailer or a manifest is missing, corrupt, or names no usable entrypoint' },
+  { code: '69', name: 'unavailable', meaning: 'an artifact could not be resolved — offline miss or download failure; check TEBAKO_OFFLINE, the network, the release page' },
+  { code: '70', name: 'sha256', meaning: 'a checksum verification failed; nothing was installed' },
+  { code: '71', name: 'signature', meaning: 'a signature is invalid — or the artifact is unsigned under TEBAKO_REQUIRE_SIGNED=1' },
+  { code: '72', name: 'trust', meaning: 'the signing key is not in the trusted set' },
+  { code: '73', name: 'jail', meaning: 'the jail policy is malformed; the run failed closed, nothing mounted' },
+  { code: '75', name: 'contract', meaning: 'runtime and loader generations do not meet — the message names both and the remedy' },
+]
+---
+
+<BaseLayout title="Debug & logging — Tebako guides" description="Tebako debugging: TEBAKO_DEBUG levels and per-component overrides, log format, tebako-shim doctor, registry freshness, and the exit codes worth memorizing.">
+  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
+    <p class="tb-eyebrow">GUIDES · DEBUG</p>
+    <h1 class="mt-3">Debug &amp; logging.</h1>
+    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      Everything tebako logs goes to stderr, in one format, under one switch:{' '}
+      <code class="font-[var(--font-mono)]">{`tebako[<pid>] <level> <component>: <event> <k=v>…`}</code>.
+      stdout belongs to the payload — logs never touch it.
+    </p>
+
+    <GuidesNav />
+
+    <!-- ============ THE SWITCH ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">The switch.</h2>
+      <div class="max-w-3xl rounded-xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+        <pre class="overflow-x-auto font-[var(--font-mono)] text-sm"><code>{`$ TEBAKO_DEBUG=debug tebako install metanorma
+$ TEBAKO_DEBUG=warn,resolve=trace tebako install metanorma`}</code></pre>
+      </div>
+      <ul class="mt-4 max-w-3xl space-y-3 text-[var(--tb-c-text-2)]">
+        <li class="flex gap-3 leading-relaxed">
+          <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tb-c-accent)]"></span>
+          <span>Levels: <code class="font-[var(--font-mono)] text-sm">off</code> (default),{' '}
+            <code class="font-[var(--font-mono)] text-sm">error</code>,{' '}
+            <code class="font-[var(--font-mono)] text-sm">warn</code>,{' '}
+            <code class="font-[var(--font-mono)] text-sm">debug</code>,{' '}
+            <code class="font-[var(--font-mono)] text-sm">trace</code>. A comma list sets a base
+            level plus per-component exceptions.{' '}
+            <code class="font-[var(--font-mono)] text-sm">1</code>/<code class="font-[var(--font-mono)] text-sm">true</code>/<code class="font-[var(--font-mono)] text-sm">yes</code>{' '}
+            mean debug; <code class="font-[var(--font-mono)] text-sm">0</code>/<code class="font-[var(--font-mono)] text-sm">false</code>/<code class="font-[var(--font-mono)] text-sm">no</code>{' '}
+            mean off.</span>
+        </li>
+        <li class="flex gap-3 leading-relaxed">
+          <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tb-c-accent)]"></span>
+          <span>The components:{' '}
+            <code class="font-[var(--font-mono)] text-sm">preload, tfs, driver, shim, bootstrap, cli, pkg, resolve</code>.{' '}
+            <code class="font-[var(--font-mono)] text-sm">TEBAKO_DEBUG_COMPONENTS=resolve,cli</code>{' '}
+            filters output to a subset.</span>
+        </li>
+        <li class="flex gap-3 leading-relaxed">
+          <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tb-c-accent)]"></span>
+          <span><code class="font-[var(--font-mono)] text-sm">{`TEBAKO_DEBUG_FILE=<path>`}</code>{' '}
+            appends to a file instead of stderr;{' '}
+            <code class="font-[var(--font-mono)] text-sm">%p</code> in the path expands to the
+            pid, so parallel runs do not interleave.</span>
+        </li>
+        <li class="flex gap-3 leading-relaxed">
+          <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tb-c-accent)]"></span>
+          <span>Legacy: any non-empty{' '}
+            <code class="font-[var(--font-mono)] text-sm">TEBAKO_DEBUG_TFS</code> means{' '}
+            <code class="font-[var(--font-mono)] text-sm">tfs=debug</code>. Payload contents
+            and key material are never logged.</span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- ============ WORKED SESSION ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">A worked session: a failing install.</h2>
+      <div class="max-w-3xl rounded-xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+        <pre class="overflow-x-auto font-[var(--font-mono)] text-sm"><code>{`$ TEBAKO_DEBUG=debug tebako install metanorma
+tebako[81234] debug cli: install name=metanorma
+tebako[81234] debug resolve: registry cache fresh age=3h file=~/.tebako/registries/9f2c….yaml
+tebako[81234] debug resolve: select metanorma version=1.2.3 artifact=metanorma-1.2.3.tfs
+tebako[81234] error resolve: download failed status=404 url=https://github.com/…/releases/download/…`}</code></pre>
+      </div>
+      <p class="mt-4 max-w-3xl text-[var(--tb-c-text-2)]">
+        Read a line left to right: pid, level, component, event, then key=value detail. This
+        trace says the registry index named an artifact the release page does not have — a
+        publisher-side break, not your machine. <em>Log output shown is representative.</em>
+      </p>
+    </div>
+
+    <!-- ============ DOCTOR ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">doctor: the first thing to run.</h2>
+      <div class="max-w-3xl rounded-xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+        <pre class="overflow-x-auto font-[var(--font-mono)] text-sm"><code>{`$ tebako-shim doctor`}</code></pre>
+      </div>
+      <p class="mt-4 max-w-3xl text-[var(--tb-c-text-2)]">
+        It checks that the shim directory is on PATH, that every shim resolves, that payload
+        records and their trust anchors exist, that the config parses, that registries are
+        fresh, and that the runtime cache is intact. It ends with <em>no problems found</em>{' '}
+        (exit 0) or a problem count (exit 1). When a shim misbehaves, run this before anything
+        else. Note the binary: there is no{' '}
+        <code class="font-[var(--font-mono)] text-sm">tebako doctor</code> — the verb is{' '}
+        <code class="font-[var(--font-mono)] text-sm">tebako-shim doctor</code>.
+      </p>
+    </div>
+
+    <!-- ============ REGISTRY FRESHNESS ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">"The version the publisher just shipped isn't there."</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        Registry indexes are cached for dispatch with a 24-hour TTL. A stale cache is the most
+        common cause of a missing new version — check the state, then refresh:
+      </p>
+      <div class="max-w-3xl rounded-xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+        <pre class="overflow-x-auto font-[var(--font-mono)] text-sm"><code>{`$ tebako info registries
+tfs:github:tebako-packages/metanorma   fetched 3 h ago    fresh
+tfs:github:tamatebako/hello            fetched 26 h ago   stale
+$ tebako update-registries`}</code></pre>
+      </div>
+      <p class="mt-4 max-w-3xl text-sm text-[var(--tb-c-text-3)]">
+        Output representative.
+      </p>
+    </div>
+
+    <!-- ============ EXIT CODES ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Exit codes worth memorizing.</h2>
+      <p class="mb-8 max-w-3xl text-[var(--tb-c-text-2)]">
+        Every loader failure prints a one-line reason before exiting — read that line first.
+        The codes exist so scripts can branch.
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]">
+        <table class="w-full min-w-[640px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider)] text-[var(--tb-c-text-1)]">
+              <th class="px-5 py-3 font-medium">Exit</th>
+              <th class="px-5 py-3 font-medium">Refusal</th>
+              <th class="px-5 py-3 font-medium">What it means</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)] text-[var(--tb-c-text-2)]">
+            {exitCodes.map((e) => (
+              <tr>
+                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-accent)]">{e.code}</td>
+                <td class="px-5 py-2.5 font-medium text-[var(--tb-c-text-1)]">{e.name}</td>
+                <td class="px-5 py-2.5">{e.meaning}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-4 max-w-3xl text-sm text-[var(--tb-c-text-3)]">
+        The everyday two: 69 (something could not be fetched — check{' '}
+        <code class="font-[var(--font-mono)] text-xs">TEBAKO_OFFLINE</code> first) and 73
+        (a malformed jail policy — fail closed, nothing mounted).
+      </p>
+    </div>
+
+    <!-- ============ CI LOGS ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">CI logs.</h2>
+      <p class="max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
+        <code class="font-[var(--font-mono)] text-sm">TEBAKO_NO_PROGRESS=1</code> — or{' '}
+        <code class="font-[var(--font-mono)] text-sm">NO_COLOR</code>, or{' '}
+        <code class="font-[var(--font-mono)] text-sm">TERM=dumb</code> — switches progress
+        rendering to plain lines that read cleanly in a build log.
+      </p>
+    </div>
+
+    <p class="mt-16 border-t border-[var(--tb-c-divider)] pt-6 text-sm text-[var(--tb-c-text-2)]">
+      See also:
+      <a href="/docs/guides/shims/" class="tb-link-underline text-[var(--tb-c-accent)]">Shims &amp; versions</a> ·
+      <a href="/docs/guides/info-inspect/" class="tb-link-underline text-[var(--tb-c-accent)]">info &amp; inspect</a> ·
+      <a href="/docs/guides/verify/" class="tb-link-underline text-[var(--tb-c-accent)]">Verify integrity</a>
+    </p>
+  </section>
+</BaseLayout>

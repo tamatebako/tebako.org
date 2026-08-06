@@ -1,9 +1,9 @@
 #!/bin/sh
-# tebako installer: detect the platform, download the tebako binaries and
-# their SHA256SUMS from the tamatebako/tebako release, verify every
-# checksum BEFORE installing anything, then install to ~/.local/bin
-# (never sudo). No dependencies beyond POSIX sh, curl, and
-# sha256sum/shasum.
+# tebako installer: detect platform → download the tebako
+# binaries + SHA256SUMS from the tamatebako/tebako release → verify sha256
+# BEFORE installing anything → install to ~/.local/bin (NEVER sudo) →
+# offer the managed PATH block. No dependencies beyond POSIX sh, curl,
+# and sha256sum/shasum.
 set -eu
 
 REPO="tamatebako/tebako"
@@ -13,7 +13,7 @@ DEST="${TEBAKO_INSTALL_DEST:-$HOME/.local/bin}"
 die() { echo "install.sh: $*" >&2; exit 1; }
 
 # ------------------------------------------------------------------------
-# 1. Platform detection (the four shipping platforms; musl builds follow)
+# 1. Platform detection (the four legs, musl included)
 # ------------------------------------------------------------------------
 os="$(uname -s)"
 arch="$(uname -m)"
@@ -26,9 +26,10 @@ case "$os" in
   Darwin) platform="macos-$arch" ;;
   Linux)
     if ldd --version 2>&1 | grep -qi musl; then
-      die "musl detected — the musl legs are not released yet (use linux-gnu on a glibc host, or watch the v0.1.x line)"
+      platform="linux-musl-$arch"
+    else
+      platform="linux-gnu-$arch"
     fi
-    platform="linux-gnu-$arch"
     ;;
   *) die "unsupported OS: $os" ;;
 esac
@@ -86,7 +87,7 @@ done
 echo "install.sh: installed $BINARIES → $DEST"
 
 # ------------------------------------------------------------------------
-# 6. PATH: hint, or let the first run offer the managed block
+# 6. PATH: hint or the managed block
 # ------------------------------------------------------------------------
 case ":$PATH:" in
   *":$DEST:"*) echo "install.sh: $DEST is already on PATH" ;;
