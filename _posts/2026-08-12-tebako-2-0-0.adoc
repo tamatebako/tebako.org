@@ -1,0 +1,153 @@
+---
+layout: post
+title:  "Tebako 2.0.0: the image era — a packaging and loading ecosystem, Ruby 3.1 through 4.0"
+date:   2026-08-12 00:00:00 +0800
+categories:
+  - tebako
+  - packaging
+  - release
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: >-
+  Tebako 2.0 is a packaging and loading ecosystem, not a Ruby tool: a
+  small Rust bootstrap, runtimes shipped as an interpreter plus a mounted
+  environment image, and payload images that co-mount in one process.
+  Runtimes download once per machine into a shared, verified store.
+---
+
+= Tebako 2.0.0: the image era
+
+Tebako 2.0.0 is out. It is not an increment on the 0.x line. It is a new
+package format, a new loading model, and a new trust model, organized
+around one idea: everything tebako handles is an image.
+
+An image is a single file that carries a filesystem: your code, your
+data, a runtime's standard library and gems. Images are mounted, never
+extracted. The files your program reads stay inside the image, and the
+filesystem it sees at run time is assembled in memory.
+
+== Three parts, one process
+
+A tebako package is a composition of up to three independently
+distributable parts.
+
+The first part is a small Rust program, the bootstrap. It is the entry
+point of every stitched package: it reads the package's manifest
+trailer, finds or fetches the runtime the package needs, verifies what
+it fetched, and hands control over.
+
+The second part is the runtime. A runtime provides an interpreter, and
+in 2.0 it ships as two artifacts: the interpreter executable itself, and
+an environment image holding everything the interpreter's load paths
+expect. The environment image mounts whole at the interpreter's root.
+It is never unpacked onto your disk.
+
+The third part is your payloads. Application code, data, fonts, native
+tools: all of these are images of the same kind, differing only in what
+their manifests declare. At run time the environment image and every
+payload image mount into one process, side by side, and the interpreter
+starts on your entrypoint.
+
+Ruby is the first runtime instance. The 2.0.0 catalog covers Ruby 3.1.6
+through 4.0.6. The loader does not know which language it starts, and
+does not need to: a python or julia runtime is the same two artifacts
+with a different interpreter inside.
+
+== Package once, run anywhere
+
+A payload image is built once. If it carries native extensions, it is
+built once per platform. If it is pure language, it is built once for
+everyone. It is published as a release artifact, referenced by name and
+version, and resolved on demand by any tebako package that needs it.
+
+Resolution goes through a registry: a YAML index hosted on any git host
+or release page. There is no central service and no default registry.
+The registry mirrors only what resolution needs; the image itself
+remains the self-describing artifact.
+
+Runtimes are shared the same way. The first package on a machine that
+needs a runtime downloads it once into a machine-wide store at
+`~/.tebako`, verifies it against its published SHA-256 digest, and keeps
+it read-only. Every other package on the machine reuses that copy.
+Payload artifacts in the store are byte-identical with what the registry
+published: never wrapped, never re-stitched, never patched after
+download.
+
+== How a package starts
+
+When you run a tebako package, the bootstrap reads a small trailer at
+the end of its own file. The trailer names the runtime the package needs
+and lists the payload images stitched into the executable. If the
+runtime is already in the store, startup continues at once. If it is
+not, the bootstrap downloads it with progress, verifies it, and caches
+it for every later run.
+
+The bootstrap then hands control to the runtime. Inside the runtime, a
+component called the driver mounts the environment image at the
+interpreter's root, mounts each payload image at its declared mount
+point, applies the package's host-filesystem policy, and rewrites the
+command line so the interpreter starts on the payload's entrypoint. A
+failure at any step unmounts everything and reports a named error.
+There is no partial mount.
+
+Composition uses the same machinery. An installed payload registers the
+commands it provides onto your PATH (tebako calls them shims), and one
+payload's process can execute another's. Our own proof is metanorma, a
+standards-publication toolchain: installed from a registry, it compiles
+a document end to end by driving the openjdk and inkscape toolkit
+payloads, each mounted and executed through the same path as the
+application itself.
+
+== Trust
+
+Verification happens when an artifact enters the store, never per run.
+Every downloaded artifact sits next to a `.sha256` sidecar, and that
+sidecar is the trust anchor for every later use. Runs stay fast because
+the question was answered at install time.
+
+Unsigned packages are first-class. They work, with a loud warning and an
+audit journal entry. If your policy is stricter, set
+`TEBAKO_REQUIRE_SIGNED=1` and anything unverifiable fails closed.
+Package signing and encryption land after 2.0.
+
+== Who builds what
+
+If you run tebako packages, you need nothing but the package. Download,
+run, done: no toolchain to install, no libraries to provide.
+
+If you package data, you need no compilation machinery at all. If you
+package an application, you compile only your own code. Tebako itself
+arrives as prebuilt binaries; nothing of ours compiles on your machine.
+Only the people developing tebako itself build the tebako stack.
+
+== The numbers
+
+* {{RUNTIME_COUNT}} prebuilt runtime artifacts in the 2.0.0 catalog:
+  22 Ruby versions, 3.1.6 through 4.0.6, across 7 platform triplets.
+* The bootstrap is under 3 MB on every platform
+  ({{BOOTSTRAP_SIZE}} for x86_64-linux-gnu at release).
+* The dogfood proof is real work: metanorma installed from a registry,
+  compiling a document end to end through the openjdk and inkscape
+  toolkit payloads.
+
+One honesty note on platforms: Windows runtimes exist, and the Windows
+native-extension question is tracked openly.
+
+== Migrating from v1
+
+Version 2 is a new package format and a new flow. Existing v1 packages
+keep working with v1 tooling; nothing you shipped stops running. The
+link:/docs/migrate-v1-v2/[v1 to v2 migration guide] walks the move.
+
+== Where to read more
+
+The architecture documentation has the full picture:
+link:/docs/architecture/[tebako.org/docs/architecture]. The normative
+detail lives in
+https://github.com/tamatebako/tebako/blob/main/docs/spec/00-INDEX.md[the
+specification]. The code is at
+https://github.com/tamatebako[github.com/tamatebako]; issues and pull
+requests are welcome.
