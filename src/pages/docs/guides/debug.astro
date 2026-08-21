@@ -64,7 +64,9 @@ $ TEBAKO_DEBUG=warn,resolve=trace tebako install metanorma`}</code></pre>
           <span>Legacy: any non-empty{' '}
             <code class="font-[var(--font-mono)] text-sm">TEBAKO_DEBUG_TFS</code> means{' '}
             <code class="font-[var(--font-mono)] text-sm">tfs=debug</code>. Payload contents
-            and key material are never logged.</span>
+            and key material are never logged. For a structured capture — one JSON event per
+            interception decision, machine-consumable — arm the trace bus instead: see{' '}
+            <a href="/docs/guides/trace/" class="tb-link-underline text-[var(--tb-c-accent)]">Trace a packaged app</a>.</span>
         </li>
       </ul>
     </div>
@@ -168,6 +170,7 @@ $ tebako update-registries`}</code></pre>
 
     <p class="mt-16 border-t border-[var(--tb-c-divider)] pt-6 text-sm text-[var(--tb-c-text-2)]">
       See also:
+      <a href="/docs/guides/trace/" class="tb-link-underline text-[var(--tb-c-accent)]">Trace a packaged app</a> ·
       <a href="/docs/guides/shims/" class="tb-link-underline text-[var(--tb-c-accent)]">Shims &amp; versions</a> ·
       <a href="/docs/guides/info-inspect/" class="tb-link-underline text-[var(--tb-c-accent)]">info &amp; inspect</a> ·
       <a href="/docs/guides/verify/" class="tb-link-underline text-[var(--tb-c-accent)]">Verify integrity</a>
