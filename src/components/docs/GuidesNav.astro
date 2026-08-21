@@ -1,0 +1,36 @@
+---
+const items = [
+  { label: 'Guides home', href: '/docs/guides/' },
+  { label: 'Install tebako', href: '/docs/guides/install/' },
+  { label: 'Run a packaged app', href: '/docs/guides/run/' },
+  { label: 'Package a Ruby app', href: '/docs/guides/package-ruby/' },
+  { label: 'Create a data payload', href: '/docs/guides/data-payload/' },
+  { label: 'Publish to your own registry', href: '/docs/guides/publish/' },
+  { label: 'Shims & versions', href: '/docs/guides/shims/' },
+  { label: 'Set a jail policy', href: '/docs/guides/jails/' },
+  { label: 'Verify integrity', href: '/docs/guides/verify/' },
+  { label: 'Debug & logging', href: '/docs/guides/debug/' },
+  { label: 'info & inspect', href: '/docs/guides/info-inspect/' },
+]
+
+const pathname = Astro.url.pathname
+const isActive = (href: string) => pathname === href
+---
+
+<nav aria-label="How-to guides" class="mt-10 flex flex-wrap items-center gap-2">
+  {items.map((item, i) => (
+    <a
+      href={item.href}
+      aria-current={isActive(item.href) ? 'page' : undefined}
+      class:list={[
+        'rounded-full px-4 py-2 font-[var(--font-mono)] text-xs font-medium transition-colors duration-200',
+        isActive(item.href)
+          ? 'bg-[var(--tb-c-accent)] text-[var(--color-paper)]'
+          : 'border border-[var(--tb-c-divider)] text-[var(--tb-c-text-2)] hover:border-[var(--tb-c-accent)] hover:text-[var(--tb-c-accent)]',
+      ]}
+    >
+      <span class="opacity-60">{String(i + 1).padStart(2, '0')}</span>
+      <span class="ml-1.5">{item.label}</span>
+    </a>
+  ))}
+</nav>

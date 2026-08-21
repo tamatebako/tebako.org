@@ -1,0 +1,171 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro'
+import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import StatusPill from '../../../components/docs/StatusPill.astro'
+---
+
+<BaseLayout title="The store — ~/.tebako — Tebako architecture" description="The tebako store: one directory holding runtimes, payloads, shims, registries, keys, and trust — content-addressed, SHA-256 anchored, installed atomically, shared machine-wide.">
+  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
+    <p class="tb-eyebrow">ARCHITECTURE · STORE</p>
+    <h1 class="mt-3">The store: one directory, nothing hidden.</h1>
+    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      Everything tebako keeps on your machine lives under one roof —{' '}
+      <code class="font-[var(--font-mono)]">~/.tebako</code>. Runtimes download once and are
+      shared by every application; payloads stay byte-identical with what the publisher
+      released; uninstalling means deleting files. There is no daemon, no database, no
+      state anywhere else.
+    </p>
+
+    <ArchDocsNav />
+
+    <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
+      <StatusPill status="shipped" />
+      <span class="text-sm text-[var(--tb-c-text-2)]">shipped in v2.0.0 — inspect yours with <code class="font-[var(--font-mono)] text-xs">tebako info store</code></span>
+    </div>
+
+    <!-- ============ DIAGRAM: STORE LAYOUT ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">The layout.</h2>
+      <p class="mb-8 max-w-3xl text-[var(--tb-c-text-2)]">
+        Precious things (your config, your trust pins, your keys) sit next to re-derivable
+        things (runtimes, payloads, registry caches) — so a backup policy and a cleanup
+        policy are both obvious. Every downloaded artifact carries its own trust anchor
+        beside it.
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+        <svg viewBox="0 0 940 560" class="w-full min-w-[760px]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The ~/.tebako store layout: runtimes, payloads, shims, registries, config, keys, trust, journal, locks, tmp">
+          <!-- tree panel -->
+          <rect x="20" y="14" width="560" height="530" rx="14" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+          <text x="300" y="42" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10" font-weight="600" fill="var(--tb-c-text-3)">~/.tebako — override with TEBAKO_HOME</text>
+
+          <g font-family="var(--font-mono), monospace" font-size="11">
+            <text x="44" y="76" fill="var(--tb-c-text-1)" font-weight="600">runtimes/ruby-3.3-3.3.7-macos-arm64/</text>
+            <text x="68" y="97" fill="var(--tb-c-text-2)">├── tebako-runtime-…-macos-arm64 <tspan fill="var(--tb-c-text-3)">0755</tspan></text>
+            <text x="68" y="117" fill="var(--tb-c-text-2)">├── tebako-runtime-…-macos-arm64.tfs <tspan fill="var(--tb-c-text-3)">0444 · the env image</tspan></text>
+            <text x="68" y="137" fill="var(--tb-c-text-2)">├── &lt;image&gt;.sha256 <tspan fill="var(--tb-c-accent)">◀ the trust anchor</tspan></text>
+            <text x="68" y="157" fill="var(--tb-c-text-2)">└── &lt;image&gt;.origin <tspan fill="var(--tb-c-text-3)">— where it came from</tspan></text>
+
+            <text x="44" y="190" fill="var(--tb-c-text-1)" font-weight="600">payloads/metanorma/</text>
+            <text x="68" y="211" fill="var(--tb-c-text-2)">├── 1.2.3.tfs <tspan fill="var(--tb-c-text-3)">0444 — byte-identical with the release</tspan></text>
+            <text x="68" y="231" fill="var(--tb-c-text-2)">├── 1.2.3.tfs.sha256 <tspan fill="var(--tb-c-accent)">◀ verified at install, never per run</tspan></text>
+            <text x="68" y="251" fill="var(--tb-c-text-2)">└── 1.2.3.manifest.yaml <tspan fill="var(--tb-c-text-3)">— the manifest, mirrored out</tspan></text>
+
+            <text x="44" y="284" fill="var(--tb-c-text-1)" font-weight="600">shims/</text>
+            <text x="68" y="305" fill="var(--tb-c-text-2)">├── metanorma <tspan fill="var(--tb-c-text-3)">→ link to the dispatcher; this dir on PATH</tspan></text>
+            <text x="68" y="325" fill="var(--tb-c-text-2)">└── .disabled.yaml <tspan fill="var(--tb-c-text-3)">— tools you parked</tspan></text>
+
+            <text x="44" y="358" fill="var(--tb-c-text-1)" font-weight="600">registries/</text>
+            <text x="68" y="379" fill="var(--tb-c-text-2)">└── &lt;sha&gt;.yaml (+ .fetched-at) <tspan fill="var(--tb-c-text-3)">— dispatch cache, 24 h TTL</tspan></text>
+
+            <text x="44" y="412" fill="var(--tb-c-text-1)" font-weight="600">config.yaml</text>
+            <text x="68" y="432" fill="var(--tb-c-text-3)">your defaults · your registries · runtime preferences</text>
+
+            <text x="44" y="464" fill="var(--tb-c-text-1)" font-weight="600">keys/&#160;&#160;trust/</text>
+            <text x="68" y="484" fill="var(--tb-c-text-3)">your signing keys · pinned publisher keys</text>
+
+            <text x="44" y="516" fill="var(--tb-c-text-1)" font-weight="600">journal.log&#160;&#160;locks/&#160;&#160;tmp/</text>
+          </g>
+
+          <!-- rules panel -->
+          <g transform="translate(610, 14)">
+            <rect width="310" height="530" rx="14" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="155" y="42" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10" font-weight="600" fill="var(--tb-c-text-3)">THE HOUSE RULES</text>
+            <g font-family="var(--font-sans), sans-serif" font-size="10.5" fill="var(--tb-c-text-2)">
+              <text x="32" y="76" font-weight="600" fill="var(--tb-c-text-1)">A run is a run.</text>
+              <text x="32" y="94">Executing a package never installs</text>
+              <text x="32" y="110">its slices. tebako install is the verb.</text>
+
+              <text x="32" y="146" font-weight="600" fill="var(--tb-c-text-1)">Atomic installs.</text>
+              <text x="32" y="164">Downloads land in tmp/ and rename</text>
+              <text x="32" y="180">into place — a partial install is</text>
+              <text x="32" y="196">invisible, never half-used.</text>
+
+              <text x="32" y="232" font-weight="600" fill="var(--tb-c-text-1)">One writer at a time.</text>
+              <text x="32" y="250">Per-entry file locks, 120 s timeout,</text>
+              <text x="32" y="266">a stale lock names itself.</text>
+
+              <text x="32" y="302" font-weight="600" fill="var(--tb-c-text-1)">Verify once, run forever.</text>
+              <text x="32" y="320">The .sha256 sidecar means "verified</text>
+              <text x="32" y="336">at install". Runs never re-verify —</text>
+              <text x="32" y="352">that is what makes them fast.</text>
+
+              <text x="32" y="388" font-weight="600" fill="var(--tb-c-text-1)">Read-only artifacts.</text>
+              <text x="32" y="406">Payloads and images are 0444. Same</text>
+              <text x="32" y="422">name+version with different bytes is</text>
+              <text x="32" y="438">refused loudly, never overwritten.</text>
+
+              <text x="32" y="474" font-weight="600" fill="var(--tb-c-text-1)">Offline is a mode.</text>
+              <text x="32" y="492">TEBAKO_OFFLINE=1 — cache hit, or a</text>
+              <text x="32" y="508">named error. Never a surprise fetch.</text>
+            </g>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <!-- ============ INSTALL VS RUN ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Install and run are different verbs.</h2>
+      <div class="max-w-3xl space-y-4 text-[var(--tb-c-text-2)]">
+        <p>
+          Double-clicking a package, or executing it in a terminal, <strong class="text-[var(--tb-c-text-1)]">runs</strong>
+          it: the loader resolves the runtime (downloading it once if needed — that is runtime
+          resolution, shared infrastructure, not installation) and starts your program. Nothing
+          from the package's payload slots enters the store.
+        </p>
+        <p>
+          <code class="font-[var(--font-mono)] text-sm">tebako install</code> is the explicit
+          verb: it brings a payload into the store — downloaded to a temporary location,
+          verified against its published SHA-256, renamed into place read-only — and registers
+          a shim for every command the payload declares. Registry installs always register
+          shims; installing a local package file registers them only when you pass{' '}
+          <code class="font-[var(--font-mono)] text-sm">--shims</code>.{' '}
+          <code class="font-[var(--font-mono)] text-sm">tebako uninstall</code> removes the
+          shims and the cache entry.
+        </p>
+        <p>
+          The store itself is versioned: a single integer marks its layout generation. A newer
+          store refuses an older tool with a named error instead of a silent mix, and an older
+          store is migrated by name, never silently rewritten.
+        </p>
+      </div>
+    </div>
+
+    <!-- ============ HOUSEKEEPING ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Housekeeping.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        The cache is yours to inspect and prune. Everything here is read-only against the
+        store; nothing fetches.
+      </p>
+      <div class="grid gap-4 md:grid-cols-2">
+        <div class="rounded-xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs uppercase tracking-wider text-[var(--tb-c-text-2)]">See what is cached</p>
+          <pre class="mt-3 overflow-x-auto font-[var(--font-mono)] text-sm"><code>tebako cache list
+tebako info store      # disk usage by section
+tebako info runtimes   # with --remote: what the factory offers</code></pre>
+        </div>
+        <div class="rounded-xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs uppercase tracking-wider text-[var(--tb-c-text-2)]">Reclaim space</p>
+          <pre class="mt-3 overflow-x-auto font-[var(--font-mono)] text-sm"><code>tebako cache prune --older-than 90d
+tebako cache prune --all</code></pre>
+        </div>
+      </div>
+      <p class="mt-4 max-w-3xl text-sm text-[var(--tb-c-text-3)]">
+        Pruning only ever removes re-derivable artifacts — the next run that needs one
+        downloads and verifies it again. Your config, keys, and trust pins are never pruned.
+      </p>
+    </div>
+
+    <div class="mt-16 rounded-2xl border border-[var(--tb-c-divider)] px-8 py-8" style="background: var(--tb-c-bg-soft);">
+      <h2 class="!mt-0">Why a directory and not a database.</h2>
+      <p class="mt-3 max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
+        Because the tree is the truth. Every artifact carries its own proof (the sidecar),
+        its own provenance (the origin marker), and its own manifest mirror — so the store is
+        auditable with ordinary tools, repairable by deleting things, and portable by copying
+        it. The registry caches are the only derived state, and they rebuild themselves on a
+        24-hour cycle or on <code class="font-[var(--font-mono)] text-xs">tebako update-registries</code>.
+      </p>
+    </div>
+  </section>
+</BaseLayout>

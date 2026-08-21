@@ -1,0 +1,294 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro'
+import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+
+const rows = [
+  {
+    aspect: 'Unit of distribution',
+    tebako: 'one file: app + verifier + runtime reference',
+    docker: 'layered image tarballs',
+    rbenv: 'nothing — it manages installs',
+    brew: 'a bottle (tarball) per formula',
+    gems: 'a .gem per library',
+    installer: '.dmg / .pkg / .msi per app',
+    snap: 'a snap via the store',
+    vm: 'a disk image (GBs)',
+  },
+  {
+    aspect: 'Runtime sharing',
+    tebako: 'yes — one verified copy per machine, all apps share it',
+    docker: 'layers, server-side only',
+    rbenv: 'yes, per ruby — apps not isolated',
+    brew: 'shared, but floats with the repo',
+    gems: 'shared per ruby install',
+    installer: 'no — every app carries its world',
+    snap: 'shared runtimes exist, store-mediated',
+    vm: 'no — a whole OS per workload',
+  },
+  {
+    aspect: 'Install footprint',
+    tebako: '~/.tebako + one PATH entry',
+    docker: 'an engine, usually root; a VM on macOS/Windows',
+    rbenv: 'shims + ruby builds',
+    brew: '/opt/homebrew, root-adjacent',
+    gems: 'the ruby installation',
+    installer: 'system-wide, admin rights',
+    snap: 'a daemon + system mounts',
+    vm: 'hypervisor + guest OS',
+  },
+  {
+    aspect: 'Reproducibility',
+    tebako: 'a closed function of bytes — the same artifacts the publisher tested',
+    docker: 'reproducible inside a Linux ABI only',
+    rbenv: 'no — rebuilds drift',
+    brew: 'no — installs float with repo state',
+    gems: 'no — resolution floats',
+    installer: 'whatever the installer bundled',
+    snap: 'channels float; confinement varies with the host kernel',
+    vm: 'yes, at enormous weight',
+  },
+  {
+    aspect: 'Isolation',
+    tebako: 'declarative per-run filesystem jails — no root, no daemon',
+    docker: 'kernel namespaces',
+    rbenv: 'none',
+    brew: 'none',
+    gems: 'none',
+    installer: 'none',
+    snap: 'kernel confinement, distro-dependent',
+    vm: 'hardware boundary — the real thing',
+  },
+  {
+    aspect: 'Trust',
+    tebako: 'the object: SHA-256 anchors + opt-in OpenPGP, verified offline',
+    docker: 'the channel + optional signing tooling',
+    rbenv: 'the channel',
+    brew: 'the channel',
+    gems: 'the channel; signing rare in practice',
+    installer: 'OS code-signing: "may this binary run?"',
+    snap: 'the store',
+    vm: 'whatever you put inside',
+  },
+  {
+    aspect: 'Offline / air-gap',
+    tebako: 'full, once the cache is warm — TEBAKO_OFFLINE=1',
+    docker: 'pull first, and the engine must run',
+    rbenv: 'after install',
+    brew: 'no',
+    gems: 'after install',
+    installer: 'yes',
+    snap: 'no',
+    vm: 'yes',
+  },
+  {
+    aspect: 'Version management',
+    tebako: 'per-invocation dispatch: env → project pin → user default → registry default',
+    docker: 'tags, by hand',
+    rbenv: 'the whole point — per-shell',
+    brew: 'one version per formula name',
+    gems: 'gemsets / bundler',
+    installer: 'no',
+    snap: 'channels',
+    vm: 'no',
+  },
+]
+
+const wins = [
+  ['RubyGems', 'sharing code between developers. Tebako packages applications; gems remain how developers share libraries.'],
+  ['rbenv / rvm', 'hacking on ruby itself. If your job is building interpreters, you want a version manager, not a package.'],
+  ['Homebrew / apt / dnf', 'OS-integrated components with a security-update channel. Tebako deliberately never manages the OS.'],
+  ['Installers (.dmg/.msi)', 'deep OS integration: drivers, system extensions, things that must be on the host.'],
+  ['snap / flatpak', 'store discoverability and automatic updates — a real distribution channel, with a daemon attached.'],
+  ['Docker / OCI', 'server-side multi-process orchestration. Tebako distributes tools to people; Docker runs services on fleets.'],
+  ['Virtual machines', 'hard boundaries for hostile native code. Jails are filesystem policy, not a hardware security boundary.'],
+]
+---
+
+<BaseLayout title="Tebako compared — Tebako architecture" description="An honest comparison: tebako versus Docker/OCI, rbenv/rvm, Homebrew, RubyGems, installers, snap/flatpak, dnf/rpm, and virtual machines — what each is for, and where each wins.">
+  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
+    <p class="tb-eyebrow">ARCHITECTURE · COMPARISONS</p>
+    <h1 class="mt-3">Compared, honestly.</h1>
+    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      "Package once, run anywhere" has been promised before — usually with an asterisk:
+      a compatible JVM already installed, an engine already running, a machine that looks
+      like the build machine. Here is where tebako actually sits among the tools you know,
+      including where they win.
+    </p>
+
+    <ArchDocsNav />
+
+    <!-- ============ DIAGRAM: WHAT A PROCESS SEES ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">What a process sees, in each world.</h2>
+      <p class="mb-8 max-w-3xl text-[var(--tb-c-text-2)]">
+        Strip away the packaging formats and the difference is one question: when your
+        program calls <code class="font-[var(--font-mono)] text-sm">open()</code>, what
+        answers?
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+        <svg viewBox="0 0 940 470" class="w-full min-w-[760px]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="What a process sees in each world: tebako VFS, Docker namespaces, Homebrew system paths, rbenv shims, a VM">
+          <!-- tebako -->
+          <g transform="translate(20, 16)">
+            <rect width="290" height="200" rx="12" fill="var(--tb-c-card)" stroke="var(--tb-c-accent)" stroke-width="1.5" />
+            <text x="145" y="30" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--tb-c-accent)">TEBAKO</text>
+            <text x="145" y="56" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-2)">your process</text>
+            <line x1="145" y1="62" x2="145" y2="80" stroke="var(--tb-c-text-3)" stroke-width="1.5" />
+            <rect x="45" y="84" width="200" height="34" rx="7" fill="var(--tb-c-accent)" opacity="0.92" />
+            <text x="145" y="105" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" font-weight="600" fill="var(--color-paper)">the VFS — userland, in-process</text>
+            <line x1="95" y1="118" x2="95" y2="136" stroke="var(--tb-c-text-3)" stroke-width="1.5" />
+            <line x1="195" y1="118" x2="195" y2="136" stroke="var(--tb-c-text-3)" stroke-width="1.5" />
+            <rect x="45" y="140" width="95" height="30" rx="6" fill="none" stroke="var(--tb-c-divider-strong)" />
+            <text x="92" y="159" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="8.5" fill="var(--tb-c-text-2)">mounted images</text>
+            <rect x="150" y="140" width="95" height="30" rx="6" fill="none" stroke="var(--tb-c-divider-strong)" />
+            <text x="197" y="159" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="8.5" fill="var(--tb-c-text-2)">host, jail-gated</text>
+            <text x="145" y="192" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="8.5" fill="var(--tb-c-text-3)">no kernel, no FUSE, no daemon</text>
+          </g>
+
+          <!-- docker -->
+          <g transform="translate(330, 16)">
+            <rect width="290" height="200" rx="12" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="145" y="30" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--tb-c-text-1)">DOCKER / OCI</text>
+            <text x="145" y="56" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-2)">your process</text>
+            <line x1="145" y1="62" x2="145" y2="80" stroke="var(--tb-c-text-3)" stroke-width="1.5" />
+            <rect x="45" y="84" width="200" height="34" rx="7" fill="none" stroke="var(--tb-c-text-3)" stroke-width="1.5" />
+            <text x="145" y="105" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-2)">kernel namespaces + overlayfs</text>
+            <line x1="145" y1="118" x2="145" y2="136" stroke="var(--tb-c-text-3)" stroke-width="1.5" />
+            <rect x="45" y="140" width="200" height="30" rx="6" fill="none" stroke="var(--tb-c-divider-strong)" />
+            <text x="145" y="159" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="8.5" fill="var(--tb-c-text-2)">the container image — Linux only</text>
+            <text x="145" y="192" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="8.5" fill="var(--tb-c-text-3)">needs the engine; a hidden VM off-Linux</text>
+          </g>
+
+          <!-- homebrew -->
+          <g transform="translate(640, 16)">
+            <rect width="280" height="200" rx="12" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="140" y="30" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--tb-c-text-1)">HOMEBREW / DNF</text>
+            <text x="140" y="56" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-2)">your process</text>
+            <line x1="140" y1="62" x2="140" y2="80" stroke="var(--tb-c-text-3)" stroke-width="1.5" />
+            <rect x="40" y="84" width="200" height="34" rx="7" fill="none" stroke="var(--tb-c-text-3)" stroke-width="1.5" />
+            <text x="140" y="105" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-2)">the kernel — the plain host FS</text>
+            <line x1="140" y1="118" x2="140" y2="136" stroke="var(--tb-c-text-3)" stroke-width="1.5" />
+            <rect x="40" y="140" width="200" height="30" rx="6" fill="none" stroke="var(--tb-c-divider-strong)" />
+            <text x="140" y="159" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="8.5" fill="var(--tb-c-text-2)">/opt/homebrew — mutated per install</text>
+            <text x="140" y="192" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="8.5" fill="var(--tb-c-text-3)">versions float with the repo</text>
+          </g>
+
+          <!-- rbenv -->
+          <g transform="translate(175, 240)">
+            <rect width="290" height="200" rx="12" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="145" y="30" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--tb-c-text-1)">RBENV / RVM</text>
+            <text x="145" y="56" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-2)">your process</text>
+            <line x1="145" y1="62" x2="145" y2="80" stroke="var(--tb-c-text-3)" stroke-width="1.5" />
+            <rect x="45" y="84" width="200" height="34" rx="7" fill="none" stroke="var(--tb-c-text-3)" stroke-width="1.5" />
+            <text x="145" y="105" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-2)">a shell shim re-points PATH</text>
+            <line x1="145" y1="118" x2="145" y2="136" stroke="var(--tb-c-text-3)" stroke-width="1.5" />
+            <rect x="45" y="140" width="200" height="30" rx="6" fill="none" stroke="var(--tb-c-divider-strong)" />
+            <text x="145" y="159" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="8.5" fill="var(--tb-c-text-2)">~/.rbenv/versions/x.y.z — host files</text>
+            <text x="145" y="192" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="8.5" fill="var(--tb-c-text-3)">ruby versions managed; apps not packaged</text>
+          </g>
+
+          <!-- VM -->
+          <g transform="translate(485, 240)">
+            <rect width="290" height="200" rx="12" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="145" y="30" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--tb-c-text-1)">A VIRTUAL MACHINE</text>
+            <text x="145" y="56" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-2)">your process</text>
+            <line x1="145" y1="62" x2="145" y2="80" stroke="var(--tb-c-text-3)" stroke-width="1.5" />
+            <rect x="45" y="84" width="200" height="34" rx="7" fill="none" stroke="var(--tb-c-text-3)" stroke-width="1.5" />
+            <text x="145" y="105" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-2)">a guest kernel, on virtual hardware</text>
+            <line x1="145" y1="118" x2="145" y2="136" stroke="var(--tb-c-text-3)" stroke-width="1.5" />
+            <rect x="45" y="140" width="200" height="30" rx="6" fill="none" stroke="var(--tb-c-divider-strong)" />
+            <text x="145" y="159" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="8.5" fill="var(--tb-c-text-2)">a whole guest OS + its disk image</text>
+            <text x="145" y="192" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="8.5" fill="var(--tb-c-text-3)">the real boundary — at a gigabyte's weight</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <!-- ============ THE TABLE ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">The landscape, in one table.</h2>
+      <p class="mb-8 max-w-3xl text-[var(--tb-c-text-2)]">
+        No column is all green, including ours. Read the rows you care about.
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]">
+        <table class="w-full min-w-[900px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider)] text-[var(--tb-c-text-1)]" style="background: var(--tb-c-bg-soft);">
+              <th class="px-4 py-3 font-medium"></th>
+              <th class="px-4 py-3 font-medium tb-text-gradient">Tebako</th>
+              <th class="px-4 py-3 font-medium">Docker/OCI</th>
+              <th class="px-4 py-3 font-medium">rbenv/rvm</th>
+              <th class="px-4 py-3 font-medium">Homebrew</th>
+              <th class="px-4 py-3 font-medium">RubyGems</th>
+              <th class="px-4 py-3 font-medium">Installers</th>
+              <th class="px-4 py-3 font-medium">snap/flatpak</th>
+              <th class="px-4 py-3 font-medium">VMs</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)]">
+            {rows.map((r) => (
+              <tr>
+                <td class="px-4 py-3 font-medium text-[var(--tb-c-text-1)]">{r.aspect}</td>
+                <td class="px-4 py-3 text-[var(--tb-c-text-1)]" style="background: color-mix(in srgb, var(--tb-c-accent) 5%, transparent);">{r.tebako}</td>
+                <td class="px-4 py-3 text-[var(--tb-c-text-2)]">{r.docker}</td>
+                <td class="px-4 py-3 text-[var(--tb-c-text-2)]">{r.rbenv}</td>
+                <td class="px-4 py-3 text-[var(--tb-c-text-2)]">{r.brew}</td>
+                <td class="px-4 py-3 text-[var(--tb-c-text-2)]">{r.gems}</td>
+                <td class="px-4 py-3 text-[var(--tb-c-text-2)]">{r.installer}</td>
+                <td class="px-4 py-3 text-[var(--tb-c-text-2)]">{r.snap}</td>
+                <td class="px-4 py-3 text-[var(--tb-c-text-2)]">{r.vm}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ============ WHERE THEY WIN ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Where each alternative genuinely wins.</h2>
+      <p class="mb-8 max-w-3xl text-[var(--tb-c-text-2)]">
+        Tebako is a distribution format for applications, not a bid to replace your
+        package manager, your container engine, or your hypervisor.
+      </p>
+      <div class="overflow-hidden rounded-2xl border border-[var(--tb-c-divider)]">
+        <table class="w-full text-left text-sm">
+          <tbody class="divide-y divide-[var(--tb-c-divider)]">
+            {wins.map(([tool, win]) => (
+              <tr>
+                <td class="w-48 px-5 py-3 font-medium text-[var(--tb-c-text-1)]" style="background: var(--tb-c-bg-soft);">{tool}</td>
+                <td class="px-5 py-3 text-[var(--tb-c-text-2)]">{win}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ============ WHAT ONLY TEBAKO DOES ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">What exists nowhere else.</h2>
+      <ul class="max-w-3xl space-y-3 text-[var(--tb-c-text-2)]">
+        <li class="flex gap-3 leading-relaxed">
+          <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tb-c-accent)]"></span>
+          <span><strong class="text-[var(--tb-c-text-1)]">A single file that is simultaneously the app, its verifier, and its runtime resolver</strong> — self-authenticating, offline, over any transport including a USB stick.</span>
+        </li>
+        <li class="flex gap-3 leading-relaxed">
+          <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tb-c-accent)]"></span>
+          <span><strong class="text-[var(--tb-c-text-1)]">Universal payloads over digest-pinned shared runtimes</strong> — a pure-language app ships one image for every platform, and the runtime underneath it downloads once per machine. The fidelity of bundling, the footprint of sharing.</span>
+        </li>
+        <li class="flex gap-3 leading-relaxed">
+          <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tb-c-accent)]"></span>
+          <span><strong class="text-[var(--tb-c-text-1)]">Recursive payload composition</strong> — an app declares toolkits and data at mount points, each independently published and versioned, resolved from a provides/requires graph.</span>
+        </li>
+        <li class="flex gap-3 leading-relaxed">
+          <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tb-c-accent)]"></span>
+          <span><strong class="text-[var(--tb-c-text-1)]">Per-run declarative jails for the end user</strong> — no daemon, no root, no kernel module; tighten any command's filesystem view at invocation time.</span>
+        </li>
+        <li class="flex gap-3 leading-relaxed">
+          <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tb-c-accent)]"></span>
+          <span><strong class="text-[var(--tb-c-text-1)]">One signed-image algebra at every level</strong> — sources, runtimes, payloads, packages, registries — verified the same way, with verification that survives redistribution through untrusted mirrors.</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</BaseLayout>

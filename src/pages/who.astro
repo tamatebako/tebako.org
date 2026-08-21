@@ -1,0 +1,326 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+
+const personas = [
+  {
+    title: 'Developers',
+    kanji: '開',
+    heading: 'Ship the app, not the runtime conversation.',
+    points: [
+      'Press once, and your users run it. Your README stops saying "install Ruby first" — the runtime downloads itself on first run, or rides inside the package.',
+      'One file per platform, or a registry payload with shims and version pins. Your entry points become ordinary commands on your users\' PATH.',
+      'Native extensions are not a caveat. Compiled gems, FFI libraries, and platform-specific code mount and run inside the package.',
+    ],
+  },
+  {
+    title: 'Organizations',
+    kanji: '組',
+    heading: 'One artifact per platform, on your own infrastructure.',
+    points: [
+      'Self-hosted by construction: a registry is a YAML index plus your own GitHub releases. No store to operate, no third party between you and your users.',
+      'Signed slices, verified at install time with keys you control. Run workloads you do not fully trust inside jails — the filesystem view is read-only unless you grant more.',
+      'No daemon, no root, no background service. The artifact is a file; the runtime is a directory; the audit journal is a log line per event.',
+    ],
+  },
+  {
+    title: 'Open-source projects',
+    kanji: '放',
+    heading: 'Your releases are the store.',
+    points: [
+      'Publish from your own repository\'s releases page — there is no submission queue, no review gate, no namespace to defend.',
+      'Your users run two commands: tebako add-registry you, then tebako install your-app. They get a PATH shim, version pins, and upgrades for free.',
+      'Your identity stays yours: artifacts are signed with your key and pinned by your users on first contact, with out-of-band confirmation.',
+    ],
+  },
+]
+
+const comparison = [
+  ['Runs on a clean machine', 'with a daemon installed', 'yes', 'yes'],
+  ['Shares the common parts', 'layers, server-side', 'no — every binary carries its world', 'yes — one runtime per machine, shared'],
+  ['Isolation', 'kernel namespaces', 'none', 'user-space jails: mount views, read-only by default'],
+  ['Distribution', 'registry infrastructure', 'any file host', 'any file host, plus a small YAML index'],
+  ['Background services', 'a daemon, often root', 'none', 'none'],
+  ['Trust', 'optional signing tooling', 'OS code-signing only', 'per-slice signatures with pinned publisher keys'],
+]
+---
+
+<BaseLayout title="Who it's for — Tebako" description="Tebako for developers, organizations, and open-source projects: the portable packaging format with container semantics and a single file's weight.">
+  <section class="mx-auto max-w-7xl px-6 pb-20 pt-32">
+    <div class="max-w-2xl">
+      <p class="tb-eyebrow tb-animate-rise">WHO IT'S FOR</p>
+      <h1 class="tb-animate-rise tb-delay-1 mt-3">
+        Built for people who <span class="tb-text-gradient italic">ship software.</span>
+      </h1>
+      <p class="tb-animate-rise tb-delay-2 mt-4 text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+        Tebako packages an application and everything it needs into one file that runs
+        anywhere — with the isolation and portability of a container, and the weight of
+        a file you can email. Here is who that helps, and why.
+      </p>
+    </div>
+
+    {personas.map((p) => (
+      <div class="mt-16 grid gap-6 md:grid-cols-[auto_1fr] md:gap-10">
+        <div class="flex h-16 w-16 items-center justify-center rounded-2xl border border-[var(--tb-c-divider)] text-2xl" style="background: var(--tb-c-bg-soft);">
+          <span class="tb-text-gradient">{p.kanji}</span>
+        </div>
+        <div>
+          <p class="tb-eyebrow">{p.title.toUpperCase()}</p>
+          <h2 class="mt-2">{p.heading}</h2>
+          <ul class="mt-4 space-y-3">
+            {p.points.map((point) => (
+              <li class="flex gap-3 leading-relaxed text-[var(--tb-c-text-2)]">
+                <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tb-c-accent)]"></span>
+                <span>{point}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    ))}
+
+    <div class="mt-24">
+      <p class="tb-eyebrow">THE FOUR AUDIENCES, EXACTLY</p>
+      <h2 class="mt-2">Who compiles what: nobody you know.</h2>
+      <p class="mt-4 max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
+        The platform has one rule about compilation: prebuilt artifacts flow downward,
+        compilation never flows outward. That rule partitions the world into four
+        audiences — and decides what each one needs on their machine.
+      </p>
+
+      <div class="mt-10 space-y-6">
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-8" style="background: var(--tb-c-bg-soft);">
+          <p class="tb-eyebrow">A · THE USER WHO RUNS A PACKAGED TOOL</p>
+          <h3 class="mt-2 font-[var(--font-display)] text-xl font-medium text-[var(--tb-c-text-1)]">Needs: nothing.</h3>
+          <p class="mt-3 max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
+            An editor at a standards body gets a new MacBook on Monday. She installs tebako
+            from the brew tap — or downloads her organization's packaged tool directly — and
+            runs <code class="font-[var(--font-mono)] text-sm">metanorma compile report.adoc</code>.
+            The first run downloads the ruby runtime once, verifies it, caches it. There is
+            no Xcode, no Ruby, no Java, no Inkscape, no "now install the dependencies" —
+            and no tebako conversation either: the tool is on her PATH and behaves like any
+            other command.
+          </p>
+        </div>
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-8" style="background: var(--tb-c-bg-soft);">
+          <p class="tb-eyebrow">B · THE DEVELOPER SHIPPING A DATA-ONLY PAYLOAD</p>
+          <h3 class="mt-2 font-[var(--font-display)] text-xl font-medium text-[var(--tb-c-text-1)]">Needs: the tebako CLI. No toolchain.</h3>
+          <p class="mt-3 max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
+            A foundry ships versioned font collections; a research group ships a dataset with
+            a release line. They point the prebuilt{' '}
+            <code class="font-[var(--font-mono)] text-sm">tfs mkimage</code> at a directory,
+            add a manifest, and publish the image on their own GitHub releases. Imaging runs
+            in-process inside the CLI — there is no compiler to install because there is
+            nothing to compile. Consumers mount the payload read-only; one copy on disk
+            serves every application that needs it.
+          </p>
+        </div>
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-8" style="background: var(--tb-c-bg-soft);">
+          <p class="tb-eyebrow">C · THE DEVELOPER SHIPPING A RUNNABLE PAYLOAD</p>
+          <h3 class="mt-2 font-[var(--font-display)] text-xl font-medium text-[var(--tb-c-text-1)]">Needs: to compile their own code. Only their own code.</h3>
+          <p class="mt-3 max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
+            The Metanorma team ships a Ruby application with 260 gems, some with native
+            extensions. The gems they compile are <em>theirs</em> — tebako itself arrives as
+            binaries: the bootstrap is a published artifact under 3&nbsp;MB, the runtimes come
+            from the runtime factory, the packager is a static binary. Their CI presses one
+            payload per platform (or one universal payload for pure-ruby code), signs it,
+            and publishes it to their own releases page. Their users never learn what a gem
+            is.
+          </p>
+        </div>
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-8" style="background: var(--tb-c-bg-soft);">
+          <p class="tb-eyebrow">D · THE TEBAKO STACK DEVELOPER</p>
+          <h3 class="mt-2 font-[var(--font-display)] text-xl font-medium text-[var(--tb-c-text-1)]">Needs: the full toolchain.</h3>
+          <p class="mt-3 max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
+            The people building tebako itself — the Rust product, the ruby patch factory,
+            the runtime factory, the compression library — are the only audience that
+            compiles the stack. Their output is the prebuilt artifacts everyone above
+            consumes. If you are reading this to decide whether you need a compiler: you
+            are almost certainly audience A, B, or C, and the answer is no.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-24">
+      <p class="tb-eyebrow">THE FLAGSHIP, END TO END</p>
+      <h2 class="mt-2">Metanorma: four publishers, one compile, empty PATH.</h2>
+      <p class="mt-4 max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
+        Metanorma is the standards-authoring toolchain behind ISO, IEC, and a dozen other
+        bodies — and the hardest packaging case we could find: a 260-gem Ruby application
+        that shells out to a JVM for validation and PDF rendering, and to Inkscape to
+        rasterize figures. In v2 it is a composition of <strong class="text-[var(--tb-c-text-1)]">four
+        independently published, independently versioned slices</strong>, resolved and
+        co-mounted per run. This is the closure, exactly as it ships:
+      </p>
+
+      <div class="mt-10 overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+        <svg viewBox="0 0 940 400" class="w-full min-w-[760px]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The metanorma closure: four independently versioned slices composed into one compile">
+          <defs>
+            <marker id="mn-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 Z" fill="var(--tb-c-accent)" />
+            </marker>
+          </defs>
+
+          <!-- the four slices -->
+          <g transform="translate(20, 30)">
+            <rect width="210" height="104" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="105" y="26" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--tb-c-text-1)">metanorma</text>
+            <text x="105" y="44" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">app slice · 1.16.9 · 260 gems</text>
+            <text x="105" y="60" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">publisher: metanorma</text>
+            <text x="105" y="80" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-accent)">requires: ruby ~&gt; 3.3,</text>
+            <text x="105" y="94" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-accent)">inkscape, a JRE — declared</text>
+          </g>
+          <g transform="translate(20, 154)">
+            <rect width="210" height="104" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="105" y="26" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--tb-c-text-1)">ruby runtime</text>
+            <text x="105" y="44" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">3.3.7 · exe + env image</text>
+            <text x="105" y="60" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">publisher: tebako-runtime-ruby</text>
+            <text x="105" y="80" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-accent)">downloaded once per machine,</text>
+            <text x="105" y="94" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-accent)">shared by every package</text>
+          </g>
+          <g transform="translate(20, 278)">
+            <rect width="210" height="104" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="105" y="26" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--tb-c-text-1)">inkscape</text>
+            <text x="105" y="44" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">toolkit slice · 1.4.3</text>
+            <text x="105" y="60" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">publisher: tebako-packages</text>
+            <text x="105" y="80" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-accent)">mounted at /opt/inkscape —</text>
+            <text x="105" y="94" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-accent)">its own release line</text>
+          </g>
+          <g transform="translate(250, 278)">
+            <rect width="210" height="104" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="105" y="26" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--tb-c-text-1)">openjdk</text>
+            <text x="105" y="44" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">toolkit slice · Temurin 21</text>
+            <text x="105" y="60" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">publisher: tebako-packages</text>
+            <text x="105" y="80" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-accent)">mounted at /opt/openjdk —</text>
+            <text x="105" y="94" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-accent)">upgrades touch no app</text>
+          </g>
+
+          <!-- arrows into the process -->
+          <line x1="232" y1="82" x2="520" y2="150" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#mn-arrow)" />
+          <line x1="232" y1="206" x2="520" y2="190" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#mn-arrow)" />
+          <line x1="462" y1="330" x2="520" y2="230" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#mn-arrow)" />
+          <line x1="232" y1="330" x2="510" y2="250" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#mn-arrow)" />
+
+          <!-- the process -->
+          <g transform="translate(530, 96)">
+            <rect width="220" height="180" rx="12" fill="var(--color-ink)" stroke="var(--tb-c-accent)" stroke-width="1.5" />
+            <text x="110" y="30" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--color-mist-pale)">one process</text>
+            <text x="110" y="52" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-gold)">PATH= — the host is empty</text>
+            <g font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-mist)" opacity="0.9">
+              <text x="110" y="76" text-anchor="middle">env image at /__tfs__</text>
+              <text x="110" y="92" text-anchor="middle">app at /</text>
+              <text x="110" y="108" text-anchor="middle">inkscape at /opt/inkscape</text>
+              <text x="110" y="124" text-anchor="middle">JRE at /opt/openjdk</text>
+            </g>
+            <text x="110" y="152" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-mist)" opacity="0.75">longest-prefix dispatch,</text>
+            <text x="110" y="166" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-mist)" opacity="0.75">jail: cwd rw, rest ro</text>
+          </g>
+          <line x1="752" y1="186" x2="792" y2="186" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#mn-arrow)" />
+
+          <!-- the output -->
+          <g transform="translate(800, 136)">
+            <rect width="120" height="100" rx="10" fill="var(--tb-c-accent)" stroke="var(--tb-c-accent)" stroke-width="1.5" />
+            <text x="60" y="34" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--color-paper)">a valid PDF</text>
+            <text x="60" y="54" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-paper)" opacity="0.9">figures rasterized,</text>
+            <text x="60" y="68" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-paper)" opacity="0.9">fonts embedded,</text>
+            <text x="60" y="82" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-paper)" opacity="0.9">XSL-FO rendered</text>
+          </g>
+
+          <text x="470" y="52" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="11" fill="var(--tb-c-text-3)">each slice ships on its own cadence, from its own publisher,</text>
+          <text x="470" y="70" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="11" fill="var(--tb-c-text-3)">with its own SHA-256 anchor</text>
+        </svg>
+      </div>
+
+      <div class="mt-8 max-w-3xl space-y-4 text-[var(--tb-c-text-2)]">
+        <p>
+          The user installs two things — the tebako CLI and the metanorma payload — and
+          types one command. The dispatcher reads the app's manifest, finds the cached
+          compatible ruby (or downloads it once), mounts Inkscape and the JRE at the paths
+          the app declared, and the compile runs. A Temurin security update ships as a new
+          openjdk slice: existing installs pick it up by constraint, and no metanorma
+          artifact is rebuilt, re-downloaded, or re-verified.
+        </p>
+        <p>
+          The proof point, run as an end-to-end test: <code class="font-[var(--font-mono)] text-sm">PATH= metanorma compile site.adoc</code>{' '}
+          on an ordinary machine produced a valid PDF 1.7 — figure rasterized by the in-image
+          Inkscape, validation and rendering by the in-image JVM — byte-for-byte the size of
+          the host-built original. Nothing on the host participated, so nothing on the host
+          can break it.
+        </p>
+      </div>
+    </div>
+
+    <div class="mt-24">
+      <p class="tb-eyebrow">THE POSITION</p>
+      <h2 class="mt-2">A container's promises, at a file's weight.</h2>
+      <p class="mt-4 max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
+        Containers made three promises: run anywhere, carry everything, stay isolated.
+        Tebako keeps all three for applications — without the daemon, the layered
+        tarballs, or the registry infrastructure they normally ride on.
+      </p>
+      <div class="mt-8 overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]">
+        <table class="w-full text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
+              <th class="px-5 py-3 font-medium"></th>
+              <th class="px-5 py-3 font-medium">Container</th>
+              <th class="px-5 py-3 font-medium">Static binary</th>
+              <th class="px-5 py-3 font-medium tb-text-gradient">Tebako</th>
+            </tr>
+          </thead>
+          <tbody>
+            {comparison.map(([aspect, container, statik, tebako]) => (
+              <tr class="border-b border-[var(--tb-c-divider)] last:border-0">
+                <td class="px-5 py-3 font-medium text-[var(--tb-c-text-1)]">{aspect}</td>
+                <td class="px-5 py-3 text-[var(--tb-c-text-2)]">{container}</td>
+                <td class="px-5 py-3 text-[var(--tb-c-text-2)]">{statik}</td>
+                <td class="px-5 py-3 text-[var(--tb-c-text-1)]">{tebako}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="mt-24 max-w-3xl">
+      <p class="tb-eyebrow">HONEST BOUNDARIES</p>
+      <h2 class="mt-2">What it is not.</h2>
+      <ul class="mt-4 space-y-3">
+        <li class="flex gap-3 leading-relaxed text-[var(--tb-c-text-2)]">
+          <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tb-c-accent)]"></span>
+          <span><strong class="text-[var(--tb-c-text-1)]">Not a security sandbox for hostile code.</strong> Jails control what a payload can see and write on the filesystem — they do not meter CPU, memory, or network.</span>
+        </li>
+        <li class="flex gap-3 leading-relaxed text-[var(--tb-c-text-2)]">
+          <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tb-c-accent)]"></span>
+          <span><strong class="text-[var(--tb-c-text-1)]">Not server orchestration.</strong> Tebako distributes command-line tools, developer tooling, and desktop applications. It does not schedule services across a fleet.</span>
+        </li>
+        <li class="flex gap-3 leading-relaxed text-[var(--tb-c-text-2)]">
+          <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tb-c-accent)]"></span>
+          <span><strong class="text-[var(--tb-c-text-1)]">Not a central store.</strong> There is no tebako-run repository of record, and there never will be. Registries are files you host; trust is pinned by the user, not granted by a platform.</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="mt-24 rounded-2xl border border-[var(--tb-c-divider)] px-8 py-10" style="background: var(--tb-c-bg-soft);">
+      <h2>Try it on your machine.</h2>
+      <p class="mt-3 max-w-2xl leading-relaxed text-[var(--tb-c-text-2)]">
+        One install, no daemon, nothing running in the background.
+      </p>
+      <div class="mt-6 grid gap-4 md:grid-cols-2">
+        <div class="rounded-xl border border-[var(--tb-c-divider)] p-5">
+          <p class="font-[var(--font-mono)] text-xs uppercase tracking-wider text-[var(--tb-c-text-2)]">Homebrew (macOS, Linux)</p>
+          <pre class="mt-3 overflow-x-auto font-[var(--font-mono)] text-sm"><code>brew install tamatebako/tap/tebako</code></pre>
+        </div>
+        <div class="rounded-xl border border-[var(--tb-c-divider)] p-5">
+          <p class="font-[var(--font-mono)] text-xs uppercase tracking-wider text-[var(--tb-c-text-2)]">Shell (any Unix)</p>
+          <pre class="mt-3 overflow-x-auto font-[var(--font-mono)] text-sm"><code>curl -fsSL https://tebako.org/install.sh | sh</code></pre>
+        </div>
+      </div>
+      <p class="mt-6 text-sm text-[var(--tb-c-text-2)]">
+        Then: <code class="font-[var(--font-mono)]">tebako add-registry tfs:github:tamatebako/hello</code> and
+        <code class="font-[var(--font-mono)]">tebako install hello</code> — a first packaged command in about a minute.
+        The <a class="underline decoration-[var(--tb-c-accent)] underline-offset-4" href="/docs/architecture/overview/">architecture documentation</a> explains what just happened.
+      </p>
+    </div>
+  </section>
+</BaseLayout>

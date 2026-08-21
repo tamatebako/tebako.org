@@ -1,0 +1,102 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro'
+import GuidesNav from '../../../components/docs/GuidesNav.astro'
+
+const guides = [
+  {
+    eyebrow: 'GUIDE 01 · INSTALL',
+    title: 'Install tebako',
+    href: '/docs/guides/install/',
+    desc: 'Brew, the shell installer, or a direct binary — plus a first packaged command in about a minute.',
+  },
+  {
+    eyebrow: 'GUIDE 02 · RUN',
+    title: 'Run a packaged app',
+    href: '/docs/guides/run/',
+    desc: 'Execute the package file itself, drive it with tebako run, or manage it with registries and shims.',
+  },
+  {
+    eyebrow: 'GUIDE 03 · PACKAGE',
+    title: 'Package a Ruby app',
+    href: '/docs/guides/package-ruby/',
+    desc: 'tebako press: lean vs fat, extra slices, baked jail policies, and multi-command suites.',
+  },
+  {
+    eyebrow: 'GUIDE 04 · DATA',
+    title: 'Create a data payload',
+    href: '/docs/guides/data-payload/',
+    desc: 'A directory and a manifest become a versioned, mountable .tfs image — no toolchain required.',
+  },
+  {
+    eyebrow: 'GUIDE 05 · PUBLISH',
+    title: 'Publish to your own registry',
+    href: '/docs/guides/publish/',
+    desc: 'Your GitHub releases are the storage; tebako publish writes the index your users add.',
+  },
+  {
+    eyebrow: 'GUIDE 06 · SHIMS',
+    title: 'Shims & versions',
+    href: '/docs/guides/shims/',
+    desc: 'Commands on PATH with per-invocation version dispatch: environment, project file, config, registry.',
+  },
+  {
+    eyebrow: 'GUIDE 07 · JAILS',
+    title: 'Set a jail policy',
+    href: '/docs/guides/jails/',
+    desc: 'Declare what of the host filesystem a run can see — and tighten any invocation.',
+  },
+  {
+    eyebrow: 'GUIDE 08 · VERIFY',
+    title: 'Verify integrity',
+    href: '/docs/guides/verify/',
+    desc: 'SHA-256 anchors, strict signature checks, and signing your own artifacts.',
+  },
+  {
+    eyebrow: 'GUIDE 09 · DEBUG',
+    title: 'Debug & logging',
+    href: '/docs/guides/debug/',
+    desc: 'TEBAKO_DEBUG, per-component levels, doctor, and the exit codes worth memorizing.',
+  },
+  {
+    eyebrow: 'GUIDE 10 · INSPECT',
+    title: 'info & inspect',
+    href: '/docs/guides/info-inspect/',
+    desc: 'Read the store, a package, or the inside of an image — without extracting anything.',
+  },
+]
+---
+
+<BaseLayout title="How-to guides — Tebako" description="Task-shaped tebako guides: install, run, package, publish, shim, jail, verify, debug, and inspect — every command copy-pasteable.">
+  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
+    <p class="tb-eyebrow">GUIDES</p>
+    <h1 class="mt-3">Do the thing.</h1>
+    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      Each guide is one task: a short explanation, then commands you can paste into a
+      terminal. macOS and Linux are assumed; Windows differences are noted where they exist.
+      The architecture documentation explains the machinery underneath when you want it.
+    </p>
+
+    <GuidesNav />
+
+    <div class="mt-16 grid gap-6 md:grid-cols-3">
+      {guides.map((g) => (
+        <a href={g.href} class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+          <p class="tb-eyebrow">{g.eyebrow}</p>
+          <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">{g.title}</h3>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">{g.desc}</p>
+        </a>
+      ))}
+    </div>
+
+    <div class="mt-6">
+      <a href="/docs/architecture/migration/" class="group block rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+        <p class="tb-eyebrow">COMING FROM V1</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">Migrating from tebako v1</h3>
+        <p class="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          The gem, the merged env+app image, and the old CLI flags are gone — deliberately.
+          The migration guide maps every v1 habit to its current form.
+        </p>
+      </a>
+    </div>
+  </section>
+</BaseLayout>
