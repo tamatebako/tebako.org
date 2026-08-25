@@ -1,0 +1,276 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro'
+import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import StatusPill from '../../../components/docs/StatusPill.astro'
+
+const LINKS = {
+  spec08: 'https://github.com/tamatebako/tebako/blob/main/docs/spec/08-jails.md',
+  spec23: 'https://github.com/tamatebako/tebako/blob/main/docs/spec/23-declarative-composition.md',
+  spec25: 'https://github.com/tamatebako/tebako/blob/main/docs/spec/25-trace-observability.md',
+  issue439: 'https://github.com/tamatebako/tebako/issues/439',
+}
+
+const profileRows = [
+  { profile: 'full access', spec: 'default: open', meaning: 'host cwd + writes pass through — the historic behavior' },
+  { profile: 'directory-scoped', spec: 'cwd mounted at /work, rw', meaning: 'the working tree is visible; nothing else is' },
+  { profile: 'file-scoped tight jail', spec: 'default: deny + argument files', meaning: 'an untrusted payload against one input, nothing else' },
+]
+
+const floorRows = [
+  { platform: 'macOS', entries: '/usr · /System · /Library', evidence: 'the JVM NULL-derefs in getMacOSXLocale when /usr reads are denied — a SIGSEGV in someone else\u2019s library, 2026-08-13' },
+  { platform: 'windows', entries: '%SystemRoot%\\System32 · %SystemRoot%\\SysWOW64 · %SystemRoot%\\Fonts', evidence: 'the loader\u2019s DLL root; the 32-bit view for 32-bit children; the GDI font tree AWT enumerates' },
+  { platform: 'other unix', entries: 'none today', evidence: 'an entry joins only with a proven platform-process consumer, cited by run — amended by evidence, never anticipation' },
+]
+
+const gatedRows = [
+  { decision: 'open (read and write modes)', answer: 'EPERM denied · EROFS on an ro mount' },
+  { decision: 'stat · opendir', answer: 'EPERM denied' },
+  { decision: 'dlmap2file', answer: 'EPERM denied — native-library load paths are policy surface' },
+  { decision: 'extract_all destination', answer: 'a host write, gated as one' },
+  { decision: 'the mount family\u2019s own image read', answer: 'policy-gated once a policy is active — install the policy AFTER the mounts' },
+]
+---
+<!-- normative: spec 08 (§1 model, §2 semantics + §2.1 platform floor, §3 choke + shipped semantics, §4 manifest integration, §5 scope, §6 executor trust), spec 23 §8 (record mode), spec 25 §4 (trace run generator) -->
+
+<BaseLayout title="Jails and host proxying — Tebako architecture" description="Filesystem-only host-access policy at the one TFS choke point: docker -v semantics, the deny default, the evidence-driven platform floor, symlink re-validation, the audit journal, and the record mode that discovers a payload's needs.">
+  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
+    <p class="tb-eyebrow">ARCHITECTURE · 20</p>
+    <h1 class="mt-3">Jails and host proxying.</h1>
+    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      Every file access a payload makes already flows through the TFS layer — so that one choke
+      point is where host access is decided. The policy is docker{' '}
+      <code class="font-[var(--font-mono)]">-v</code> semantics: a default, a mount list, and named
+      errors instead of surprises. Enforcement exists because coverage is total by construction.
+    </p>
+
+    <ArchDocsNav />
+
+    <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
+      <StatusPill status="shipped" note="policy model, the TFS choke, manifest∩user composition, press/run/shim surfaces, the platform floor, jail-deny journaling, record mode" />
+    </div>
+
+    <!-- ============ MODEL ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">The policy model.</h2>
+      <pre class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)] sm:text-sm" style="background: var(--tb-c-bg-soft);"><code>jail:
+  default: open | deny          # open = cwd + writes pass through
+  mounts:
+    - host: $HOME/sources
+      mount: /work
+      access: ro | rw
+  argument_files: auto-allowed  # the input file you hand the command
+                                # is allowed even under deny</code></pre>
+      <div class="mt-6 overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
+        <table class="w-full min-w-[720px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider-strong)] font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+              <th class="px-5 py-3 font-medium">PROFILE</th>
+              <th class="px-5 py-3 font-medium">SPEC</th>
+              <th class="px-5 py-3 font-medium">MEANING</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)]">
+            {profileRows.map((r) => (
+              <tr>
+                <td class="px-5 py-2.5 text-xs leading-relaxed font-medium text-[var(--tb-c-text-1)]">{r.profile}</td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-2)]"><code class="font-[var(--font-mono)]">{r.spec}</code></td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-3)]">{r.meaning}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-4 max-w-3xl text-sm text-[var(--tb-c-text-3)]">
+        Writes to an <code class="font-[var(--font-mono)] text-xs">ro</code> mount fail EROFS; paths
+        outside every mount fail EPERM. Payload images themselves are always read-only. Symlinks
+        resolve inside the granted view: realpath checked at bind time, re-validated on each open —
+        a symlink swapped in after install resolves to its target and escapes fail EPERM.
+        Precedence is locked: the package's manifest REQUESTS access (
+        <code class="font-[var(--font-mono)] text-xs">capabilities.host</code>); the user can always
+        TIGHTEN (<code class="font-[var(--font-mono)] text-xs">tebako run --jail</code>,{' '}
+        <code class="font-[var(--font-mono)] text-xs">--mount src:/work:rw</code>,{' '}
+        <code class="font-[var(--font-mono)] text-xs">--no-host</code>). User policy always wins;
+        signed payloads may get wider latitude by policy choice, never by bypass. Deny defaults win;
+        each side's grants are capped by the other side's allowance at the same prefix — ro is
+        sticky.
+      </p>
+    </div>
+
+    <!-- ============ FLOOR ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">The platform floor.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        Under the <code class="font-[var(--font-mono)] text-sm">deny</code> default, every bound
+        policy gains a fixed per-platform set of read-only grants covering the surface a spawned
+        interpreter physically cannot boot without. The floor exists because the failure mode for a
+        missing platform grant was never a policy verdict — it was a crash in someone else's
+        library. Denying the platform surface never produced a working process, so the floor grants
+        it always.
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
+        <table class="w-full min-w-[820px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider-strong)] font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+              <th class="px-5 py-3 font-medium">PLATFORM</th>
+              <th class="px-5 py-3 font-medium">FLOOR ENTRIES (ro)</th>
+              <th class="px-5 py-3 font-medium">EVIDENCE</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)]">
+            {floorRows.map((r) => (
+              <tr>
+                <td class="px-5 py-2.5 text-xs leading-relaxed font-medium text-[var(--tb-c-text-1)]">{r.platform}</td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-2)]"><code class="font-[var(--font-mono)]">{r.entries}</code></td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-3)]">{r.evidence}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-4 max-w-3xl text-sm text-[var(--tb-c-text-3)]">
+        The rules: an authored mount covering a floor path SUPERSEDES it — the floor never narrows
+        what the author allowed, and widening a floor path to rw is one authored grant away; there
+        is no way to drop a floor path short of not denying. Every bound grant implies its strict
+        ancestors are traversable — exact-path reads, never a prefix, never a write — so the
+        platform's canonicalization walks pass by construction (the JVM reads its cwd and every
+        ancestor at VM init). Floor mounts are never serialized into{' '}
+        <code class="font-[var(--font-mono)] text-xs">TEBAKO_JAIL</code>: the env grammar's
+        right-split cannot carry a windows drive-qualified spelling, and it never needs to — every
+        consumer re-derives the floor at its own bind, so a spawned child's inherited spec plus its
+        bind yields a policy identical to the parent's. And the boundary is honest: the floor is
+        SYSTEM surface only — the workload's own tool tree and the user's home stay authored grants.
+        The floor's promise is the end of the segfault class: every missing grant surfaces as the
+        workload's own named error, pinned in the audit journal.
+      </p>
+    </div>
+
+    <!-- ============ CHOKE ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">One choke point.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        <code class="font-[var(--font-mono)] text-sm">tebako_fs_host_policy</code> installs the
+        policy as PROCESS state (an unmount never resets it — fail-closed; a later call replaces
+        it). "Host path" means <em>any path the mounts do not hold</em> — outside every mount, or
+        covered by a mount but absent from its image. The app payload mounts at{' '}
+        <code class="font-[var(--font-mono)] text-sm">/</code> and the host stays reachable exactly
+        through this rule. A mount's access bit applies even under{' '}
+        <code class="font-[var(--font-mono)] text-sm">open</code>; longest host prefix wins on
+        path-component boundaries; argument files are an exact read-only grant, even under deny.
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
+        <table class="w-full min-w-[720px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider-strong)] font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+              <th class="px-5 py-3 font-medium">GATED DECISION</th>
+              <th class="px-5 py-3 font-medium">ANSWER</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)]">
+            {gatedRows.map((r) => (
+              <tr>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-2)]">{r.decision}</td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-3)]">{r.answer}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-4 max-w-3xl text-sm text-[var(--tb-c-text-3)]">
+        Because bootstrap, runtime driver, <code class="font-[var(--font-mono)] text-xs">tebako run</code>,
+        and <code class="font-[var(--font-mono)] text-xs">tfs exec</code> all enforce in the same
+        Rust layer, every consumer behaves identically with no per-app work. The bootstrap composes
+        package <code class="font-[var(--font-mono)] text-xs">jail:</code> ∩{' '}
+        <code class="font-[var(--font-mono)] text-xs">TEBAKO_JAIL</code> at handoff and exports the
+        effective policy (+ <code class="font-[var(--font-mono)] text-xs">TEBAKO_JAIL_SOURCE</code> ={' '}
+        <code class="font-[var(--font-mono)] text-xs">manifest|user|manifest+user</code>); a
+        malformed policy fails closed, exit 73. Every denial appends{' '}
+        <code class="font-[var(--font-mono)] text-xs">event=jail-deny path=… op=read|write source=…</code>{' '}
+        to the audit journal — best-effort: journaling never fails the operation it audits.
+      </p>
+    </div>
+
+    <!-- ============ RECORD ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Record mode: discover the needs you didn't know.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        A slice author usually does not KNOW the host surface their executable touches.{' '}
+        <code class="font-[var(--font-mono)] text-sm">policy: record</code> (env form:{' '}
+        <code class="font-[var(--font-mono)] text-sm">TEBAKO_JAIL=record</code>) is a third policy
+        default beside open/deny: every host passthrough check is ALLOWED and journaled as{' '}
+        <code class="font-[var(--font-mono)] text-sm">event=jail-allow</code>. Nothing is denied, so
+        the workload cannot crash from policy during discovery; spawned children inherit the spec
+        and append to the same journal.
+      </p>
+      <pre class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)] sm:text-sm" style="background: var(--tb-c-bg-soft);"><code>$ TEBAKO_JAIL=record tebako run pkg -- input.docx
+$ tfs needs --from-journal ~/.tebako/journal.log
+needs:
+  host:
+    - path: $HOME/.cache/vendor-tool
+      access: rw                    # strongest observed op wins
+      optional: true                # absent at generation time
+      why: "TODO — observed: 14 read, 3 write"   # you replace this</code></pre>
+      <p class="mt-4 max-w-3xl text-sm text-[var(--tb-c-text-3)]">
+        The generator folds <code class="font-[var(--font-mono)] text-xs">jail-deny</code> lines in
+        too — a denial is an UNMET need. It aggregates on the atom-substituted form, excludes the
+        automatic surface (floor, store, exec-cache paths — never declared), re-substitutes symbolic
+        atoms longest-prefix-wins, omits relative paths (cwd-relative probes are not declarable —
+        declare <code class="font-[var(--font-mono)] text-xs">$CWD</code> explicitly), collapses ro
+        ancestors the bind's traverse set already covers, and marks absent-at-generation paths{' '}
+        <code class="font-[var(--font-mono)] text-xs">optional: true</code>. Then the human gate:
+        the record shows the OBSERVED MINIMUM — the author flips ro↔rw where production differs,
+        deletes noise, fills <code class="font-[var(--font-mono)] text-xs">why</code>, and merges
+        into D1 or D2. The generator never edits a manifest. Record is a development mode: shipping
+        a composition with it in force is a named lint warning, and the store's audit journal marks
+        record-mode runs.
+      </p>
+    </div>
+
+    <!-- ============ SCOPE ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Scope, stated honestly.</h2>
+      <p class="max-w-3xl text-[var(--tb-c-text-2)]">
+        Jails are FILESYSTEM-ONLY. <code class="font-[var(--font-mono)] text-sm">capabilities.network</code>{' '}
+        is advisory metadata, not an enforcement promise; OS-level network confinement
+        (seatbelt/seccomp/WFP) is a possible later layer, never claimed today. Coverage is every IO
+        route through TFS — all interpreted payloads, plus native binaries under the preload
+        interposition shim. The shim's coverage is SYMBOL-level (tebako#439): a jail holds only for
+        the libc entry points the shim interposes — the named list includes the LFS64/fortify/
+        versioned twins (<code class="font-[var(--font-mono)] text-sm">open64</code>,{' '}
+        <code class="font-[var(--font-mono)] text-sm">__openat_2</code>, the{' '}
+        <code class="font-[var(--font-mono)] text-sm">__xstat</code> family), because glibc hands{' '}
+        <code class="font-[var(--font-mono)] text-sm">_FILE_OFFSET_BITS=64</code> callers DISTINCT
+        symbols that never touch the plain names. Known-uncovered at this layer: the remaining
+        fortify open family and raw <code class="font-[var(--font-mono)] text-sm">syscall(2)</code>{' '}
+        IO; statically-linked binaries have no interposition point at all. And the trust note:
+        tebako is the EXECUTOR of everything it runs — mediating a child's syscalls is the
+        execution contract, not hijacking; jails bind the child downward and claim nothing about the
+        executor or kernel upward.
+      </p>
+    </div>
+
+    <!-- ============ THREE NEIGHBORS ============ -->
+    <div class="mt-16 grid gap-6 md:grid-cols-3">
+      <a href="/docs/architecture/composition/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+        <p class="tb-eyebrow">NEXT · COMPOSITION</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">Declarative composition</h3>
+        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          The needs declarations the jail enforces, and where they live.
+        </p>
+      </a>
+      <a href="/docs/architecture/interposition/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+        <p class="tb-eyebrow">NEXT · INTERPOSITION</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">Native interposition</h3>
+        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          How the preload shim carries the VFS and the jail into native children.
+        </p>
+      </a>
+      <a href="/docs/architecture/observability/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+        <p class="tb-eyebrow">NEXT · OBSERVABILITY</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">Trace and observability</h3>
+        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          The journal vocabulary, the event bus, and the correlate tooling.
+        </p>
+      </a>
+    </div>
+  </section>
+</BaseLayout>
