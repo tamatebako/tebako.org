@@ -4,188 +4,472 @@ import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
 import StatusPill from '../../../components/docs/StatusPill.astro'
 
 const LINKS = {
+  tfsCrate: 'https://github.com/tamatebako/tebako/tree/main/crates/tfs',
+  tebakoLog: 'https://github.com/tamatebako/tebako/tree/main/crates/tebako-log',
+  dwarfsT: 'https://github.com/tamatebako/dwarfs-t',
+  dwarfsTRs: 'https://github.com/tamatebako/dwarfs-t-rs',
   libtfsRepo: 'https://github.com/tamatebako/libtfs',
-  libtfsRel: 'https://github.com/tamatebako/libtfs/releases/tag/v0.13.0',
-  capiHeader: 'https://github.com/tamatebako/libtfs/blob/main/include/tebako/fs/c_api.h',
-  capiTests: 'https://github.com/tamatebako/libtfs/blob/main/tests/test_c_api.cpp',
-  dwarfsRepo: 'https://github.com/tamatebako/dwarfs-t',
-  rsTfs: 'https://github.com/tamatebako/tebako-rs/tree/main/crates/tfs',
-  rubyRepo: 'https://github.com/tamatebako/ruby',
 }
 
-const abiGroups = [
+const backends = [
   {
-    name: 'Lifecycle — single-mount compat',
-    fns: ['tebako_fs_init', 'tebako_fs_init_from_file', 'tebako_fs_init_from_file_at', 'tebako_fs_unmount'],
-    note: 'The original entry points, kept byte-compatible: init* stays single-mount (second init → EALREADY); unmount() tears down everything.',
+    name: 'limnifs',
+    id: '5',
+    runtime: 'read-only',
+    inplace: '—',
+    creation: 'in-process writer (limnifs-write)',
+    note: 'THE DEFAULT since v0.2.0 — pure Rust (#![forbid(unsafe_code)]), content-addressed (BLAKE3), LMFS magic; compiles everywhere Rust compiles',
   },
   {
-    name: 'Lifecycle — multi-mount',
-    fns: ['tebako_fs_mount_from_file', 'tebako_fs_mount_from_file_at', 'tebako_fs_mount_from_memory', 'tebako_fs_unmount_handle'],
-    note: 'The mount-table API: each mount returns an opaque handle and attaches at its own mount point — an app image, data images, and more, concurrently.',
+    name: 'dwarfs-t',
+    id: '1',
+    runtime: 'read-only',
+    inplace: '—',
+    creation: 'in-process Writer (dwarfs-t-rs)',
+    note: 'the only C++ in the stack; FlatBuffers metadata (upstream dwarfs cannot read it)',
   },
   {
-    name: 'File I/O',
-    fns: ['tebako_fs_open', 'tebako_fs_read', 'tebako_fs_pread', 'tebako_fs_lseek', 'tebako_fs_close', 'tebako_fs_stat', 'tebako_fs_fstat'],
-    note: 'pread never moves the fd position (lseek+read emulation was rejected as racy).',
+    name: 'squashfs',
+    id: '2',
+    runtime: 'read-only',
+    inplace: '—',
+    creation: 'mksquashfs-class tooling',
+    note: 'POSIX-only — Windows builds ship without it; a mount attempt fails ENOTSUP by name',
   },
   {
-    name: 'Directory I/O',
-    fns: ['tebako_fs_opendir', 'tebako_fs_readdir', 'tebako_fs_closedir', 'tebako_fs_rewinddir', 'tebako_fs_telldir', 'tebako_fs_seekdir', 'tebako_fs_dir_is_embedded'],
-    note: 'Index-based telldir/seekdir cookies; dir_is_embedded is the registry test the patched runtime uses to dispatch between memfs and host.',
+    name: 'zip',
+    id: '3',
+    runtime: 'read-only',
+    inplace: 'add / delete (format layer)',
+    creation: '—',
+    note: 'pure Rust; no explicit directory entries — implied parents count for the held check',
   },
   {
-    name: 'Utilities',
-    fns: ['tebako_fs_extract_all', 'tebako_fs_dlmap2file'],
-    note: 'extract_all powers --tebako-extract; dlmap2file extracts a memfs file to a host path so native extensions can be dlopen\u2019ed.',
+    name: 'tar family',
+    id: 'auto-detected',
+    runtime: 'read-only',
+    inplace: 'append-only',
+    creation: 'repack',
+    note: 'pure Rust; gz / zst envelopes detected by magic, the tar heuristic always probes last',
   },
 ]
 
-const routing = [
-  { ruby: 'open / read / lseek / close', routes: 'tebako_fs_open / read / lseek / close' },
-  { ruby: 'stat / fstat / lstat / access-as-exists', routes: 'tebako_fs_stat / fstat (+ stat-as-exists)' },
-  { ruby: 'opendir / readdir / closedir', routes: 'tebako_fs_opendir / readdir / closedir' },
-  { ruby: 'Dir#tell / Dir#seek / Dir#each', routes: 'tebako_fs_telldir / seekdir / rewinddir' },
-  { ruby: 'IO#pread', routes: 'tebako_fs_pread (fd position untouched)' },
-  { ruby: 'fd / dir introspection', routes: 'tebako_fs_dir_is_embedded and the fd registry' },
-  { ruby: 'writes, cwd, mkdir, unlink', routes: 'never routed — they go to the host FS (read-only memfs)' },
-  { ruby: 'native extension load (dlopen)', routes: 'tebako_fs_dlmap2file → host path → host dlopen' },
+const accessRows = [
+  {
+    how: 'link',
+    what: 'in-process via libtfs — the runtime driver and the preload shim link the tfs crate directly',
+    status: 'shipped' as const,
+    note: 'fastest and deepest; the packaged-app model',
+  },
+  {
+    how: 'fuse',
+    what: 'tfs mount --fuse — a real system-wide mount wherever FUSE exists',
+    status: 'planned' as const,
+    note: 'the ONE mechanism with a host dependency',
+  },
+  {
+    how: 'serve',
+    what: 'tfs mount --serve=nfs|webdav — a userland server the OS\u2019s own client mounts',
+    status: 'planned' as const,
+    note: 'no FUSE anywhere',
+  },
+  {
+    how: 'shell',
+    what: 'tfs ls / tree / cat / stat / find / info — interactive browsing and one-shots',
+    status: 'shipped' as const,
+    note: 'the human surface',
+  },
+  {
+    how: 'exec',
+    what: 'tfs exec image -- cmd — the VFS injected through the preload interposition shim',
+    status: 'shipped' as const,
+    note: 'the mainline native-exec mechanism; macOS and linux-gnu first-class, Windows later',
+  },
+  {
+    how: 'extract',
+    what: 'tfs extract — materialize the image to disk',
+    status: 'shipped' as const,
+    note: 'the honest fallback',
+  },
+]
+
+const debugRows = [
+  {
+    var: 'TEBAKO_DEBUG',
+    what: 'the level: off (default) / error / warn / debug / trace, with per-component overrides — debug,preload=trace,tfs=warn. The legacy boolean TEBAKO_DEBUG_TFS maps to debug.',
+  },
+  {
+    var: 'TEBAKO_DEBUG_FILE',
+    what: 'the sink: stderr by default — stdout belongs to the payload, never to the log. A path opens append-mode with %p → pid expansion (exec\u2019d children don\u2019t clobber one file); parents are created; an unopenable path falls back to stderr with one warn line.',
+  },
+  {
+    var: 'TEBAKO_DEBUG_COMPONENTS',
+    what: 'a comma filter of component names (default: all) — preload, tfs, driver, shim, bootstrap, cli, pkg, resolve.',
+  },
 ]
 ---
+<!-- normative: spec 11, spec 20, spec 24 — facts re-verified against tebako main 2026-08-25 (crates/tfs c_api.rs/mount.rs/backends_*.rs, crates/tebako-log, crates/tpkg format ids, tfs-cli usage) -->
 
-<BaseLayout title="The VFS model — Tebako architecture" description="TFS as a virtual filesystem: the tebako_fs_* C ABI seam, multi-mount, read-only memfs with host cwd/writes, and IO routing in patched Ruby.">
+<BaseLayout title="The VFS model — Tebako architecture" description="TFS, tebako's userland virtual filesystem: the Rust tfs crate is the shipping implementation — mount table with longest-prefix dispatch, coverage-vs-presence, COW and ENC transforms, pluggable backends (limnifs, dwarfs-t, squashfs, tar, zip), and one debug contract.">
   <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">ARCHITECTURE · 03</p>
+    <p class="tb-eyebrow">ARCHITECTURE · VFS</p>
     <h1 class="mt-3">The VFS model.</h1>
     <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
-      TFS is a virtual filesystem with pluggable backends, spoken through one small C ABI.
-      That ABI is the seam of the whole architecture: patched Ruby above it, backends below
-      it, and either a C++ or a Rust implementation behind it.
+      TFS is tebako's userland virtual filesystem: a per-process mount table over
+      bulk-storage images, with the kernel-VFS shape and none of the kernel. One engine,
+      one small C ABI, pluggable backends — and the Rust{' '}
+      <a href={LINKS.tfsCrate} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">tfs crate</a>
+      {' '}is the shipping implementation.
     </p>
 
     <ArchDocsNav />
 
-    <div class="mt-16">
-      <div class="mb-3 flex flex-wrap items-center gap-3">
-        <h2>The seam: <code class="font-[var(--font-mono)]">tebako_fs_*</code>.</h2>
-        <StatusPill status="shipped" note="libtfs v0.13.0" />
-      </div>
-      <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
-        Since <a href={LINKS.libtfsRel} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">libtfs v0.13.0</a>
-        {' '}the surface is modern-only: the legacy tebako C/C++ API (a ~16k-line libdwarfs-wr lineage)
-        was removed, leaving exactly 24 exports, declared in{' '}
-        <a href={LINKS.capiHeader} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">include/tebako/fs/c_api.h</a>.
-        Because the contract is a C ABI, consumers don't care which implementation — or which
-        repository — ships it. Two implementations now exist: the C++ one below, and the Rust{' '}
-        <a href={LINKS.rsTfs} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">tfs crate</a>
-        {' '}in tebako-rs — a drop-in libtfs.so/.dylib/.dll/.a exporting exactly 33{' '}
-        <code class="font-[var(--font-mono)] text-xs">tebako_*</code> symbols, nm-verified
-        (the 24-function contract surface plus{' '}
-        <code class="font-[var(--font-mono)] text-xs">tebako_fs_abi_version</code> and eight
-        compat/introspection helpers — nothing else leaks).
-      </p>
+    <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
+      <StatusPill status="shipped" />
+      <span class="text-sm text-[var(--tb-c-text-2)]">
+        core, multi-mount, the tar adapter, the COW composite, and the ENC transform — all shipped; the C++{' '}
+        <a href={LINKS.libtfsRepo} class="tb-link-underline text-[var(--tb-c-accent)]">libtfs</a>
+        {' '}survives only as the parity oracle
+      </span>
+    </div>
 
-      <div class="space-y-4">
-        {abiGroups.map((g) => (
-          <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
-            <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">{g.name.toUpperCase()}</p>
-            <p class="mt-3 flex flex-wrap gap-x-2 gap-y-1.5">
-              {g.fns.map((fn) => (
-                <code class="rounded bg-[var(--tb-c-divider)] px-1.5 py-0.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-accent)]">{fn}</code>
-              ))}
-            </p>
-            <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">{g.note}</p>
-          </div>
-        ))}
-      </div>
-      <p class="mt-4 max-w-2xl text-sm text-[var(--tb-c-text-3)]">
-        The full behavior contract is executable: the{' '}
-        <a href={LINKS.capiTests} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">c_api test suite</a>
-        {' '}registers 493 tests under ctest on the C++ side — the parity oracle. The Rust
-        workspace runs the ported cases through its own C ABI (164 today, the full sweep
-        following the same pattern; the audit is in tebako-rs's docs/parity.md).
+    <!-- ============ THE SEAM ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">One engine, one seam.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        The product line is three things: <strong>libtfs</strong>, the engine, spoken through the{' '}
+        <code class="font-[var(--font-mono)] text-sm">tebako_fs_*</code> C ABI; the{' '}
+        <strong>tfs CLI</strong>, the human surface (<code class="font-[var(--font-mono)] text-sm">tfs : libtfs :: sqlite3 : libsqlite3</code>);
+        and <strong>tebako-pkg</strong>, which does tpkg trailer surgery — tebako's concept, not TFS's.
+        The ABI is additive-only (<code class="font-[var(--font-mono)] text-sm">tebako_fs_abi_version()</code> = 1),
+        and exactly <code class="font-[var(--font-mono)] text-sm">tebako_*</code> symbols are exported — nm-verified,
+        nothing else leaks.
+      </p>
+      <p class="max-w-3xl text-[var(--tb-c-text-2)]">
+        Calls reach the router three ways. The packaged interpreter's patched IO calls the ABI
+        in-process — open, pread, stat, opendir, and friends. Native executables get the VFS
+        injected through the preload interposition shim (<code class="font-[var(--font-mono)] text-sm">tfs exec</code>),
+        which is itself a TFS consumer. And a <code class="font-[var(--font-mono)] text-sm">dlopen</code> of a
+        VFS-resident library materializes the file to the exec cache first (
+        <code class="font-[var(--font-mono)] text-sm">tebako_fs_dlmap2file</code>) so the OS loader
+        maps a real file. Everything else — the working directory, writes outside held trees,
+        mkdir, unlink — goes to the host, policy-gated.
       </p>
     </div>
 
+    <!-- ============ MOUNT TABLE ============ -->
     <div class="mt-16">
       <div class="mb-3 flex flex-wrap items-center gap-3">
-        <h2>Multi-mount.</h2>
-        <StatusPill status="shipped" note="v0.13.0" />
+        <h2>The mount table.</h2>
+        <StatusPill status="shipped" />
       </div>
-      <p class="mb-6 max-w-2xl text-[var(--tb-c-text-2)]">
-        One process can attach many TFS images at once — the app image plus data images plus
-        anything else the package carries. A mount table maps opaque handles to
-        (mount point, backend instance); path resolution is longest-prefix-wins on
-        mount-point boundaries, and every fd/dir handle records its owning mount, so
-        unmounting one image force-closes only its own handles and leaves the rest fully usable.
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        One process can attach many images at once — the env image at the runtime root, the app
+        payload, data payloads. Each mount gets a monotonic handle (never reused) and its own
+        backend instance; there is no global mount state, which is what makes N concurrent mounts
+        safe. Path resolution is <strong>longest-prefix dispatch</strong> on component boundaries:
+        nested mounts shadow outer ones, and a duplicate mount point is refused with{' '}
+        <code class="font-[var(--font-mono)] text-sm">EEXIST</code>. Every fd and dir handle records
+        its owning mount, so unmounting one image force-closes only its own handles — later use
+        fails <code class="font-[var(--font-mono)] text-sm">EBADF</code> — and leaves the rest fully
+        usable.
       </p>
-      <pre class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)] sm:text-sm" style="background: var(--tb-c-bg-soft);"><code>open("/tebako/fs/app/config/boot.rb", …)
+      <pre class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)] sm:text-sm" style="background: var(--tb-c-bg-soft);"><code>open("/__app__/config/boot.rb", …)
         │
         ▼
 ┌───────────────────────────────────────────────────────┐
 │  path dispatch — longest mount-point prefix wins      │
 │                                                       │
-│   mount 0   /tebako/fs/app    → dwarfs backend        │
-│   mount 1   /tebako/fs/data   → zip backend           │
+│   mount 0   /__runtime__        → limnifs backend     │
+│   mount 1   /__layers__/fonts   → dwarfs backend      │
+│   mount 2   /__app__            → limnifs backend     │
 │   (nested mount points allowed; duplicates → EEXIST)  │
 └───────────────────────────────────────────────────────┘
         │ path inside a mount              │ path outside every mount
         ▼                                  ▼
   tebako_fs_open()                    host open()
-  read-only image, owning mount       cwd, writes, mkdir — untouched</code></pre>
-      <p class="mt-4 max-w-2xl text-sm text-[var(--tb-c-text-3)]">
-        The backends are instance-based — dwarfs (via{' '}
-        <a href={LINKS.dwarfsRepo} class="tb-link-underline text-[var(--tb-c-accent)]">dwarfs-t</a>),
-        squashfs, zip — with no global mount state, which is exactly what makes N concurrent
-        mounts safe. Images can be mounted from a package slot (file + offset + length),
-        from a standalone file, or from memory.
+  read-only image, owning mount       cwd, writes, mkdir — policy-gated</code></pre>
+      <div class="mt-8 overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+        <img
+          src="/assets/diagrams/tfs-router.svg"
+          alt="The TFS router: calls enter through the tebako_fs_* C ABI; the Rust TFS router dispatches by longest mount-point prefix onto read-only backends — limnifs, dwarfs-t, squashfs, tar, zip — with Rust COW and ENC transforms stacked above; paths outside every mount pass through to the host filesystem."
+          class="mx-auto w-full min-w-[760px] max-w-4xl"
+          loading="lazy"
+        />
+      </div>
+      <p class="mt-4 max-w-3xl text-sm text-[var(--tb-c-text-3)]">
+        Symlinks play by router rules too: relative targets resolve inside their own mount and
+        never escape it; absolute targets resolve through the mount table, so a link in one
+        payload can land in another — cross-mount links work, and that is the point of
+        composition. A target outside every mount is host-passthrough under the same jail policy
+        as any host path: a symlink can never widen a jail.
       </p>
     </div>
 
+    <!-- ============ COVERAGE IS NOT PRESENCE ============ -->
     <div class="mt-16">
-      <h2 class="mb-3">Read-only memfs, host cwd and writes.</h2>
-      <p class="max-w-2xl text-[var(--tb-c-text-2)]">
-        The packaged filesystem is read-only by design. Paths inside a mount are served from
-        the image; everything else — the process working directory, every write, mkdir,
-        unlink — passes through to the host filesystem unchanged. There is deliberately no{' '}
-        <code class="font-[var(--font-mono)] text-sm">tebako_fs_chdir</code> and no write
-        surface in the ABI: a packaged app can corrupt neither its own image nor another
-        package's mount. The one sanctioned escape hatch is{' '}
-        <code class="font-[var(--font-mono)] text-sm">tebako_fs_dlmap2file</code>, which
-        extracts a file to the host so the OS loader can map a native extension.
+      <h2 class="mb-3">Coverage is not presence.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        A mount <em>covers</em> everything under its mount point, but its image <em>holds</em> only
+        the entries it actually contains. A covered path the image does not hold does not surface
+        the backend's <code class="font-[var(--font-mono)] text-sm">ENOENT</code> — open, stat, and
+        opendir fall through to the host answer, gated by the jail policy. With the app payload
+        mounted at <code class="font-[var(--font-mono)] text-sm">/</code> — the v2 dispatch shape —
+        this is exactly what keeps the host filesystem reachable: held content serves from the
+        image (read-only), everything else behaves as if no mount claimed it.
       </p>
+      <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+        <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">THE WRITE GATE — STATED PLAINLY</p>
+        <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          Writes into a <strong>held</strong> tree — a path the image holds, or one with an existing
+          in-image ancestor — are refused <code class="font-[var(--font-mono)] text-xs">EROFS</code>.
+          Zip images have no explicit directory entries, so implied parents count; dwarfs always
+          carries them. Covered-but-not-held paths pass to the host, policy-gated. There is no
+          write surface behind a read-only mount and no way for a payload to corrupt its own image
+          or another package's mount.
+        </p>
+      </div>
     </div>
 
+    <!-- ============ BACKENDS ============ -->
     <div class="mt-16">
       <div class="mb-3 flex flex-wrap items-center gap-3">
-        <h2>IO routing in patched Ruby.</h2>
-        <StatusPill status="shipped" />
+        <h2>Backends: honest capabilities.</h2>
+        <StatusPill status="shipped" note="limnifs default since v0.2.0" />
       </div>
-      <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
-        The patches published by{' '}
-        <a href={LINKS.rubyRepo} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">tamatebako/ruby</a>
-        {' '}reroute Ruby's file calls to the ABI — and only to the ABI. A stat-based
-        "is this path inside a mount?" check decides routing; non-mount paths fall through
-        to the host unchanged.
+      <p class="mb-8 max-w-3xl text-[var(--tb-c-text-2)]">
+        Backends are pluggable drivers behind one trait; new formats are additive. The capability
+        model is honest per format — no uniform read/write pretense. Runtime mounts are read-only
+        by default (<code class="font-[var(--font-mono)] text-sm">TEBAKO_MOUNT_RO</code>);{' '}
+        <code class="font-[var(--font-mono)] text-sm">TEBAKO_MOUNT_COW</code> stacks the composite
+        transform, and <code class="font-[var(--font-mono)] text-sm">TEBAKO_MOUNT_RW</code> is{' '}
+        <code class="font-[var(--font-mono)] text-sm">ENOTSUP</code> — backends never learn to write.
       </p>
       <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
-        <table class="w-full min-w-[640px] text-left text-sm">
+        <table class="w-full min-w-[760px] text-left text-sm">
           <thead>
             <tr class="border-b border-[var(--tb-c-divider-strong)] font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
-              <th class="px-5 py-3 font-medium">RUBY / LIBC CALL</th>
-              <th class="px-5 py-3 font-medium">ROUTES TO</th>
+              <th class="px-5 py-3 font-medium">FORMAT</th>
+              <th class="px-5 py-3 font-medium">RUNTIME MOUNTS</th>
+              <th class="px-5 py-3 font-medium">IN-PLACE EDITS</th>
+              <th class="px-5 py-3 font-medium">CREATION</th>
+              <th class="px-5 py-3 font-medium">NOTES</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-[var(--tb-c-divider)]">
-            {routing.map((r) => (
+            {backends.map((b) => (
               <tr>
-                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-1)]">{r.ruby}</td>
-                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-2)]">{r.routes}</td>
+                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs font-medium text-[var(--tb-c-accent)]">{b.name}</td>
+                <td class="px-5 py-2.5 text-xs text-[var(--tb-c-text-2)]">{b.runtime}</td>
+                <td class="px-5 py-2.5 text-xs text-[var(--tb-c-text-2)]">{b.inplace}</td>
+                <td class="px-5 py-2.5 text-xs text-[var(--tb-c-text-2)]">{b.creation}</td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-2)]">{b.note}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      <p class="mt-4 max-w-3xl text-sm text-[var(--tb-c-text-3)]">
+        Format detection keys on bytes, not on the trailer: strong magic first (zip{' '}
+        <code class="font-[var(--font-mono)] text-xs">PK\x03\x04</code>, dwarfs, squashfs{' '}
+        <code class="font-[var(--font-mono)] text-xs">hsqs</code>, limnifs{' '}
+        <code class="font-[var(--font-mono)] text-xs">LMFS</code>), the weak tar heuristic always
+        last. The trailer's <code class="font-[var(--font-mono)] text-xs">format_id</code> is a hint
+        and answers exactly one question — how to read these bytes: 0 auto · 1 dwarfs · 2 squashfs ·
+        3 zip · 5 limnifs. 4 stays the legacy runtime-role wart — never mounted, never reused.
+        Runtime-role and entrypoint semantics live in the manifest, never in the format axis.
+        A mount whose detected format has no compiled-in backend fails with the named{' '}
+        <code class="font-[var(--font-mono)] text-xs">ENOTSUP</code> — never a silent re-route,
+        never a partial read.
+      </p>
+    </div>
+
+    <!-- ============ TRANSFORMS: COW + ENC ============ -->
+    <div class="mt-16">
+      <div class="mb-3 flex flex-wrap items-center gap-3">
+        <h2>Transforms: COW and ENC.</h2>
+        <StatusPill status="shipped" note="the transforms machinery" />
+        <StatusPill status="planned" note="the declarative manifest surface (spec 24 D1/D2)" />
+      </div>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        Transforms are not formats — they stack above a backend, and they exist only in the Rust
+        TFS. The stack order is pinned:{' '}
+        <code class="font-[var(--font-mono)] text-sm">COW → ENC → format backend</code>. COW is
+        always outermost; ENC decrypts exactly one image's backend and sits underneath.
+      </p>
+      <div class="grid gap-6 md:grid-cols-2">
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">COW — THE COMPOSITE BACKEND</p>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            <code class="font-[var(--font-mono)] text-xs">CowBackend</code> stacks a writable
+            overlay over a read-only base: reads fall through to the base unless shadowed;
+            writes, deletes, and attribute changes land in the overlay; modifying a base file
+            copies it up first — the base image stays byte-identical. The overlay is a plain host
+            directory, disposable by deleting it, and self-contained: a{' '}
+            <code class="font-[var(--font-mono)] text-xs">.tfs-whiteouts</code> journal inside it
+            records deleted paths (strict v1 text, rewritten atomically; any malformed line fails
+            the mount with <code class="font-[var(--font-mono)] text-xs">EINVAL</code>). Whiteouts
+            mask base entries only — an overlay entry of the same name always wins, overlayfs
+            semantics. Layers stack, detach, ship, and re-attach.
+          </p>
+        </div>
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">ENC — THE DECRYPTING VIEW</p>
+          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            <code class="font-[var(--font-mono)] text-xs">EncBackend</code> wraps one image's
+            backend as a decrypting read view: directory structure, names, and symlink targets stay
+            plaintext; only regular-file content is ciphertext. A mount requires an opening grant
+            resolved against the in-image envelope manifest; a read of a still-sealed path answers{' '}
+            <code class="font-[var(--font-mono)] text-xs">ENOKEY</code> (126) — the named EKEY
+            class, never garbage. Copy-up reads through it, so a writable sealed-base mount is{' '}
+            <code class="font-[var(--font-mono)] text-xs">COW(ENC(base))</code> — and the plaintext
+            lands in operator-bound host store, outside the image's confidentiality envelope.
+            Stated plainly: protecting scratch at rest is the host's layer (disk encryption),
+            never a tebako declaration.
+          </p>
+        </div>
+      </div>
+      <p class="mt-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        The declarative surface gates where writes may go: a slice declares write areas, the
+        operator binds an overlay store, and a write outside every declared area stays{' '}
+        <code class="font-[var(--font-mono)] text-sm">EROFS</code> — journaled as{' '}
+        <code class="font-[var(--font-mono)] text-sm">event=vfs-deny</code>. Under record mode every
+        image mount stacks an ephemeral scratch COW instead, and writes are journaled{' '}
+        <code class="font-[var(--font-mono)] text-sm">event=vfs-write</code> so{' '}
+        <code class="font-[var(--font-mono)] text-sm">tfs needs --from-journal</code> can draft the
+        declarations. Binding failures — an unbound retained store, a non-opening key, a malformed{' '}
+        <code class="font-[var(--font-mono)] text-sm">TEBAKO_OVERLAYS</code> /{' '}
+        <code class="font-[var(--font-mono)] text-sm">TEBAKO_DECRYPT</code> — fail before exec with
+        exit <strong>68</strong> (<code class="font-[var(--font-mono)] text-sm">EX_TEBAKO_OVERLAY</code>).
+        Nothing is transformed that was not declared.
+      </p>
+    </div>
+
+    <!-- ============ MOUNT SOURCES / SELF-SIMILARITY ============ -->
+    <div class="mt-16">
+      <div class="mb-3 flex flex-wrap items-center gap-3">
+        <h2>Mount sources: every file is a potential filesystem.</h2>
+        <StatusPill status="planned" note="mount-from-vfs — specced, not yet in the ABI" />
+      </div>
+      <p class="max-w-3xl text-[var(--tb-c-text-2)]">
+        TFS is self-similar: images are files, and any file is mountable. Three mount sources are
+        shipped — a host file, a file region (offset + length, which is how a package slot mounts
+        without extraction), and memory. The fourth, the{' '}
+        <strong>VFS-file-region</strong> — mounting an image addressed by a path <em>inside an
+        existing mount</em>, the new backend reading its bytes through the owning mount's pread —
+        is specified as the encapsulation primitive ("an FS includes another FS at a directory
+        path") and is not yet surfaced in the C ABI. Nested mount <em>points</em> work today;
+        nested mount <em>sources</em> are the planned step.
+      </p>
+    </div>
+
+    <!-- ============ ACCESS MATRIX ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">The access matrix.</h2>
+      <p class="mb-8 max-w-3xl text-[var(--tb-c-text-2)]">
+        Six ways to get at image contents, ordered by transparency. Each is honest about what it
+        costs and where it runs.
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
+        <table class="w-full min-w-[760px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider-strong)] font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+              <th class="px-5 py-3 font-medium">MECHANISM</th>
+              <th class="px-5 py-3 font-medium">WHAT IT IS</th>
+              <th class="px-5 py-3 font-medium">STATUS</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)]">
+            {accessRows.map((r) => (
+              <tr>
+                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs font-medium text-[var(--tb-c-accent)]">{r.how}</td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-2)]">{r.what}</td>
+                <td class="px-5 py-2.5 text-xs text-[var(--tb-c-text-2)]">
+                  <StatusPill status={r.status} note={r.note} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div class="mt-6 rounded-2xl border border-[var(--color-gold)]/40 p-6" style="background: color-mix(in srgb, var(--color-gold) 6%, transparent);">
+        <p class="font-[var(--font-mono)] text-xs text-[var(--color-gold)]">STATED PLAINLY</p>
+        <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          Without the kernel there is no system-wide transparent mount for unmodified arbitrary
+          processes. TFS trades that away deliberately — and gets zero privileges, every platform,
+          and in-process speed in return.
+        </p>
+      </div>
+    </div>
+
+    <!-- ============ DEBUG CONTRACT ============ -->
+    <div class="mt-16">
+      <div class="mb-3 flex flex-wrap items-center gap-3">
+        <h2>The debug contract.</h2>
+        <StatusPill status="shipped" note="crates/tebako-log" />
+      </div>
+      <p class="mb-8 max-w-3xl text-[var(--tb-c-text-2)]">
+        One logging facility —{' '}
+        <a href={LINKS.tebakoLog} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">tebako-log</a>
+        {' '}— with every component wired through it; there is no ad-hoc{' '}
+        <code class="font-[var(--font-mono)] text-sm">eprintln!</code> anywhere in the stack.
+        Three environment variables control it:
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
+        <table class="w-full min-w-[760px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider-strong)] font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+              <th class="px-5 py-3 font-medium">VARIABLE</th>
+              <th class="px-5 py-3 font-medium">MEANING</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)]">
+            {debugRows.map((r) => (
+              <tr>
+                <td class="px-5 py-2.5 align-top font-[var(--font-mono)] text-xs font-medium text-[var(--tb-c-accent)]">{r.var}</td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-2)]">{r.what}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <pre class="mt-6 overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)] sm:text-sm" style="background: var(--tb-c-bg-soft);"><code>tebako[84213] debug preload: route path=/x held=true action=erofs
+   │        │      │         │      └─ one parseable line per event: &lt;event&gt; &lt;k=v&gt;…
+   │        │      │         └─ component (a crate name)
+   │        │      └─ level
+   │        └─ pid
+   └─ fixed prefix</code></pre>
+      <p class="mt-4 max-w-3xl text-sm text-[var(--tb-c-text-3)]">
+        The discipline: zero cost when off — the config is read once and the gate runs before any
+        formatting. Paths, decisions, and digests are loggable; payload contents and key material
+        never are.
+      </p>
+    </div>
+
+    <!-- ============ THREE NEIGHBORS ============ -->
+    <div class="mt-16 grid gap-6 md:grid-cols-3">
+      <a href="/docs/architecture/anatomy/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+        <p class="tb-eyebrow">NEXT · ANATOMY</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">The anatomy of a package</h3>
+        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          End to end: trailer, slots, the env image plus payloads co-mounted through this router.
+        </p>
+      </a>
+      <a href="/docs/architecture/exec-tiers/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+        <p class="tb-eyebrow">NEXT · EXEC TIERS</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">Running binaries from images</h3>
+        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          Preload, wrapped, TFS-native, static — the access matrix's exec row, in detail.
+        </p>
+      </a>
+      <a href="/docs/architecture/store/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+        <p class="tb-eyebrow">NEXT · THE STORE</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">Where the images live</h3>
+        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          <code class="font-[var(--font-mono)] text-xs">~/.tebako</code> — mounted, never
+          extracted; byte-identical with what the registry published.
+        </p>
+      </a>
     </div>
   </section>
 </BaseLayout>
