@@ -1,0 +1,81 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro'
+import RefDocsNav from '../../../components/docs/RefDocsNav.astro'
+import StatusPill from '../../../components/docs/StatusPill.astro'
+
+// IA: PROGRESS/15-website-overhaul.md §B Reference — wave 0 stub landing.
+// The pages below land with the reference wave; cards stay unlinked until they do.
+
+const pages = [
+  {
+    eyebrow: 'REF · TEBAKO',
+    title: 'tebako CLI',
+    desc: 'Every subcommand and flag: press, run, trace, check, cache, registries, install, info, inspect, publish.',
+  },
+  {
+    eyebrow: 'REF · TFS',
+    title: 'tfs CLI',
+    desc: 'Image inspection and surgery: info, ls/tree/cat/stat/extract, mkimage, exec, needs, encrypt/decrypt/mount.',
+  },
+  {
+    eyebrow: 'REF · TEBAKO-PKG',
+    title: 'tebako-pkg CLI',
+    desc: 'Trailer surgery: info, validate, bundle, unbundle, reassemble, insert-image, remove-image, set-runtime, sign, verify.',
+  },
+  {
+    eyebrow: 'REF · TEBAKO-SHIM',
+    title: 'tebako-shim CLI',
+    desc: 'Dispatch flags and the management verbs: list, enable, disable, which, doctor, install-shell, uninstall-shell.',
+  },
+  {
+    eyebrow: 'REF · ENV',
+    title: 'Environment variables',
+    desc: 'The consolidated TEBAKO_* table: HOME, OFFLINE, DEBUG*, TRACE, JAIL*, RUNTIME_IMAGE, MOUNT_ROOT, and friends.',
+  },
+  {
+    eyebrow: 'REF · EXITS',
+    title: 'Exit codes',
+    desc: 'The complete named-exit table — 64–79 plus 126, 132, 138 — with the layer that owns each code.',
+  },
+  {
+    eyebrow: 'REF · MANIFEST',
+    title: 'Manifest reference',
+    desc: 'The payload manifest: IDENTITY, PROVIDES, DEPENDS, kinds, needs, checks — plus the L2 package manifest block.',
+  },
+  {
+    eyebrow: 'REF · REGISTRY',
+    title: 'Registry schema',
+    desc: 'tpkg-registry.yaml field by field, and the tfs:github: reference syntax with its query parameters.',
+  },
+  {
+    eyebrow: 'REF · SPECS',
+    title: 'Spec index',
+    desc: 'The normative specification set with one-line summaries and links to the product repository.',
+  },
+]
+---
+
+<BaseLayout title="Reference — Tebako" description="Tebako reference documentation: the CLI surface command by command, environment variables, exit codes, manifest and registry schemas, and the normative spec index.">
+  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
+    <p class="tb-eyebrow">REFERENCE</p>
+    <h1 class="mt-3">Look it up.</h1>
+    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      Exact surfaces, no narrative: commands and flags, environment variables, exit
+      codes, and the schemas. This section is being written — the cards below are the
+      planned surface and go live as the pages land.
+    </p>
+
+    <RefDocsNav />
+
+    <div class="mt-16 grid gap-6 md:grid-cols-3">
+      {pages.map((p) => (
+        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+          <p class="tb-eyebrow">{p.eyebrow}</p>
+          <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)]">{p.title}</h3>
+          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">{p.desc}</p>
+          <p class="mt-4"><StatusPill status="planned" /></p>
+        </div>
+      ))}
+    </div>
+  </section>
+</BaseLayout>
