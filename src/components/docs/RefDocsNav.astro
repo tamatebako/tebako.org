@@ -1,0 +1,37 @@
+---
+// Wave-3 surface (PROGRESS/15-website-overhaul.md §B Reference): the pages below
+// do not exist yet; this array ships ahead of them so later waves only add pages.
+const items = [
+  { label: 'Reference home', href: '/docs/reference/' },
+  { label: 'tebako CLI', href: '/docs/reference/cli-tebako/' },
+  { label: 'tfs CLI', href: '/docs/reference/cli-tfs/' },
+  { label: 'tebako-pkg CLI', href: '/docs/reference/cli-tebako-pkg/' },
+  { label: 'tebako-shim CLI', href: '/docs/reference/cli-tebako-shim/' },
+  { label: 'Environment variables', href: '/docs/reference/environment/' },
+  { label: 'Exit codes', href: '/docs/reference/exit-codes/' },
+  { label: 'Manifest reference', href: '/docs/reference/manifest/' },
+  { label: 'Registry schema', href: '/docs/reference/registry-schema/' },
+  { label: 'Spec index', href: '/docs/reference/specs/' },
+]
+
+const pathname = Astro.url.pathname
+const isActive = (href: string) => pathname === href
+---
+
+<nav aria-label="Reference documentation" class="mt-10 flex flex-wrap items-center gap-2">
+  {items.map((item, i) => (
+    <a
+      href={item.href}
+      aria-current={isActive(item.href) ? 'page' : undefined}
+      class:list={[
+        'rounded-full px-4 py-2 font-[var(--font-mono)] text-xs font-medium transition-colors duration-200',
+        isActive(item.href)
+          ? 'bg-[var(--tb-c-accent)] text-[var(--color-paper)]'
+          : 'border border-[var(--tb-c-divider)] text-[var(--tb-c-text-2)] hover:border-[var(--tb-c-accent)] hover:text-[var(--tb-c-accent)]',
+      ]}
+    >
+      <span class="opacity-60">{String(i + 1).padStart(2, '0')}</span>
+      <span class="ml-1.5">{item.label}</span>
+    </a>
+  ))}
+</nav>
