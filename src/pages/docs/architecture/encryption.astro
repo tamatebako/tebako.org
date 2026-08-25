@@ -1,0 +1,225 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro'
+import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import StatusPill from '../../../components/docs/StatusPill.astro'
+
+const LINKS = {
+  spec10: 'https://github.com/tamatebako/tebako/blob/main/docs/spec/10-encryption.md',
+  spec21: 'https://github.com/tamatebako/tebako/blob/main/docs/spec/21-crypto-consolidation.md',
+  spec09: 'https://github.com/tamatebako/tebako/blob/main/docs/spec/09-trust-and-signing.md',
+}
+
+const suiteRows = [
+  { suite: 'SUITE-1', construction: 'X25519 + Ed25519 + AES-256-GCM + SHA-256', note: 'classical — SHIPPED' },
+  { suite: 'SUITE-2', construction: 'ML-KEM-1024+X25519 composite KEM · ML-DSA-87+Ed25519 composite signatures · AES-256-GCM · SHA-384', note: 'HYBRID — secure if EITHER family holds; the transition form' },
+  { suite: 'SUITE-3', construction: 'SLH-DSA hash-based signatures', note: 'maximal-conservatism tier' },
+]
+
+const homeRows = [
+  { question: 'WHO signed it?', home: 'spec 09 — OpenPGP trailer signature + signed release indexes + the trust store', note: 'the ONLY authenticity decision point, for every backend' },
+  { question: 'WHO may read it?', home: 'spec 10 — the ENC transform (PKESK DEK envelopes, HKDF subtree keys)', note: 'stacks over ANY backend, limnifs included' },
+  { question: 'HOW are the bytes sealed?', home: 'the format\u2019s own business (limnifs per-drop AEAD)', note: 'consumed as EVIDENCE, never as anchor — tebako-pressed images ship aead = 0' },
+]
+---
+<!-- normative: spec 10 (§1 model, §2 key model, §3 memory, §5 PQC, §7 CLI), spec 21 (§2 role map, §4 recommendation D — one crypto home per layer) -->
+
+<BaseLayout title="Encryption — Tebako architecture" description="Selective, in-memory-only decryption as a stacking transform: DEKs as OpenPGP grant envelopes, HKDF subtree keys, one artifact with N audiences, suite-versioned PQC readiness, and the one-crypto-home-per-layer rule.">
+  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
+    <p class="tb-eyebrow">ARCHITECTURE · 21</p>
+    <h1 class="mt-3">Encryption.</h1>
+    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      Encryption is per-image opt-in, never default — a stacking transform like COW, not a format.
+      Reads decrypt on demand, in memory only; plaintext blocks never touch disk. One artifact can
+      serve N audiences, each key opening exactly its declared slice.
+    </p>
+
+    <ArchDocsNav />
+
+    <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
+      <StatusPill status="shipped" note="EncBackend + tfs encrypt / decrypt / mount at SUITE-1; per-block AES-256-GCM; PKESK envelopes; the envelopes.yaml grant manifest" />
+      <StatusPill status="planned" note="PQC suites (construction locked), metadata hiding, merkle verify-on-read" />
+    </div>
+
+    <!-- ============ MODEL ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">The model: a transform, not a format.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        <code class="font-[var(--font-mono)] text-sm">EncBackend {'{'} base: dyn Backend, key_source {'}'}</code>{' '}
+        — it wraps any backend and answers reads by decrypting on demand. Per the transforms law it
+        lives ONLY in the Rust TFS; backends and dwarfs-t stay ignorant of it. The primitive is
+        OpenPGP via rnp-rs (AES-256/SHA-2, botan backend, vendored) — encryption AFTER compression,
+        since ciphertext doesn't compress and individually compressed blocks are individually
+        encryptable. Optional padding blurs per-block sizes.
+      </p>
+      <pre class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)] sm:text-sm" style="background: var(--tb-c-bg-soft);"><code>COW  →  ENC  →  format backend        # the one pinned stack (spec 24 §1)
+
+COW(Enc(base))   # the writable sealed-base mount — the declarative spelling
+Enc(COW(base))   # expressible at the mount API, never the declarative spelling —
+                 # Enc is a decrypting READ view; no write can pass through it</code></pre>
+    </div>
+
+    <!-- ============ KEY MODEL ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">The key model: session keys are grant envelopes.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        Data keys (DEKs) encrypt content blocks — and a DEK IS a persisted OpenPGP session key:
+        rnp's native wrap/unwrap (PKESK packets to N recipients) is the envelope. No custom crypto
+        anywhere. Sharing = wrapping the DEK to a recipient — offline, accountless, auditable. A
+        wrapped DEK plus the manifest digest IS a capability: possessing it grants exactly that
+        subtree, nothing else.
+      </p>
+      <pre class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)] sm:text-sm" style="background: var(--tb-c-bg-soft);"><code>identity lives at the PLAINTEXT layer — manifests carry TWO digests:
+  tree hash (plaintext)   → semantic identity: CAS, dedup, sign/verify,
+                            audit-without-access
+  ciphertext blob hash    → transport identity
+encryption is a per-audience transform; CAS never keys content-identity
+to any one wrapping
+
+hierarchical derivation: K(/a/b) = HKDF(root DEK, info="/a/b")
+  grants /a/b/** but not /a/c or /a (one-way) —
+  sharing a directory subtree = handing over its derived key
+
+revocation is prospective: re-issue the manifest without the recipient,
+or rotate the DEK for FUTURE versions — you cannot un-read what was
+read (documented honestly)</code></pre>
+      <p class="mt-4 max-w-3xl text-sm text-[var(--tb-c-text-3)]">
+        Composition rules: JOIN of layers with different DEKs is authorized re-encryption under a
+        new joined key, or preserved per-layer key domains in the joined manifest (lazy join).
+        Encapsulated images keep INDEPENDENT key domains — the outer may be readable while the inner
+        stays sealed (transport vs payload audiences). Per-directory recipient mapping in the
+        manifest gives selective disclosure: ONE artifact, N audiences, each key opening only its
+        slice. The in-image <code class="font-[var(--font-mono)] text-xs">/__tpkg__/envelopes.yaml</code>{' '}
+        is the grant manifest the mount binds against — a read of a sealed path outside every opened
+        grant answers ENOKEY, never garbage. Memory discipline: decrypted blocks live in mlock'd
+        heap, zeroized on free; keys come via agent, passphrase, or PKCS#11 — never written to disk,
+        never in swap.
+      </p>
+    </div>
+
+    <!-- ============ PQC ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">PQC readiness: agility from day one.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        Every manifest, envelope, and signature carries a cipher-suite id from a versioned registry —
+        nothing hardcoded; unknown ids fail with a named error, never a guess. Signatures are the
+        migration surface, envelopes the confidentiality surface — both suite-versioned, so
+        migration is additive.
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
+        <table class="w-full min-w-[820px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider-strong)] font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+              <th class="px-5 py-3 font-medium">SUITE</th>
+              <th class="px-5 py-3 font-medium">CONSTRUCTION</th>
+              <th class="px-5 py-3 font-medium">NOTE</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)]">
+            {suiteRows.map((r) => (
+              <tr>
+                <td class="px-5 py-2.5 align-top font-[var(--font-mono)] text-xs font-medium text-[var(--tb-c-accent)]">{r.suite}</td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-2)]">{r.construction}</td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-3)]">{r.note}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-4 max-w-3xl text-sm text-[var(--tb-c-text-3)]">
+        HNDL (harvest-now-decrypt-later): long-lived encrypted images SHOULD use hybrid envelopes
+        NOW. AES-256 keeps ~128-bit post-Grover strength and the merkle/hash layer is PQC-safe by
+        construction — the asymmetric pair is what Shor threatens, and that is exactly what the
+        suites version. Recipients may hold classical AND PQC keys; multi-recipient envelopes are
+        native.
+      </p>
+    </div>
+
+    <!-- ============ ONE HOME PER LAYER ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">One crypto home per layer.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        LimniFS brings format-native cryptography (per-drop AEAD, Ed25519 over the BLAKE3 manifest
+        root). The consolidation decision draws the boundary once: format-native crypto is consumed
+        as EVIDENCE, never as anchor.
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
+        <table class="w-full min-w-[820px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider-strong)] font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+              <th class="px-5 py-3 font-medium">QUESTION</th>
+              <th class="px-5 py-3 font-medium">HOME</th>
+              <th class="px-5 py-3 font-medium">NOTE</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)]">
+            {homeRows.map((r) => (
+              <tr>
+                <td class="px-5 py-2.5 text-xs leading-relaxed font-medium text-[var(--tb-c-text-1)]">{r.question}</td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-2)]">{r.home}</td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-3)]">{r.note}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-4 max-w-3xl text-sm text-[var(--tb-c-text-3)]">
+        Concretely: limnifs Ed25519 keys never enter the key or trust stores — a slice author
+        manages exactly ONE keypair, their OpenPGP key. Mounting a self-encrypted limnifs image
+        (<code class="font-[var(--font-mono)] text-xs">aead ≠ 0</code>) fails the named ENOTSUP —
+        the v2.x posture, not a stopgap. An embedded signature bundle MAY later be verified as
+        non-authoritative integrity evidence — only after the spec-09 chain has decided authenticity,
+        only against a key the OpenPGP-signed metadata binds to the author identity; absence is
+        never an error, mismatch is a loud warning plus journal entry, never the trust decision.
+        Admission of any format-native envelope into the grant path requires the full PQC gate list
+        (ML-DSA signing, hybrid ML-KEM envelopes, explicit registry ids, external audit posture) —
+        recorded, gated, not committed.
+      </p>
+    </div>
+
+    <!-- ============ CLI + ALGEBRA ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">The CLI surface and why it matters.</h2>
+      <p class="max-w-3xl text-[var(--tb-c-text-2)]">
+        <code class="font-[var(--font-mono)] text-sm">tfs encrypt</code> (root grant{' '}
+        <code class="font-[var(--font-mono)] text-sm">--recipient</code>, subtree grants{' '}
+        <code class="font-[var(--font-mono)] text-sm">--subtree &lt;path&gt;=&lt;pubkey&gt;</code>;{' '}
+        <code class="font-[var(--font-mono)] text-sm">--rewrap</code> rotates grants to a new
+        recipient set with the bulk ciphertext byte-identical),{' '}
+        <code class="font-[var(--font-mono)] text-sm">tfs decrypt</code> (plaintext to a tar stream —
+        never a staging tree), <code class="font-[var(--font-mono)] text-sm">tfs mount --key</code>{' '}
+        (the unlock/grant report). A wrong key is a named EKEY-class error, never garbage. And the
+        operational algebra: object security beats channel security — artifacts self-protect over
+        any transport or mirror; disk snapshots and caches hold ciphertext only; destroying a data
+        key (or re-issuing the manifest without a recipient) is crypto-shredding — content
+        unrecoverable everywhere, provably, with no mirror-purge problem. Honest risks, stated:
+        access-pattern side channels on serve, key-agent UX is the hard part, mlock/zeroize is the
+        baseline and not a panacea.
+      </p>
+    </div>
+
+    <!-- ============ THREE NEIGHBORS ============ -->
+    <div class="mt-16 grid gap-6 md:grid-cols-3">
+      <a href="/docs/architecture/overlays/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+        <p class="tb-eyebrow">NEXT · OVERLAYS</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">Declarative overlays</h3>
+        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          The needs.decrypt declaration and the recipient binding that open a sealed slice.
+        </p>
+      </a>
+      <a href="/docs/architecture/chain-of-trust/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+        <p class="tb-eyebrow">NEXT · TRUST</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">The chain of trust</h3>
+        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          Spec 09's signing chain — the authenticity decision point above every envelope.
+        </p>
+      </a>
+      <a href="/docs/architecture/image-formats/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+        <p class="tb-eyebrow">NEXT · FORMATS</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">Image formats</h3>
+        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          Where format-native crypto lives, and why it stays evidence.
+        </p>
+      </a>
+    </div>
+  </section>
+</BaseLayout>
