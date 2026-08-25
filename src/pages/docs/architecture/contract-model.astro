@@ -1,0 +1,196 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro'
+import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import StatusPill from '../../../components/docs/StatusPill.astro'
+
+const LINKS = {
+  spec18: 'https://github.com/tamatebako/tebako/blob/main/docs/spec/18-contract-set.md',
+  spec06: 'https://github.com/tamatebako/tebako/blob/main/docs/spec/06-launcher-abi.md',
+  schemas: 'https://github.com/tamatebako/tebako/tree/main/docs/spec/schemas',
+}
+
+const edgeRows = [
+  { edge: 'C1 · source tarball → runtime factory', declaration: 'tebako-mount-root + versions.yml schema + SHA256SUMS', refusal: 'absent/corrupt → exit 132 at configure' },
+  { edge: 'C2 · runtime factory → loader (the release card)', declaration: 'runtime-manifest.yaml: era, contract_version, mount_root, abi, image_layout, digests', refusal: 'pre-download — era-1 refusal; contract too new → exit 75' },
+  { edge: 'C3 · runtime exe ↔ env image', declaration: 'in-image /lib/tebako/layout.yaml', refusal: 'driver post-mount, pre-init: missing → era-1; mismatch → exit 78' },
+  { edge: 'C6 · loader → package trailer', declaration: 'header + L2 package-manifest block (era, pressed_by, reader_era)', refusal: 'era mismatch → exit 77 either direction; unknown critical block → refusal' },
+  { edge: 'C8 · loader → registry', declaration: 'tpkg-registry.yaml schema_version', refusal: 'missing version → era-1 refusal; newer MAJOR → upgrade refusal' },
+  { edge: 'C10 · payload → runtime', declaration: 'per-entry runtime_requirement + abi facets in the L1 manifest', refusal: 'unsatisfiable → named error naming the entrypoint — never a segfault' },
+  { edge: 'C13 · everything local → store', declaration: '~/.tebako/layout-version + config schema', refusal: 'newer → upgrade refusal; older → the named migration, never a silent mix' },
+  { edge: 'C17 · jail declaration → enforcement', declaration: 'tpkg::jail authored shape', refusal: 'malformed → exit 73; unknown directive → named error' },
+]
+
+const lawRows = [
+  { n: '1', rule: 'Two numbers, one meaning — schema_version is MAJOR (breaks), schema_minor adds' },
+  { n: '2', rule: 'Readers ignore unknown fields within their MAJOR — and must not invent semantics for them' },
+  { n: '3', rule: 'Unknown MAJOR is a named refusal: artifact, its version, consumer, its max spoken, "upgrade"' },
+  { n: '4', rule: 'Missing schema_version = era 1 — a named refusal, never a silent default' },
+  { n: '5', rule: 'Type changes are MAJOR — no silent coercion, ever' },
+  { n: '6', rule: 'Deprecation window — rename/retype inside one MAJOR: writers dual-emit for two MINORs, readers prefer new + warn on old, then drop' },
+  { n: '7', rule: 'critical: true — a reader that doesn\u2019t understand a critical entry REFUSES; non-critical skips are for decoration, never semantics' },
+  { n: '8', rule: 'Lists stay lists — entries carry identity fields; no keyed maps for multiplicity data' },
+  { n: '9', rule: 'YAML for everything authored; JSON Schema documents the shape; CI validates producers' },
+]
+---
+<!-- normative: spec 18 (§2 model, §3 evolution law, §4 edges, §7 exits, §8 non-goals), spec 06 §6 (contract negotiation), spec 00 §10 (SSOT) -->
+
+<BaseLayout title="The contract model — Tebako architecture" description="Nothing is read until it breaks: every interface has one owner, one declarative YAML contract, one fail-closed verification point — and anything undeclared is pre-era, refused by name.">
+  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
+    <p class="tb-eyebrow">ARCHITECTURE · 24</p>
+    <h1 class="mt-3">The contract model.</h1>
+    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      Nothing is <em>read until it breaks</em>. Every interface in the ecosystem has exactly ONE
+      owner, ONE declarative contract, and ONE verification point. Consumers verify fail-closed
+      before execution; a mismatch is a named error naming both sides; anything undeclared is
+      pre-era and is refused by name — never assumed, never silently served.
+    </p>
+
+    <ArchDocsNav />
+
+    <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
+      <StatusPill status="shipped" note="the schema registry (9 grammars), era refusals, contract negotiation (exit 75), the layout check (78), the trailer era gate (77)" />
+      <StatusPill status="planned" note="the S1–S61 scenario catalog completes as the e2e suite grows" />
+    </div>
+
+    <!-- ============ TWO KINDS ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Two kinds of YAML — never conflated.</h2>
+      <p class="max-w-3xl text-[var(--tb-c-text-2)]">
+        <strong>Schemas</strong> are the grammars themselves — versioned, living in ONE registry (
+        <code class="font-[var(--font-mono)] text-sm">docs/spec/schemas/</code> in the product
+        repo), each carrying its name, MAJOR version, and evolution metadata.{' '}
+        <strong>Declarations</strong> are the per-artifact instances conforming to a schema —
+        in-image manifests, the runtime release card, the registry file, the package L2 block, the
+        store config. Every producer validates its declarations against the schema it owns in its
+        own CI; every consumer validates before use and refuses invalid input with a named error.
+        And per the SSOT invariant: a cross-repo contract value has exactly ONE authoritative owner
+        — every other consumer FLOWS it (generated file, manifest, exported symbol) or ASSERTS
+        parity in CI. A second hand-written copy of any contract value, in any language, any repo,
+        is a bug on arrival.
+      </p>
+    </div>
+
+    <!-- ============ EDGES ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">The edges that gate a run.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        Twenty contract edges map the ecosystem (C1–C20). The load-bearing ones, with their refusal
+        shapes:
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
+        <table class="w-full min-w-[860px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider-strong)] font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+              <th class="px-5 py-3 font-medium">EDGE</th>
+              <th class="px-5 py-3 font-medium">DECLARATION</th>
+              <th class="px-5 py-3 font-medium">REFUSAL</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)]">
+            {edgeRows.map((r) => (
+              <tr>
+                <td class="px-5 py-2.5 text-xs leading-relaxed font-medium text-[var(--tb-c-text-1)]">{r.edge}</td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-2)]">{r.declaration}</td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-3)]">{r.refusal}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ============ EVOLUTION LAW ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">The schema evolution law.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        Every schema in the ecosystem obeys these rules. No exceptions, no local dialects.
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
+        <table class="w-full min-w-[720px] text-left text-sm">
+          <tbody class="divide-y divide-[var(--tb-c-divider)]">
+            {lawRows.map((r) => (
+              <tr>
+                <td class="px-5 py-2.5 align-top font-[var(--font-mono)] text-xs font-medium text-[var(--tb-c-accent)]">{r.n}</td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-2)]">{r.rule}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <pre class="mt-6 overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)] sm:text-sm" style="background: var(--tb-c-bg-soft);"><code>       MINOR +1                    MINOR +2                    MAJOR +1
+ ┌──────────────┐          ┌──────────────┐          ┌──────────────┐
+ │ field added  │  rename? │ old+new both │  after   │ old dropped  │
+ │ (additive,   │ ───────▶ │ written; old │ 2 MINORs │ entirely;    │
+ │ readers skip)│          │ deprecated   │ ───────▶ │ readers of   │
+ └──────────────┘          └──────────────┘          │ old MAJOR    │
+                                                     │ are refused  │
+                                                     └──────────────┘</code></pre>
+    </div>
+
+    <!-- ============ NEGOTIATION ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Contract negotiation: the handoff's semantics version.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        The launcher ABI is the wire format; the <strong>contract version</strong> is its semantics
+        version, declared by the runtime release manifest and enforced by the loader — so a future
+        handoff change never silently mis-executes under an old bootstrap.
+      </p>
+      <pre class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)] sm:text-sm" style="background: var(--tb-c-bg-soft);"><code>contract 1  the original handoff: --tebako-image/--tebako-entry argv,
+            TEBAKO_RUNTIME_IMAGE, trailer/ABI gating
+contract 2  spec 17: image-path triples, bare-file slot tokens,
+            env-image-first multi-mount, direct entry execution
+
+negotiation (fail-closed, BEFORE any checksum acceptance):
+  declared == SUPPORTED  → proceed
+  absent/unparseable     → a pre-contract release = contract 1 by definition
+  any other value        → exit 75 naming both generations and the remedy —
+                           nothing installed, the cache untouched</code></pre>
+      <p class="mt-4 max-w-3xl text-sm text-[var(--tb-c-text-3)]">
+        The bump rule: any change to env/argv/handoff semantics increments the contract by exactly
+        one; additive payload-side changes old runtimes may ignore do NOT bump it. The runtime
+        driver carries the same value compiled in, and the factory's CI fails any release where
+        manifest and driver disagree. A negotiation failure is never a crash and never a silent
+        accept — a clean, explained refusal.
+      </p>
+    </div>
+
+    <!-- ============ NON-GOALS ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Locked non-goals.</h2>
+      <p class="max-w-3xl text-[var(--tb-c-text-2)]">
+        No old-path readers — era 1 is refused, not adapted. No silent skipping of load-bearing
+        fields. No type coercion in readers. No second grammar for the handoff — this model is the
+        declaration layer around it. No per-run trust checks — verification happens at fetch and
+        install, never per run. And the accountability mechanism: every rule answers to the
+        scenario catalog (S1–S61) — bootstrap×package, loader×runtime, driver×env image,
+        driver×payloads, shim×payloads, payload×payload, press×inputs, store, registry, factory,
+        trust, and the evolution cases — each scenario an e2e id with its expected named behavior.
+      </p>
+    </div>
+
+    <!-- ============ THREE NEIGHBORS ============ -->
+    <div class="mt-16 grid gap-6 md:grid-cols-3">
+      <a href="/docs/architecture/driver-contract/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+        <p class="tb-eyebrow">NEXT · DRIVER CONTRACT</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">The driver contract</h3>
+        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          The spec-17 wire this declaration layer surrounds.
+        </p>
+      </a>
+      <a href="/docs/architecture/factories/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+        <p class="tb-eyebrow">NEXT · FACTORIES</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">The factories</h3>
+        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          Where the declarations are authored and CI-validated.
+        </p>
+      </a>
+      <a href="/docs/architecture/composition/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+        <p class="tb-eyebrow">NEXT · COMPOSITION</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">Declarative composition</h3>
+        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          The D1–D5 documents, each a declaration under this law.
+        </p>
+      </a>
+    </div>
+  </section>
+</BaseLayout>
