@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 530" role="img" aria-labelledby="title desc">
   <title id="title">The TFS router</title>
-  <desc id="desc">Calls enter through the tebako_fs_* C ABI; the Rust TFS router dispatches by longest mount-point prefix onto read-only backends (dwarfs-t, squashfs, tar, zip). A Rust copy-on-write overlay sits above the backends; paths outside every mount pass through to the host filesystem.</desc>
+  <desc id="desc">Calls enter through the tebako_fs_* C ABI; the Rust TFS router dispatches by longest mount-point prefix onto read-only backends (limnifs, dwarfs-t, squashfs, zip, tar). A Rust copy-on-write overlay sits above the backends; paths outside every mount pass through to the host filesystem.</desc>
   <style>
     .bg{fill:#fdf9e8}
     .card{fill:#ffffff;stroke:#06394a;stroke-opacity:.2;stroke-width:1.5}
@@ -67,54 +67,64 @@
 
   <!-- COW overlay -->
   <g transform="translate(60, 218)">
-    <rect class="golddash" width="820" height="86" rx="12"/>
-    <text x="410" y="28" text-anchor="middle" class="fd plan" font-size="13.5">RUST COW OVERLAY — PLANNED</text>
+    <rect class="acctint" width="820" height="86" rx="12"/>
+    <text x="410" y="28" text-anchor="middle" class="fd acc" font-size="13.5">RUST COW OVERLAY — SHIPPED</text>
     <text x="410" y="50" text-anchor="middle" class="fm t2" font-size="10">copy-on-write lives ONLY in the Rust TFS core — never in a backend, never in C++</text>
-    <text x="410" y="66" text-anchor="middle" class="fm t2" font-size="10">writes land in the overlay; layer export → a NEW image via the dwarfs-t creation-time Writer</text>
+    <text x="410" y="66" text-anchor="middle" class="fm t2" font-size="10">writes land in the overlay (whiteout journal); layer export → a NEW image via the creation-time Writer</text>
   </g>
 
   <!-- overlay → backends -->
-  <line x1="140" y1="306" x2="140" y2="324" class="arwg" marker-end="url(#arwg)"/>
-  <line x1="365" y1="306" x2="365" y2="324" class="arwg" marker-end="url(#arwg)"/>
-  <line x1="590" y1="306" x2="590" y2="324" class="arwg" marker-end="url(#arwg)"/>
-  <line x1="815" y1="306" x2="815" y2="324" class="arwg" marker-end="url(#arwg)"/>
+  <line x1="101" y1="306" x2="101" y2="324" class="arwg" marker-end="url(#arwg)"/>
+  <line x1="287" y1="306" x2="287" y2="324" class="arwg" marker-end="url(#arwg)"/>
+  <line x1="473" y1="306" x2="473" y2="324" class="arwg" marker-end="url(#arwg)"/>
+  <line x1="659" y1="306" x2="659" y2="324" class="arwg" marker-end="url(#arwg)"/>
+  <line x1="845" y1="306" x2="845" y2="324" class="arwg" marker-end="url(#arwg)"/>
 
   <!-- backends -->
-  <g transform="translate(50, 330)">
-    <rect class="card" width="180" height="118" rx="10"/>
-    <text x="90" y="28" text-anchor="middle" class="fd t1" font-size="13">dwarfs-t</text>
-    <text x="90" y="50" text-anchor="middle" class="fm t2" font-size="9.5">READ-ONLY format</text>
-    <text x="90" y="64" text-anchor="middle" class="fm t2" font-size="9.5">via dwarfs-t-rs</text>
-    <text x="90" y="92" text-anchor="middle" class="fm t3" font-size="9">creation-time Writer only —</text>
-    <text x="90" y="105" text-anchor="middle" class="fm t3" font-size="9">no runtime write path</text>
+  <g transform="translate(16, 330)">
+    <rect class="card" width="170" height="118" rx="10"/>
+    <text x="85" y="28" text-anchor="middle" class="fd t1" font-size="13">limnifs</text>
+    <text x="85" y="50" text-anchor="middle" class="fm t2" font-size="9.5">READ-ONLY at runtime</text>
+    <text x="85" y="64" text-anchor="middle" class="fm t2" font-size="9.5">pure Rust · BLAKE3 CAS</text>
+    <text x="85" y="92" text-anchor="middle" class="fm acc" font-size="9.5">THE DEFAULT image format</text>
+    <text x="85" y="105" text-anchor="middle" class="fm t3" font-size="9">since tebako v0.2.0</text>
   </g>
-  <g transform="translate(275, 330)">
-    <rect class="card" width="180" height="118" rx="10"/>
-    <text x="90" y="28" text-anchor="middle" class="fd t1" font-size="13">squashfs</text>
-    <text x="90" y="50" text-anchor="middle" class="fm t2" font-size="9.5">READ-ONLY</text>
-    <text x="90" y="64" text-anchor="middle" class="fm t2" font-size="9.5">via sqfs-sys (FFI)</text>
-    <text x="90" y="92" text-anchor="middle" class="fm t3" font-size="9">bridge for existing</text>
-    <text x="90" y="105" text-anchor="middle" class="fm t3" font-size="9">tebako-era images</text>
+  <g transform="translate(202, 330)">
+    <rect class="card" width="170" height="118" rx="10"/>
+    <text x="85" y="28" text-anchor="middle" class="fd t1" font-size="13">dwarfs-t</text>
+    <text x="85" y="50" text-anchor="middle" class="fm t2" font-size="9.5">READ-ONLY format</text>
+    <text x="85" y="64" text-anchor="middle" class="fm t2" font-size="9.5">via dwarfs-t-rs</text>
+    <text x="85" y="92" text-anchor="middle" class="fm t3" font-size="9">creation-time Writer only —</text>
+    <text x="85" y="105" text-anchor="middle" class="fm t3" font-size="9">no runtime write path</text>
   </g>
-  <g transform="translate(500, 330)">
-    <rect class="card" width="180" height="118" rx="10"/>
-    <text x="90" y="28" text-anchor="middle" class="fd t1" font-size="13">tar / tar.gz / tar.zst</text>
-    <text x="90" y="50" text-anchor="middle" class="fm t2" font-size="9.5">READ-ONLY</text>
-    <text x="90" y="64" text-anchor="middle" class="fm t2" font-size="9.5">stream-indexed</text>
-    <text x="90" y="92" text-anchor="middle" class="fm plan" font-size="9.5">PLANNED adapter</text>
+  <g transform="translate(388, 330)">
+    <rect class="card" width="170" height="118" rx="10"/>
+    <text x="85" y="28" text-anchor="middle" class="fd t1" font-size="13">squashfs</text>
+    <text x="85" y="50" text-anchor="middle" class="fm t2" font-size="9.5">READ-ONLY</text>
+    <text x="85" y="64" text-anchor="middle" class="fm t2" font-size="9.5">via sqfs-sys (FFI)</text>
+    <text x="85" y="92" text-anchor="middle" class="fm t3" font-size="9">POSIX-only — named ENOTSUP</text>
+    <text x="85" y="105" text-anchor="middle" class="fm t3" font-size="9">on windows (build-time gate)</text>
   </g>
-  <g transform="translate(725, 330)">
-    <rect class="card" width="180" height="118" rx="10"/>
-    <text x="90" y="28" text-anchor="middle" class="fd t1" font-size="13">zip</text>
-    <text x="90" y="50" text-anchor="middle" class="fm t2" font-size="9.5">READ-ONLY</text>
-    <text x="90" y="64" text-anchor="middle" class="fm t2" font-size="9.5">pure Rust</text>
-    <text x="90" y="92" text-anchor="middle" class="fm t3" font-size="9">same backend trait —</text>
-    <text x="90" y="105" text-anchor="middle" class="fm t3" font-size="9">nothing else changes</text>
+  <g transform="translate(574, 330)">
+    <rect class="card" width="170" height="118" rx="10"/>
+    <text x="85" y="28" text-anchor="middle" class="fd t1" font-size="13">zip</text>
+    <text x="85" y="50" text-anchor="middle" class="fm t2" font-size="9.5">READ-ONLY</text>
+    <text x="85" y="64" text-anchor="middle" class="fm t2" font-size="9.5">pure Rust</text>
+    <text x="85" y="92" text-anchor="middle" class="fm t3" font-size="9">same backend trait —</text>
+    <text x="85" y="105" text-anchor="middle" class="fm t3" font-size="9">nothing else changes</text>
+  </g>
+  <g transform="translate(760, 330)">
+    <rect class="card" width="170" height="118" rx="10"/>
+    <text x="85" y="28" text-anchor="middle" class="fd t1" font-size="13">tar / tar.gz / tar.zst</text>
+    <text x="85" y="50" text-anchor="middle" class="fm t2" font-size="9.5">READ-ONLY</text>
+    <text x="85" y="64" text-anchor="middle" class="fm t2" font-size="9.5">stream-indexed</text>
+    <text x="85" y="92" text-anchor="middle" class="fm t3" font-size="9">in-tree backend —</text>
+    <text x="85" y="105" text-anchor="middle" class="fm t3" font-size="9">the tar family</text>
   </g>
 
   <!-- passthrough arrow -->
-  <path d="M928 192 L928 464" fill="none" class="arw" marker-end="url(#arw)"/>
-  <text transform="rotate(-90 916 300)" x="916" y="300" text-anchor="middle" class="fm t3" font-size="9.5">outside mounts → host FS</text>
+  <path d="M944 192 L944 464" fill="none" class="arw" marker-end="url(#arw)"/>
+  <text transform="rotate(-90 942 300)" x="942" y="300" text-anchor="middle" class="fm t3" font-size="9.5">outside mounts → host FS</text>
 
   <!-- bottom notes -->
   <g transform="translate(60, 468)">
