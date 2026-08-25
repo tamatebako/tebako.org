@@ -1,0 +1,299 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro'
+import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import StatusPill from '../../../components/docs/StatusPill.astro'
+
+const LINKS = {
+  spec24: 'https://github.com/tamatebako/tebako/blob/main/docs/spec/24-declarative-overlays.md',
+  spec23: 'https://github.com/tamatebako/tebako/blob/main/docs/spec/23-declarative-composition.md',
+  spec10: 'https://github.com/tamatebako/tebako/blob/main/docs/spec/10-encryption.md',
+  spec11: 'https://github.com/tamatebako/tebako/blob/main/docs/spec/11-tfs-vfs-model.md',
+}
+
+const gateRows = [
+  { surface: 'write under a declared write area', answer: 'lands in the overlay store', journal: 'vfs-write (record mode) · silent success (deny mode)' },
+  { surface: 'write anywhere else in a held tree', answer: 'EROFS — the jail-safe default', journal: 'event=vfs-deny op=write' },
+  { surface: 'read of a sealed path with no opening grant', answer: 'ENOKEY (126), never garbage', journal: 'event=vfs-deny op=read class=ekey' },
+  { surface: 'store-side IO failure (ENOSPC, EACCES)', answer: 'the write syscall\u2019s own errno', journal: 'no translation — the run degrades like a full disk' },
+]
+
+const envRows = [
+  { var: 'TEBAKO_OVERLAYS', grammar: '<mount>=<store> ; separated, split on the FIRST =', note: 'a store keeps its own = and its drive-qualified :' },
+  { var: 'TEBAKO_DECRYPT', grammar: '<mount>=pgp:<keyid>', note: 'key REFERENCES cross the wire — key material never does' },
+]
+---
+<!-- normative: spec 24 (§1 stack order, §2 D1 needs.write/needs.decrypt, §3 D2 bindings, §4 resolution 3a-3c/5', §5 write gate + sealed read, §6 record mode, §7 exit 68, §8 post-bake swap, §9 SSOT), spec 11 §4/§7 (COW mechanics), spec 10 §7 (envelope grant manifest) -->
+
+<BaseLayout title="Declarative overlays — Tebako architecture" description="Nothing is transformed that was not declared: how a slice says 'I write here' or 'I am sealed — bind a key', how the operator binds the store or the recipient, and the one pinned stack — COW over ENC over backend.">
+  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
+    <p class="tb-eyebrow">ARCHITECTURE · 18</p>
+    <h1 class="mt-3">Declarative overlays.</h1>
+    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      Images are read-only forever — that is the transforms law. When a workload must write, or a
+      slice arrives sealed, the run gains a transform: a copy-on-write layer, an encryption view.
+      Each enters exclusively through a written declaration, resolved before exec, journaled at
+      run time. Nothing is transformed that was not declared.
+    </p>
+
+    <ArchDocsNav />
+
+    <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
+      <StatusPill status="shipped" note="the gated COW composite, the TEBAKO_OVERLAYS / TEBAKO_DECRYPT env grammars, vfs-deny journaling, the needs generator's write fold, exit 68" />
+      <StatusPill status="planned" note="the D1/D2 manifest model and the driver's boot-time consumption are phased (spec 24 preamble)" />
+    </div>
+
+    <!-- ============ THE STACK ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">One pinned stack, top to bottom.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        Per mount point, from the syscall side down to the bytes:
+      </p>
+      <pre class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)] sm:text-sm" style="background: var(--tb-c-bg-soft);"><code>COW  →  ENC  →  format backend
+CowBackend( EncBackend( LimnifsBackend | DwarfsBackend | SquashfsBackend | … ) )</code></pre>
+      <p class="mt-4 max-w-3xl text-sm text-[var(--tb-c-text-3)]">
+        COW is always outermost; ENC wraps exactly one image's backend and sits under COW. The order
+        is not a taste: <code class="font-[var(--font-mono)] text-xs">EncBackend</code> is a
+        decrypting <em>read</em> view — it implements no write path — so only{' '}
+        <code class="font-[var(--font-mono)] text-xs">COW(Enc(base))</code> can accept a write, and
+        copy-up then reads <em>through</em> the ENC layer: modifying a sealed base file copies its
+        plaintext into the operator-bound overlay store. That store is outside the image's
+        confidentiality envelope, stated honestly — scratch at rest is the host's disk-encryption
+        layer, never a tebako declaration. Whiteouts name plaintext view paths, consistent with the
+        ENC format keeping names and structure plaintext and only regular-file content ciphertext.
+        A union mount composes the per-image stacks beneath COW — sealed union members wrap
+        individually and merge as plaintext views.
+      </p>
+    </div>
+
+    <!-- ============ D1 NEEDS ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">D1 — a slice declares its writes and its seals.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        Two blocks extend the ONE <code class="font-[var(--font-mono)] text-sm">needs:</code> key of
+        the slice manifest — the spec-23 grammar, amended once, owned in one place.
+      </p>
+      <pre class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)] sm:text-sm" style="background: var(--tb-c-bg-soft);"><code>needs:
+  write:                        # writable areas — COW is the only mechanism
+    - path: /app/var/cache      # absolute in-image path, inside THIS slice's tree
+      persistence: ephemeral    # ephemeral (DEFAULT) | retained
+      when: [macos]             # OPTIONAL platform filter
+      why: "mnconvert writes its font cache at boot"   # MANDATORY
+  decrypt:                      # key-binding requirements — ENC
+    - part: /fonts/licensed     # a path from identity.encryption.parts[].paths
+      why: "the converter reads the licensed font tree"   # MANDATORY</code></pre>
+      <p class="mt-4 max-w-3xl text-sm text-[var(--tb-c-text-3)]">
+        A write area is a PATH the slice will write, not a mechanism — COW is the only mechanism, so
+        resolution always satisfies a write need with a CowBackend stack.{' '}
+        <code class="font-[var(--font-mono)] text-xs">persistence</code> is the slice's contract
+        about its own data: <code class="font-[var(--font-mono)] text-xs">ephemeral</code> says any
+        per-run scratch satisfies me; <code class="font-[var(--font-mono)] text-xs">retained</code>{' '}
+        says my writes must survive the run, so an operator-bound durable store is mandatory. The
+        operator may widen durability upward, never demote a retained need to scratch — declarations
+        request, the operator tightens. For decrypt: the FACT of encryption is owned by the
+        identity block (paths, algorithm, envelope refs — never keys); the need only names WHICH
+        sealed parts the workload requires opened. Sealed state with no{' '}
+        <code class="font-[var(--font-mono)] text-xs">needs.decrypt</code> defaults to ALL parts
+        required — fail-closed. With entries, unlisted parts may stay sealed: one artifact, N
+        audiences, each run opening exactly its declared subtree. A data slice declares no{' '}
+        <code class="font-[var(--font-mono)] text-xs">needs.write</code> ever; a sealed data slice is
+        the one exception that may carry <code class="font-[var(--font-mono)] text-xs">needs.decrypt</code>.
+      </p>
+    </div>
+
+    <!-- ============ D2 BINDINGS ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">D2 — the operator binds the store and the recipient.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        The composition document gains two top-level keys; D5 maps 1:1 as repeatable{' '}
+        <code class="font-[var(--font-mono)] text-sm">--overlay</code> /{' '}
+        <code class="font-[var(--font-mono)] text-sm">--decrypt</code> flags, and flags win.
+      </p>
+      <pre class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)] sm:text-sm" style="background: var(--tb-c-bg-soft);"><code># tebako.yaml (D2)
+overlays:                     # COW backing-store bindings
+  - slice: metanorma
+    store: ./overlays/metanorma   # host dir; symbolic atoms expand
+decrypt:                      # ENC key bindings — REFERENCES, never material
+  - slice: fonts-secure
+    recipient: pgp:3c8dba971d2b4f01   # a key in $TEBAKO_HOME/keys/</code></pre>
+      <p class="mt-4 max-w-3xl text-sm text-[var(--tb-c-text-3)]">
+        Bindings satisfy needs; they never create capability. An entry naming a slice with no
+        matching declared need is a named ORPHAN-BINDING error at resolution, never a silent grant —
+        giving an undeclared slice a write area takes both lines: the composition declares the need
+        AND binds the store. One store per mount; the directory is created when missing and gains a
+        derived rw identity grant in the effective policy, so declared write access to host surface
+        stays visible by construction. <code class="font-[var(--font-mono)] text-xs">recipient:</code>{' '}
+        names a key reference — <code class="font-[var(--font-mono)] text-xs">pgp:</code> plus 16
+        lowercase hex — resolved against <code class="font-[var(--font-mono)] text-xs">$TEBAKO_HOME/keys/</code>,
+        the only secret-key home. Key material in any authored document is a named validation error,
+        not a grammar. Trust posture, stated honestly: a package signature covers slices and
+        trailer, NOT the bindings; an overlay store's content is host state, outside every image's
+        trust anchor.
+      </p>
+    </div>
+
+    <!-- ============ RESOLUTION ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Resolution — before exec, never mid-run.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        Between the composition algorithm's needs-union and needs-check steps, the resolver gains
+        three ordered steps:
+      </p>
+      <pre class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)] sm:text-sm" style="background: var(--tb-c-bg-soft);"><code>3a. UNION   every slice's needs.write / needs.decrypt, platform-filtered,
+             conflict rules per declaration — the runtime's release manifest
+             unions identically (the env image is a mount like any other)
+3b. BIND    match D2 bindings to needs
+             write + binding   → the store is checked NOW (creatable, writable)
+             write + NO binding → ephemeral: per-run scratch under
+                                  $TEBAKO_HOME/tmp/overlays/&lt;run-id&gt;/, journaled
+                                  retained:  named RESOLUTION FAILURE
+             decrypt + binding → the key must EXIST and open an envelope
+                                  covering the part — verified at bind, never
+                                  at first read
+             orphan binding    → named error
+3c. CHECK   a declared need the composition does not satisfy fails BEFORE EXEC
+             — a need never surfaces as a mid-run EROFS/ENOKEY
+5′. EXPORT  the bound set serializes to TEBAKO_OVERLAYS / TEBAKO_DECRYPT;
+             spawned children inherit and re-bind identically</code></pre>
+      <div class="mt-6 overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
+        <table class="w-full min-w-[720px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider-strong)] font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+              <th class="px-5 py-3 font-medium">VAR</th>
+              <th class="px-5 py-3 font-medium">GRAMMAR</th>
+              <th class="px-5 py-3 font-medium">NOTE</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)]">
+            {envRows.map((r) => (
+              <tr>
+                <td class="px-5 py-2.5 align-top font-[var(--font-mono)] text-xs font-medium text-[var(--tb-c-accent)]">{r.var}</td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-2)]"><code class="font-[var(--font-mono)]">{r.grammar}</code></td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-3)]">{r.note}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-4 max-w-3xl text-sm text-[var(--tb-c-text-3)]">
+        Malformed env forms fail closed with exit 68, each a named error quoting the offending
+        entry: an empty spec, a stray <code class="font-[var(--font-mono)] text-xs">;</code>, a
+        missing <code class="font-[var(--font-mono)] text-xs">=</code>, a non-absolute mount or
+        store, a duplicate mount, a decrypt recipient that is not{' '}
+        <code class="font-[var(--font-mono)] text-xs">pgp:</code> + 16 lowercase hex. A store
+        containing <code class="font-[var(--font-mono)] text-xs">;</code> is unrepresentable by
+        construction — it splits into a second entry that fails the grammar. Fail-closed, never a
+        silent misparse.
+      </p>
+    </div>
+
+    <!-- ============ RUN TIME ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Run time — the write gate and the sealed read.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        A mount carrying at least one write area stacks CowBackend with the declared area set; the
+        jail installs AFTER the mounts with the derived store grants in force. The gate's predicate
+        is locked: areas are absolute in-image paths normalized at mount time; a write to an area
+        itself or any path BELOW it — component boundary,{' '}
+        <code class="font-[var(--font-mono)] text-sm">/a/b</code> never covers{' '}
+        <code class="font-[var(--font-mono)] text-sm">/a/bc</code> — is permitted; all four write
+        verbs (<code class="font-[var(--font-mono)] text-sm">pwrite</code>,{' '}
+        <code class="font-[var(--font-mono)] text-sm">truncate</code>,{' '}
+        <code class="font-[var(--font-mono)] text-sm">mkdir</code>,{' '}
+        <code class="font-[var(--font-mono)] text-sm">remove</code>) are gated identically; reads
+        are never gated; the whiteout journal keeps its EPERM under every area set. A malformed
+        area fails the mount with EINVAL — fail-closed, never a silent widening.
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
+        <table class="w-full min-w-[760px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider-strong)] font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+              <th class="px-5 py-3 font-medium">SURFACE</th>
+              <th class="px-5 py-3 font-medium">ANSWER</th>
+              <th class="px-5 py-3 font-medium">JOURNAL</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)]">
+            {gateRows.map((r) => (
+              <tr>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-2)]">{r.surface}</td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-2)]">{r.answer}</td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-3)]"><code class="font-[var(--font-mono)]">{r.journal}</code></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ============ RECORD MODE ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Record mode discovers writes too.</h2>
+      <p class="max-w-3xl text-[var(--tb-c-text-2)]">
+        Under <code class="font-[var(--font-mono)] text-sm">policy: record</code> every image mount
+        stacks an ephemeral scratch COW — the "nothing is denied" promise now covers writes into
+        held trees: the write lands in scratch, journaled{' '}
+        <code class="font-[var(--font-mono)] text-sm">event=vfs-write</code>, and is discarded at
+        exit. The payload observed a writable world it never owned. Deny-mode{' '}
+        <code class="font-[var(--font-mono)] text-sm">vfs-deny</code> lines and record-mode{' '}
+        <code class="font-[var(--font-mono)] text-sm">vfs-write</code> lines both fold into{' '}
+        <code class="font-[var(--font-mono)] text-sm">tfs needs --from-journal</code>, which emits a
+        draft <code class="font-[var(--font-mono)] text-sm">needs.write:</code> block beside{' '}
+        <code class="font-[var(--font-mono)] text-sm">needs.host:</code> — persistence{' '}
+        <code class="font-[var(--font-mono)] text-sm">ephemeral</code> (the observed minimum), each
+        with the <code class="font-[var(--font-mono)] text-sm">why:</code> TODO. Sealed-read denials
+        fold into a draft <code class="font-[var(--font-mono)] text-sm">needs.decrypt:</code> entry.
+        The human gate is unchanged: the author flips persistence, prunes noise, fills why, merges
+        into D1 or D2. The generator never edits a manifest.
+      </p>
+    </div>
+
+    <!-- ============ SWAP + ERRORS ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Swap the bindings, never rebuild the slice.</h2>
+      <p class="max-w-3xl text-[var(--tb-c-text-2)]">
+        Overlay and key bindings live in the composition layer — swappable by construction. Managed
+        mode edits <code class="font-[var(--font-mono)] text-sm">tebako.yaml</code> or passes flags.
+        A standalone package's baked composition carries the resolved needs union and the press-time
+        bindings as the DEFAULT; the override document (argv{' '}
+        <code class="font-[var(--font-mono)] text-sm">--compose</code> &gt;{' '}
+        <code class="font-[var(--font-mono)] text-sm">TEBAKO_COMPOSE</code> &gt; sidecar) carries{' '}
+        <code class="font-[var(--font-mono)] text-sm">overlays:</code> /{' '}
+        <code class="font-[var(--font-mono)] text-sm">decrypt:</code> with the same grammar. The
+        reserved L2 <code class="font-[var(--font-mono)] text-sm">mounts[].mode: cow</code> spelling
+        becomes live for exactly this; <code class="font-[var(--font-mono)] text-sm">enc</code> stays
+        reserved — a sealed slice's fact is its own manifest's, never the L2 row's. The boot journal
+        names what ran: <code class="font-[var(--font-mono)] text-sm">event=overlay mount=… store=… source=declared|ephemeral</code>
+        {' '}and <code class="font-[var(--font-mono)] text-sm">event=decrypt mount=… recipient=pgp:… grants=…</code>.
+        Key material never touches a journal. The one added exit-code row:{' '}
+        <strong>68 <code class="font-[var(--font-mono)] text-sm">EX_TEBAKO_OVERLAY</code></strong> —
+        unbound retained store, missing or non-opening key material, unwritable store, orphan
+        binding, malformed env grammar.
+      </p>
+    </div>
+
+    <!-- ============ THREE NEIGHBORS ============ -->
+    <div class="mt-16 grid gap-6 md:grid-cols-3">
+      <a href="/docs/architecture/composition/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+        <p class="tb-eyebrow">NEXT · COMPOSITION</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">Declarative composition</h3>
+        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          The D1–D5 stack these overlay declarations extend.
+        </p>
+      </a>
+      <a href="/docs/architecture/encryption/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+        <p class="tb-eyebrow">NEXT · ENCRYPTION</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">Encryption and envelopes</h3>
+        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          The sealed-image format, the envelope grant manifest, the per-audience model.
+        </p>
+      </a>
+      <a href="/docs/architecture/jails-and-proxying/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+        <p class="tb-eyebrow">NEXT · JAILS</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">Jails and host proxying</h3>
+        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          The policy that installs after the mounts, derived store grants included.
+        </p>
+      </a>
+    </div>
+  </section>
+</BaseLayout>
