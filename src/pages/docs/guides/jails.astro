@@ -2,8 +2,9 @@
 import BaseLayout from '../../../layouts/BaseLayout.astro'
 import GuidesNav from '../../../components/docs/GuidesNav.astro'
 ---
+<!-- normative: spec 08 (profiles, TEBAKO_JAIL grammar, §2.1 platform floor), spec 23 §2 (needs: block) + §8 (record mode, tfs needs --from-journal) — record mode + generator shipped at the image layer; D1–D5 manifest/shim/press wiring is Phase-R (planned) -->
 
-<BaseLayout title="Set a jail policy — Tebako guides" description="Tebako jails: a declarative host-filesystem policy for any run — open, deny, deny:arg, mount grants, baked policies, precedence, and the audit journal.">
+<BaseLayout title="Set a jail policy — Tebako guides" description="Tebako jails: a declarative host-filesystem policy for any run — open, deny, deny:arg, the platform floor, mount grants, record mode and the needs: block, baked policies, precedence, and the audit journal.">
   <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
     <p class="tb-eyebrow">GUIDES · JAILS</p>
     <h1 class="mt-3">Set a jail policy.</h1>
@@ -65,6 +66,56 @@ import GuidesNav from '../../../components/docs/GuidesNav.astro'
             visible. The everyday profile for tools that edit the files you name.
           </p>
         </div>
+      </div>
+    </div>
+
+    <!-- ============ THE PLATFORM FLOOR ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">The platform floor: what deny still grants.</h2>
+      <div class="max-w-3xl space-y-4 text-[var(--tb-c-text-2)]">
+        <p>
+          A <code class="font-[var(--font-mono)] text-sm">deny</code> policy is not a blank
+          refusal. Every policy bound under the deny default gains a fixed per-platform set of
+          read-only grants — the <strong class="text-[var(--tb-c-text-1)]">floor</strong> —
+          covering the surface a spawned interpreter physically cannot boot without. The floor
+          exists because a missing platform grant never failed as a policy verdict: it crashed
+          the child in someone else's library (a JVM under a scratch-only jail segfaulted in
+          its locale init when reads under{' '}
+          <code class="font-[var(--font-mono)] text-sm">/usr</code> were denied). Denying the
+          platform surface never produced a working process, so the floor grants it always:
+        </p>
+        <ul class="space-y-2 pl-1">
+          <li class="flex gap-3 leading-relaxed">
+            <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tb-c-accent)]"></span>
+            <span><strong class="text-[var(--tb-c-text-1)]">macOS</strong> —{' '}
+              <code class="font-[var(--font-mono)] text-sm">/usr</code>,{' '}
+              <code class="font-[var(--font-mono)] text-sm">/System</code>,{' '}
+              <code class="font-[var(--font-mono)] text-sm">/Library</code>.</span>
+          </li>
+          <li class="flex gap-3 leading-relaxed">
+            <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tb-c-accent)]"></span>
+            <span><strong class="text-[var(--tb-c-text-1)]">windows</strong> —{' '}
+              <code class="font-[var(--font-mono)] text-sm">%SystemRoot%\System32</code>,{' '}
+              <code class="font-[var(--font-mono)] text-sm">%SystemRoot%\SysWOW64</code>,{' '}
+              <code class="font-[var(--font-mono)] text-sm">%SystemRoot%\Fonts</code>.</span>
+          </li>
+          <li class="flex gap-3 leading-relaxed">
+            <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--tb-c-accent)]"></span>
+            <span><strong class="text-[var(--tb-c-text-1)]">other unix</strong> — none today; an
+              entry joins the list only with a proven platform-process consumer, cited by run.
+              The lists are amended by evidence, never by anticipation.</span>
+          </li>
+        </ul>
+        <p>
+          Two rules keep the floor honest. An authored mount covering a floor path
+          <em>supersedes</em> the floor entry — widening one to read-write is one authored grant
+          away, and the floor never narrows what you allowed. And every bound grant, authored
+          or floor, implies its strict ancestors are traversable by exact-path reads, so the
+          platform's canonicalization walks pass by construction. The floor is system surface
+          only: your home directory and your own tool trees stay authored grants — a{' '}
+          <code class="font-[var(--font-mono)] text-sm">deny</code> never read-exposes them for
+          you.
+        </p>
       </div>
     </div>
 
@@ -139,6 +190,95 @@ $ TEBAKO_JAIL="$HOME/sources:/work:ro" ./myapp`}</code></pre>
       </div>
     </div>
 
+    <!-- ============ RECORD MODE ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Discover the surface: record mode.</h2>
+      <div class="max-w-3xl space-y-4 text-[var(--tb-c-text-2)]">
+        <p>
+          An author rarely knows the host surface their payload touches — the JVM's home probe
+          was invisible until the journal named it. Discovery is a first-class policy mode, not
+          a guess: <code class="font-[var(--font-mono)] text-sm">TEBAKO_JAIL=record</code>{' '}
+          allows every host access and journals it —{' '}
+          <code class="font-[var(--font-mono)] text-sm">event=jail-allow path=… op=read|write</code>{' '}
+          — so the workload cannot crash from policy while you observe it. Spawned children
+          inherit the spec and append to the same journal.
+        </p>
+      </div>
+      <div class="mt-4 max-w-3xl rounded-xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+        <pre class="overflow-x-auto font-[var(--font-mono)] text-sm"><code>{`$ TEBAKO_JAIL=record tebako run ./myapp -- build
+$ tfs needs --from-journal ~/.tebako/journal.log`}</code></pre>
+      </div>
+      <div class="mt-4 max-w-3xl space-y-4 text-[var(--tb-c-text-2)]">
+        <p>
+          The generator reads the record journal — folding in{' '}
+          <code class="font-[var(--font-mono)] text-sm">jail-deny</code> lines too, since a
+          denial is an unmet need — and emits a draft{' '}
+          <code class="font-[var(--font-mono)] text-sm">needs:</code> block: one entry per
+          observed path, symbolic atoms re-substituted (
+          <code class="font-[var(--font-mono)] text-sm">/Users/alice/…</code> →{' '}
+          <code class="font-[var(--font-mono)] text-sm">$HOME/…</code>), access set to the
+          strongest observed op, floor and store paths excluded (they are automatic), each
+          entry carrying a <code class="font-[var(--font-mono)] text-sm">why: "TODO"</code> for
+          you to replace with the real reason.
+        </p>
+        <p>
+          The generator never edits a manifest. The record shows the <em>observed minimum</em>;
+          you review the draft — flipping ro↔rw where production differs from the observation,
+          deleting noise, filling in <code class="font-[var(--font-mono)] text-sm">why</code> —
+          and merge it yourself. And{' '}
+          <code class="font-[var(--font-mono)] text-sm">record</code> is a development mode: it
+          journals at full volume and installs no enforcement, so shipping a composition with
+          record still in force draws a named lint warning.
+        </p>
+      </div>
+    </div>
+
+    <!-- ============ THE NEEDS BLOCK ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Declare it: the needs: block.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        A slice declares its host surface in its manifest —{' '}
+        <code class="font-[var(--font-mono)] text-sm">needs:</code> is the only spelling, one
+        key with one grammar:
+      </p>
+      <div class="max-w-3xl rounded-xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+        <pre class="overflow-x-auto font-[var(--font-mono)] text-sm"><code>{`needs:
+  host:
+    - path: $HOME/.fontist      # absolute, or a symbolic atom
+      access: rw                # ro | rw
+      mount: /cache/fontist     # OPTIONAL: present the host path at this
+                                # VFS point; absent = enforcement-only
+      when: [macos]             # OPTIONAL platform filter
+      optional: true            # OPTIONAL: absent at bind = silently skipped
+      why: "fontist cache"      # MANDATORY`}</code></pre>
+      </div>
+      <div class="mt-4 max-w-3xl space-y-4 text-[var(--tb-c-text-2)]">
+        <p>
+          The symbolic atoms resolve at bind, per invocation, per user — never baked:{' '}
+          <code class="font-[var(--font-mono)] text-sm">$HOME</code>,{' '}
+          <code class="font-[var(--font-mono)] text-sm">$TMPDIR</code>,{' '}
+          <code class="font-[var(--font-mono)] text-sm">$CWD</code> (the invoking directory),{' '}
+          <code class="font-[var(--font-mono)] text-sm">$TEBAKO_HOME</code>. A need absent at
+          bind without the <code class="font-[var(--font-mono)] text-sm">optional</code>{' '}
+          marker is a named error, never a silent skip.
+        </p>
+        <p>
+          <strong class="text-[var(--tb-c-text-1)]">Stated plainly:</strong> record mode and
+          the journal generator ship today at the image layer —{' '}
+          <code class="font-[var(--font-mono)] text-sm">TEBAKO_JAIL=record</code>,{' '}
+          <code class="font-[var(--font-mono)] text-sm">tfs needs --from-journal</code>, and{' '}
+          <code class="font-[var(--font-mono)] text-sm">needs:</code> inside{' '}
+          <code class="font-[var(--font-mono)] text-sm">tfs exec --compose</code> documents.
+          The wiring of <code class="font-[var(--font-mono)] text-sm">needs:</code> into slice
+          manifests, shims, and press is Phase-R — specified, not yet shipped. When it lands, a
+          declared need is a contract: an effective policy that does not cover it fails the run
+          before exec, naming the slice, the path, and the{' '}
+          <code class="font-[var(--font-mono)] text-sm">why</code> — a need never surfaces as a
+          mid-run EPERM.
+        </p>
+      </div>
+    </div>
+
     <!-- ============ PRECEDENCE ============ -->
     <div class="mt-16">
       <h2 class="mb-3">Precedence: the user always wins by tightening.</h2>
@@ -161,7 +301,9 @@ $ TEBAKO_JAIL="$HOME/sources:/work:ro" ./myapp`}</code></pre>
           Every denial appends one line to the journal —{' '}
           <code class="font-[var(--font-mono)] text-sm">$TEBAKO_HOME/journal.log</code> by
           default. When a tool cannot see something you expected it to, that file is the first
-          place to read.
+          place to read. Under record mode (above) the <em>allows</em> append too — the same
+          file is what <code class="font-[var(--font-mono)] text-sm">tfs needs
+          --from-journal</code> reads.
         </p>
         <p>
           A malformed policy never runs half-applied: the run fails closed with exit 73 and

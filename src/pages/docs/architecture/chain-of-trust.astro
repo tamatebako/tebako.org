@@ -1,36 +1,50 @@
 ---
+// normative: spec 09, spec 02 §4+§5b, spec 06 §3–§4, spec 21; docs/root-ceremony.md
 import BaseLayout from '../../../layouts/BaseLayout.astro'
 import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
 import StatusPill from '../../../components/docs/StatusPill.astro'
 
 const LINKS = {
-  tpkgLib: 'https://github.com/tamatebako/tebako-rs/blob/main/crates/tpkg/src/lib.rs',
-  signer: 'https://github.com/tamatebako/tebako-rs/blob/main/crates/tebako-signer/src/lib.rs',
-  bootstrapCrate: 'https://github.com/tamatebako/tebako-rs/tree/main/crates/tebako-bootstrap',
-  pkgCrate: 'https://github.com/tamatebako/tebako-rs/tree/main/crates/tebako-pkg',
+  tpkgLib: 'https://github.com/tamatebako/tebako/blob/main/crates/tpkg/src/lib.rs',
+  signer: 'https://github.com/tamatebako/tebako/blob/main/crates/tebako-signer/src/lib.rs',
+  signerKeys: 'https://github.com/tamatebako/tebako/blob/main/crates/tebako-signer/src/keys.rs',
+  signerKeyring: 'https://github.com/tamatebako/tebako/blob/main/crates/tebako-signer/src/keyring.rs',
+  bootstrapCrate: 'https://github.com/tamatebako/tebako/tree/main/crates/tebako-bootstrap',
+  pkgCrate: 'https://github.com/tamatebako/tebako/tree/main/crates/tebako-pkg',
+  releases: 'https://github.com/tamatebako/tebako/releases',
+  rootCeremony: 'https://github.com/tamatebako/tebako/blob/main/docs/root-ceremony.md',
+  spec09: 'https://github.com/tamatebako/tebako/blob/main/docs/spec/09-trust-and-signing.md',
+  spec21: 'https://github.com/tamatebako/tebako/blob/main/docs/spec/21-crypto-consolidation.md',
   rnpRs: 'https://github.com/rnpgp/rnp-rs',
 }
 
 const exitCodes = [
-  { code: '65', meaning: 'manifest missing, corrupt, or structurally invalid', kind: 'v1' },
-  { code: '66', meaning: 'launcher ABI mismatch (package requires newer bootstrap)', kind: 'v1' },
-  { code: '67', meaning: 'runtime_ref missing or unparsable', kind: 'v1' },
-  { code: '69', meaning: 'runtime unavailable: not cached and unreachable / offline / lock timeout', kind: 'v1' },
-  { code: '70', meaning: 'SHA256 mismatch — downloaded or embedded payload deleted, cache untouched', kind: 'v1' },
-  { code: '71', meaning: 'signature verification failed — the package\u2019s OpenPGP signature does not verify', kind: 'v2' },
-  { code: '72', meaning: 'trust error — the signer key is not in the trusted keyring', kind: 'v2' },
-  { code: '74', meaning: 'local I/O failure (cache not writable, exec failed, …)', kind: 'v1' },
+  { code: '65', meaning: 'trailer missing, corrupt, or structurally invalid', namedIn: 'spec 06 §4' },
+  { code: '66', meaning: 'launcher ABI mismatch (package requires a newer bootstrap)', namedIn: 'spec 06 §4' },
+  { code: '67', meaning: 'runtime_ref unparseable or unsupported', namedIn: 'spec 06 §4' },
+  { code: '68', meaning: 'overlay/decrypt binding failure — unbound store, missing key material, malformed TEBAKO_OVERLAYS / TEBAKO_DECRYPT', namedIn: 'spec 06 §4 · spec 24 §7' },
+  { code: '69', meaning: 'runtime unresolvable — offline miss or download failure', namedIn: 'spec 06 §4' },
+  { code: '70', meaning: 'sha256 mismatch — the artifact is refused; nothing enters the store', namedIn: 'spec 06 §4' },
+  { code: '71', meaning: 'invalid signature; unsigned under TEBAKO_REQUIRE_SIGNED=1; or strict mode asked of a bootstrap built without OpenPGP verification', namedIn: 'spec 06 §3–§4' },
+  { code: '72', meaning: 'signer key not trusted — including a revoked key (RevokedKey) or a changed signer key (SignerKeyChanged)', namedIn: 'spec 06 §4 · spec 09 §8–§9' },
+  { code: '73', meaning: 'jail policy could not be applied — malformed TEBAKO_JAIL; fail closed', namedIn: 'spec 06 §4 · spec 08' },
+  { code: '74', meaning: 'filesystem / lock / install failure', namedIn: 'spec 06 §4' },
+  { code: '75', meaning: 'the runtime declares a contract_version the loader does not speak — refused before any checksum acceptance', namedIn: 'spec 06 §6' },
+  { code: '76', meaning: '--tebako-install refused (TPKG_FLAG_NO_INSTALL) or needs the CLI', namedIn: 'spec 06 §3' },
+  { code: '77', meaning: 'era mismatch — the package belongs to another tebako era, in either direction', namedIn: 'spec 18' },
+  { code: '78', meaning: 'env image layout contradicts the runtime exe — or a TEBAKO_MOUNT_ROOT override the image does not grant', namedIn: 'spec 17 §1 · spec 18' },
+  { code: '79', meaning: 'a payload check FAILed (the tebako check aggregate)', namedIn: 'spec 06 §4 · spec 26' },
 ]
 
 const chainSteps = [
   {
     name: 'Root of trust',
-    body: 'One signature mechanism for the whole project: OpenPGP via rnp/rnp-rs over librnp. The tamatebako release keypair\u2019s root fingerprint is to be published on tebako.org and embedded in the artifacts; rotation happens via a signed successor-key statement, with a documented revocation procedure.',
+    body: 'One signature mechanism for the whole project: OpenPGP via rnp-rs over vendored botan (PQC-capable). The tamatebako release keypair\u2019s root fingerprint is published on tebako.org AND embedded in the loader at release time (EMBEDDED_ROOT_FINGERPRINT — empty until the root ceremony fills it; TEBAKO_TRUSTED_ROOT overrides it for development). Rotation rides a signed successor-key statement (TEBAKO-ROOT-SUCCESSOR-V1 — machinery shipped in tebako-signer), so machines forward trust with no out-of-band step. Revocation (TEBAKO-ROOT-REVOCATION-V1) kills a key with no successor: format locked, loader consumption planned. The one-time ceremony that mints the roots has its own runbook — below.',
     status: 'planned',
   },
   {
     name: 'Production (releases)',
-    body: 'Every released part — runtime packages, bootstrap, src tarballs, libtfs packages — ships a detached .asc per artifact plus a signed release manifest: one verify path for all. This is the release-side phase; the format and verifier below are ready for it.',
+    body: 'Every released part — runtime packages, bootstrap, src tarballs, libraries — ships a detached .asc per artifact plus a signed release manifest: one verify path for all. The release index (manifest.json) is signed too; resolvers verify the index signature before trusting its hashes, closing the swap-the-manifest gap (spec 09 §5). This is the release-side phase; the format and verifier below are ready for it.',
     status: 'planned',
   },
   {
@@ -39,19 +53,19 @@ const chainSteps = [
     status: 'shipped',
   },
   {
-    name: 'Press-time verification',
-    body: 'tebako-cli verifies release signatures before using any part — fail closed. The trusted keyring lives in $TEBAKO_HOME/keyring/trusted.pgp; additional signer keys are TOFU-registered with a named prompt.',
+    name: 'Sign/verify tooling',
+    body: 'tebako-pkg sign emits a detached .asc per artifact plus a signed SHA256SUMS; tebako-pkg verify classifies each artifact Trusted / Untrusted / Invalid. Factory release flows sign in CI from secrets-held key material — the private key never leaves CI secrets or hardware (spec 09 §6).',
     status: 'shipped',
   },
   {
     name: 'Bundle-time signing — OPT-IN',
-    body: 'tebako-pkg bundle --sign[=keyid] signs; without it the package carries no v2 extension at all — no key, no prompt, no ceremony. A press-local Ed25519 key is generated under $TEBAKO_HOME/keys only on the first explicit --sign, and auto-registered locally so dev iteration never produces or accepts unsigned artifacts.',
+    body: 'tebako-pkg bundle --sign[=keyid] signs; without it the package carries no v2 extension at all — no key, no prompt, no ceremony. A press-local Ed25519 key is generated under $TEBAKO_HOME/keys/ only on the first explicit --sign, and auto-registered locally so dev iteration never produces or accepts unsigned artifacts.',
     status: 'shipped',
   },
   {
     name: 'First-run verification',
-    body: 'The bootstrap verifies the trailer signature against the keyring, then each slot\u2019s sha256 before mounting or extracting it — one streaming pass at install time, with a trusted-cache marker avoiding re-hashing every run. Failures are named exit codes, never crashes.',
-    status: 'shipped',
+    body: 'Target model (spec 09 §4): the loader verifies the trailer signature against the trust store, then each slot\u2019s sha256 before mounting — one streaming pass at install time; the .sha256 sidecar is the trust anchor, so nothing re-hashes per run. Today\u2019s phase-1 posture is unverified-first (roadmap 72): the shipped bootstrap is built without OpenPGP verification, so a signed package runs with a loud UNVERIFIED warning + audit journal while the per-slot sha256 is still enforced as integrity-vs-corruption — and TEBAKO_REQUIRE_SIGNED=1 fails closed with exit 71 naming the missing capability. OpenPGP verification returns via the tebako-crypto toolkit payload, itself Ed25519-verified by the bootstrap.',
+    status: 'planned',
   },
   {
     name: 'Fail closed everywhere',
@@ -60,15 +74,15 @@ const chainSteps = [
   },
   {
     name: 'The v1-legacy rule',
-    body: 'Unsigned v1 packages exist in the wild and must not become un-runnable: a v2-verify bootstrap accepts them as LEGACY with a loud stderr warning (recorded in its audit journal), while v2-signed packages get full verification. Rejecting legacy is a separate explicit opt-in — TEBAKO_REQUIRE_SIGNED=1 — for hardened environments, never the default during transition.',
+    body: 'Unsigned v1 packages exist in the wild and must not become un-runnable: a v2-verify bootstrap accepts them as LEGACY with a loud stderr warning (recorded in its audit journal), while v2-signed packages get full verification. Rejecting legacy is a separate explicit opt-in — TEBAKO_REQUIRE_SIGNED=1 — for hardened environments, never the default.',
     status: 'shipped',
   },
 ]
 ---
 
-<BaseLayout title="The chain of trust — Tebako architecture" description="Binary-part integrity and authenticity: tpkg v2, opt-in OpenPGP signing, named verification exit codes, and the v1-legacy rule.">
+<BaseLayout title="The chain of trust — Tebako architecture" description="Binary-part integrity and authenticity: tpkg v2, opt-in OpenPGP signing, the trust store, the root-key ceremony, named verification exit codes, and the v1-legacy rule.">
   <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">ARCHITECTURE · 05</p>
+    <p class="tb-eyebrow">ARCHITECTURE · TRUST</p>
     <h1 class="mt-3">The chain of trust.</h1>
     <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
       Package parts travel over mirrors and get shared between machines. How do we know
@@ -180,10 +194,45 @@ const chainSteps = [
         ))}
       </div>
       <p class="mt-4 max-w-2xl text-sm text-[var(--tb-c-text-3)]">
-        "Shipped" here means implemented and tested in{' '}
-        <a href={LINKS.pkgCrate} class="tb-link-underline text-[var(--tb-c-accent)]">tebako-rs</a>
-        {' '}— the workspace's own release pipeline (the distribution channel) is still planned,
-        so these binaries are not yet downloadable.
+        "Shipped" means implemented and tested in{' '}
+        <a href={LINKS.pkgCrate} class="tb-link-underline text-[var(--tb-c-accent)]">tamatebako/tebako</a>
+        {' '}— whose five binaries (tebako, tfs, tebako-pkg, tebako-shim, tebako-bootstrap) are
+        downloadable from the{' '}
+        <a href={LINKS.releases} class="tb-link-underline text-[var(--tb-c-accent)]">project's release pages</a>
+        {' '}today. "Planned" links are the release-side wrap and the loader's OpenPGP
+        verification — see "What is still planned" below.
+      </p>
+    </div>
+
+    <div class="mt-16">
+      <div class="mb-3 flex flex-wrap items-center gap-3">
+        <h2>The root-key ceremony.</h2>
+        <StatusPill status="planned" note="roadmap 36 · runbook written" />
+      </div>
+      <p class="mb-4 max-w-2xl text-[var(--tb-c-text-2)]">
+        The top link of the chain is made once, offline, by the project owner, with a witness —
+        nothing improvised. The runbook is{' '}
+        <a href={LINKS.rootCeremony} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">docs/root-ceremony.md</a>
+        {' '}in the product repo; it produces, in order:
+      </p>
+      <ul class="max-w-2xl list-disc space-y-2 pl-6 text-[var(--tb-c-text-2)]">
+        <li>the <strong class="text-[var(--tb-c-text-1)]">classical root</strong> — an Ed25519 OpenPGP keypair, the day-one anchor;</li>
+        <li>the <strong class="text-[var(--tb-c-text-1)]">PQC root</strong> — an ML-DSA-65 keypair generated the same day, so the successor exists before it is needed;</li>
+        <li>a pre-made, unpublished <strong class="text-[var(--tb-c-text-1)]">successor statement</strong> classical → PQC (a quantum break becomes a publish operation, not a crisis);</li>
+        <li>pre-made <strong class="text-[var(--tb-c-text-1)]">revocation certificates</strong> for both roots;</li>
+        <li>an <strong class="text-[var(--tb-c-text-1)]">ML-KEM-768 encryption subkey</strong> on the classical root — encryption exists from day one, so a year-one encrypted image never needs a year-three key.</li>
+      </ul>
+      <p class="mt-4 max-w-2xl text-[var(--tb-c-text-2)]">
+        The private keys move to hardware tokens (two vendors) and two offline backups; factories
+        sign with a subkey held in CI secrets, never the root primary. The only public outputs
+        are the fingerprints and armored public keys — wired into{' '}
+        <code class="font-[var(--font-mono)] text-sm">EMBEDDED_ROOT_FINGERPRINT</code> (empty
+        until this moment, which is what makes today's builds dev/unsigned-first), published on
+        this site, and mirrored to the org's <code class="font-[var(--font-mono)] text-sm">.github</code>
+        {' '}repo and the keyservers. Rotation and revocation are rehearsed on a scratch keyring
+        before the first signed release: publish the pre-made successor, watch trust forward;
+        publish a revocation, watch the revoked fingerprint fail closed (<code class="font-[var(--font-mono)] text-sm">RevokedKey</code>, exit 72)
+        even on previously-valid artifacts.
       </p>
     </div>
 
@@ -197,47 +246,175 @@ const chainSteps = [
         the header exactly where v1 readers expect it — at EOF, version field still 1. Signing
         is flagged by <code class="font-[var(--font-mono)] text-sm">TPKG_FLAG_SIGNED_V2</code>
         {' '}(bit 1 of package_flags), which old readers pass through untouched: v1-era runtimes
-        keep reading v2 packages exactly as before; they just don't verify. The authoritative
+        keep reading v2 packages exactly as before; they just don't verify. The same gap also
+        carries typed extension blocks (a type-2 block holds the package manifest) — the signing
+        extension, when present, stays last before the header, unchanged. The authoritative
         reference is{' '}
         <a href={LINKS.tpkgLib} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">crates/tpkg/src/lib.rs</a>.
       </p>
-      <pre class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)] sm:text-sm" style="background: var(--tb-c-bg-soft);"><code>[payload][slot records][v2 extension][trailer header (166 B, at EOF)]
+      <pre class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)] sm:text-sm" style="background: var(--tb-c-bg-soft);"><code>[payload][slot records][ext blocks…][v2 signing ext?][trailer header (166 B, at EOF)]
 
-v2 extension — 268 B fixed + variable signature (all-new numerics big-endian):
+v2 signing extension — 268 B fixed + variable signature (all-new numerics big-endian):
   offset        size  field
        0        256   slot sha256 digests: 8 × 32 B — digest of slot i's bytes
                       at i*32; entries beyond slot_count are zeroed
      256          8   signer keyid (low 64 bits of the OpenPGP fingerprint, BE)
      264    sig_len   OpenPGP detached signature (binary packets)
-264+sig_len      4    u32be signature length (1..TPKG_SIG_MAX)
+264+sig_len      4    u32be signature length (1..=65536)
 
 canonical signed bytes = slot table ‖ digest array ‖ keyid ‖ trailer header
 (everything except the signature and its length field)</code></pre>
       <p class="mt-4 max-w-2xl text-sm text-[var(--tb-c-text-3)]">
-        Detection: parse the v1 header at EOF as always; if the signed flag is set, an
-        extension of exactly 256 + 8 + sig_len + 4 bytes must fill the gap between the slot
-        table and the header, with the digest tail zeroed. A flag-clear trailer has no
-        extension and parses exactly as v1 — the legacy-unsigned case below.
+        Detection: parse the v1 header at EOF as always; if the signed flag is set, the
+        extension — exactly 256 + 8 + sig_len + 4 bytes — sits immediately before the header,
+        self-delimiting from the tail via its sig_len field, with the digest tail zeroed. Typed
+        ext blocks before it walk forward from the end of the slot table (type + length
+        self-delimit); unknown block types are skipped by v1-era-aware readers (forward-compat)
+        but rejected by <code class="font-[var(--font-mono)]">tebako-pkg validate</code> with a
+        named error. A flag-clear trailer has no extension and parses exactly as v1 — the
+        legacy-unsigned case below.
       </p>
     </div>
 
     <div class="mt-16">
       <div class="mb-3 flex flex-wrap items-center gap-3">
-        <h2>The signer.</h2>
+        <h2>The signer and the trust store.</h2>
         <StatusPill status="shipped" note="crates/tebako-signer" />
       </div>
       <p class="max-w-2xl text-[var(--tb-c-text-2)]">
         <a href={LINKS.signer} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">crates/tebako-signer</a>
         {' '}is the one OpenPGP half of the chain —{' '}
         <a href={LINKS.rnpRs} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">rnp-rs</a>
-        {' '}over librnp, <code class="font-[var(--font-mono)] text-sm">#![forbid(unsafe_code)]</code>.
-        It owns the press-local Ed25519 key (generated once per machine under{' '}
-        <code class="font-[var(--font-mono)] text-sm">$TEBAKO_HOME/keys</code>), the trusted
-        keyring (<code class="font-[var(--font-mono)] text-sm">trusted.pgp</code>, TOFU
-        registration with named outcomes), and detached sign/verify that classifies into
-        Trusted / Untrusted / Invalid — the outcomes the named trust errors map onto.
-        Rewrite operations (insert-image / remove-image / set-runtime / reassemble) preserve
-        the input's signing state.
+        {' '}over librnp with vendored botan (PQC-capable; <code class="font-[var(--font-mono)] text-sm">#![deny(unsafe_code)]</code>
+        {' '}with one documented FFI exception). It owns detached sign/verify, which classifies
+        into Trusted / Untrusted / Invalid — the outcomes the named trust errors map onto — and
+        rewrite operations (insert-image / remove-image / set-runtime / reassemble) preserve the
+        input's signing state. The store has two homes under{' '}
+        <code class="font-[var(--font-mono)] text-sm">$TEBAKO_HOME</code>:
+      </p>
+      <ul class="mt-4 max-w-2xl list-disc space-y-2 pl-6 text-[var(--tb-c-text-2)]">
+        <li>
+          <code class="font-[var(--font-mono)] text-sm">keys/</code> — <strong class="text-[var(--tb-c-text-1)]">your keypairs.</strong>
+          {' '}The press-local Ed25519 key lives here (<code class="font-[var(--font-mono)] text-sm">press-local.pub</code> /{' '}
+          <code class="font-[var(--font-mono)] text-sm">press-local.key</code>, mode 0600 on unix),
+          generated once per machine on the first explicit <code class="font-[var(--font-mono)] text-sm">--sign</code> — see{' '}
+          <a href={LINKS.signerKeys} class="tb-link-underline text-[var(--tb-c-accent)]">keys.rs</a>.
+        </li>
+        <li>
+          <code class="font-[var(--font-mono)] text-sm">trust/</code> — <strong class="text-[var(--tb-c-text-1)]">pinned signer keys.</strong>
+          {' '}Per spec 09 §9, each confirmed identity is pinned one file per fingerprint at{' '}
+          <code class="font-[var(--font-mono)] text-sm">trust/&lt;fingerprint&gt;.pub</code>, keyed
+          by where you learned it. Today's signer still implements the earlier single concatenated
+          keyring — <code class="font-[var(--font-mono)] text-sm">keyring/trusted.pgp</code> (
+          <a href={LINKS.signerKeyring} class="tb-link-underline text-[var(--tb-c-accent)]">keyring.rs</a>,
+          TOFU registration with named outcomes) with rotation statements under{' '}
+          <code class="font-[var(--font-mono)] text-sm">keyring/successors/</code>; the
+          per-fingerprint pin layout is where the store converges.
+        </li>
+      </ul>
+    </div>
+
+    <div class="mt-16">
+      <div class="mb-3 flex flex-wrap items-center gap-3">
+        <h2>Third-party identity: three channels, two must agree.</h2>
+        <StatusPill status="planned" note="spec 09 §9 · partially shipped" />
+      </div>
+      <p class="mb-4 max-w-2xl text-[var(--tb-c-text-2)]">
+        First-party slices verify against the embedded tamatebako root — zero interaction, ever.
+        A third-party author's slices verify against <em>their own</em> key, and everything turns
+        on how your machine learns the right fingerprint. No channel is trusted alone; two
+        channels agreeing are the trust event:
+      </p>
+      <ol class="max-w-2xl list-decimal space-y-2 pl-6 text-[var(--tb-c-text-2)]">
+        <li>
+          <strong class="text-[var(--tb-c-text-1)]">The registry (primary).</strong> A registry ref
+          pins an authenticated location (<code class="font-[var(--font-mono)] text-sm">tfs:github:metanorma/metanorma</code>
+          {' '}is GitHub's guarantee that this is the metanorma org). The index carries a{' '}
+          <code class="font-[var(--font-mono)] text-sm">signing:</code> block — armored public key,
+          fingerprint, an optional canonical key URL. <code class="font-[var(--font-mono)] text-sm">tebako add-registry</code>
+          {' '}displays the fingerprint and the cross-check URLs and asks for confirmation (TOFU);
+          on confirmation the key is pinned to the trust store. A non-interactive{' '}
+          <code class="font-[var(--font-mono)] text-sm">--yes</code> flow must supply the expected
+          fingerprint out of band — never a blind yes.
+        </li>
+        <li>
+          <strong class="text-[var(--tb-c-text-1)]">Out-of-band confirmation (never auto-trusted).</strong>
+          {' '}Authors publish the same fingerprint where their audience already trusts them:{' '}
+          <code class="font-[var(--font-mono)] text-sm">https://&lt;author-domain&gt;/.well-known/tebako-key.asc</code>,
+          their docs, the org's <code class="font-[var(--font-mono)] text-sm">.github</code> repo.
+          The CLI prints these URLs for you to compare; it never upgrades trust from the second
+          channel silently.
+        </li>
+        <li>
+          <strong class="text-[var(--tb-c-text-1)]">Keyservers as directories (no trust needed).</strong>
+          {' '}Fetch BY fingerprint, authenticate the fetched key against the channels above — a
+          swapped key has the wrong fingerprint by construction, so the directory itself needs no
+          trust.
+        </li>
+      </ol>
+      <p class="mt-4 max-w-2xl text-[var(--tb-c-text-2)]">
+        <strong class="text-[var(--tb-c-text-1)]">Continuity is the security property.</strong>
+        {' '}After the first confirmation, every artifact from that identity must verify against
+        the pinned key. A mismatch fails closed (<code class="font-[var(--font-mono)] text-sm">SignerKeyChanged</code>,
+        exit 72) displaying both fingerprints; a valid successor chain forwards automatically
+        after displaying the chain proof, re-pinning the new key. The management verbs —{' '}
+        <code class="font-[var(--font-mono)] text-sm">tebako trust list|show|remove</code> — and{' '}
+        <code class="font-[var(--font-mono)] text-sm">tebako doctor</code> re-verification of
+        installed artifacts are planned.
+      </p>
+    </div>
+
+    <div class="mt-16">
+      <div class="mb-3 flex flex-wrap items-center gap-3">
+        <h2>Three kinds of crypto, three jobs.</h2>
+        <StatusPill status="planned" note="spec 21 · proposed decision" />
+      </div>
+      <p class="mb-4 max-w-2xl text-[var(--tb-c-text-2)]">
+        Tebako touches cryptography for three different questions, and{' '}
+        <a href={LINKS.spec21} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">spec 21</a>
+        {' '}gives each question exactly one home — never two overlapping mechanisms at the same
+        layer:
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
+        <table class="w-full min-w-[560px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider-strong)] font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+              <th class="px-5 py-3 font-medium">QUESTION</th>
+              <th class="px-5 py-3 font-medium">MECHANISM</th>
+              <th class="px-5 py-3 font-medium">ROLE</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)]">
+            <tr>
+              <td class="px-5 py-2.5 text-[var(--tb-c-text-1)]">WHO signed it</td>
+              <td class="px-5 py-2.5 text-[var(--tb-c-text-2)]">OpenPGP (rnp-rs / botan) — trailers, release indexes, third-party identity, the root ceremony</td>
+              <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs font-semibold text-[var(--tb-c-accent)]">TRUST</td>
+            </tr>
+            <tr>
+              <td class="px-5 py-2.5 text-[var(--tb-c-text-1)]">WHO may read it</td>
+              <td class="px-5 py-2.5 text-[var(--tb-c-text-2)]">the ENC transform (spec 10) — per-image opt-in, stacks over any backend</td>
+              <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs font-semibold text-[var(--tb-c-accent)]">CONFIDENTIALITY</td>
+            </tr>
+            <tr>
+              <td class="px-5 py-2.5 text-[var(--tb-c-text-1)]">HOW the bytes are sealed</td>
+              <td class="px-5 py-2.5 text-[var(--tb-c-text-2)]">limnifs format-native crypto (spec 20 §7) — per-drop AEAD, Ed25519 over the Merkle ManifestRoot</td>
+              <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs font-semibold text-[var(--tb-c-accent)]">EVIDENCE</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-4 max-w-2xl text-[var(--tb-c-text-2)]">
+        The OpenPGP chain is the <strong class="text-[var(--tb-c-text-1)]">only</strong> authenticity
+        decision point, for every backend; a slice author manages exactly one keypair, and
+        format-native keys never enter <code class="font-[var(--font-mono)] text-sm">keys/</code> or{' '}
+        <code class="font-[var(--font-mono)] text-sm">trust/</code>. ENC is the only tebako
+        decryption path — a self-encrypted limnifs image (<code class="font-[var(--font-mono)] text-sm">aead ≠ 0</code>)
+        fails <code class="font-[var(--font-mono)] text-sm">ENOTSUP</code> at mount. A limnifs
+        in-image signature, when admitted, may be verified only as non-authoritative integrity
+        evidence — after the OpenPGP chain has decided, against a key the signed metadata binds to
+        the author; absence is never an error, mismatch warns and journals. That evidence role is
+        the planned part: its binding addendum is not committed, and today tebako ignores embedded
+        bundles.
       </p>
     </div>
 
@@ -248,7 +425,7 @@ canonical signed bytes = slot table ‖ digest array ‖ keyid ‖ trailer heade
       </div>
       <p class="mb-6 max-w-2xl text-[var(--tb-c-text-2)]">
         Verification failures are named exit codes with full message bodies — never silent,
-        never a crash. The v2 codes join the v1 set unchanged:
+        never a crash. The trust codes (70/71/72) sit in the loader's full named set:
       </p>
       <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
         <table class="w-full min-w-[560px] text-left text-sm">
@@ -256,7 +433,7 @@ canonical signed bytes = slot table ‖ digest array ‖ keyid ‖ trailer heade
             <tr class="border-b border-[var(--tb-c-divider-strong)] font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
               <th class="px-5 py-3 font-medium">CODE</th>
               <th class="px-5 py-3 font-medium">MEANING</th>
-              <th class="px-5 py-3 font-medium">SINCE</th>
+              <th class="px-5 py-3 font-medium">NAMED IN</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-[var(--tb-c-divider)]">
@@ -264,7 +441,7 @@ canonical signed bytes = slot table ‖ digest array ‖ keyid ‖ trailer heade
               <tr>
                 <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs font-semibold text-[var(--tb-c-accent)]">{e.code}</td>
                 <td class="px-5 py-2.5 text-[var(--tb-c-text-2)]">{e.meaning}</td>
-                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">{e.kind}</td>
+                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">{e.namedIn}</td>
               </tr>
             ))}
           </tbody>
@@ -280,15 +457,29 @@ canonical signed bytes = slot table ‖ digest array ‖ keyid ‖ trailer heade
     <div class="mt-16">
       <div class="mb-3 flex flex-wrap items-center gap-3">
         <h2>What is still planned.</h2>
-        <StatusPill status="planned" note="phase 2 — release side" />
+        <StatusPill status="planned" note="release side + loader verification" />
       </div>
       <p class="max-w-2xl text-[var(--tb-c-text-2)]">
-        The package-side machinery is shipped in tebako-rs; the release-side wrap is not:
-        publication of the tamatebako root fingerprint on this site, detached{' '}
-        <code class="font-[var(--font-mono)] text-sm">.asc</code> signatures per released
-        artifact plus a signed release manifest, key rotation and revocation procedures, and
-        signing of the runtime download manifest itself. Until then, the chain's release link
-        rests on the sha256-verified release index — transport-checked, not yet object-signed.
+        The package-side machinery is shipped; what remains is the release-side wrap and the
+        loader's signature check. Specifically: the root-key ceremony itself (offline,
+        hardware-held — the runbook above), publication of the tamatebako root fingerprint on
+        this site and into <code class="font-[var(--font-mono)] text-sm">EMBEDDED_ROOT_FINGERPRINT</code>,
+        detached <code class="font-[var(--font-mono)] text-sm">.asc</code> signatures per released
+        artifact plus a signed release manifest and index, loader-side revocation consumption
+        (the format is locked), and the OpenPGP verification feature returning to the shipped
+        bootstrap via the tebako-crypto toolkit payload (roadmap 72). Until those land, the
+        chain's release link rests on the sha256-verified release index — transport-checked, not
+        yet object-signed — and signed packages run under the loud unverified-first posture
+        described above, with <code class="font-[var(--font-mono)] text-sm">TEBAKO_REQUIRE_SIGNED=1</code>
+        {' '}failing closed for hardened environments.
+      </p>
+      <p class="mt-6 max-w-2xl text-sm text-[var(--tb-c-text-3)]">
+        See also:{' '}
+        <a href={LINKS.spec09} class="tb-link-underline text-[var(--tb-c-accent)]">spec 09 — trust and signing</a>
+        {' '}·{' '}
+        <a href="/docs/guides/verify/" class="tb-link-underline text-[var(--tb-c-accent)]">guide: verify a package</a>
+        {' '}·{' '}
+        <a href="/docs/architecture/store/" class="tb-link-underline text-[var(--tb-c-accent)]">the store</a>
       </p>
     </div>
   </section>

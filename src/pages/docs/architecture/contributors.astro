@@ -4,100 +4,481 @@ import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
 import StatusPill from '../../../components/docs/StatusPill.astro'
 
 const LINKS = {
-  capiTests: 'https://github.com/tamatebako/libtfs/blob/main/tests/test_c_api.cpp',
-  versionsSchema: 'https://github.com/tamatebako/ruby/blob/main/schema/versions.schema.yml',
-  patchesSchema: 'https://github.com/tamatebako/ruby/blob/main/schema/patches.schema.yml',
+  specSet: 'https://github.com/tamatebako/tebako/tree/main/docs/spec',
+  schemas: 'https://github.com/tamatebako/tebako/tree/main/docs/spec/schemas',
+  contractTests: 'https://github.com/tamatebako/tebako/tree/main/tests/contract',
+  parity: 'https://github.com/tamatebako/tebako/blob/main/docs/parity.md',
+  tpkg: 'https://github.com/tamatebako/tebako/tree/main/crates/tpkg',
+  driver: 'https://github.com/tamatebako/tebako/tree/main/crates/tebako-driver',
+  resolve: 'https://github.com/tamatebako/tebako/tree/main/crates/tebako-resolve',
+  capiHeader: 'https://github.com/tamatebako/tebako/blob/main/include/tebako/fs/c_api.h',
+  productCi: 'https://github.com/tamatebako/tebako/blob/main/.github/workflows/ci.yml',
+  rubyRepo: 'https://github.com/tamatebako/ruby',
   versionsYml: 'https://github.com/tamatebako/ruby/blob/main/versions.yml',
+  rubySchemas: 'https://github.com/tamatebako/ruby/tree/main/schema',
   lintWorkflow: 'https://github.com/tamatebako/ruby/blob/main/.github/workflows/lint-patches.yml',
   monitorWorkflow: 'https://github.com/tamatebako/ruby/blob/main/.github/workflows/release-monitor.yml',
-  driftIssues: 'https://github.com/tamatebako/ruby/issues',
-  bootstrapVendored: 'https://github.com/tamatebako/tebako-bootstrap/blob/main/include/tebako/VENDORED.md',
-  gemLauncherAbi: 'https://github.com/tamatebako/tebako/blob/main/lib/tebako/launcher_abi.rb',
+  driftIssues: 'https://github.com/tamatebako/ruby/issues?q=Onboard%20ruby',
+  runtimeBuild: 'https://github.com/tamatebako/tebako-runtime-ruby/blob/main/.github/workflows/_build-platform.yml',
+  dwarfsT: 'https://github.com/tamatebako/dwarfs-t',
+  dwarfsTRs: 'https://github.com/tamatebako/dwarfs-t-rs',
+  libtfsTests: 'https://github.com/tamatebako/libtfs/blob/main/tests/test_c_api.cpp',
   bootstrapSelfTest: 'https://github.com/tamatebako/tebako-bootstrap/blob/main/test/self-test.sh',
-  runtimeWorkflow: 'https://github.com/tamatebako/tebako-runtime-ruby/blob/main/.github/workflows/build-runtime-packages.yml',
-  libtfsWorkflows: 'https://github.com/tamatebako/libtfs/tree/main/.github/workflows',
-  rsContract: 'https://github.com/tamatebako/tebako-rs/tree/main/tests/contract',
-  rsParity: 'https://github.com/tamatebako/tebako-rs/blob/main/docs/parity.md',
-  rsPkg: 'https://github.com/tamatebako/tebako-rs/tree/main/crates/tebako-pkg',
-  rsCli: 'https://github.com/tamatebako/tebako-rs/tree/main/crates/tebako-cli',
-  rsTpkg: 'https://github.com/tamatebako/tebako-rs/tree/main/crates/tpkg',
-  rsCi: 'https://github.com/tamatebako/tebako-rs/blob/main/.github/workflows/ci.yml',
 }
 
-const contracts = [
+const engineeringOrder = [
+  { step: 'Design, spec-first', body: 'Contract changes land in the spec set (or a linked docs/*.md) and, where applicable, a versioned schema — before code. Wire formats get byte diagrams; behaviors get named errors and exit codes up front; every new concept is assigned to exactly one layer (L0–L3).' },
+  { step: 'Oracle pin', body: 'If a C++/gem predecessor exists, golden vectors and fixtures are generated from it first. No golden oracle, no parity claim.' },
+  { step: 'Implement', body: 'In the owning crate or module only (MECE). The locked invariants (spec 00) hold; unsafe stays inside FFI boundary modules.' },
+  { step: 'Unit + property tests', body: 'In-crate. Proptest discipline: parsers never panic, round-trips are identity.' },
+  { step: 'Contract / parity suite', body: 'The ported C++ corpus runs against the Rust implementation (tests/contract); the parity legs diff byte-for-byte against the oracles.' },
+  { step: 'E2E, tiered', body: 'PR tier: one smoke per OS with a cached runtime, under ten minutes. Nightly: the full matrix. Weekly: adversarial — cold cache, network failure, corrupted downloads, jail enforcement.' },
+  { step: 'Size + hygiene gates', body: 'The bootstrap size table per platform (hard fail at ≥ 3 MB); the exported-symbol audit (only the tebako_* surface leaks); clippy -D warnings and fmt.' },
+  { step: 'Release + verify', body: 'Tag → per-platform artifacts → SHA256SUMS → the completeness gate (a partial asset set fails the release) → tebako-pkg verify on the published assets.' },
+  { step: 'Doc sync', body: 'The spec set and README status sections update in the same PR. Unshipped behavior is marked PLANNED — never described as done.' },
+]
+
+const ssotRows = [
   {
-    name: 'The ABI oracle — 493 tests',
-    body: 'The c_api test suite registers 493 tests under ctest and is the executable definition of tebako_fs_* behavior: errno mapping, mount semantics, dir cookies, pread position-independence, multi-mount isolation. Any change to libtfs is judged by it. In tebako-rs the ported cases run through the Rust C ABI — 164 today in tests/contract (the full sweep follows the same pattern; what was ported and why is audited in docs/parity.md), with the C++ library as the oracle.',
-    link: { href: LINKS.capiTests, label: 'tests/test_c_api.cpp' },
-    extraLinks: [
-      { href: LINKS.rsContract, label: 'tebako-rs tests/contract' },
-      { href: LINKS.rsParity, label: 'docs/parity.md' },
+    value: 'The tpkg wire format',
+    detail: '166 B header · 280 B slot records · ≤ 8 slots · flags + extension blocks',
+    owner: 'crates/tpkg (tamatebako/tebako)',
+    flow: 'Every Rust consumer links the crate (#![forbid(unsafe_code)]). The C mini-lib in libtfs is the golden oracle — the format is asserted byte-exact against it. Extensions ride flags and extension blocks, never a version bump, so v1 readers parse v2 packages untouched.',
+    cite: 'spec 02 · spec 18 C6',
+  },
+  {
+    value: 'The runtime mount root',
+    detail: '/__tfs__ on POSIX · A:/t on windows',
+    owner: 'tamatebako/ruby — the patch literals',
+    flow: 'Flows: patch literals → the tarball\u2019s tebako-mount-root manifest → the factory\u2019s builder.rb (-DFS_MOUNT_POINT) → the exe\u2019s compiled-in fs_mount_point → the driver reads it at boot. A tarball without the manifest is refused, exit 132. The driver crate carries no copy — exe and driver cannot drift.',
+    cite: 'spec 17 §1 · spec 18 C1/C3',
+  },
+  {
+    value: 'The tfs C ABI (stat layout)',
+    detail: 'the tebako_fs_* surface',
+    owner: 'include/tebako/fs/c_api.h (tamatebako/tebako)',
+    flow: '_Static_asserts pin the layout (tebako_stat: 56 bytes, st_size at 24, st_mtime at 40) — both sides compiling IS the check. The factory CI adds an nm provenance assert. The Rust tfs crate is the shipping implementation; C++ libtfs stays the parity oracle.',
+    cite: 'spec 18 C4',
+  },
+  {
+    value: 'The handoff contract version',
+    detail: 'currently 2 (spec 17 semantics)',
+    owner: 'crates/tebako-driver (tamatebako/tebako)',
+    flow: 'The factory shim exports TEBAKO_CONTRACT_VERSION from the driver\u2019s getter — never a factory-side literal. A preflight gate fails the factory build when contract.yml disagrees with the driver; the release manifest declares the same value; the loader refuses a mismatch before any download, exit 75.',
+    cite: 'spec 06 §6 · spec 18 C2/C5',
+  },
+  {
+    value: 'Store layout + canonical cache roots',
+    detail: '$TEBAKO_HOME · ~/.tebako · %LOCALAPPDATA%\\tebako',
+    owner: 'crates/tebako-resolve (tamatebako/tebako)',
+    flow: 'store.rs owns the layout-version stamp: newer → an upgrade refusal, older → a named migration, never a silent mixed layout. The size-capped bootstrap cannot link the crate, so it mirrors the semantics — and both sides\u2019 tests pin the constant identical. When a value cannot flow, parity is asserted, not assumed.',
+    cite: 'spec 18 C13 · spec 05',
+  },
+  {
+    value: 'Name + reference grammars',
+    detail: 'payload names · tfs:github: · tfs+git:// · ?sha256= pins',
+    owner: 'crates/tpkg (manifest model) · crates/tebako-resolve (reference syntax)',
+    flow: 'One parser per grammar; every other consumer links it. Unparseable input is a named error — never a guess, never a default service.',
+    cite: 'spec 03 · spec 04 §1',
+  },
+  {
+    value: 'In-image layout paths',
+    detail: '/__tpkg__/manifest.yaml · /lib/tebako/layout.yaml',
+    owner: 'crates/tpkg (L1 model) · tebako-runtime-ruby (layout emission)',
+    flow: 'The factory emits the env image\u2019s layout.yaml; the driver verifies it post-mount, before the interpreter starts. A mismatch against the exe\u2019s compiled expectation is exit 78 — never a ruby LoadError.',
+    cite: 'spec 18 C3 · spec 17 §1',
+  },
+  {
+    value: 'The dwarfs_c ABI',
+    detail: 'the only C++ surface in the ecosystem',
+    owner: 'dwarfs-t/include/dwarfs_c.h',
+    flow: 'The header owns DWARFS_C_ABI_VERSION. The FFI crate (dwarfs-t-sys in tamatebako/dwarfs-t-rs) pins the number and calls dwarfs_c_abi_version() at bind — a mismatch is refused with both numbers printed.',
+    cite: 'spec 18 C20',
+  },
+  {
+    value: 'The schema registry itself',
+    detail: 'nine versioned schemas',
+    owner: 'docs/spec/schemas/ (tamatebako/tebako)',
+    flow: 'One registry for every grammar in the ecosystem. Each schema carries schema_version + schema_minor and its evolution metadata; every producer validates its declarations in its own CI; every consumer validates before use and refuses invalid input with a named error.',
+    cite: 'spec 18 §2.1',
+  },
+]
+
+const contractClusters = [
+  {
+    cluster: 'The factory chain',
+    edges: 'C1 · C2 · C3 · C4 · C19 · C20',
+    body: 'The source tarball\u2019s layout (tebako-mount-root + SHA256SUMS); the runtime release card (era, contract_version, mount_root, abi, the exe\u2019s sha pinned to the image\u2019s sha); the exe ↔ env image layout.yaml; the c_api.h compile-time ABI; the vcpkg baseline tag; the dwarfs_c FFI version.',
+  },
+  {
+    cluster: 'The loader family',
+    edges: 'C5 · C6 · C7 · C8 · C9 · C13',
+    body: 'The spec-17 handoff (argv grammar + TEBAKO_CONTRACT_VERSION); the package trailer + its L2 manifest block; payload mounts (duplicate mount → EEXIST, any failure → unmount-all); the registry schema; the store layout-version.',
+  },
+  {
+    cluster: 'Payload edges',
+    edges: 'C10 · C11 · C12',
+    body: 'Per-entrypoint runtime_requirement (unsatisfiable → a named error, never a segfault); provides_abi for feature payloads (a consumer binds only on an ABI match); publish-time registry validation.',
+  },
+  {
+    cluster: 'Trust',
+    edges: 'C14 · C15',
+    body: 'The v2 signature block in the canonical signed region; the key ring with per-key validity eras — old artifacts verify against the key that signed them, a revoked key is a strict failure naming it.',
+  },
+  {
+    cluster: 'Enforcement details',
+    edges: 'C16 · C17 · C18',
+    body: 'The feedstock\u2019s pin of the product release; the jail grammar (malformed → exit 73, unknown directive → a named error, no silent drops); the preload shim\u2019s TEBAKO_TFS_MOUNTS grammar (unparseable → fail closed, never a half-mounted child).',
+  },
+]
+
+const eraRules = [
+  'schema_version is a single integer MAJOR; schema_minor an additive counter. MAJOR breaks, MINOR adds.',
+  'Readers ignore unknown fields within their MAJOR — without inventing semantics for them. A field you do not understand changes nothing you do.',
+  'An unknown MAJOR is a named refusal: the artifact, its schema and version, the consumer, its maximum spoken version, and the remedy.',
+  'A missing schema_version means era 1 — a named refusal ("pre-era document; regenerate with a current tool"), never a silent default.',
+  'Type changes are MAJOR. No silent coercion — not string→list, not kebab→snake, nothing.',
+  'Renames cross a deprecation window: writers emit both old and new for two consecutive MINORs, readers prefer new and warn on old, then the old field drops.',
+  'An entry marked critical: true that a reader does not understand is refused with a named error — skipping is for decoration, never for semantics.',
+]
+
+const contractExits = [
+  { code: '75', name: 'contract', meaning: 'the runtime speaks a handoff contract this loader does not — raised pre-download, naming both generations and the remedy' },
+  { code: '77', name: 'era mismatch', meaning: 'a package or payload\u2019s contract era does not fit the reader, in either direction' },
+  { code: '78', name: 'image layout', meaning: 'the env image\u2019s layout.yaml mismatches the runtime exe\u2019s compiled expectation — raised by the driver, post-mount, before the interpreter starts' },
+  { code: '132', name: 'pre-era source', meaning: 'a source tarball without its tebako-mount-root manifest — the runtime factory refuses to build from it' },
+]
+
+const suites = [
+  {
+    repo: 'tamatebako/tebako',
+    role: 'the product',
+    body: 'CI runs the workspace on ubuntu-24.04 and macOS against a pinned vcpkg baseline. tests/contract drives the ported C-ABI corpus through the tebako_fs_* symbols — 164 tests at the milestone-3 audit, limnifs backend cases since — plus a plain-C harness that proves the ABI from a C consumer. Golden legs diff tebako-pkg against the C++ tebakofs, tfs-cli mkimage against mkdwarfs, and tebako-cli\u2019s press against the reference gem — byte-for-byte or a failed build, each leg auto-skipped when its oracle is absent. The bootstrap size gate fails at ≥ 3 MB, a --no-default-features leg keeps the no-dwarfs configuration honest, clippy runs with -D warnings. Releases add the per-platform size table, SHA256SUMS + manifest.json, and a completeness gate that fails on a partial asset set.',
+    links: [
+      { href: LINKS.contractTests, label: 'tests/contract' },
+      { href: LINKS.parity, label: 'docs/parity.md' },
+      { href: LINKS.productCi, label: 'ci.yml' },
     ],
     status: 'shipped',
   },
   {
-    name: 'Golden CLI parity — tebako-pkg & tebako-cli',
-    body: 'The Rust package tools are diffed byte-for-byte against their oracles: tebako-pkg\u2019s bundle/info/unbundle/reassemble/insert/remove/set-runtime output must equal the released C++ tebakofs (auto-detected via TEBAKOFS_CPP, skipped without it), and tebako-cli\u2019s lean/fat press — stdout and the packaged binaries\u2019 output — must equal the reference gem\u2019s in a side-by-side CI leg. A byte difference is a failed build, not a discussion.',
-    link: { href: LINKS.rsPkg, label: 'crates/tebako-pkg' },
-    extraLinks: [{ href: LINKS.rsCli, label: 'crates/tebako-cli' }],
-    status: 'shipped',
-  },
-  {
-    name: 'The manifest schemas',
-    body: 'versions.yml is the single list of supported rubies: official URL, sha256, line, and shipped scenarios per version. Its shape is enforced by schema files, and the lint-patches matrix CI re-verifies on every change that every claimed patch still applies cleanly to the official tarball.',
-    link: { href: LINKS.versionsYml, label: 'versions.yml' },
-    extraLinks: [
-      { href: LINKS.versionsSchema, label: 'versions.schema.yml' },
-      { href: LINKS.patchesSchema, label: 'patches.schema.yml' },
+    repo: 'tamatebako/ruby',
+    role: 'the source factory',
+    body: 'The lint-patches matrix re-applies every supported version\u2019s full patch set to its official tarball on every change — a patch that fails git apply --check aborts the build, loud, never silent. Schema files enforce versions.yml\u2019s shape, and the compile-smoke gate builds the patches before they may release (the v0.2.8 lesson). release-src publishes the per-line tfs-ruby-<ver>-src tarballs with SHA256SUMS.',
+    links: [
       { href: LINKS.lintWorkflow, label: 'lint-patches.yml' },
+      { href: LINKS.versionsYml, label: 'versions.yml' },
+      { href: LINKS.rubySchemas, label: 'schema/' },
     ],
     status: 'shipped',
   },
   {
-    name: 'tpkg, in three languages',
-    body: 'The trailer format is owned by libtfs\u2019s C tpkg.h and vendored verbatim into tebako-bootstrap — the vendoring is documented and checked, not improvised. tebako-rs\u2019s crates/tpkg is byte-exact with it (golden vectors asserted offset-by-offset) and carries the v2 chain-of-trust extension; v2 is flagged, not version-bumped, so v1 readers parse on untouched. Changing the format means moving all sides in the same breath.',
-    link: { href: LINKS.bootstrapVendored, label: 'VENDORED.md' },
-    extraLinks: [{ href: LINKS.rsTpkg, label: 'crates/tpkg' }],
+    repo: 'tebako-runtime-ruby',
+    role: 'the runtime factory',
+    body: 'A preflight gate fails before the matrix builds anything when contract.yml and the driver\u2019s TEBAKO_CONTRACT_VERSION disagree. The matrix builds per (version × triplet); every built runtime passes a boot smoke — boot, the stat family, IO, bundler, locks — and nm export inspection before publish. Releases carry the interpreter exe, the env image, manifest.json, and SHA256SUMS.',
+    links: [{ href: LINKS.runtimeBuild, label: '_build-platform.yml' }],
     status: 'shipped',
   },
   {
-    name: 'The launcher ABI, in two languages',
-    body: 'The gem\u2019s launcher_abi.rb carries the Ruby-side constants of the bootstrap→runtime handoff, with matching C++ constants in the runtime entry driver. The file itself warns: keep the two in sync, and bump VERSION on any incompatible change. The additive ;image runtime_ref flag (runtime as image) is the standing example of evolving the handoff WITHOUT a bump.',
-    link: { href: LINKS.gemLauncherAbi, label: 'launcher_abi.rb' },
+    repo: 'dwarfs-t + dwarfs-t-rs',
+    role: 'the format library',
+    body: 'The only tebako-owned C++, behind the stable dwarfs_c_* ABI: no C++ headers leak to consumers, read-only at runtime forever, with a creation-time Writer. The Rust FFI crate pins DWARFS_C_ABI_VERSION and refuses a bind mismatch with both numbers printed.',
+    links: [
+      { href: LINKS.dwarfsT, label: 'dwarfs-t' },
+      { href: LINKS.dwarfsTRs, label: 'dwarfs-t-rs' },
+    ],
     status: 'shipped',
+  },
+  {
+    repo: 'libtfs (C++)',
+    role: 'the parity oracle',
+    body: 'The 493-test ctest suite is the executable definition of tebako_fs_* behavior: errno mapping, mount semantics, dir cookies, pread position-independence, multi-mount isolation. docs/parity.md audits every group — ported to the Rust contract suite, or consciously not ported, with the reason recorded. Superseded as the implementation; kept as the judge.',
+    links: [
+      { href: LINKS.libtfsTests, label: 'tests/test_c_api.cpp' },
+      { href: LINKS.parity, label: 'docs/parity.md' },
+    ],
+    status: 'shipped',
+  },
+  {
+    repo: 'tebako-bootstrap (C99)',
+    role: 'the v1 behavioral oracle',
+    body: 'Retired from production, kept as the behavioral reference: self-test.sh stitches a lean package from a freshly built launcher and a fake runtime, then exercises the download, cache-hit, offline, checksum-mismatch, and ABI-mismatch paths. The Rust bootstrap\u2019s stderr bodies match the C++ reference 1:1 — golden parity, not recollection.',
+    links: [{ href: LINKS.bootstrapSelfTest, label: 'test/self-test.sh' }],
+    status: 'shipped',
+  },
+]
+
+const onramps = [
+  {
+    name: 'Fix a drifted patch',
+    body: 'The release monitor\u2019s issues name the ruby version and the failing hunks. Forking the named patch for that version, re-verifying with git apply --check, and landing it via PR is the most mechanical — and most welcome — first contribution to the ecosystem.',
+    href: LINKS.driftIssues,
+    label: 'the drift issues',
+  },
+  {
+    name: 'Close a parity gap',
+    body: 'docs/parity.md lists the C++ test groups consciously not ported, each with its reason. Porting one through the C ABI — or demonstrating the reason no longer holds — strengthens the contract suite where it is thinnest.',
+    href: LINKS.parity,
+    label: 'the parity audit',
+  },
+  {
+    name: 'Implement a scenario',
+    body: 'Spec 18\u2019s catalog (S1–S61) names the expected behavior of every contract edge; those S-numbers are the e2e test ids to implement. Pick one, write the failing case, make it pass in the owning crate.',
+    href: LINKS.specSet,
+    label: 'the spec set',
   },
 ]
 ---
 
-<BaseLayout title="For contributors — Tebako architecture" description="How the tebako contract suites work, and how drift between upstream Ruby and the tebako patches is detected and fixed.">
+<!-- normative: spec 14, spec 18 — corroborated by docs/parity.md, spec 06 §6, spec 13, spec 17 §1; code citations in the wave-1 report -->
+
+<BaseLayout title="For contributors — Tebako architecture" description="Who owns each contract value, which suites execute the contracts, how upstream drift is detected, and the engineering order every change follows.">
   <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">ARCHITECTURE · 10</p>
+    <p class="tb-eyebrow">ARCHITECTURE · 15</p>
     <h1 class="mt-3">For contributors.</h1>
     <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
-      Onboarding into any single repo starts with the same question: which contract does
-      this repo own, and which suite executes it? Then: how does the project notice when
-      the world drifts?
+      Every interface in the ecosystem has exactly one owner, one declarative contract,
+      and one verification point. Contributing starts with knowing which repo owns the
+      value you are touching — and which suite will judge the change.
     </p>
 
     <ArchDocsNav />
 
+    <!-- ============ THE ENGINEERING ORDER ============ -->
     <div class="mt-16">
-      <h2 class="mb-3">The contract suites.</h2>
+      <h2 class="mb-3">The engineering order.</h2>
+      <p class="mb-8 max-w-3xl text-[var(--tb-c-text-2)]">
+        Spec 14 fixes the order every change follows, in every repo. It is not a
+        suggestion: a change that skips a step is sent back to it.
+      </p>
+      <ol class="space-y-3">
+        {engineeringOrder.map((s, i) => (
+          <li class="flex gap-4 rounded-2xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
+            <span class="mt-0.5 shrink-0 font-[var(--font-mono)] text-sm font-semibold text-[var(--tb-c-accent)]">{String(i + 1).padStart(2, '0')}</span>
+            <div>
+              <p class="font-[var(--font-display)] font-medium text-[var(--tb-c-text-1)]">{s.step}</p>
+              <p class="mt-1 text-sm leading-relaxed text-[var(--tb-c-text-2)]">{s.body}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+      <p class="mt-6 max-w-3xl text-sm leading-relaxed text-[var(--tb-c-text-3)]">
+        The per-language rules sit under the order. Ruby tooling is autoload-only — no{' '}
+        <code class="font-[var(--font-mono)] text-xs">require_relative</code>, no{' '}
+        <code class="font-[var(--font-mono)] text-xs">send</code>, no{' '}
+        <code class="font-[var(--font-mono)] text-xs">instance_variable_get</code>, no{' '}
+        <code class="font-[var(--font-mono)] text-xs">respond_to?</code>. Rust keeps{' '}
+        <code class="font-[var(--font-mono)] text-xs">unsafe</code> inside FFI boundary
+        modules, names its errors on every trailer/exec/network path, and holds the
+        bootstrap to <code class="font-[var(--font-mono)] text-xs">opt-level=&quot;z&quot;</code>,
+        fat LTO, one codegen unit, <code class="font-[var(--font-mono)] text-xs">panic=&quot;abort&quot;</code>,
+        stripped. Tebako-owned C/C++ exists only in dwarfs-t and the ruby fork&rsquo;s
+        io-routing patches — nowhere else.
+      </p>
+    </div>
+
+    <!-- ============ ONE OWNER PER VALUE ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">One owner per contract value.</h2>
+      <p class="mb-8 max-w-3xl text-[var(--tb-c-text-2)]">
+        A contract value that crosses a repo boundary has exactly one authoritative owner.
+        Every other consumer either <em>flows</em> it — a generated file, a manifest, an
+        exported symbol — or, when flowing is genuinely impossible, <em>asserts parity</em>{' '}
+        in CI. A second hand-written copy of any of these values, in any language, in any
+        repo, in any workflow, is a bug on arrival. The mount root is the worked example:
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+        <svg viewBox="0 0 940 250" class="w-full min-w-[760px]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The mount root flows from tamatebako/ruby's patch literals through the source tarball manifest and the runtime factory into the runtime exe; the driver reads it and carries no copy">
+          <defs>
+            <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="var(--tb-c-text-3)" />
+            </marker>
+          </defs>
+
+          <!-- owner -->
+          <g transform="translate(20, 40)">
+            <rect width="152" height="96" rx="10" fill="var(--color-ink)" stroke="var(--tb-c-accent)" stroke-width="1.5" />
+            <text x="76" y="24" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" font-weight="600" fill="var(--color-gold)">OWNER</text>
+            <text x="76" y="44" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12" font-weight="600" fill="var(--color-mist-pale)">tamatebako/ruby</text>
+            <text x="76" y="62" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-mist)" opacity="0.9">the patch literals</text>
+            <text x="76" y="78" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-mist)" opacity="0.9">/__tfs__ · A:/t</text>
+          </g>
+          <!-- tarball -->
+          <g transform="translate(207, 40)">
+            <rect width="152" height="96" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="76" y="24" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" font-weight="600" fill="var(--tb-c-text-3)">FLOWS</text>
+            <text x="76" y="44" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12" font-weight="600" fill="var(--tb-c-text-1)">source tarball</text>
+            <text x="76" y="62" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">tebako-mount-root</text>
+            <text x="76" y="78" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">manifest + SHA256SUMS</text>
+          </g>
+          <!-- factory -->
+          <g transform="translate(394, 40)">
+            <rect width="152" height="96" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="76" y="24" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" font-weight="600" fill="var(--tb-c-text-3)">FLOWS</text>
+            <text x="76" y="44" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12" font-weight="600" fill="var(--tb-c-text-1)">runtime factory</text>
+            <text x="76" y="62" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">builder.rb → -DFS_MOUNT_POINT</text>
+            <text x="76" y="78" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">manifest absent → exit 132</text>
+          </g>
+          <!-- exe -->
+          <g transform="translate(581, 40)">
+            <rect width="152" height="96" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="76" y="24" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" font-weight="600" fill="var(--tb-c-text-3)">FLOWS</text>
+            <text x="76" y="44" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12" font-weight="600" fill="var(--tb-c-text-1)">runtime exe</text>
+            <text x="76" y="62" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">compiled-in fs_mount_point</text>
+            <text x="76" y="78" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">the factory-owned shim</text>
+          </g>
+          <!-- driver -->
+          <g transform="translate(768, 40)">
+            <rect width="152" height="96" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-accent)" stroke-width="1.5" stroke-dasharray="5 3" />
+            <text x="76" y="24" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" font-weight="600" fill="var(--tb-c-accent)">READS — NO COPY</text>
+            <text x="76" y="44" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12" font-weight="600" fill="var(--tb-c-text-1)">tebako-driver</text>
+            <text x="76" y="62" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">mounts the env image</text>
+            <text x="76" y="78" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">at the exe&#8217;s root</text>
+          </g>
+
+          <!-- arrows -->
+          <g stroke="var(--tb-c-text-3)" stroke-width="1.25">
+            <line x1="172" y1="88" x2="203" y2="88" marker-end="url(#arrowhead)" />
+            <line x1="359" y1="88" x2="390" y2="88" marker-end="url(#arrowhead)" />
+            <line x1="546" y1="88" x2="577" y2="88" marker-end="url(#arrowhead)" />
+            <line x1="733" y1="88" x2="764" y2="88" marker-end="url(#arrowhead)" />
+          </g>
+
+          <text x="470" y="184" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="11" fill="var(--tb-c-text-3)">Everything downstream reads the value; nothing re-authors it. The 2026-08-01 msys incident — the driver mounted the POSIX</text>
+          <text x="470" y="202" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="11" fill="var(--tb-c-text-3)">root while ruby looked in the drive-letter root — is the drift class this shape makes impossible.</text>
+          <text x="470" y="232" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10" fill="var(--tb-c-text-3)">TEBAKO_MOUNT_ROOT overrides the baked root at boot — validated (exit 65), gated on the image&#8217;s layout grant (exit 78)</text>
+        </svg>
+      </div>
+
+      <div class="mt-8 overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]">
+        <table class="w-full min-w-[860px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider)] text-[var(--tb-c-text-1)]">
+              <th class="px-5 py-3 font-medium">Contract value</th>
+              <th class="px-5 py-3 font-medium">Single owner</th>
+              <th class="px-5 py-3 font-medium">How everyone else gets it</th>
+              <th class="px-5 py-3 font-medium">Contract</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)] text-[var(--tb-c-text-2)]">
+            {ssotRows.map((r) => (
+              <tr>
+                <td class="px-5 py-3 align-top">
+                  <p class="font-medium text-[var(--tb-c-text-1)]">{r.value}</p>
+                  <p class="mt-1 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">{r.detail}</p>
+                </td>
+                <td class="px-5 py-3 align-top font-[var(--font-mono)] text-xs text-[var(--tb-c-accent)]">{r.owner}</td>
+                <td class="px-5 py-3 align-top leading-relaxed">{r.flow}</td>
+                <td class="px-5 py-3 align-top font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">{r.cite}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ============ THE CONTRACT GRAPH ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">The contract graph.</h2>
+      <div class="max-w-3xl space-y-4 text-[var(--tb-c-text-2)]">
+        <p>
+          Spec 18 is the complete map: every component, every interface between them, the
+          declarative contract on each interface — twenty edges, <strong class="text-[var(--tb-c-text-1)]">C1–C20</strong>.
+          Its law: <em>nothing is read until it breaks</em>. Consumers verify fail-closed
+          before execution; a mismatch is a named error naming both sides; anything that
+          predates declarations is <strong class="text-[var(--tb-c-text-1)]">era 1</strong>{' '}
+          and is refused by name — never assumed, never silently served.
+        </p>
+      </div>
+      <div class="mt-8 overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]">
+        <table class="w-full min-w-[720px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider)] text-[var(--tb-c-text-1)]">
+              <th class="px-5 py-3 font-medium">Cluster</th>
+              <th class="px-5 py-3 font-medium">Edges</th>
+              <th class="px-5 py-3 font-medium">What it pins</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)] text-[var(--tb-c-text-2)]">
+            {contractClusters.map((c) => (
+              <tr>
+                <td class="px-5 py-3 align-top font-medium text-[var(--tb-c-text-1)]">{c.cluster}</td>
+                <td class="px-5 py-3 align-top font-[var(--font-mono)] text-xs text-[var(--tb-c-accent)]">{c.edges}</td>
+                <td class="px-5 py-3 align-top leading-relaxed">{c.body}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="mb-3 mt-10 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)]">The era model — how schemas evolve without silent breakage.</h3>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        Every schema in the ecosystem obeys one evolution law. No exceptions, no local
+        dialects:
+      </p>
+      <ul class="max-w-3xl space-y-2.5 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+        {eraRules.map((rule) => (
+          <li class="flex gap-3">
+            <span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" style="background: var(--tb-c-accent);"></span>
+            <span>{rule}</span>
+          </li>
+        ))}
+      </ul>
+
+      <p class="mt-8 max-w-3xl text-[var(--tb-c-text-2)]">
+        Every rule answers to the <strong class="text-[var(--tb-c-text-1)]">scenario catalog</strong>:
+        S1–S61, each naming an expected behavior — <em>package era &gt; bootstrap era → refuse,
+        naming both eras</em>; <em>layout.yaml&#8217;s mount root ≠ the exe&#8217;s expectation →
+        exit 78, never a LoadError</em>. The S-numbers are the e2e test ids to implement;
+        building that catalog out as the cross-repo e2e suite is tracked work. The refusal
+        exits are allocated today:
+      </p>
+      <div class="mt-6 overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]">
+        <table class="w-full min-w-[640px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider)] text-[var(--tb-c-text-1)]">
+              <th class="px-5 py-3 font-medium">Exit</th>
+              <th class="px-5 py-3 font-medium">Refusal</th>
+              <th class="px-5 py-3 font-medium">What it means</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)] text-[var(--tb-c-text-2)]">
+            {contractExits.map((e) => (
+              <tr>
+                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-accent)]">{e.code}</td>
+                <td class="px-5 py-2.5 font-medium text-[var(--tb-c-text-1)]">{e.name}</td>
+                <td class="px-5 py-2.5">{e.meaning}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-4 max-w-3xl text-sm text-[var(--tb-c-text-3)]">
+        The loader&rsquo;s own codes (65–76) and the full table live on{' '}
+        <a href="/docs/architecture/anatomy/" class="tb-link-underline text-[var(--tb-c-accent)]">the anatomy page</a>;
+        the grammars themselves are the normative{' '}
+        <a href={LINKS.specSet} class="tb-link-underline text-[var(--tb-c-accent)]">spec set</a>.
+      </p>
+    </div>
+
+    <!-- ============ THE CONTRACT SUITES ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">The contract suites, per repo.</h2>
       <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
         Every cross-repo claim in this architecture is backed by an executable check.
         When you touch a boundary, these are the suites that will judge you.
       </p>
       <div class="space-y-4">
-        {contracts.map((c) => (
+        {suites.map((s) => (
           <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
             <div class="flex flex-wrap items-center gap-3">
-              <p class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)]">{c.name}</p>
-              <StatusPill status={c.status as 'shipped' | 'planned'} />
+              <p class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)]">{s.repo}</p>
+              <span class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">{s.role}</span>
+              <StatusPill status={s.status as 'shipped' | 'planned'} />
             </div>
-            <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">{c.body}</p>
+            <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">{s.body}</p>
             <p class="mt-3 flex flex-wrap gap-x-4 gap-y-1 font-[var(--font-mono)] text-xs">
-              <a href={c.link.href} class="tb-link-underline text-[var(--tb-c-accent)]">{c.link.label} →</a>
-              {c.extraLinks?.map((l) => (
+              {s.links.map((l) => (
                 <a href={l.href} class="tb-link-underline text-[var(--tb-c-accent)]">{l.label} →</a>
               ))}
             </p>
@@ -106,95 +487,84 @@ const contracts = [
       </div>
     </div>
 
+    <!-- ============ THE DRIFT MONITOR ============ -->
     <div class="mt-16">
       <div class="mb-3 flex flex-wrap items-center gap-3">
-        <h2>How drift is detected.</h2>
+        <h2>The drift monitor.</h2>
         <StatusPill status="shipped" />
       </div>
       <p class="max-w-2xl text-[var(--tb-c-text-2)]">
-        Ruby upstream moves constantly; tebako's patches are pinned to exact tarballs.
+        Ruby upstream moves constantly; tebako&rsquo;s patches are pinned to exact tarballs.
         The{' '}
         <a href={LINKS.monitorWorkflow} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">release monitor</a>
         {' '}runs on a daily cron in tamatebako/ruby and closes most of that gap unattended:
       </p>
-      <pre class="mt-6 overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)] sm:text-sm" style="background: var(--tb-c-bg-soft);"><code>daily cron
+      <pre class="mt-6 overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)] sm:text-sm" style="background: var(--tb-c-bg-soft);"><code>daily cron · release-monitor.yml
   1. detect    diff official ruby-lang.org releases against versions.yml
-  2. onboard   add to versions.yml → select patch set → git apply --check each patch
-  3a. clean    PR/commit → tag → release-src publishes tfs-ruby-&lt;v&gt;-src-*.tar.gz
-               → repository_dispatch tebako-runtime-ruby to build the runtime
-  3b. drift    any patch failing → open a named issue (version + failing patch)
+  2. onboard   add to versions.yml (official URL + sha256) → select the patch set
+               → git apply --check every patch in the resolved set
+  3a. clean    open the &#34;Onboard ruby X.Y.Z&#34; PR → merge runs the lint matrix
+               → tag → release-src publishes tfs-ruby-&lt;v&gt;-src-*.tar.gz + SHA256SUMS
+  3b. drift    any patch failing → a named issue carrying the failing hunk output
                — never a silent bad release</code></pre>
-      <p class="mt-4 max-w-2xl text-sm text-[var(--tb-c-text-3)]">
-        The{' '}
-        <a href={LINKS.driftIssues} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">open issues in tamatebako/ruby</a>
-        {' '}are the live example: each "Onboard ruby X.Y.Z: patches fail to apply" issue is
-        the monitor naming a version whose upstream changes broke a patch.
+      <p class="mt-4 max-w-2xl text-sm leading-relaxed text-[var(--tb-c-text-3)]">
+        The loop closes downstream: a successful source release can dispatch a pin-bump PR in
+        the runtime factory (<code class="font-[var(--font-mono)] text-xs">bot/source-pin-&lt;tag&gt;</code>;
+        no auto-merge — the build matrix runs on the PR). The{' '}
+        <a href={LINKS.driftIssues} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">issue history in tamatebako/ruby</a>
+        {' '}is the record: each &#34;Onboard ruby X.Y.Z: patches fail to apply&#34; issue named a
+        version whose upstream changes broke a patch, and each stayed open until the patch
+        set caught up.
       </p>
     </div>
 
+    <!-- ============ WHERE TO START ============ -->
     <div class="mt-16">
-      <div class="mb-3 flex flex-wrap items-center gap-3">
-        <h2>How drift gets fixed.</h2>
-        <StatusPill status="planned" />
-      </div>
-      <p class="max-w-2xl text-[var(--tb-c-text-2)]">
-        Detection is shipped; the closure loop is the designed next step. A drift-update
-        flow picks a drift issue, forks or updates the named patch for that version,
-        re-verifies with <code class="font-[var(--font-mono)] text-sm">git apply --check</code>,
-        and lands it via PR — on merge the version onboards (src publish + runtime build)
-        and the issue closes. Each drifted version ends with either an updated patch or an
-        explicit wontfix recorded on its issue. This is the most mechanical — and most
-        welcome — first contribution to the ecosystem.
+      <h2 class="mb-3">Where to start.</h2>
+      <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
+        Three on-ramps, in increasing order of commitment. All three begin the same way:
+        read the spec section that owns the behavior — contract changes land there before
+        code, step 01 of the order.
       </p>
+      <div class="grid gap-4 md:grid-cols-3">
+        {onramps.map((o) => (
+          <div class="tb-card p-6">
+            <h3 class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">{o.name}</h3>
+            <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">{o.body}</p>
+            <p class="mt-3 font-[var(--font-mono)] text-xs">
+              <a href={o.href} class="tb-link-underline text-[var(--tb-c-accent)]">{o.label} →</a>
+            </p>
+          </div>
+        ))}
+      </div>
     </div>
 
-    <div class="mt-16">
-      <h2 class="mb-3">Where to run the checks.</h2>
-      <div class="grid gap-4 md:grid-cols-2">
-        <div class="tb-card p-6">
-          <h3 class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">libtfs</h3>
-          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-            Platform CI on ubuntu/alpine/macos/windows plus{' '}
-            <a href={LINKS.libtfsWorkflows} class="tb-link-underline text-[var(--tb-c-accent)]">verify-no-folly and test-static-linking</a>
-            {' '}— and the 493-test ctest suite as the ABI gate.
-          </p>
-        </div>
-        <div class="tb-card p-6">
-          <h3 class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">tamatebako/ruby</h3>
-          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-            The lint-patches matrix (every version in versions.yml) proves each patch applies
-            to its official tarball; release-src verifies published trees match apply-output
-            byte-for-byte.
-          </p>
-        </div>
-        <div class="tb-card p-6">
-          <h3 class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">tebako-runtime-ruby</h3>
-          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-            The{' '}
-            <a href={LINKS.runtimeWorkflow} class="tb-link-underline text-[var(--tb-c-accent)]">build-runtime-packages matrix</a>
-            {' '}(19 rubies × platforms) builds from patched source; release assembly publishes
-            manifest.json + SHA256SUMS.
-          </p>
-        </div>
-        <div class="tb-card p-6">
-          <h3 class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">tebako-bootstrap</h3>
-          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-            <a href={LINKS.bootstrapSelfTest} class="tb-link-underline text-[var(--tb-c-accent)]">self-test.sh</a>
-            {' '}stitches a lean package from a freshly built launcher and a fake runtime, then
-            exercises the download, cache-hit, offline, checksum-mismatch, and ABI-mismatch paths.
-          </p>
-        </div>
-        <div class="tb-card p-6">
-          <h3 class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">tebako-rs</h3>
-          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-            <a href={LINKS.rsCi} class="tb-link-underline text-[var(--tb-c-accent)]">CI</a>
-            {' '}runs the workspace tests on ubuntu-24.04 + macos-14 (vendored vcpkg baseline
-            pinned, archive cache keyed on both manifests) plus a pure-cargo
-            --no-default-features leg, the golden-parity legs against the C++ oracles, and
-            the bootstrap size gate — per-platform sizes published, failing at ≥ 3 MB.
-          </p>
-        </div>
-      </div>
+    <!-- ============ THREE NEIGHBORS ============ -->
+    <div class="mt-16 grid gap-6 md:grid-cols-3">
+      <a href="/docs/architecture/repositories/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+        <p class="tb-eyebrow">NEXT · REPOSITORIES</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">Who owns what</h3>
+        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          The repo map: the product, the factories, the feedstock org, and the archives
+          that stay read-only.
+        </p>
+      </a>
+      <a href="/docs/architecture/factories/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+        <p class="tb-eyebrow">NEXT · FACTORIES</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">The artifact chain</h3>
+        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          ruby-lang.org → source factory → runtime factory → feedstocks → releases.
+          Releases are the interface.
+        </p>
+      </a>
+      <a href="/docs/architecture/anatomy/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+        <p class="tb-eyebrow">NEXT · ANATOMY</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">A package, end to end</h3>
+        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          The three parts, the mount model, and the fail-closed contract generations in
+          motion.
+        </p>
+      </a>
     </div>
   </section>
 </BaseLayout>

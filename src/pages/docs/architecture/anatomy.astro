@@ -17,6 +17,7 @@ const exitCodes = [
   { code: '65', name: 'manifest', meaning: 'the trailer or a manifest is missing, corrupt, or names no usable entrypoint' },
   { code: '66', name: 'launcher ABI', meaning: 'the package speaks a handoff wire format this runtime predates' },
   { code: '67', name: 'runtime reference', meaning: 'the runtime reference in the trailer cannot be parsed or honored' },
+  { code: '68', name: 'overlay', meaning: 'an overlay/decrypt binding failed — an unbound retained store, missing or non-opening key material, an unwritable store, an orphan binding, or a malformed TEBAKO_OVERLAYS / TEBAKO_DECRYPT' },
   { code: '69', name: 'unavailable', meaning: 'the runtime cannot be resolved — offline miss, download failure, or a reference to a release that does not exist' },
   { code: '70', name: 'checksum', meaning: 'a SHA-256 verification failed; nothing was installed' },
   { code: '71', name: 'signature', meaning: 'a signature is invalid — or the package is unsigned and TEBAKO_REQUIRE_SIGNED=1 was set' },
@@ -27,8 +28,10 @@ const exitCodes = [
   { code: '76', name: 'install', meaning: 'installation was refused — the publisher froze the package, or the verb belongs to the CLI' },
   { code: '77', name: 'era', meaning: 'the artifact comes from a different tebako generation, in either direction' },
   { code: '78', name: 'layout', meaning: 'the env image does not match the layout the interpreter was compiled for' },
+  { code: '79', name: 'check', meaning: 'a payload check FAILed — the tebako check aggregate; the verdict line names the check and the failed expectation' },
 ]
 ---
+<!-- normative: spec 06 §4 (exit table, rows 68 + 79 per spec 24 §7 and spec 26 §2), spec 07, spec 17, spec 18 — exit rows verified against crates/tpkg/src/lib.rs:275-291 -->
 
 <BaseLayout title="How a Tebako package works — Tebako architecture" description="The anatomy of a tebako package: bootstrap, two-artifact runtime, payload slices, the tpkg trailer, co-mounting, the dispatch sequence, the contract model, and named failures.">
   <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
@@ -200,7 +203,7 @@ const exitCodes = [
         through two factories before any user machine sees it, and every boundary is a
         published, checksummed release — each stage consumes the previous stage's
         artifacts, never its source tree. The full stage-by-stage table is on{' '}
-        <a href="/docs/architecture/pipeline/" class="tb-link-underline text-[var(--tb-c-accent)]">the pipeline page</a>.
+        <a href="/docs/architecture/factories/" class="tb-link-underline text-[var(--tb-c-accent)]">the factories page</a>.
       </p>
       <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
         <svg viewBox="0 0 940 330" class="w-full min-w-[760px]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Release chain: ruby-lang.org tarball, source factory, runtime factory, product, user machine">
@@ -474,7 +477,7 @@ const exitCodes = [
         application that mounts it. The worked example on{' '}
         <a href="/who/" class="tb-link-underline text-[var(--tb-c-accent)]">the audience page</a>
         {' '}runs this end to end; the manifest grammar is on{' '}
-        <a href="/docs/architecture/features/" class="tb-link-underline text-[var(--tb-c-accent)]">the feature surface</a>.
+        <a href="/docs/architecture/overview/" class="tb-link-underline text-[var(--tb-c-accent)]">the feature surface</a>.
       </p>
     </div>
 

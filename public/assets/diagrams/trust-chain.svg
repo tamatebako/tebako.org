@@ -90,7 +90,7 @@
     <text x="111" y="84" text-anchor="middle" class="fm acc" font-size="9.5">sha256-verified download SHIPPED</text>
   </g>
 
-  <text x="16" y="176" class="fm t3" font-size="10.5">PACKAGE SIDE — shipped in tebako-rs</text>
+  <text x="196" y="176" class="fm t3" font-size="10.5">PACKAGE SIDE — shipped in tamatebako/tebako</text>
 
   <!-- tpkg v2 trailer -->
   <g transform="translate(16, 186)">
@@ -106,11 +106,11 @@
   <!-- first-run verification -->
   <g transform="translate(342, 186)">
     <rect class="card" width="300" height="108" rx="10"/>
-    <text x="150" y="28" text-anchor="middle" class="fd acc" font-size="13">first-run verification — SHIPPED</text>
-    <text x="150" y="50" text-anchor="middle" class="fm t2" font-size="9.5">signature vs the TOFU keyring (trusted.pgp)</text>
-    <text x="150" y="64" text-anchor="middle" class="fm t2" font-size="9.5">then each slot's sha256 — one streaming pass</text>
-    <text x="150" y="82" text-anchor="middle" class="fm acc" font-size="9.5">fail closed: exit 70 sha · 71 sig · 72 trust</text>
-    <text x="150" y="96" text-anchor="middle" class="fm t3" font-size="9.5">named errors, never crashes</text>
+    <text x="150" y="28" text-anchor="middle" class="fd plan" font-size="13">first-run verification — PARTIAL</text>
+    <text x="150" y="50" text-anchor="middle" class="fm t2" font-size="9.5">today: per-slot sha256 enforced at install;</text>
+    <text x="150" y="64" text-anchor="middle" class="fm t2" font-size="9.5">signed packages run with a loud UNVERIFIED warning</text>
+    <text x="150" y="82" text-anchor="middle" class="fm t2" font-size="9.5">OpenPGP verify lands with the crypto toolkit</text>
+    <text x="150" y="96" text-anchor="middle" class="fm acc" font-size="9.5">fail closed: exit 70 sha · 71 sig · 72 trust</text>
   </g>
   <line x1="644" y1="240" x2="662" y2="240" class="arw" marker-end="url(#arw)"/>
 

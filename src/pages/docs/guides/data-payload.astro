@@ -2,6 +2,7 @@
 import BaseLayout from '../../../layouts/BaseLayout.astro'
 import GuidesNav from '../../../components/docs/GuidesNav.astro'
 ---
+<!-- normative: spec 03 (the in-image manifest), spec 20 §6 (limnifs is the default format for tfs mkimage; dwarfs an explicit opt-in) — tool_version string current-era (0.2.x) -->
 
 <BaseLayout title="Create a data payload — Tebako guides" description="Turn a directory of files into a versioned, mountable .tfs data payload: the in-image manifest, tfs mkimage, and the consumer-declared mount rule.">
   <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
@@ -41,7 +42,7 @@ import GuidesNav from '../../../components/docs/GuidesNav.astro'
 kind: data
 name: acme-fonts
 version: 2.1.0
-producer: {tool: tfs, tool_version: "2.0.0"}
+producer: {tool: tfs, tool_version: "0.2.5"}
 created: "2026-08-01T00:00:00Z"
 digest: {tree_hash: "…", blob_sha256: "…"}
 signing: {state: unsigned}
@@ -82,12 +83,15 @@ platforms: universal`}</code></pre>
     <div class="mt-16">
       <h2 class="mb-3">Image it.</h2>
       <div class="max-w-3xl rounded-xl border border-[var(--tb-c-divider)] p-5" style="background: var(--tb-c-bg-soft);">
-        <pre class="overflow-x-auto font-[var(--font-mono)] text-sm"><code>{`$ tfs mkimage --format dwarfs acme-fonts/ -o acme-fonts-2.1.0.tfs`}</code></pre>
+        <pre class="overflow-x-auto font-[var(--font-mono)] text-sm"><code>{`$ tfs mkimage acme-fonts/ -o acme-fonts-2.1.0.tfs`}</code></pre>
       </div>
       <p class="mt-4 max-w-3xl text-[var(--tb-c-text-2)]">
-        <code class="font-[var(--font-mono)] text-sm">dwarfs</code> is the tebako image
-        format. Imaging happens in-process — there is no external tool to install and nothing
-        to compile.
+        The default image format is <strong class="text-[var(--tb-c-text-1)]">limnifs</strong>{' '}
+        — a pure-Rust, content-addressed format; nothing to compile, no external tool to
+        install, imaging happens in-process.{' '}
+        <code class="font-[var(--font-mono)] text-sm">--format dwarfs</code> opts into the
+        dwarfs writer explicitly; dwarfs stays a first-class read backend, so existing dwarfs
+        images mount everywhere they always have.
       </p>
     </div>
 

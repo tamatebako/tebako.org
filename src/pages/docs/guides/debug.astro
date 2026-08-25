@@ -3,15 +3,25 @@ import BaseLayout from '../../../layouts/BaseLayout.astro'
 import GuidesNav from '../../../components/docs/GuidesNav.astro'
 
 const exitCodes = [
+  { code: '64', name: 'usage', meaning: 'the command line itself was wrong — a bad flag or a missing argument; the usage line prints' },
   { code: '65', name: 'manifest', meaning: 'the trailer or a manifest is missing, corrupt, or names no usable entrypoint' },
+  { code: '66', name: 'launcher ABI', meaning: 'the package speaks a handoff wire format this runtime predates' },
+  { code: '67', name: 'runtime reference', meaning: 'the runtime reference in the trailer cannot be parsed or honored' },
+  { code: '68', name: 'overlay', meaning: 'an overlay/decrypt binding failed — an unbound retained store, missing or non-opening key material, an unwritable store, an orphan binding, or a malformed TEBAKO_OVERLAYS / TEBAKO_DECRYPT' },
   { code: '69', name: 'unavailable', meaning: 'an artifact could not be resolved — offline miss or download failure; check TEBAKO_OFFLINE, the network, the release page' },
   { code: '70', name: 'sha256', meaning: 'a checksum verification failed; nothing was installed' },
   { code: '71', name: 'signature', meaning: 'a signature is invalid — or the artifact is unsigned under TEBAKO_REQUIRE_SIGNED=1' },
   { code: '72', name: 'trust', meaning: 'the signing key is not in the trusted set' },
   { code: '73', name: 'jail', meaning: 'the jail policy is malformed; the run failed closed, nothing mounted' },
+  { code: '74', name: 'I/O', meaning: 'a filesystem, lock, or install operation failed' },
   { code: '75', name: 'contract', meaning: 'runtime and loader generations do not meet — the message names both and the remedy' },
+  { code: '76', name: 'install', meaning: 'installation was refused — the publisher froze the package (no-install), or the verb belongs to the CLI' },
+  { code: '77', name: 'era', meaning: 'the artifact comes from a different tebako generation, in either direction' },
+  { code: '78', name: 'layout', meaning: 'the env image does not match the layout the interpreter was compiled for — or a mount-root override the image does not grant' },
+  { code: '79', name: 'check', meaning: 'a payload check FAILed — the tebako check aggregate; the verdict line names the check and the failed expectation' },
 ]
 ---
+<!-- normative: spec 06 §4 + spec 18 §7 (exit allocation), spec 24 §5/§7 (126, 68), spec 26 §2 (79), spec 19 §4 (138), spec 11 §11 (debug logging) — table verified against crates/tpkg/src/lib.rs:275-291, tebako-bootstrap/src/lib.rs:81-106, tebako-shim/src/lib.rs:63-73 -->
 
 <BaseLayout title="Debug & logging — Tebako guides" description="Tebako debugging: TEBAKO_DEBUG levels and per-component overrides, log format, tebako-shim doctor, registry freshness, and the exit codes worth memorizing.">
   <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
@@ -125,7 +135,7 @@ $ tebako update-registries`}</code></pre>
 
     <!-- ============ EXIT CODES ============ -->
     <div class="mt-16">
-      <h2 class="mb-3">Exit codes worth memorizing.</h2>
+      <h2 class="mb-3">Every exit code, one table.</h2>
       <p class="mb-8 max-w-3xl text-[var(--tb-c-text-2)]">
         Every loader failure prints a one-line reason before exiting — read that line first.
         The codes exist so scripts can branch.
@@ -154,6 +164,18 @@ $ tebako update-registries`}</code></pre>
         The everyday two: 69 (something could not be fetched — check{' '}
         <code class="font-[var(--font-mono)] text-xs">TEBAKO_OFFLINE</code> first) and 73
         (a malformed jail policy — fail closed, nothing mounted).
+      </p>
+      <p class="mt-4 max-w-3xl text-sm text-[var(--tb-c-text-3)]">
+        Three codes live outside the loader block, each owned by its own layer:{' '}
+        <code class="font-[var(--font-mono)] text-xs">126</code> is not a loader exit but the{' '}
+        <code class="font-[var(--font-mono)] text-xs">ENOKEY</code> errno — a read of a sealed
+        (encrypted) path without the key material answers it, and a payload that surfaces the
+        errno exits with it; <code class="font-[var(--font-mono)] text-xs">132</code> is the
+        runtime factory's refusal of a pre-era or corrupt source tarball — you meet it in
+        factory CI, not on a user machine;{' '}
+        <code class="font-[var(--font-mono)] text-xs">138</code> is a press-time miss:{' '}
+        <code class="font-[var(--font-mono)] text-xs">TEBAKO_OFFLINE=1</code> with the bootstrap
+        not yet in the local store.
       </p>
     </div>
 
