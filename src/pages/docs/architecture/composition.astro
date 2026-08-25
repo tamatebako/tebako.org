@@ -135,15 +135,15 @@ runtime:
   name: ruby
   requirement: "~&gt; 3.3"
 slices:
-  - { name: metanorma, requirement: "&gt;= 2.1" }
-  - { name: openjdk,   requirement: "21" }
+  - &#123; name: metanorma, requirement: "&gt;= 2.1" &#125;
+  - &#123; name: openjdk,   requirement: "21" &#125;
 entrypoint: mnconvert
 policy: deny                    # the DEFAULT once anything is declared
 mounts:                         # operator bind-mounts (docker -v)
-  - { host: ./data, mount: /data, access: ro }
+  - &#123; host: ./data, mount: /data, access: ro &#125;
 needs:                          # composition-level additions, D1 grammar
   host:
-    - { path: "$HOME/.fontist", access: rw, why: "fontist cache" }</code></pre>
+    - &#123; path: "$HOME/.fontist", access: rw, why: "fontist cache" &#125;</code></pre>
     </div>
 
     <!-- ============ JAIL-SAFE BY DEFAULT ============ -->
