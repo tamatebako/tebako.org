@@ -4,21 +4,42 @@ import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
 import StatusPill from '../../../components/docs/StatusPill.astro'
 
 const LINKS = {
-  tebakoRs: 'https://github.com/tamatebako/tebako-rs',
+  productRepo: 'https://github.com/tamatebako/tebako',
+  shimCrate: 'https://github.com/tamatebako/tebako/tree/main/crates/tebako-shim',
+  runtimeReleases: 'https://github.com/tamatebako/tebako-runtime-ruby/releases',
   mnenv: 'https://github.com/metanorma/mnenv',
-  runtimeRel: 'https://github.com/tamatebako/tebako-runtime-ruby/releases/tag/v0.15.9',
 }
+
+const shimVerbs = [
+  { cmd: 'tebako-shim list', what: 'installed payloads, their versions, the resolved default and its source, and every shim link' },
+  { cmd: 'tebako-shim enable <tool>[@<ver>]', what: 're-enable a disabled tool, or one disabled version of it' },
+  { cmd: 'tebako-shim disable <tool>[@<ver>]', what: 'refuse dispatch of a tool, or of one version of it — dispatch of a disabled target fails with a named error' },
+  { cmd: 'tebako-shim which <tool>', what: 'preview a dispatch without running it: the resolved version and which chain link produced it, the runtime, the mounts, the exact exec argv' },
+  { cmd: 'tebako-shim doctor', what: 'diagnose the shim layer: PATH, shim → payload records, trust anchors re-hashed, registry cache freshness, runtime cache entries' },
+  { cmd: 'tebako-shim install-shell [--shell bash|zsh|fish|csh]', what: 'prepend ~/.tebako/shims to PATH via a managed block in the shell startup file (Windows: the user PATH in the registry)' },
+  { cmd: 'tebako-shim uninstall-shell [--shell …]', what: 'remove exactly the managed block — nothing else in the file is touched' },
+]
+
+const shimExits = [
+  { code: '64', name: 'usage', meaning: 'malformed management-command argv — the error prints the verb\u2019s usage line' },
+  { code: '65', name: 'manifest', meaning: 'a payload record is missing or corrupt, a command is provided by two installed payloads, or a registry does not parse — the message points at tebako-shim doctor' },
+  { code: '69', name: 'unavailable', meaning: 'no compatible runtime cached or downloadable, the resolved version is not installed or is disabled, an offline registry miss — the chain links and the fix are named' },
+  { code: '70', name: 'checksum', meaning: 'a downloaded artifact failed SHA-256 verification against the release index — it was deleted; nothing entered the cache' },
+  { code: '74', name: 'I/O', meaning: 'a filesystem, lock, or install operation failed' },
+  { code: '75', name: 'contract', meaning: 'the runtime release speaks a handoff contract this shim does not — or declares none at all; refused before any download, both sides named' },
+]
 ---
 
-<!-- wave-1: content rewrite pending; structure only -->
-<BaseLayout title="Dispatch — Tebako architecture" description="Tebako as a program/version/runtime manager: payload registry, the tebako-shim dispatcher, per-project pinning, and the honest compatibility model.">
+<!-- normative: spec 07, spec 04, spec 05, spec 06 -->
+<BaseLayout title="Dispatch — Tebako architecture" description="Managed mode: how tebako-shim turns a command name into a running payload — argv0 selection, the first-hit-wins version chain, cache-first runtime resolution with the honest compatibility model, the exec handoff, and the explicit, cached registry.">
   <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
     <p class="tb-eyebrow">ARCHITECTURE · 09</p>
     <h1 class="mt-3">Dispatch.</h1>
     <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
-      The platform play: tebako stops being only a packager and becomes a
-      program–version–runtime manager. A tebako package was a shim all along — this
-      generalizes it.
+      Managed mode: you type a command name, and per invocation tebako picks the payload
+      version and the runtime that command runs on. No version manager daemon, no shell
+      eval hook — one dispatcher binary behind every shim, re-resolving from scratch every
+      single time.
     </p>
 
     <ArchDocsNav />
@@ -26,166 +47,547 @@ const LINKS = {
     <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
       <StatusPill status="shipped" />
       <p class="text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-        <strong class="text-[var(--tb-c-text-1)]">Shipped in v2.0.0.</strong>
-        {' '}The <code class="font-[var(--font-mono)] text-xs">tebako-shim</code> dispatcher,
-        the registry format, and the store described below are live in
-        <a href={LINKS.tebakoRs} class="tb-link-underline text-[var(--tb-c-accent)]">tebako-rs</a>
-        {' '}— including zero-runtime native payloads (hello, Inkscape, a JRE) and the
-        install-time materialization they exec from.
+        <strong class="text-[var(--tb-c-text-1)]">Shipped.</strong>
+        {' '}The dispatcher, its management verbs, the registry format, and the dispatch-time
+        registry cache are live in{' '}
+        <a href={LINKS.productRepo} class="tb-link-underline text-[var(--tb-c-accent)]">tamatebako/tebako</a>
+        {' '}as{' '}
+        <a href={LINKS.shimCrate} class="tb-link-underline text-[var(--tb-c-accent)]"><code class="font-[var(--font-mono)] text-xs">crates/tebako-shim</code></a>.
+        One piece is still planned: a <code class="font-[var(--font-mono)] text-xs">tebako use</code>
+        {' '}command that would write your default version for you — today you author{' '}
+        <code class="font-[var(--font-mono)] text-xs">~/.tebako/config.yaml</code> directly.
+        Every command shown on this page exists.
       </p>
     </div>
 
+    <!-- ============ FOUR ARTIFACTS ============ -->
     <div class="mt-16">
       <h2 class="mb-3">Four artifacts, four jobs.</h2>
       <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
-        A lean tebako package already is a dispatcher: bootstrap + trailer + images,
-        resolving its runtime at run time. The version manager splits that trick into
-        four independent artifacts:
+        A lean tebako package already is a dispatcher: it resolves its runtime at run time.
+        Managed mode splits that trick into four independent artifacts, each with its own
+        publisher, its own release line, and its own trust anchor.
       </p>
       <div class="grid gap-4 sm:grid-cols-2">
         <div class="tb-card p-6">
           <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">PAYLOAD</p>
           <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-            A signed <code class="font-[var(--font-mono)] text-xs">.tfs</code> image of the
-            app — versioned, runtime-independent (when pure-ruby), immutable.
+            A <code class="font-[var(--font-mono)] text-xs">.tfs</code> image of the app —
+            versioned, immutable, optionally signed. Pure-language payloads are
+            runtime-independent and ship as one <em>universal</em> image for every platform;
+            native-extension payloads ship per triplet per ABI line.
           </p>
         </div>
         <div class="tb-card p-6">
           <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">RUNTIME</p>
           <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-            A signed Ruby runtime — versioned, cached, machine-shared. The same artifacts
-            the <a href={LINKS.runtimeRel} class="tb-link-underline text-[var(--tb-c-accent)]">runtime releases</a>
-            {' '}publish today.
+            Two artifacts — the interpreter executable plus its env <code class="font-[var(--font-mono)] text-xs">.tfs</code>
+            {' '}image — published by the{' '}
+            <a href={LINKS.runtimeReleases} class="tb-link-underline text-[var(--tb-c-accent)]">runtime factory</a>,
+            downloaded once per machine, SHA-256-verified, mounted (never extracted), and
+            shared by every package and payload on the box.
           </p>
         </div>
         <div class="tb-card p-6">
           <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">REGISTRY</p>
           <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-            A developer-hosted manifest on their own GitHub releases —{' '}
-            <code class="font-[var(--font-mono)] text-xs">tpkg-registry.json</code> listing
-            payload versions, digests/signatures, runtime requirements, and the default.
-            Zero central infrastructure.
+            A developer-hosted <code class="font-[var(--font-mono)] text-xs">tpkg-registry.yaml</code>
+            {' '}on any git host, mirroring only the resolution fields: versions, per-platform
+            artifacts with digests, runtime requirements, entrypoints, the default. The
+            host's releases are the storage — zero central infrastructure.
           </p>
         </div>
         <div class="tb-card p-6">
           <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">DISPATCHER</p>
           <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-            <code class="font-[var(--font-mono)] text-xs">tebako-shim</code> — a tiny static
-            Rust binary (same size-audited discipline as the bootstrap), linked per tool
-            into <code class="font-[var(--font-mono)] text-xs">~/.tebako/shims/&lt;tool&gt;</code>.
-            The thing on PATH that picks version + runtime per invocation and hands off.
+            <code class="font-[var(--font-mono)] text-xs">tebako-shim</code> — one small static
+            Rust binary, linked once per command name into{' '}
+            <code class="font-[var(--font-mono)] text-xs">~/.tebako/shims/&lt;tool&gt;</code>.
+            The thing on PATH that picks version and runtime per invocation and hands off.
           </p>
         </div>
       </div>
     </div>
 
+    <!-- ============ DIAGRAM: THE DISPATCH CASCADE ============ -->
     <div class="mt-16">
-      <h2 class="mb-6">The dispatch chain, per invocation.</h2>
+      <h2 class="mb-3">One invocation, end to end.</h2>
+      <p class="mb-8 max-w-3xl text-[var(--tb-c-text-2)]">
+        Nothing is sticky. Every invocation of a shim walks the whole chain again — switch
+        directories and the same command can resolve to a different version on a different
+        runtime. That is the mise model: the project file is read at dispatch time, so there
+        is nothing to activate and no shell state to stale.
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+        <svg viewBox="0 0 940 560" class="w-full min-w-[760px]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The dispatch cascade: invocation name, version chain, runtime resolution, exec handoff, the interpreter running">
+          <defs>
+            <marker id="dp-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 Z" fill="var(--tb-c-accent)" />
+            </marker>
+          </defs>
+
+          <!-- step 1: argv0 -->
+          <g transform="translate(30, 20)">
+            <rect width="590" height="88" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="295" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--tb-c-text-1)">argv0 is the selector</text>
+            <text x="295" y="44" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">$ metanorma doc.adoc — the shell found ~/.tebako/shims/metanorma,</text>
+            <text x="295" y="58" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">a link to the one tebako-shim binary; the link's NAME picks the payload</text>
+            <text x="295" y="76" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">multi-command suites: N entrypoints → N shims, each resolved independently</text>
+          </g>
+          <line x1="325" y1="110" x2="325" y2="130" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#dp-arrow)" />
+
+          <!-- step 2: version chain -->
+          <g transform="translate(30, 136)">
+            <rect width="590" height="118" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="295" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--tb-c-text-1)">payload version — the chain, first hit wins</text>
+            <text x="295" y="44" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">1 · TEBAKO_&lt;TOOL&gt;_VERSION — the environment override, one shell at a time</text>
+            <text x="295" y="59" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">2 · nearest .tebako-tools.yaml walking up from the working directory</text>
+            <text x="295" y="74" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">3 · defaults: in ~/.tebako/config.yaml — your machine-wide pin</text>
+            <text x="295" y="89" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">4 · the registry's default: — the publisher's declared pick</text>
+            <text x="295" y="107" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-accent)">a disabled version is a named refusal, never a fallback to another</text>
+          </g>
+          <line x1="325" y1="256" x2="325" y2="276" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#dp-arrow)" />
+
+          <!-- step 3: runtime resolution -->
+          <g transform="translate(30, 282)">
+            <rect width="590" height="102" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="295" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--tb-c-text-1)">runtime resolution — cache first</text>
+            <text x="295" y="44" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">the entrypoint's runtime_requirement → newest COMPATIBLE runtime already</text>
+            <text x="295" y="58" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">cached (no download) → else download the newest compatible from the</text>
+            <text x="295" y="72" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">factory index, SHA-256-verify, cache, share machine-wide</text>
+            <text x="295" y="90" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">no runtime_requirement at all → zero-runtime dispatch: skip this box entirely</text>
+          </g>
+          <line x1="325" y1="386" x2="325" y2="406" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#dp-arrow)" />
+
+          <!-- step 4: handoff -->
+          <g transform="translate(30, 412)">
+            <rect width="590" height="92" rx="10" fill="var(--color-ink)" stroke="var(--tb-c-accent)" stroke-width="1.5" />
+            <text x="295" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--color-mist-pale)">the handoff — exec</text>
+            <text x="295" y="44" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--color-gold)">tebako-runtime-… --tebako-image payload.tfs:0:/ …</text>
+            <text x="295" y="58" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--color-gold)">                    --tebako-entry /bin/metanorma doc.adoc</text>
+            <text x="295" y="76" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--color-mist)" opacity="0.85">+ TEBAKO_RUNTIME_IMAGE (the env image) + the jail policy in TEBAKO_JAIL*</text>
+          </g>
+          <line x1="325" y1="506" x2="325" y2="524" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#dp-arrow)" />
+
+          <!-- step 5: running -->
+          <g transform="translate(30, 528)">
+            <rect width="590" height="30" rx="8" fill="var(--tb-c-accent)" stroke="var(--tb-c-accent)" stroke-width="1.5" />
+            <text x="295" y="19" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10" fill="var(--color-paper)">the driver mounts the images, installs the jail, rewrites argv — your program runs</text>
+          </g>
+
+          <!-- right rail -->
+          <g transform="translate(660, 20)">
+            <rect width="260" height="538" rx="14" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="130" y="34" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10" font-weight="600" fill="var(--tb-c-text-3)">RULES OF THE CHAIN</text>
+            <g font-family="var(--font-sans), sans-serif" font-size="10.5" fill="var(--tb-c-text-2)">
+              <text x="24" y="64">· the whole chain re-runs on</text>
+              <text x="38" y="80">EVERY invocation — nothing is</text>
+              <text x="38" y="96">sticky, nothing caches a choice</text>
+
+              <text x="24" y="128">· the version must be installed;</text>
+              <text x="38" y="144">a pin to a missing version is a</text>
+              <text x="38" y="160">named error, not a surprise fetch</text>
+
+              <text x="24" y="192">· the payload image is never</text>
+              <text x="38" y="208">mutated — swapping runtimes</text>
+              <text x="38" y="224">changes only this dispatch</text>
+
+              <text x="24" y="256">· payloads verify at install;</text>
+              <text x="38" y="272">a run re-verifies nothing</text>
+
+              <text x="24" y="304">· a run installs nothing and</text>
+              <text x="38" y="320">links nothing — install is the</text>
+              <text x="38" y="336">explicit verb (tebako install)</text>
+            </g>
+            <line x1="24" y1="360" x2="236" y2="360" stroke="var(--tb-c-divider-strong)" stroke-width="1" />
+            <text x="130" y="388" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10" font-weight="600" fill="var(--tb-c-text-3)">SEE IT WITHOUT RUNNING IT</text>
+            <text x="130" y="414" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-accent)">tebako-shim which metanorma</text>
+            <text x="130" y="434" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="10.5" fill="var(--tb-c-text-2)">resolved version + its source,</text>
+            <text x="130" y="450" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="10.5" fill="var(--tb-c-text-2)">runtime, mounts, the exact argv</text>
+            <text x="130" y="466" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="10.5" fill="var(--tb-c-text-2)">— and it never downloads</text>
+
+            <text x="130" y="506" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="10.5" fill="var(--tb-c-text-2)">windows: spawn + wait, the</text>
+            <text x="130" y="522" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="10.5" fill="var(--tb-c-text-2)">child's exit code propagated</text>
+          </g>
+        </svg>
+      </div>
+      <p class="mt-6 max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
+        What the driver does with the handoff — mount order, longest-prefix dispatch, the
+        fail-closed rules — is on{' '}
+        <a href="/docs/architecture/anatomy/" class="tb-link-underline text-[var(--tb-c-accent)]">the anatomy page</a>;
+        this page is about everything that happens before the interpreter starts.
+      </p>
+    </div>
+
+    <!-- ============ THE VERSION CHAIN ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">The version chain, link by link.</h2>
+      <p class="mb-8 max-w-3xl text-[var(--tb-c-text-2)]">
+        Four links, evaluated in order; the first link that names a version wins, and later
+        links are not consulted.
+      </p>
       <ol class="space-y-4">
         <li class="flex gap-4">
           <span class="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-[var(--tb-c-accent)] font-[var(--font-mono)] text-xs font-semibold text-[var(--tb-c-accent)]">1</span>
           <p class="text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-            <strong class="text-[var(--tb-c-text-1)]">Resolve the payload version:</strong>{' '}
-            <code class="font-[var(--font-mono)] text-xs">TEBAKO_&lt;TOOL&gt;_VERSION</code> env
-            {' '}→ nearest <code class="font-[var(--font-mono)] text-xs">.tebako-tools.yaml</code>
-            {' '}walking up from cwd (per-project pinning) → user default
-            {' '}(<code class="font-[var(--font-mono)] text-xs">tebako use &lt;tool&gt;@&lt;version&gt;</code>)
-            → the registry's default/stable.
+            <strong class="text-[var(--tb-c-text-1)]">The environment:</strong>{' '}
+            <code class="font-[var(--font-mono)] text-xs">TEBAKO_&lt;TOOL&gt;_VERSION</code> —
+            the command name uppercased, every non-alphanumeric character becoming an
+            underscore (<code class="font-[var(--font-mono)] text-xs">metanorma</code> →{' '}
+            <code class="font-[var(--font-mono)] text-xs">TEBAKO_METANORMA_VERSION</code>).
+            One shell, one pin; nothing is written anywhere.
           </p>
         </li>
         <li class="flex gap-4">
           <span class="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-[var(--tb-c-accent)] font-[var(--font-mono)] text-xs font-semibold text-[var(--tb-c-accent)]">2</span>
           <p class="text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-            <strong class="text-[var(--tb-c-text-1)]">Resolve the runtime:</strong> the payload's
-            declared constraint → newest <em>compatible runtime already cached</em> — no
-            download — else download the newest compatible from the runtime releases.
-            Swapping runtimes never touches the immutable payload:{' '}
-            <code class="font-[var(--font-mono)] text-xs">tebako use --runtime ruby@3.4.2</code>
-            {' '}or a per-project pin, and the same payload just runs on the newer ruby.
+            <strong class="text-[var(--tb-c-text-1)]">The project pin:</strong> the nearest{' '}
+            <code class="font-[var(--font-mono)] text-xs">.tebako-tools.yaml</code> walking up
+            from the working directory — a flat YAML mapping of command name to version.
+            One subtlety, locked: a nearer file that does not pin this command does{' '}
+            <em>not</em> shadow a farther file that does — the walk continues until a file
+            actually answers.
           </p>
         </li>
         <li class="flex gap-4">
           <span class="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-[var(--tb-c-accent)] font-[var(--font-mono)] text-xs font-semibold text-[var(--tb-c-accent)]">3</span>
           <p class="text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-            <strong class="text-[var(--tb-c-text-1)]">Hand off:</strong> exec the cached payload
-            image against the chosen runtime — the lean path: mount payload + runtime, exec.
-            Signed payloads are verified at install time, not per run.
+            <strong class="text-[var(--tb-c-text-1)]">Your default:</strong>{' '}
+            <code class="font-[var(--font-mono)] text-xs">defaults:</code> in{' '}
+            <code class="font-[var(--font-mono)] text-xs">~/.tebako/config.yaml</code>, which
+            you author by hand. The dispatcher only ever reads this file — a planned{' '}
+            <code class="font-[var(--font-mono)] text-xs">tebako use</code> command
+            {' '}<StatusPill status="planned" />{' '}
+            will be the writer when it lands; until then, editing the YAML is the mechanism,
+            not a workaround.
+          </p>
+        </li>
+        <li class="flex gap-4">
+          <span class="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-[var(--tb-c-accent)] font-[var(--font-mono)] text-xs font-semibold text-[var(--tb-c-accent)]">4</span>
+          <p class="text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+            <strong class="text-[var(--tb-c-text-1)]">The registry default:</strong> the{' '}
+            <code class="font-[var(--font-mono)] text-xs">default:</code> key the publisher
+            declared in their <code class="font-[var(--font-mono)] text-xs">tpkg-registry.yaml</code>,
+            read through the dispatch cache (below). Registered registries are scanned in
+            config order; the first one carrying the payload answers.
           </p>
         </li>
       </ol>
+      <p class="mt-6 max-w-3xl text-sm leading-relaxed text-[var(--tb-c-text-3)]">
+        If no link answers, the error says so — listing every link it tried and the versions
+        actually installed (exit 69). A resolved version that is not installed, or that you
+        disabled, is likewise a named refusal with the remedy in the message. Dispatch never
+        guesses a version.
+      </p>
     </div>
 
+    <!-- ============ RUNTIME RESOLUTION ============ -->
     <div class="mt-16">
-      <h2 class="mb-3">The compatibility model — the honest constraint.</h2>
+      <h2 class="mb-3">Runtime resolution — cache first, then the factory index.</h2>
+      <p class="mb-8 max-w-3xl text-[var(--tb-c-text-2)]">
+        The chosen entrypoint's <code class="font-[var(--font-mono)] text-sm">runtime_requirement</code>
+        {' '}(an engine plus a version constraint) is evaluated against{' '}
+        <code class="font-[var(--font-mono)] text-sm">~/.tebako/runtimes/</code>: the newest
+        compatible runtime already cached wins, with <strong class="text-[var(--tb-c-text-1)]">no
+        download</strong>. Only a cache miss reaches the network — the newest compatible
+        interpreter the{' '}
+        <a href={LINKS.runtimeReleases} class="tb-link-underline text-[var(--tb-c-accent)]">runtime factory</a>
+        {' '}released for this platform — which is SHA-256-verified against the release index
+        before it enters the cache. Because the payload image is immutable, swapping runtimes
+        never touches it: only this dispatch-time choice changes.
+      </p>
       <div class="grid gap-4 md:grid-cols-2">
         <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
-          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">PURE-RUBY PAYLOADS</p>
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">PURE-LANGUAGE PAYLOADS</p>
           <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-            The runtime constraint is a range — <code class="font-[var(--font-mono)] text-xs">ruby &gt;= 3.3, &lt; 5.0</code>.
-            Any newer runtime works; older payloads just run faster on newer rubies. One
-            universal <code class="font-[var(--font-mono)] text-xs">.tfs</code> serves every
-            platform — the dispatcher's per-platform runtime does the rest.
+            The constraint is a range — <code class="font-[var(--font-mono)] text-xs">ruby &gt;= 3.3, &lt; 5.0</code>.
+            Any newer runtime inside the range works; older payloads simply run on newer
+            interpreters. One universal <code class="font-[var(--font-mono)] text-xs">.tfs</code>
+            {' '}serves every platform — the per-platform runtime supplies the machine code.
           </p>
         </div>
         <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
           <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">NATIVE-EXTENSION PAYLOADS</p>
           <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-            Locked to the ruby ABI line they were built against — the constraint records{' '}
-            <code class="font-[var(--font-mono)] text-xs">ruby ~&gt; 3.3.0</code>. A newer line
-            requires a new payload build. Per-platform <em>and</em> per-ABI-line artifacts;
-            a wrong-line runtime produces a named compatibility error, never a segfault.
+            Locked to the ABI line they were built against — two-dimensional: the version
+            line (<code class="font-[var(--font-mono)] text-xs">ruby ~&gt; 3.3.0</code>) and the
+            platform line (<code class="font-[var(--font-mono)] text-xs">abi: arm64-darwin-23</code>,
+            the runtime's own platform string). A newer line needs a new payload build; a
+            wrong line on either axis is a <strong class="text-[var(--tb-c-text-1)]">named
+            compatibility error, never a segfault</strong>.
           </p>
         </div>
       </div>
-      <p class="mt-4 max-w-2xl text-sm text-[var(--tb-c-text-3)]">
-        The registry manifest carries the constraint per payload version as additive keys —
-        older consumers ignore them. tpkg files themselves remain platform-dependent
-        (bootstrap + runtime are native; the trailer is platform-agnostic bytes).
-      </p>
+      <div class="mt-4 max-w-3xl space-y-3 text-sm text-[var(--tb-c-text-3)]">
+        <p>
+          Runtimes published before the <code class="font-[var(--font-mono)] text-xs">abi</code>
+          {' '}key existed carry no platform line, and stay eligible — the compat window: a
+          payload's abi check never fails against an unknown line. And an entrypoint with no{' '}
+          <code class="font-[var(--font-mono)] text-xs">runtime_requirement</code> at all — a
+          native tool, a self-contained binary — skips this entire section: zero-runtime
+          dispatch runs the install-time materialization straight from the store, with no
+          runtime mounted and no VFS in the child.
+        </p>
+      </div>
     </div>
 
+    <!-- ============ THE HANDOFF ============ -->
     <div class="mt-16">
-      <h2 class="mb-3">Shell integration — no per-shell magic.</h2>
-      <p class="max-w-2xl text-[var(--tb-c-text-2)]">
-        One directory on PATH: <code class="rounded bg-[var(--tb-c-divider)] px-1.5 py-0.5 font-[var(--font-mono)] text-sm text-[var(--tb-c-accent)]">~/.tebako/shims</code>.
-        One-time setup — the CLI offers to append the export line to your{' '}
-        <code class="font-[var(--font-mono)] text-sm">.zshrc</code>/<code class="font-[var(--font-mono)] text-sm">.bashrc</code>,
-        like pyenv's installer. And unlike rbenv's{' '}
-        <code class="font-[var(--font-mono)] text-sm">eval "$(rbenv init -)"</code>, there is
-        no eval-init hook for switching: the dispatcher reads the project file itself (the
-        mise model). <code class="font-[var(--font-mono)] text-sm">tebako use / disable / list / doctor</code>
-        {' '}manage the shims.
+      <h2 class="mb-3">The handoff.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        One exec, one wire format — the same launcher ABI the standalone bootstrap speaks.
+        The registry payload is a bare image, so it mounts whole: slot{' '}
+        <code class="font-[var(--font-mono)] text-sm">0</code>, mount point{' '}
+        <code class="font-[var(--font-mono)] text-sm">/</code>. Dependency slices follow at
+        their consumer-declared mount points.
+      </p>
+      <div class="max-w-3xl rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+        <pre class="overflow-x-auto font-[var(--font-mono)] text-sm leading-relaxed text-[var(--tb-c-text-2)]"><code>{`$ tebako-shim which metanorma
+tool: metanorma
+payload: metanorma 1.2.3
+  version source: project /work/Doc/.tebako-tools.yaml
+  image: ~/.tebako/payloads/metanorma/1.2.3.tfs
+entrypoint: /bin/metanorma
+runtime: ruby "~> 3.3.0" → ruby 3.3.9 (cached)
+  exe: ~/.tebako/runtimes/ruby-3.3.9-0.16.9-aarch64-macos/tebako-runtime-0.16.9-3.3.9-aarch64-macos
+  image: ~/.tebako/runtimes/ruby-3.3.9-0.16.9-aarch64-macos/tebako-runtime-0.16.9-3.3.9-aarch64-macos.tfs
+mounts:
+  ~/.tebako/payloads/metanorma/1.2.3.tfs:0:/
+exec argv:
+  tebako-runtime-0.16.9-3.3.9-aarch64-macos
+  --tebako-image ~/.tebako/payloads/metanorma/1.2.3.tfs:0:/
+  --tebako-entry /bin/metanorma
+  doc.adoc`}</code></pre>
+      </div>
+      <div class="mt-6 max-w-3xl space-y-4 text-[var(--tb-c-text-2)]">
+        <p class="leading-relaxed">
+          Environment on top of the inherited one:{' '}
+          <code class="font-[var(--font-mono)] text-sm">TEBAKO_RUNTIME_IMAGE</code> names the
+          env image the driver mounts at the runtime root; when a jail policy applies,{' '}
+          <code class="font-[var(--font-mono)] text-sm">TEBAKO_JAIL</code> carries it, with{' '}
+          <code class="font-[var(--font-mono)] text-sm">TEBAKO_JAIL_SOURCE</code> and{' '}
+          <code class="font-[var(--font-mono)] text-sm">TEBAKO_JAIL_JOURNAL</code> for the
+          audit trail.
+        </p>
+        <p class="leading-relaxed">
+          The shim consumes exactly three flags before handing over —{' '}
+          <code class="font-[var(--font-mono)] text-sm">--jail &lt;spec&gt;</code>,{' '}
+          <code class="font-[var(--font-mono)] text-sm">--mount &lt;host:mount:ro|rw&gt;</code>,{' '}
+          <code class="font-[var(--font-mono)] text-sm">--no-host</code> (the tightening
+          surface; they can only narrow what a payload's manifest requests). Everything else,
+          unknown flags included, reaches the payload verbatim;{' '}
+          <code class="font-[var(--font-mono)] text-sm">--</code> ends flag parsing for the
+          arguments that literally are those names. On unix the shim execs — the process{' '}
+          <em>becomes</em> the runtime, so signals and the exit code are the program's own;
+          on Windows it spawns, waits, and exits with the child's code.
+        </p>
+      </div>
+    </div>
+
+    <!-- ============ THE REGISTRY ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">The registry — explicit, cached, never searched.</h2>
+      <div class="max-w-3xl space-y-4 text-[var(--tb-c-text-2)]">
+        <p class="leading-relaxed">
+          A registry is any git-host repository carrying a{' '}
+          <code class="font-[var(--font-mono)] text-sm">tpkg-registry.yaml</code>; the host's
+          releases are the artifact storage. The file mirrors only resolution-relevant fields
+          — versions, per-triplet artifacts with SHA-256 digests,{' '}
+          <code class="font-[var(--font-mono)] text-sm">runtime_requirement</code>,
+          entrypoints, <code class="font-[var(--font-mono)] text-sm">default:</code> — so the
+          dispatcher resolves without downloading every payload. Platform selection happens
+          in the file, declaratively: the dispatcher reads the entry for the host triplet (or{' '}
+          <code class="font-[var(--font-mono)] text-sm">universal</code>) and fetches exactly
+          that artifact. Nothing guesses by filename.
+        </p>
+        <p class="leading-relaxed">
+          <strong class="text-[var(--tb-c-text-1)]">Explicit-only:</strong> a fresh install of
+          tebako has zero registries.{' '}
+          <code class="font-[var(--font-mono)] text-sm">tebako add-registry &lt;ref&gt;</code>
+          {' '}registers one; there is no default registry, no central index, and no search
+          chain — each reference form resolves in exactly one place (the repo's
+          default-branch root via the contents API, a pinned release artifact, a git blob
+          path, or a local <code class="font-[var(--font-mono)] text-sm">file://</code>), and
+          an unparseable reference is a named error, never a guess.
+        </p>
+        <p class="leading-relaxed">
+          <strong class="text-[var(--tb-c-text-1)]">The dispatch cache:</strong> remote
+          registries ride a per-reference cache under{' '}
+          <code class="font-[var(--font-mono)] text-sm">~/.tebako/registries/&lt;sha256-of-ref&gt;.yaml</code>
+          {' '}with a 24-hour TTL, so dispatch never blocks on the network twice in a row.{' '}
+          <code class="font-[var(--font-mono)] text-sm">tebako update-registries</code>
+          {' '}renews it ahead of time;{' '}
+          <code class="font-[var(--font-mono)] text-sm">tebako add-registry</code> primes it
+          with the bytes it already fetched;{' '}
+          <code class="font-[var(--font-mono)] text-sm">TEBAKO_OFFLINE=1</code> turns dispatch
+          into cache-or-named-error — a stale cache still answers offline, a missing one
+          fails by name.
+        </p>
+        <p class="leading-relaxed">
+          Install is the explicit verb:{' '}
+          <code class="font-[var(--font-mono)] text-sm">tebako install &lt;name[@ver] | ref&gt;</code>
+          {' '}resolves the registry, selects the host entry, downloads, verifies (SHA-256
+          and/or the OpenPGP signature), and lands the payload byte-identical in the
+          content-addressed cache — then registers the payload's shims. Registry installs
+          always link the declared entrypoints; installing a local package file links only
+          with the explicit <code class="font-[var(--font-mono)] text-sm">--shims</code>; a
+          run, of anything, ever, links nothing.
+        </p>
+      </div>
+    </div>
+
+    <!-- ============ MANAGING THE SHIM LAYER ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Managing the shim layer — the real verbs.</h2>
+      <p class="mb-8 max-w-3xl text-[var(--tb-c-text-2)]">
+        Invoked by its own name, the same binary is the management tool. This is the whole
+        surface — there is no <code class="font-[var(--font-mono)] text-sm">tebako use</code>,
+        no <code class="font-[var(--font-mono)] text-sm">tebako shim add</code>, no hidden
+        subcommands:
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]">
+        <table class="w-full min-w-[720px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider)] text-[var(--tb-c-text-1)]">
+              <th class="px-5 py-3 font-medium">Command</th>
+              <th class="px-5 py-3 font-medium">What it does</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)] text-[var(--tb-c-text-2)]">
+            {shimVerbs.map((v) => (
+              <tr>
+                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-accent)]">{v.cmd}</td>
+                <td class="px-5 py-2.5">{v.what}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-4 max-w-3xl text-sm leading-relaxed text-[var(--tb-c-text-3)]">
+        Disable state lives in <code class="font-[var(--font-mono)] text-xs">~/.tebako/shims/.disabled.yaml</code>
+        {' '}— shim-managed, deliberately separate from your authored{' '}
+        <code class="font-[var(--font-mono)] text-xs">config.yaml</code>, so{' '}
+        <code class="font-[var(--font-mono)] text-xs">disable</code> never rewrites a
+        hand-maintained file. <code class="font-[var(--font-mono)] text-xs">doctor</code>
+        {' '}is the diagnostic path the error messages point at: it re-hashes payload images
+        against their install-time trust anchors and exits 1 when anything is wrong.
       </p>
     </div>
 
+    <!-- ============ SHELL INTEGRATION ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Shell integration — one directory, no eval hook.</h2>
+      <p class="max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
+        One directory on PATH:{' '}
+        <code class="rounded bg-[var(--tb-c-divider)] px-1.5 py-0.5 font-[var(--font-mono)] text-sm text-[var(--tb-c-accent)]">~/.tebako/shims</code>.{' '}
+        <code class="font-[var(--font-mono)] text-sm">tebako-shim install-shell</code> inserts
+        a managed BEGIN/END block into the right startup file for your shell
+        (<code class="font-[var(--font-mono)] text-sm">.bashrc</code>,{' '}
+        <code class="font-[var(--font-mono)] text-sm">.zshrc</code>,{' '}
+        <code class="font-[var(--font-mono)] text-sm">~/.config/fish/config.fish</code>,{' '}
+        <code class="font-[var(--font-mono)] text-sm">.cshrc</code>) — idempotent, and{' '}
+        <code class="font-[var(--font-mono)] text-sm">uninstall-shell</code> removes exactly
+        its block. On Windows the shim directory goes onto the user PATH in the registry
+        instead. The links themselves are the platform's own: symlinks on unix; on Windows an
+        NTFS hardlink first — no admin, no Developer Mode — with a byte copy as the named
+        fallback, never a <code class="font-[var(--font-mono)] text-sm">.cmd</code> wrapper.
+        And there is no <code class="font-[var(--font-mono)] text-sm">eval "$(… init -)"</code>
+        {' '}hook for switching versions: the dispatcher reads the project file itself, per
+        invocation.
+      </p>
+    </div>
+
+    <!-- ============ TWO DISTRIBUTION FORMS ============ -->
     <div class="mt-16">
       <h2 class="mb-3">Two distribution forms, one press.</h2>
-      <p class="max-w-2xl text-[var(--tb-c-text-2)]">
-        <code class="font-[var(--font-mono)] text-sm">tebako press</code> already produces the
-        payload. A developer's release flow is: press → sign → upload the{' '}
-        <code class="font-[var(--font-mono)] text-sm">.tfs</code> + update the registry
-        manifest (a small <code class="font-[var(--font-mono)] text-sm">tebako publish</code>
-        {' '}helper later; manual first). Users without tebako get the standalone per-platform
-        tpkg executable; dispatcher users get the registry payload — one universal image for
-        pure-ruby apps, per-platform variants only for native-ext apps. Building all of them
-        is a matrix CI job, not manual work.
+      <p class="max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
+        <code class="font-[var(--font-mono)] text-sm">tebako press</code> produces both. For
+        users without tebako: the standalone per-platform tpkg executable. For dispatcher
+        users: the registry payload — one universal image for a pure-language app,
+        per-triplet variants only when native code forces it. The release flow is press →
+        sign → upload the artifacts → commit the registry manifest, and{' '}
+        <code class="font-[var(--font-mono)] text-sm">tebako publish</code> automates it for
+        GitHub releases and <code class="font-[var(--font-mono)] text-sm">file://</code>{' '}
+        mirrors. Building every variant is a matrix CI job, not manual work.
       </p>
     </div>
 
+    <!-- ============ NAMED FAILURES ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Every refusal has a name.</h2>
+      <p class="mb-8 max-w-3xl text-[var(--tb-c-text-2)]">
+        The dispatcher reuses the loader's named exit set rather than inventing its own.
+        The dispatch-specific truth behind the table: a native-extension payload on a
+        wrong-ABI-line runtime is exit 69 with both lines named — never a segfault.
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]">
+        <table class="w-full min-w-[720px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider)] text-[var(--tb-c-text-1)]">
+              <th class="px-5 py-3 font-medium">Exit</th>
+              <th class="px-5 py-3 font-medium">Refusal</th>
+              <th class="px-5 py-3 font-medium">When the shim raises it</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)] text-[var(--tb-c-text-2)]">
+            {shimExits.map((e) => (
+              <tr>
+                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-accent)]">{e.code}</td>
+                <td class="px-5 py-2.5 font-medium text-[var(--tb-c-text-1)]">{e.name}</td>
+                <td class="px-5 py-2.5">{e.meaning}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-4 max-w-3xl text-sm text-[var(--tb-c-text-3)]">
+        Once the interpreter is running, exit codes are the program's — the shim is out of
+        the picture by then.
+      </p>
+    </div>
+
+    <!-- ============ MNENV ============ -->
     <div class="mt-16 rounded-2xl border border-[var(--tb-c-divider)] p-8" style="background: var(--tb-c-bg-soft);">
       <div class="flex flex-wrap items-center gap-3">
-        <h2 class="font-[var(--font-display)] text-xl font-medium">The mnenv retirement gate</h2>
+        <h2 class="font-[var(--font-display)] text-xl font-medium">The mnenv retirement, in practice</h2>
         <StatusPill status="shipped" />
       </div>
       <p class="mt-3 leading-relaxed text-[var(--tb-c-text-2)]">
         With tebako-shim shipped,{' '}
         <a href={LINKS.mnenv} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">mnenv</a>
-        {' '}— metanorma's Ruby version manager — retires, and metanorma becomes the first real
-        dogfood consumer: a heavy, native-extension, real-world app. Its version management
-        moves to the shim + registry model — payload builds via tebako press (including SDK
-        native builds), signed .tfs per (version × ruby line), the registry manifest, the
-        dispatcher. The ultimate proof of the whole stack, eaten by its own cooks.
+        {' '}— metanorma's Ruby version manager — retires, and metanorma becomes the first
+        dogfood consumer of this exact chain: a heavy native-extension app, pressed per
+        (version × ruby line), published through its own registry, dispatched by the shim.
+        The whole model on this page, eaten by its own cooks.
       </p>
+    </div>
+
+    <!-- ============ THREE NEIGHBORS ============ -->
+    <div class="mt-16 grid gap-6 md:grid-cols-3">
+      <a href="/docs/guides/shims/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+        <p class="tb-eyebrow">DO IT · GUIDE</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">Shims &amp; versions</h3>
+        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          The task side of this page: install-shell, pin a project, disable a version,
+          doctor.
+        </p>
+      </a>
+      <a href="/docs/architecture/store/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+        <p class="tb-eyebrow">NEXT · THE STORE</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">Where everything lives</h3>
+        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          <code class="font-[var(--font-mono)] text-xs">~/.tebako</code> — the payloads,
+          runtimes, and registry cache this page resolves against.
+        </p>
+      </a>
+      <a href="/docs/architecture/runtime-as-image/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+        <p class="tb-eyebrow">NEXT · THE RUNTIME</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">The runtime as an image</h3>
+        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          Why the runtime is two artifacts, and what{' '}
+          <code class="font-[var(--font-mono)] text-xs">TEBAKO_RUNTIME_IMAGE</code> mounts.
+        </p>
+      </a>
     </div>
   </section>
 </BaseLayout>
