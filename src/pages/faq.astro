@@ -1,37 +1,45 @@
 ---
+// normative: spec 01, spec 03, spec 16, spec 19
 import BaseLayout from '../layouts/BaseLayout.astro'
 import HiddenGem from '../components/HiddenGem.astro'
 import WisdomGem from '../components/WisdomGem.astro'
 import { SITE } from '../config/site'
 
+const code = (s: string) =>
+  `<code class="rounded bg-[var(--tb-c-divider)] px-1.5 py-0.5 font-[var(--font-mono)] text-[0.85em] text-[var(--tb-c-accent)]">${s}</code>`
+
 const faqs = [
   {
     q: 'What is Tebako?',
-    a: 'Tebako is an executable packager for Ruby. It bundles your Ruby application — along with the Ruby runtime, gems, and native extensions — into a single self-contained executable file. The result runs on any compatible machine without Ruby installed.',
+    a: `Tebako is a packaging and loading ecosystem. It packages any payload — applications, data, fonts, native tools, runtimes themselves — into mountable images that stitch into single executables or install through registries you host. Ruby is the first runtime instance; the loader neither knows nor cares what language it starts.`,
+  },
+  {
+    q: 'Is it only for Ruby?',
+    a: `No — Ruby is simply first. The architecture is generic across four axes: any runtime, any platform, any payload, any composition. The runtime factory ships Ruby 3.1 through 4.0 today; python and julia factories follow the same shape.`,
   },
   {
     q: 'What platforms does it support?',
-    a: 'Linux (x86_64 and ARM64), macOS (Intel and Apple Silicon), and Windows. You can build for each target using GitHub Actions runners — including the macos-13 runner for Intel macOS builds.',
+    a: `Seven platform triplets: aarch64 and x86_64 macOS, x86_64 and aarch64 Linux (gnu and musl), and x86_64 Windows (UCRT). Native-extension payloads press per triplet; pure-language payloads can ship as one universal image.`,
   },
   {
     q: 'How does it work?',
-    a: 'Tebako uses DwarFS, a high-compression read-only filesystem, to pack your entire application tree into a mountable image. At runtime, this image is mounted transparently and your application runs as if it were in its original directory structure. The Ruby runtime is patched and embedded directly into the executable.',
+    a: `A package is up to three parts glued by a trailer at the end of the file: a small Rust loader, a runtime (the interpreter executable plus its environment image), and your payload images. At run time the images mount in-process through a virtual filesystem — they are never extracted — and the driver hands control to your entrypoint.`,
   },
   {
-    q: 'Which Ruby versions are supported?',
-    a: 'Ruby 3.1 through 3.4. You specify the version with the --Ruby flag when packaging (e.g., --Ruby=3.4).',
+    q: 'What does my user have to install?',
+    a: `Nothing but the package. A lean package resolves its runtime on first run: it downloads once into the machine-wide cache at ${code('~/.tebako')}, sha256-verified, and every package on the machine shares it. A fat package carries the runtime inside and resolves nothing. Either way: download, run, done.`,
   },
   {
-    q: 'How large are the resulting executables?',
-    a: 'Typically 14–20 MB for a simple application. Larger apps with many gems may reach 30–50 MB. DwarFS compression keeps the footprint manageable while preserving full functionality.',
+    q: 'How big is a package?',
+    a: `The loader is size-gated under 3 MB per platform in CI. A lean package adds only your payload image on top of that — the runtime is shared per machine instead of duplicated inside every binary, so the per-app size stops carrying the world.`,
   },
   {
     q: 'Can I package web apps like Rails or Sinatra?',
-    a: 'Yes. Tebako packages any Ruby application, including web frameworks. The entire gem dependency tree, native extensions, and assets travel inside the executable. Host-folder mounting support also allows packaging apps that need runtime access to external files.',
+    a: `Yes. Tebako packages any Ruby application, including web frameworks — the entire gem dependency tree, native extensions, and assets travel inside the payload image. Declarative jails control what host files the running app can see.`,
   },
   {
     q: 'How is Tebako different from Docker?',
-    a: 'Docker packages applications in containers that require a Docker runtime and daemon. Tebako produces a single native executable — no runtime, no container engine, no virtualization. End users download one file and run it directly.',
+    a: `Docker images need a daemon, a registry, and kernel namespaces. A tebako package is a file; the runtime is a directory in a cache; isolation is a user-space filesystem jail declared per run. No background service, no root, nothing left running.`,
   },
   {
     q: 'Is it free and open source?',
@@ -39,23 +47,23 @@ const faqs = [
   },
   {
     q: 'What does the name mean?',
-    a: 'Tebako (手箱) is short for tamatebako (玉手箱) — the legendary jewel box from the Japanese folktale of Urashima Tarō. Just as the box protected something precious, Tebako protects and carries your Ruby application. Read the full story on our About page.',
+    a: 'Tebako (手箱) is short for tamatebako (玉手箱) — the legendary jewel box from the Japanese folktale of Urashima Tarō. Just as the box protected something precious, Tebako protects and carries your software. Read the full story on our About page.',
   },
 ]
 ---
 
-<BaseLayout title="FAQ — Tebako" description="Common questions about Tebako, the Ruby executable packager.">
+<BaseLayout title="FAQ — Tebako" description="Common questions about Tebako, the packaging and loading ecosystem.">
   <section class="mx-auto max-w-3xl px-6 pb-20 pt-32">
     <p class="tb-eyebrow tb-animate-rise">QUESTIONS &amp; ANSWERS</p>
     <WisdomGem id="faq-wisdom" quote="The best questions are the ones you discover yourself." style="display:inline-block; margin-left:0.5rem; vertical-align:middle;" />
     <h1 class="tb-animate-rise tb-delay-1 mt-3">Frequently asked.</h1>
     <p class="tb-animate-rise tb-delay-2 mt-4 text-lg leading-relaxed text-[var(--tb-c-text-2)]">
-      Everything you need to know about packaging Ruby applications into
-      self-contained executables.
+      Everything you need to know about packaging software into files that
+      run anywhere.
     </p>
 
     <div class="tb-animate-rise tb-delay-3 mt-12 divide-y divide-[var(--tb-c-divider)]">
-      {faqs.map((faq, i) => (
+      {faqs.map((faq) => (
         <details class="group py-6">
           <summary class="flex cursor-pointer list-none items-start justify-between gap-4">
             <h2 class="font-[var(--font-display)] text-xl font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">
@@ -67,9 +75,7 @@ const faqs = [
               </svg>
             </span>
           </summary>
-          <div class="mt-4 max-w-prose leading-relaxed text-[var(--tb-c-text-2)]">
-            {faq.a}
-          </div>
+          <div class="mt-4 max-w-prose leading-relaxed text-[var(--tb-c-text-2)]" set:html={faq.a} />
         </details>
       ))}
     </div>

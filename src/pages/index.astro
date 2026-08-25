@@ -1,4 +1,5 @@
 ---
+// normative: spec 01, spec 03, spec 16, spec 19, spec 20
 import BaseLayout from '../layouts/BaseLayout.astro'
 import JewelBox from '../components/JewelBox.vue'
 import HiddenGem from '../components/HiddenGem.astro'
@@ -7,29 +8,29 @@ import { SITE } from '../config/site'
 
 const features = [
   {
-    title: 'Self-contained',
-    kanji: '一',
+    title: 'Any payload',
+    kanji: '物',
     description:
-      'Ruby runtime, gems, native extensions — every dependency sealed inside a single file. Nothing to install on the target.',
+      'Applications, data, fonts, native tools, runtimes themselves — every payload is the same kind of image, differing only in what its manifest declares.',
   },
   {
-    title: 'Cross-platform',
+    title: 'Seven triplets',
     kanji: '界',
     description:
-      'Build for Linux, macOS, and Windows from one command. x86_64 and ARM64, desktop and server.',
+      'aarch64 and x86_64 macOS, gnu and musl Linux, Windows UCRT. One press per target; pure-language payloads can ship as universal.',
   },
   {
-    title: 'DwarFS-powered',
+    title: 'Mounted, never extracted',
     kanji: '圧',
     description:
-      'A virtual filesystem compresses your entire app tree into one mountable image, mounted at startup. Fast and tiny.',
+      'Payload images mount in-process through the virtual filesystem. The runtime downloads once into a machine-wide cache — every package shares it.',
   },
 ]
 
 const stats = [
-  { value: '~15MB', label: 'Typical binary size' },
-  { value: '3', label: 'Platforms supported' },
-  { value: '0', label: 'Runtime dependencies' },
+  { value: '7', label: 'Platform triplets' },
+  { value: '<3 MB', label: 'Loader, size-gated in CI' },
+  { value: '1', label: 'Shared cache per machine' },
 ]
 ---
 
@@ -53,13 +54,14 @@ const stats = [
         <WisdomGem id="hero-wisdom" quote="The box was never meant to stay closed forever." style="display:inline-block; margin-left:0.5rem; vertical-align:middle;" />
         <h1 class="tb-animate-rise tb-delay-1">
           The jewel box<br />
-          for <span class="tb-text-gradient italic">Ruby.</span>
+          for <span class="tb-text-gradient italic">software.</span>
         </h1>
         <p
           class="tb-animate-rise tb-delay-2 max-w-xl text-lg leading-relaxed text-[var(--tb-c-text-2)] lg:text-xl"
         >
-          Tebako packages Ruby applications into single, self-contained executables.
-          One file. Zero dependencies. Every platform.
+          Tebako is a packaging and loading ecosystem: any runtime, any platform,
+          any payload — stitched into a single file, mounted at run time, shared
+          across the machine. Ruby is the first runtime instance.
         </p>
         <div class="tb-animate-rise tb-delay-3 flex flex-wrap gap-4">
           <a href={SITE.docs} class="tb-btn tb-btn-primary">
@@ -103,7 +105,7 @@ const stats = [
       <p class="tb-eyebrow mb-3">WHY TEBAKO</p>
       <WisdomGem id="features-wisdom" quote="Every gem was once rough stone." style="display:inline-block; margin-left:0.5rem; vertical-align:middle;" />
       <h2 class="text-balance">
-        Your app,<br />perfectly <em class="tb-text-gradient not-italic">preserved.</em>
+        Your software,<br />perfectly <em class="tb-text-gradient not-italic">preserved.</em>
       </h2>
       <p class="mt-4 text-lg text-[var(--tb-c-text-2)]">
         Like a jewel placed in a fine box — protected, portable, and ready to be shared.
@@ -143,23 +145,20 @@ const stats = [
         <span class="ml-3 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">~/my-ruby-app</span>
         <HiddenGem id="terminal-gem" style="margin-left:auto; opacity:0.06;" />
       </div>
-      <pre class="overflow-x-auto p-6 font-[var(--font-mono)] text-sm leading-relaxed" style="background: var(--color-ink-deep); color: var(--color-paper-soft);"><code><span class="text-[var(--color-mist-pale)]"># Install tebako</span>
-<span class="text-[var(--color-gold)]">$</span> gem install tebako
+      <pre class="overflow-x-auto p-6 font-[var(--font-mono)] text-sm leading-relaxed" style="background: var(--color-ink-deep); color: var(--color-paper-soft);"><code><span class="text-[var(--color-mist-pale)]"># Install the tebako CLI — five small binaries, no daemon</span>
+<span class="text-[var(--color-gold)]">$</span> brew install tamatebako/tap/tebako
 
-<span class="text-[var(--color-mist-pale)]"># Package your app into a single executable</span>
-<span class="text-[var(--color-gold)]">$</span> tebako press \
-    --root=. \
-    --entry-point=app.rb \
-    --output=my-app \
-    --Ruby=3.4
+<span class="text-[var(--color-mist-pale)]"># Press your app into a single package</span>
+<span class="text-[var(--color-gold)]">$</span> tebako press -r . -e app.rb -o my-app -R 3.4
 
-<span class="text-[var(--color-mist-pale)]"># Run it — anywhere, no Ruby needed</span>
+<span class="text-[var(--color-mist-pale)]"># Run it — the runtime resolves once, then mounts</span>
 <span class="text-[var(--color-gold)]">$</span> ./my-app
 <span class="text-[var(--color-gold-soft)]">→ Hello from your packaged Ruby app!</span></code></pre>
     </div>
 
     <p class="mt-6 text-center text-sm text-[var(--tb-c-text-3)]">
-      Supports Ruby 3.1 through 3.4. See the{" "}
+      Ruby 3.1 through 4.0 today; the loader neither knows nor cares what language
+      it starts. See the{" "}
       <a href={SITE.docs} class="tb-link-underline font-medium">
         full documentation
       </a>.
@@ -179,10 +178,10 @@ const stats = [
       </span>
       <div class="relative">
         <h2 class="text-[var(--color-paper)]">
-          Ready to package<br />your Ruby app?
+          Ready to ship<br />without the runtime talk?
         </h2>
         <p class="mx-auto mt-4 max-w-md text-lg text-[var(--color-mist-pale)]">
-          Join the developers shipping Ruby without runtime headaches.
+          Join the developers whose installs end at "download, run, done."
         </p>
         <div class="mt-8 flex flex-wrap justify-center gap-4">
           <a href={SITE.docs} class="tb-btn tb-btn-primary">

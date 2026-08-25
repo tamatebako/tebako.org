@@ -1,68 +1,104 @@
 ---
+// normative: spec 01, spec 03, spec 07, spec 08, spec 09
 import BaseLayout from '../layouts/BaseLayout.astro'
 import WisdomGem from '../components/WisdomGem.astro'
 import { SITE } from '../config/site'
 
-const features = [
+const capabilities = [
   {
-    title: 'Self-contained executables',
-    kanji: '一',
-    description: 'Ruby runtime, gems, native C extensions, and configuration — all sealed inside a single binary. Your users never install Ruby.',
+    title: 'Stitch',
+    kanji: '縫',
+    description: 'Press payload images and a loader into one executable. Fat packages carry the runtime as a slot; lean packages resolve it on first run.',
   },
   {
-    title: 'Cross-platform',
-    kanji: '界',
-    description: 'Build for Linux, macOS, and Windows from a single command. x86_64 and ARM64 architectures, desktop and server.',
-  },
-  {
-    title: 'DwarFS-powered',
-    kanji: '圧',
-    description: 'A high-compression read-only virtual filesystem bundles your entire app tree. Mounted transparently at startup — fast and tiny.',
-  },
-  {
-    title: 'Native extension support',
-    kanji: '拡',
-    description: 'C extensions, FFI libraries, and platform-specific gems all work inside the package. No compromises on functionality.',
-  },
-  {
-    title: 'Host folder mounting',
+    title: 'Load',
     kanji: '載',
-    description: 'Package apps that need runtime access to external files. Mount host directories into the virtual filesystem at execution time.',
+    description: 'Payloads mount — recursively, if they declare it — into one virtual filesystem per process, then control transfers to the declared entrypoint.',
   },
   {
-    title: 'Split runtime packaging',
-    kanji: '分',
-    description: 'Separate the Ruby runtime from the application layer. Reuse pre-built runtime packages to speed up CI and reduce build times.',
+    title: 'Share',
+    kanji: '共',
+    description: 'Runtimes and payloads download once into a machine-wide content cache, sha256-verified. Every package on the machine reuses them.',
   },
   {
-    title: 'CI/CD ready',
-    kanji: '速',
-    description: 'Works in Docker containers and GitHub Actions. Pre-built container images available for multi-architecture builds.',
+    title: 'Shim',
+    kanji: '呼',
+    description: 'Every executable an installed payload provides becomes a registered command on PATH, with a version chain resolved per invocation.',
   },
   {
-    title: 'Minimal footprint',
-    kanji: '小',
-    description: 'Typical binaries are 14–20 MB. DwarFS compression keeps the size manageable while preserving full application functionality.',
+    title: 'Jail',
+    kanji: '守',
+    description: 'A declarative host-filesystem policy per run, enforced by the VFS layer. The filesystem view is read-only unless you grant more.',
+  },
+  {
+    title: 'Trust',
+    kanji: '信',
+    description: 'Signing and encryption are opt-in per package; verification of signed artifacts is always strict. Unsigned stays first-class.',
+  },
+]
+
+const qualities = [
+  {
+    title: 'Any payload',
+    kanji: '物',
+    description: 'Application code, data, fonts, native tools, runtimes themselves — all images of one kind, differing only in what their manifests declare.',
+  },
+  {
+    title: 'Seven triplets',
+    kanji: '界',
+    description: 'aarch64 and x86_64 macOS, gnu and musl Linux, Windows UCRT. Native payloads press per triplet; pure-language payloads can ship universal.',
+  },
+  {
+    title: 'No shell-outs',
+    kanji: '純',
+    description: 'HTTP, imaging, and crypto all run in-process inside the shipped binaries. Nothing shells out to curl, git, or a system tool — no system dependencies, ever.',
   },
 ]
 ---
 
-<BaseLayout title="Features — Tebako" description="Self-contained executables, cross-platform support, DwarFS compression, and more.">
+<BaseLayout title="Features — Tebako" description="Stitch, Load, Share, Shim, Jail, Trust — the six capabilities of the tebako packaging and loading ecosystem.">
   <section class="mx-auto max-w-7xl px-6 pb-20 pt-32">
     <div class="max-w-2xl">
       <p class="tb-eyebrow tb-animate-rise">CAPABILITIES</p>
       <WisdomGem id="features-page-wisdom" quote="The best box is the one you forget you're carrying." style="display:inline-block; margin-left:0.5rem; vertical-align:middle;" />
       <h1 class="tb-animate-rise tb-delay-1 mt-3">
-        Everything in <span class="tb-text-gradient italic">one box.</span>
+        Six things the box <span class="tb-text-gradient italic">does.</span>
       </h1>
       <p class="tb-animate-rise tb-delay-2 mt-4 text-lg leading-relaxed text-[var(--tb-c-text-2)]">
-        Tebako turns your Ruby application into a single, portable executable.
-        Here is what travels inside.
+        Tebako is a packaging and loading ecosystem. These are its six core
+        capabilities — the same six for a Ruby application, a font collection,
+        or a native toolchain.
       </p>
     </div>
 
     <div class="tb-animate-rise tb-delay-3 mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {features.map((f) => (
+      {capabilities.map((f) => (
+        <article class="tb-card group relative overflow-hidden p-8">
+          <span
+            class="pointer-events-none absolute -right-4 -top-8 font-[var(--font-display)] text-8xl text-[var(--tb-c-accent)] opacity-10 transition-transform duration-500 group-hover:scale-110"
+            aria-hidden="true"
+          >
+            {f.kanji}
+          </span>
+          <h2 class="relative mb-3 font-[var(--font-display)] text-xl font-medium">
+            {f.title}
+          </h2>
+          <p class="relative text-[var(--tb-c-text-2)]">{f.description}</p>
+        </article>
+      ))}
+    </div>
+
+    <div class="mt-20 max-w-2xl">
+      <p class="tb-eyebrow mb-3">THE GROUND THEY STAND ON</p>
+      <h2 class="text-balance">Built to be <em class="tb-text-gradient not-italic">boring.</em></h2>
+      <p class="mt-4 text-lg text-[var(--tb-c-text-2)]">
+        Three properties hold for everything tebako ships — they are invariants,
+        not features.
+      </p>
+    </div>
+
+    <div class="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      {qualities.map((f) => (
         <article class="tb-card group relative overflow-hidden p-8">
           <span
             class="pointer-events-none absolute -right-4 -top-8 font-[var(--font-display)] text-8xl text-[var(--tb-c-accent)] opacity-10 transition-transform duration-500 group-hover:scale-110"
