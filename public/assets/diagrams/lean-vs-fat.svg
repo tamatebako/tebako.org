@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 500" role="img" aria-labelledby="title desc">
+  <title id="title">Lean vs fat package flows</title>
+  <desc id="desc">Lean packages resolve the runtime from the shared machine cache, downloading it once on first run; fat packages embed the runtime and install it offline. Both land in the same machine-wide cache shared by every tebako application.</desc>
+  <style>
+    .bg{fill:#fdf9e8}
+    .card{fill:#ffffff;stroke:#06394a;stroke-opacity:.2;stroke-width:1.5}
+    .panel{fill:#ffffff;stroke:#06394a;stroke-opacity:.2;stroke-width:1.5}
+    .inkbox{fill:#06394a;stroke:#06394a;stroke-opacity:.25;stroke-width:1.5}
+    .accbox{fill:#c36242;stroke:#c36242;stroke-width:1.5}
+    .acctint{fill:#c36242;fill-opacity:.12;stroke:#c36242;stroke-width:1.5}
+    .goldbox{fill:#f8b883;fill-opacity:.12;stroke:#f8b883;stroke-width:1.5}
+    .t1{fill:#1a2b34}
+    .t2{fill:#4a5b66}
+    .t3{fill:#7a8b94}
+    .acc{fill:#c36242}
+    .mistpale{fill:#c5d3db}
+    .mist{fill:#96abb8}
+    .goldtext{fill:#f8b883}
+    .paper{fill:#faf5dc}
+    .arw{stroke:#c36242;stroke-width:2}
+    .arwfill{fill:#c36242}
+    .fd{font-family:ui-sans-serif,system-ui,sans-serif;font-weight:600}
+    .fm{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .fs{font-family:ui-sans-serif,system-ui,sans-serif}
+    @media (prefers-color-scheme: dark){
+      .bg{fill:#062a38}
+      .card,.panel{fill:#0a3548;stroke:#f5edd0;stroke-opacity:.2}
+      .acctint{fill:#f8b883;fill-opacity:.14;stroke:#f8b883}
+      .t1{fill:#e8dfc6}
+      .t2{fill:#a8b8c0}
+      .t3{fill:#6a8b9a}
+      .acc{fill:#f8b883}
+      .arw{stroke:#f8b883}
+      .arwfill{fill:#f8b883}
+    }
+  </style>
+  <defs>
+    <marker id="arw" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 Z" class="arwfill"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" width="960" height="500" rx="12"/>
+
+  <!-- ============ LEAN ============ -->
+  <rect class="panel" x="16" y="16" width="448" height="290" rx="14"/>
+  <text x="240" y="46" text-anchor="middle" class="fd t1" font-size="15">LEAN — the small download</text>
+  <text x="240" y="64" text-anchor="middle" class="fm acc" font-size="10.5">SHIPPED</text>
+
+  <g transform="translate(56, 80)">
+    <rect class="card" width="368" height="66" rx="10"/>
+    <text x="184" y="26" text-anchor="middle" class="fd t1" font-size="12.5">the package file</text>
+    <text x="184" y="44" text-anchor="middle" class="fm t2" font-size="9.5">bootstrap + image slots + trailer — the runtime_ref</text>
+    <text x="184" y="57" text-anchor="middle" class="fm t2" font-size="9.5">names the runtime; no runtime bytes inside</text>
+  </g>
+  <line x1="240" y1="148" x2="240" y2="164" class="arw" marker-end="url(#arw)"/>
+
+  <g transform="translate(56, 170)">
+    <rect class="acctint" width="368" height="42" rx="10"/>
+    <text x="184" y="27" text-anchor="middle" class="fm acc" font-size="11.5">first run: is the runtime cached?</text>
+  </g>
+  <line x1="240" y1="214" x2="240" y2="230" class="arw" marker-end="url(#arw)"/>
+
+  <g transform="translate(56, 236)">
+    <rect class="goldbox" width="368" height="54" rx="10"/>
+    <text x="184" y="23" text-anchor="middle" class="fm t2" font-size="10">miss only: download ONCE (in-process HTTPS)</text>
+    <text x="184" y="39" text-anchor="middle" class="fm t2" font-size="10">→ sha256 verify → install to cache, 0444</text>
+  </g>
+  <text x="232" y="330" text-anchor="end" class="fm t3" font-size="9.5">cache hit: straight to the cache</text>
+
+  <!-- ============ FAT ============ -->
+  <rect class="panel" x="496" y="16" width="448" height="290" rx="14"/>
+  <text x="720" y="46" text-anchor="middle" class="fd t1" font-size="15">FAT — everything inside</text>
+  <text x="720" y="64" text-anchor="middle" class="fm acc" font-size="10.5">SHIPPED</text>
+
+  <g transform="translate(536, 80)">
+    <rect class="card" width="368" height="66" rx="10"/>
+    <text x="184" y="26" text-anchor="middle" class="fd t1" font-size="12.5">the package file</text>
+    <text x="184" y="44" text-anchor="middle" class="fm t2" font-size="9.5">bootstrap + RUNTIME payload + image slots + trailer —</text>
+    <text x="184" y="57" text-anchor="middle" class="fm t2" font-size="9.5">the interpreter rides inside the executable</text>
+  </g>
+  <line x1="720" y1="148" x2="720" y2="164" class="arw" marker-end="url(#arw)"/>
+
+  <g transform="translate(536, 170)">
+    <rect class="acctint" width="368" height="42" rx="10"/>
+    <text x="184" y="27" text-anchor="middle" class="fm acc" font-size="11.5">first run: verify + install the payload</text>
+  </g>
+  <line x1="720" y1="214" x2="720" y2="230" class="arw" marker-end="url(#arw)"/>
+
+  <g transform="translate(536, 236)">
+    <rect class="goldbox" width="368" height="54" rx="10"/>
+    <text x="184" y="23" text-anchor="middle" class="fm t2" font-size="10">never touches the network —</text>
+    <text x="184" y="39" text-anchor="middle" class="fm t2" font-size="10">offline from byte zero</text>
+  </g>
+
+  <!-- arrows into the cache -->
+  <line x1="240" y1="308" x2="360" y2="348" class="arw" marker-end="url(#arw)"/>
+  <line x1="720" y1="308" x2="600" y2="348" class="arw" marker-end="url(#arw)"/>
+
+  <!-- shared cache -->
+  <g transform="translate(180, 354)">
+    <rect class="inkbox" width="600" height="98" rx="12"/>
+    <text x="300" y="28" text-anchor="middle" class="fd mistpale" font-size="14">THE SHARED MACHINE CACHE</text>
+    <text x="300" y="50" text-anchor="middle" class="fm mist" font-size="10">~/.tebako/runtimes/&lt;ruby&gt;-&lt;ver&gt;-&lt;platform&gt;/ — interpreter + .tfs image (0444)</text>
+    <text x="300" y="66" text-anchor="middle" class="fm mist" font-size="10">+ .sha256 / .origin trusted markers — verified at install, never per run</text>
+    <text x="300" y="86" text-anchor="middle" class="fm goldtext" font-size="10.5">downloaded once — reused by EVERY tebako app on the machine</text>
+  </g>
+
+  <!-- exec -->
+  <line x1="782" y1="403" x2="800" y2="403" class="arw" marker-end="url(#arw)"/>
+  <g transform="translate(806, 366)">
+    <rect class="accbox" width="138" height="74" rx="10"/>
+    <text x="69" y="30" text-anchor="middle" class="fd paper" font-size="14">exec the app</text>
+    <text x="69" y="50" text-anchor="middle" class="fm paper" font-size="9.5" opacity="0.85">mount the images,</text>
+    <text x="69" y="63" text-anchor="middle" class="fm paper" font-size="9.5" opacity="0.85">hand off argv</text>
+  </g>
+
+  <text x="480" y="482" text-anchor="middle" class="fs t3" font-size="12">
+    TEBAKO_OFFLINE=1 forces cache-only mode — a hit, or a named error (exit 69); never a surprise download
+  </text>
+</svg>

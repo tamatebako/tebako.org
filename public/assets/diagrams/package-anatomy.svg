@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 260" role="img" aria-labelledby="title desc">
+  <title id="title">Anatomy of a tebako package</title>
+  <desc id="desc">One executable file: a bootstrap portion, an optional runtime image (fat packages), one to eight payload image slots, an optional v2 signature extension, and the tpkg trailer header at end of file.</desc>
+  <style>
+    .bg{fill:#fdf9e8}
+    .card{fill:#ffffff;stroke:#06394a;stroke-opacity:.2;stroke-width:1.5}
+    .inkbox{fill:#06394a;stroke:#06394a;stroke-opacity:.25;stroke-width:1.5}
+    .acctint{fill:#c36242;fill-opacity:.12;stroke:#c36242;stroke-width:1.5}
+    .acctintdash{fill:#c36242;fill-opacity:.06;stroke:#c36242;stroke-width:1;stroke-dasharray:4 3}
+    .golddash{fill:#f8b883;fill-opacity:.1;stroke:#f8b883;stroke-width:1.5;stroke-dasharray:4 3}
+    .goldbox{fill:#f8b883;fill-opacity:.12;stroke:#f8b883;stroke-width:1.5}
+    .t1{fill:#1a2b34}
+    .t2{fill:#4a5b66}
+    .t3{fill:#7a8b94}
+    .acc{fill:#c36242}
+    .plan{fill:#a3691a}
+    .mistpale{fill:#c5d3db}
+    .mist{fill:#96abb8}
+    .goldtext{fill:#f8b883}
+    .fd{font-family:ui-sans-serif,system-ui,sans-serif;font-weight:600}
+    .fm{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .fs{font-family:ui-sans-serif,system-ui,sans-serif}
+    @media (prefers-color-scheme: dark){
+      .bg{fill:#062a38}
+      .card{fill:#0a3548;stroke:#f5edd0;stroke-opacity:.2}
+      .acctint{fill:#f8b883;fill-opacity:.14;stroke:#f8b883}
+      .acctintdash{fill:#f8b883;fill-opacity:.07;stroke:#f8b883}
+      .t1{fill:#e8dfc6}
+      .t2{fill:#a8b8c0}
+      .t3{fill:#6a8b9a}
+      .acc{fill:#f8b883}
+      .plan{fill:#f8b883}
+    }
+  </style>
+
+  <rect class="bg" width="960" height="260" rx="12"/>
+
+  <text x="16" y="26" class="fm t3" font-size="10.5">byte 0 →</text>
+  <text x="944" y="26" text-anchor="end" class="fm t3" font-size="10.5">→ EOF</text>
+
+  <!-- A · Bootstrap -->
+  <g transform="translate(16, 42)">
+    <rect class="inkbox" width="164" height="116" rx="10"/>
+    <text x="82" y="30" text-anchor="middle" class="fd mistpale" font-size="14">A · Bootstrap</text>
+    <text x="82" y="52" text-anchor="middle" class="fm mist" font-size="10">tebako-bootstrap</text>
+    <text x="82" y="66" text-anchor="middle" class="fm mist" font-size="10">(Rust) — static, &lt; 3 MB</text>
+    <text x="82" y="80" text-anchor="middle" class="fm mist" font-size="10">resolve · verify · exec</text>
+    <text x="82" y="102" text-anchor="middle" class="fm goldtext" font-size="10">the executable part</text>
+  </g>
+
+  <!-- B · Runtime image -->
+  <g transform="translate(190, 42)">
+    <rect class="golddash" width="180" height="116" rx="10"/>
+    <text x="90" y="30" text-anchor="middle" class="fd plan" font-size="14">B · Runtime image</text>
+    <text x="90" y="52" text-anchor="middle" class="fm t2" font-size="10">fat packages only — the</text>
+    <text x="90" y="66" text-anchor="middle" class="fm t2" font-size="10">interpreter, installed to</text>
+    <text x="90" y="80" text-anchor="middle" class="fm t2" font-size="10">the shared cache</text>
+    <text x="90" y="102" text-anchor="middle" class="fm t3" font-size="10">lean: a runtime_ref instead</text>
+  </g>
+
+  <!-- C · slot 0 -->
+  <g transform="translate(380, 42)">
+    <rect class="acctint" width="170" height="116" rx="10"/>
+    <text x="85" y="30" text-anchor="middle" class="fd acc" font-size="14">C · Payload slot 0</text>
+    <text x="85" y="52" text-anchor="middle" class="fm t2" font-size="10">.tfs — the application</text>
+    <text x="85" y="66" text-anchor="middle" class="fm t2" font-size="10">dwarfs-t / squashfs / zip</text>
+    <text x="85" y="102" text-anchor="middle" class="fm t3" font-size="10">mounted RO at run time</text>
+  </g>
+
+  <!-- C · slots 1..7 -->
+  <g transform="translate(560, 42)">
+    <rect class="acctintdash" width="130" height="116" rx="10"/>
+    <text x="65" y="30" text-anchor="middle" class="fd acc" font-size="14">C · slots 1…7</text>
+    <text x="65" y="52" text-anchor="middle" class="fm t2" font-size="10">extra images —</text>
+    <text x="65" y="66" text-anchor="middle" class="fm t2" font-size="10">data, assets</text>
+    <text x="65" y="102" text-anchor="middle" class="fm t3" font-size="10">multi-mount</text>
+  </g>
+
+  <!-- v2 extension -->
+  <g transform="translate(700, 42)">
+    <rect class="goldbox" width="130" height="116" rx="10"/>
+    <text x="65" y="28" text-anchor="middle" class="fd plan" font-size="13.5">v2 extension</text>
+    <text x="65" y="48" text-anchor="middle" class="fm t2" font-size="9">8 × 32 B slot sha256</text>
+    <text x="65" y="61" text-anchor="middle" class="fm t2" font-size="9">signer keyid (8 B)</text>
+    <text x="65" y="74" text-anchor="middle" class="fm t2" font-size="9">OpenPGP signature</text>
+    <text x="65" y="100" text-anchor="middle" class="fm t3" font-size="9">only with --sign</text>
+  </g>
+
+  <!-- tpkg trailer -->
+  <g transform="translate(834, 42)">
+    <rect class="card" width="116" height="116" rx="10" style="stroke:#c36242;stroke-opacity:1"/>
+    <text x="58" y="28" text-anchor="middle" class="fd acc" font-size="13.5">tpkg header</text>
+    <text x="58" y="48" text-anchor="middle" class="fm t2" font-size="9">166 B at EOF</text>
+    <text x="58" y="61" text-anchor="middle" class="fm t2" font-size="9">magic · flags · slots</text>
+    <text x="58" y="74" text-anchor="middle" class="fm t2" font-size="9">runtime_ref · abi</text>
+    <text x="58" y="100" text-anchor="middle" class="fm t3" font-size="9">crc32 ≠ authenticity</text>
+  </g>
+
+  <text x="480" y="196" text-anchor="middle" class="fs t2" font-size="12.5">
+    lean = A + C + trailer  ·  fat adds B  ·  signing adds the v2 extension — flagged, the version field stays 1, v1 readers parse on untouched
+  </text>
+  <text x="480" y="222" text-anchor="middle" class="fs t3" font-size="12.5">
+    three parts stitched in ONE executable file — tebako-pkg does the byte surgery; the tpkg crate owns the format
+  </text>
+</svg>
