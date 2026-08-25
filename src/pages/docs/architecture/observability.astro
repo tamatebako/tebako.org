@@ -1,0 +1,254 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro'
+import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import StatusPill from '../../../components/docs/StatusPill.astro'
+
+const LINKS = {
+  spec25: 'https://github.com/tamatebako/tebako/blob/main/docs/spec/25-trace-observability.md',
+  spec23: 'https://github.com/tamatebako/tebako/blob/main/docs/spec/23-declarative-composition.md',
+  retrace: 'https://github.com/riboseinc/retrace',
+}
+
+const opRows = [
+  { op: 'mount', where: 'mount table insert/remove', verdicts: 'ok / error:<errno>' },
+  { op: 'open · stat', where: 'path dispatch', verdicts: 'image:<mount> / host / denied:<rule> / error:<errno>' },
+  { op: 'dlopen', where: 'dlmap2file / dlalias2file', verdicts: 'materialized:<host-path> / host / error:<errno>' },
+  { op: 'exec · spawn', where: 'exec routing — one decision, two syscall surfaces', verdicts: 'routed:<entry> / host / error:<errno>' },
+  { op: 'materialize', where: 'exec-cache extraction', verdicts: 'ok:<host-path> / cache-hit / error:<errno>' },
+  { op: 'jail', where: 'policy bind / check', verdicts: 'allow:<rule> / deny:<rule> / record' },
+  { op: 'resolve', where: 'the driver\u2019s --tebako-image triple resolution', verdicts: 'whole / slot:<n> / error:<errno>' },
+]
+
+const layerRows = [
+  { layer: 'inside the VFS', posix: 'the tfs bus', windows: 'the tfs bus', sees: 'tebako' },
+  { layer: 'libc boundary', posix: 'retrace preload', windows: 'retrace inline hooks (preload-msvc / preload-mingw)', sees: 'retrace — both platforms' },
+  { layer: 'kernel syscall', posix: 'retrace ptrace; strace → strace2retrace; eBPF bridge', windows: 'ETW / procmon (via converter)', sees: 'kernel tracers' },
+]
+
+const signatureRows = [
+  { signature: 'no mount event for the env image + prelude-class child stderr', hop: 'env image never mounted (handoff env lost)' },
+  { signature: 'dlopen verdict = the OS loader\u2019s module-not-found, every dep materialized|host-system', hop: 'the OS bind itself — bisect candidates printed' },
+  { signature: 'jail deny immediately preceding a dependent open error', hop: 'policy denial (the EACCES class)' },
+  { signature: 'materialize error', hop: 'exec-cache write failure' },
+]
+---
+<!-- normative: spec 25 (§1 laws, §2 bus, §3 envelope, §4 run, §5 explain, §6 cover + three-layer model + correlator, §8 phasing T1-T4) -->
+
+<BaseLayout title="Trace and observability — Tebako architecture" description="One interception bus, three front-ends: trace run discovers what a payload touches, trace explain names the first failed hop, trace cover proves what escaped virtualization — cross-platform and runtime-independent by construction.">
+  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
+    <p class="tb-eyebrow">ARCHITECTURE · 23</p>
+    <h1 class="mt-3">Trace and observability.</h1>
+    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      Virtualizing an application means answering three questions: what does it touch, which hop
+      failed when it breaks, and is anything it does NOT virtualized. Each used to be answered by
+      hand-rolled one-off diagnostics. Now there is one substrate and three front-ends.
+    </p>
+
+    <ArchDocsNav />
+
+    <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
+      <StatusPill status="shipped" note="the tfs::trace bus + schema, trace run / explain / cover, the procmon converter — golden-parity with retrace-correlate on the shared fixture tree" />
+      <StatusPill status="planned" note="the remainder is dogfood, not code: retrace libc-layer legs on both platforms, the kernel-layer leg, incident-13 capture archival" />
+    </div>
+
+    <!-- ============ LAWS ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">The laws.</h2>
+      <pre class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)] sm:text-sm" style="background: var(--tb-c-bg-soft);"><code>1. Observability never gates — a trace-channel failure degrades to a
+   loud stderr note; the payload run and its exit code are unaffected.
+   A tracer must never become a failure mode.
+2. Runtime-independent — events name OS-level facts only (paths,
+   verdicts, errnos), never language facts. Ruby, Julia, Python
+   payloads are equally covered: every runtime bottoms out at the
+   same libc/loader boundary the bus instruments.
+3. Cross-platform inside; layered outside — the inside stream is
+   identical on linux, macOS, windows. Outside captures join ONLY as
+   retrace-shaped JSON — an import format, never a runtime dependency.
+4. No shell-outs — captures are files parsed in-process.
+5. The correlation law — the inside stream can never prove its own
+   completeness: an escape is invisible from inside BY DEFINITION.
+6. MECE with record mode — the bus's jail channel IS the spec-23 §8
+   journal, formalized; trace run extends discovery to the axes §8
+   does not cover (materialize:, entrypoints, runtime deps).
+7. Human gate — a generated suggestion never edits a manifest.</code></pre>
+    </div>
+
+    <!-- ============ BUS ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">The interception bus.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        The bus lives in the Rust <code class="font-[var(--font-mono)] text-sm">tfs</code> crate —
+        the shipping VFS implementation on every platform. Every interception point the driver and
+        TFS already implement emits one structured event per decision. Armed by{' '}
+        <code class="font-[var(--font-mono)] text-sm">TEBAKO_TRACE=&lt;host-path&gt;</code> or the
+        driver's <code class="font-[var(--font-mono)] text-sm">--tebako-trace</code> argument (the
+        argument wins; it rides the env-scrubbed handoff). The channel opens at driver boot, before
+        any mount; writes are append-only, process-internal, and never policy-gated. Disarmed, an
+        emission point is one <code class="font-[var(--font-mono)] text-sm">Option::is_none()</code>{' '}
+        branch — and the bus compiles into the runtime/driver side only, so the bootstrap's size
+        gate is untouched. Spawned children inherit the armed channel (fd inheritance on POSIX;
+        re-open-for-append on windows); every event carries pid/tid so front-ends regroup.
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
+        <table class="w-full min-w-[820px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider-strong)] font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+              <th class="px-5 py-3 font-medium">OP</th>
+              <th class="px-5 py-3 font-medium">EMITTED WHERE</th>
+              <th class="px-5 py-3 font-medium">VERDICTS</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)]">
+            {opRows.map((r) => (
+              <tr>
+                <td class="px-5 py-2.5 align-top font-[var(--font-mono)] text-xs font-medium text-[var(--tb-c-accent)]">{r.op}</td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-2)]">{r.where}</td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-3)]"><code class="font-[var(--font-mono)]">{r.verdicts}</code></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-4 max-w-3xl text-sm text-[var(--tb-c-text-3)]">
+        The stream is JSONL — one JSON object per line, streamable, diffable, robust to a crashed
+        tail — under the versioned schema <code class="font-[var(--font-mono)] text-xs">trace-event.yaml</code>{' '}
+        (envelope v1: additive only, never bumped; ts/pid/tid/op/path/verdict/detail/dur_us/errno).
+        CI property-tests the whole op matrix against the schema.{' '}
+        <code class="font-[var(--font-mono)] text-xs">TEBAKO_DEBUG_TFS</code> remains as the
+        human-readable degraded view over the same emission points.
+      </p>
+    </div>
+
+    <!-- ============ RUN ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3"><code class="font-[var(--font-mono)]">tebako trace run</code> — discovery.</h2>
+      <p class="max-w-3xl text-[var(--tb-c-text-2)]">
+        Runs a composition under <code class="font-[var(--font-mono)] text-sm">policy: record</code>{' '}
+        with the bus armed, then synthesizes a suggested manifest — a commented YAML fragment, never
+        applied. Host reads become ro grants, host writes become rw grants (strongest-observed-op
+        wins); a VFS-resident file read through a RAW host fd (a native library's own fopen — the
+        exec-cache answer consumed it) becomes a{' '}
+        <code class="font-[var(--font-mono)] text-sm">materialize:</code> candidate, caught
+        automatically instead of discovered by a failing import; an in-image dlopen whose deps all
+        resolve in-image earns a NOTE "closure-covered — nothing to declare"; a spawned
+        host-absolute executable becomes an entrypoint/runtime-dep note. Floor, store, and
+        exec-cache paths are excluded — the automatic surface is never declared. Each entry carries
+        its evidence line; the author reviews, flips ro↔rw, deletes noise, fills why.
+      </p>
+    </div>
+
+    <!-- ============ EXPLAIN ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3"><code class="font-[var(--font-mono)]">tebako trace explain</code> — diagnosis.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        Replays a capture into the hop chain — mount → manifest read → resolve → materialize → OS
+        bind — and prints the first hop whose verdict is red, with a signature table seeded from the
+        incident corpus. The table lives in data, extended as incidents teach new signatures — never
+        hard-coded into the bus.
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
+        <table class="w-full min-w-[820px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider-strong)] font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+              <th class="px-5 py-3 font-medium">SIGNATURE IN THE STREAM</th>
+              <th class="px-5 py-3 font-medium">NAMED HOP</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)]">
+            {signatureRows.map((r) => (
+              <tr>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-2)]">{r.signature}</td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-3)]">{r.hop}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ============ COVER ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3"><code class="font-[var(--font-mono)]">tebako trace cover</code> — coverage.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        The escapes report. "What isn't tebako intercepting" is answerable ONLY by subtracting the
+        inside stream from an outside capture — and only up to the outside capture's own layer.
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
+        <table class="w-full min-w-[860px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider-strong)] font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+              <th class="px-5 py-3 font-medium">LAYER</th>
+              <th class="px-5 py-3 font-medium">POSIX</th>
+              <th class="px-5 py-3 font-medium">WINDOWS</th>
+              <th class="px-5 py-3 font-medium">WHO SEES IT</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)]">
+            {layerRows.map((r) => (
+              <tr>
+                <td class="px-5 py-2.5 text-xs leading-relaxed font-medium text-[var(--tb-c-text-1)]">{r.layer}</td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-2)]">{r.posix}</td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-2)]">{r.windows}</td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-3)]">{r.sees}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-4 max-w-3xl text-sm text-[var(--tb-c-text-3)]">
+        Escapes split in two at the libc boundary: libc-routed escapes (the app called open/
+        CreateFileW directly — visible to retrace on both platforms today) and sub-libc escapes
+        (raw syscall / NtCreateFile, loader-internal probes like macOS's dyld rpath class — only a
+        kernel-layer producer sees them). A report MUST name the producing layer of its outside
+        input: a libc-boundary capture certifies libc-routed escapes only, and a raw-syscall fixture
+        paired with one reports UNCERTIFIABLE, not covered. The outside format is the retrace trace
+        document — tebako never authors a competing one; procmon/ETW join through an offline
+        converter (<code class="font-[var(--font-mono)] text-xs">tebako trace import procmon</code>,
+        pure Rust, in-process).
+      </p>
+      <pre class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)] sm:text-sm" style="background: var(--tb-c-bg-soft);"><code>tebako trace cover --inside tfs.jsonl --outside retrace.json \
+                    --prefix /vfs/root [--pid N] [--window SECS] \
+                    [--exclude-probes] [--json] [--layer libc|kernel]
+
+stdout = the golden contract: one
+  escape &lt;path&gt; func=&lt;f&gt; tid=&lt;t&gt; pid=&lt;p&gt; class=&lt;probe|read|write|none&gt;
+per escape — byte-compared in CI against retrace's shared golden tree.
+exit 0 = no escapes · 1 = escapes found (CI-gateable) · 2 = usage/IO</code></pre>
+      <p class="mt-4 max-w-3xl text-sm text-[var(--tb-c-text-3)]">
+        The correlator is tebako-owned, safe Rust, self-contained — the invariants leave no other
+        home (no shell-outs in shipped artifacts; no C/C++ linkage outside dwarfs-t). The FORMAT is
+        retrace's single source; the ALGORITHM has two implementations that must agree — the shared
+        golden fixtures produce byte-identical escapes reports from both correlators in CI.
+        Intentionally-unserved surfaces (documented passthroughs like the platform floor) are
+        declared in the composition, so the report separates KNOWN-UNSERVED from ESCAPE. A
+        NAME-NOT-FOUND probe on an unserved under-prefix path IS an escape — existence is
+        information.
+      </p>
+    </div>
+
+    <!-- ============ THREE NEIGHBORS ============ -->
+    <div class="mt-16 grid gap-6 md:grid-cols-3">
+      <a href="/docs/architecture/jails-and-proxying/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+        <p class="tb-eyebrow">NEXT · JAILS</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">Jails and host proxying</h3>
+        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          Record mode — the journal half of discovery the bus formalizes.
+        </p>
+      </a>
+      <a href="/docs/architecture/interposition/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+        <p class="tb-eyebrow">NEXT · INTERPOSITION</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">Native interposition</h3>
+        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          The hooks whose decisions the bus emits as events.
+        </p>
+      </a>
+      <a href="/docs/architecture/contract-model/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+        <p class="tb-eyebrow">NEXT · CONTRACT MODEL</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">The contract model</h3>
+        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          How schemas evolve, fail-closed, across versions and repos.
+        </p>
+      </a>
+    </div>
+  </section>
+</BaseLayout>
