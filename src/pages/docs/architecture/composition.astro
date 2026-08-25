@@ -1,0 +1,316 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro'
+import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import StatusPill from '../../../components/docs/StatusPill.astro'
+
+const LINKS = {
+  spec23: 'https://github.com/tamatebako/tebako/blob/main/docs/spec/23-declarative-composition.md',
+  issue460: 'https://github.com/tamatebako/tebako/issues/460',
+  spec08: 'https://github.com/tamatebako/tebako/blob/main/docs/spec/08-jails.md',
+}
+
+const stackRows = [
+  { id: 'D1', doc: 'slice manifest needs:', owner: 'the slice\u2019s feedstock', answers: 'what host surface do I need, and why', consumers: 'resolver (via the registry mirror) · press (reads the image)' },
+  { id: 'D2', doc: 'composition document tebako.yaml', owner: 'the composition author', answers: 'what runs with what, where, how visible', consumers: 'shim dispatch · tebako run · tebako press' },
+  { id: 'D3', doc: 'package manifest needs union', owner: 'tebako press (baked)', answers: 'the resolved needs of everything stitched', consumers: 'the bootstrap at run time' },
+  { id: 'D4', doc: 'store config ~/.tebako/config.yaml', owner: 'the operator', answers: 'defaults, registries, per-invocation tightening', consumers: 'shim · bootstrap' },
+  { id: 'D5', doc: 'CLI flags', owner: 'the invoker', answers: 'a one-shot D2 row', consumers: 'tebako run' },
+]
+
+const comboRows = [
+  { combo: 'runtime slice (env image)', resolver: '— (resolved, never the composer)', needs: 'its release manifest', policy: 'n/a' },
+  { combo: 'executable payload slice', resolver: '— (resolved)', needs: 'its D1 needs:', policy: 'n/a' },
+  { combo: 'data payload slice', resolver: '— (resolved)', needs: 'none permitted (a needs block is a named error)', policy: 'n/a' },
+  { combo: 'standalone package', resolver: 'bootstrap', needs: 'D3 baked union ∪ lean runtime manifest ∪ operator env', policy: 'deny when D3 declares anything' },
+  { combo: 'managed dispatch', resolver: 'shim', needs: 'slice mirrors ∪ runtime manifest ∪ D2/D4/D5', policy: 'deny when anything is declared' },
+  { combo: 'tebako run', resolver: 'CLI front end', needs: 'D2/D5 ∪ slice mirrors', policy: 'deny when anything is declared' },
+  { combo: 'spawned child (class E)', resolver: 'inherits TEBAKO_JAIL; the preload re-binds', needs: 'the PARENT\u2019s composition — a child never re-resolves', policy: 'the parent\u2019s' },
+]
+---
+<!-- normative: spec 23 (D1–D5, §5 default policy, §6 algorithm, §7 combinations, §8 record, §9 swap), spec 03 §6, spec 05 §3-4; carried/shared terminology per tamatebako/tebako#460 (owner-locked 2026-08-25) — spec 23 amendment rides the implementation PR -->
+
+<BaseLayout title="Declarative composition — Tebako architecture" description="What runs with what, where, and how visible: the five-document declarative stack (D1–D5), jail-safe-by-default policy, the record mode that discovers a slice's needs, and carried-vs-shared slices — the one pipeline behind every package shape.">
+  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
+    <p class="tb-eyebrow">ARCHITECTURE · 17</p>
+    <h1 class="mt-3">Declarative composition.</h1>
+    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      A tebako system fully resolves the needs of its payloads and its running configuration:
+      what runs with what, where it mounts, which host paths it may touch — all declared, all
+      resolvable, jail-safe by default. The docker-compose analogue, with named errors instead
+      of surprises.
+    </p>
+
+    <ArchDocsNav />
+
+    <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
+      <StatusPill status="shipped" note="needs blocks, the deny default, the resolution algorithm, image-layer compose" />
+      <StatusPill status="planned" note="the record-mode generator and the bootstrap override channels are phased (spec 23 §8/§9)" />
+    </div>
+
+    <!-- ============ THE STACK ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Five documents, one owner each.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        Every fact lives in exactly one row. A slice's needs are never re-authored into the
+        composition — they resolve <em>from</em> the slice's own declaration. The operator layers
+        may tighten or add grants; they may not edit a slice's declaration.
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
+        <table class="w-full min-w-[760px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider-strong)] font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+              <th class="px-5 py-3 font-medium">#</th>
+              <th class="px-5 py-3 font-medium">DOCUMENT</th>
+              <th class="px-5 py-3 font-medium">OWNER</th>
+              <th class="px-5 py-3 font-medium">ANSWERS</th>
+              <th class="px-5 py-3 font-medium">CONSUMERS</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)]">
+            {stackRows.map((r) => (
+              <tr>
+                <td class="px-5 py-2.5 align-top font-[var(--font-mono)] text-xs font-medium text-[var(--tb-c-accent)]">{r.id}</td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-2)]"><code class="font-[var(--font-mono)]">{r.doc}</code></td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-2)]">{r.owner}</td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-2)]">{r.answers}</td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-3)]">{r.consumers}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ============ NEEDS ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">D1 — a slice declares its needs.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        The in-image manifest's <code class="font-[var(--font-mono)] text-sm">needs:</code> block is
+        the ONLY spelling of host-surface requirements — one key, one grammar, one semantics. Every
+        entry is absolute (or a symbolic atom: <code class="font-[var(--font-mono)] text-sm">$HOME</code>,{' '}
+        <code class="font-[var(--font-mono)] text-sm">$TMPDIR</code>,{' '}
+        <code class="font-[var(--font-mono)] text-sm">$CWD</code>,{' '}
+        <code class="font-[var(--font-mono)] text-sm">$TEBAKO_HOME</code> — resolved at bind, per
+        invocation, never baked), carries <code class="font-[var(--font-mono)] text-sm">ro|rw</code>,
+        an optional bind-mount spelling, an optional platform filter, an{' '}
+        <code class="font-[var(--font-mono)] text-sm">optional: true</code> marker for probe
+        artifacts — and a MANDATORY <code class="font-[var(--font-mono)] text-sm">why:</code>.
+      </p>
+      <pre class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)] sm:text-sm" style="background: var(--tb-c-bg-soft);"><code>needs:
+  host:
+    - path: /opt/vendor-tool        # absolute, or a symbolic atom
+      access: ro                    # ro | rw
+      mount: /vendor/tool           # OPTIONAL: present it at this VFS point
+      when: [macos]                 # OPTIONAL platform filter
+      optional: true                # absent at bind = skipped (probes only)
+      why: "the tool probes its install root at boot"   # MANDATORY</code></pre>
+      <p class="mt-4 max-w-3xl text-sm text-[var(--tb-c-text-3)]">
+        Fail-closed by construction: a need absent without the optional marker is a named error; an
+        ro ancestor may not hide an rw descendant; <code class="font-[var(--font-mono)] text-xs">rw</code>
+        {' '}on a user-surface atom requires the composition's explicit consent — declared write
+        access is visible by construction. Deriving a grant derives its strict ancestors as traverse
+        reads, so canonicalization walks pass (the JVM's realpath-at-boot case).
+      </p>
+    </div>
+
+    <!-- ============ D2 ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">D2 — the composition document.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        <code class="font-[var(--font-mono)] text-sm">tebako.yaml</code> — YAML, versioned JSON
+        Schema, discovered walking up from the cwd (or named with{' '}
+        <code class="font-[var(--font-mono)] text-sm">-f</code>). The CLI flags are this document
+        written inline: <code class="font-[var(--font-mono)] text-sm">tebako run</code> accepts{' '}
+        <code class="font-[var(--font-mono)] text-sm">--slice name@req</code>,{' '}
+        <code class="font-[var(--font-mono)] text-sm">--runtime</code>,{' '}
+        <code class="font-[var(--font-mono)] text-sm">--entrypoint</code>,{' '}
+        <code class="font-[var(--font-mono)] text-sm">--mount host:mount:ro|rw</code>,{' '}
+        <code class="font-[var(--font-mono)] text-sm">--policy open|deny</code>,{' '}
+        <code class="font-[var(--font-mono)] text-sm">--need path:ro</code> — each flag maps 1:1
+        onto a key; flags and <code class="font-[var(--font-mono)] text-sm">-f</code> compose,
+        flags win.
+      </p>
+      <pre class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)] sm:text-sm" style="background: var(--tb-c-bg-soft);"><code>version: 1
+runtime:
+  name: ruby
+  requirement: "~&gt; 3.3"
+slices:
+  - { name: metanorma, requirement: "&gt;= 2.1" }
+  - { name: openjdk,   requirement: "21" }
+entrypoint: mnconvert
+policy: deny                    # the DEFAULT once anything is declared
+mounts:                         # operator bind-mounts (docker -v)
+  - { host: ./data, mount: /data, access: ro }
+needs:                          # composition-level additions, D1 grammar
+  host:
+    - { path: "$HOME/.fontist", access: rw, why: "fontist cache" }</code></pre>
+    </div>
+
+    <!-- ============ JAIL-SAFE BY DEFAULT ============ -->
+    <div class="mt-16">
+      <div class="mb-3 flex flex-wrap items-center gap-3">
+        <h2>Jail-safe by default.</h2>
+        <StatusPill status="shipped" />
+      </div>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        Any declaration in force — a composition document, a slice with needs, a CLI flag — turns
+        the policy default to <code class="font-[var(--font-mono)] text-sm">deny</code>;{' '}
+        <code class="font-[var(--font-mono)] text-sm">open</code> must be asked for by name. A run
+        with NO declarations anywhere runs open (<code class="font-[var(--font-mono)] text-sm">never_denies</code>)
+        — declarations are what turn the jail on. Under deny, the effective world is exactly: the
+        VFS images (read-only by construction, not policy-gated at all); the platform floor; the
+        system's own surface (<code class="font-[var(--font-mono)] text-sm">$TEBAKO_HOME</code> and
+        the exec cache, read-only at bind); the union of declared needs; the composition's
+        mounts/needs; and argument files auto-granted ro. Everything else:{' '}
+        <code class="font-[var(--font-mono)] text-sm">EPERM/EROFS</code>, journaled — and the journal
+        line names the covering declaration (<code class="font-[var(--font-mono)] text-xs">would-need=slice:openjdk</code>)
+        or says none exists, so the operator learns the exact key to add from the denial itself.
+      </p>
+    </div>
+
+    <!-- ============ RESOLUTION ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">The resolution algorithm.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        One algorithm, three front ends (shim, bootstrap,{' '}
+        <code class="font-[var(--font-mono)] text-sm">tebako run</code>/{' '}
+        <code class="font-[var(--font-mono)] text-sm">press</code>), in order:
+      </p>
+      <pre class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-xs leading-relaxed text-[var(--tb-c-text-2)] sm:text-sm" style="background: var(--tb-c-bg-soft);"><code>1. slice set     the entrypoint slice + transitive depends: (at resolved versions) + the runtime
+                 data slices join the mounts; they declare no needs (a needs block = named error)
+2. needs union   every slice's D1 needs.host, platform-filtered, atoms resolved at bind time
+3. compose       effective = needs-union ∪ mounts ∪ operator-grants, then operator tightening
+                 (policy, --no-host, explicit denies) intersects — declarations request, the
+                 operator tightens
+4. needs-check   every declared need verified against the effective policy; an uncovered need is
+                 a NAMED RESOLUTION FAILURE before exec:
+                 "slice &lt;name&gt; needs &lt;path&gt; (&lt;access&gt;, why: &lt;why&gt;) — denied by &lt;source&gt;"
+5. export        the authored part serializes to TEBAKO_JAIL (+_SOURCE, +_JOURNAL); the floor and
+                 the system surface are NOT serialized — every bind re-derives them, so a spawned
+                 child enforces exactly its parent's policy</code></pre>
+      <div class="mt-8 overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
+        <table class="w-full min-w-[760px] text-left text-sm">
+          <thead>
+            <tr class="border-b border-[var(--tb-c-divider-strong)] font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+              <th class="px-5 py-3 font-medium">COMBINATION</th>
+              <th class="px-5 py-3 font-medium">RESOLVER</th>
+              <th class="px-5 py-3 font-medium">NEEDS SOURCES</th>
+              <th class="px-5 py-3 font-medium">POLICY DEFAULT</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--tb-c-divider)]">
+            {comboRows.map((r) => (
+              <tr>
+                <td class="px-5 py-2.5 align-top font-[var(--font-mono)] text-xs font-medium text-[var(--tb-c-accent)]">{r.combo}</td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-2)]">{r.resolver}</td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-2)]">{r.needs}</td>
+                <td class="px-5 py-2.5 text-xs leading-relaxed text-[var(--tb-c-text-3)]">{r.policy}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ============ CARRIED VS SHARED ============ -->
+    <div class="mt-16">
+      <div class="mb-3 flex flex-wrap items-center gap-3">
+        <h2>Carried vs shared — one pipeline.</h2>
+        <StatusPill status="shipped" note="carried slots + shared runtime today" />
+        <StatusPill status="planned" note="run-time payload resolution + lazy seeding (spec 19 amendment)" />
+      </div>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        Fat and lean are the same architecture (<a href={LINKS.issue460} class="tb-link-underline text-[var(--tb-c-accent)]">the locked model</a>):
+        press always resolves and locks the full closure — every slice's version and sha256 recorded
+        in the package manifest — and the only question left is where the bytes live. A slice is{' '}
+        <strong>carried</strong> (its bytes ride in a trailer slot) or <strong>shared</strong>
+        (resolved at first run into the machine store, verified against the locked digest, and
+        shared with every package that needs the same slice). A{' '}
+        <strong>self-contained</strong> package carries everything — zero network, empty cache,
+        one file. A <strong>shared-runtime</strong> package carries its payloads and shares the
+        runtime — the shape packed-mn ships. <code class="font-[var(--font-mono)] text-sm">lean</code>/
+        <code class="font-[var(--font-mono)] text-sm">fat</code> survive as deprecated aliases with
+        a named warning.
+      </p>
+      <p class="max-w-3xl text-[var(--tb-c-text-2)]">
+        Carried slices seed the store lazily at first run — best-effort, tmp+rename, journaled,
+        never blocking the run — so a self-contained download doubles as a cache prime. Shared
+        slices resolve by the locked digests, fail-closed: carry/shared changes where bytes come
+        from, never what runs. Platform coverage is declared by the slice itself (
+        <code class="font-[var(--font-mono)] text-sm">platforms: universal</code> or an explicit
+        triplet list); the composition's per-slice <code class="font-[var(--font-mono)] text-sm">platforms:</code>
+        {' '}key is an assertion that can narrow, never extend — a slice that cannot cover the host
+        triplet is a named error, never a silent fallback.
+      </p>
+    </div>
+
+    <!-- ============ RECORD MODE ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Discovery: the record mode.</h2>
+      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
+        A slice author usually does not know the host surface their executable touches.{' '}
+        <code class="font-[var(--font-mono)] text-sm">policy: record</code> (env form:{' '}
+        <code class="font-[var(--font-mono)] text-sm">TEBAKO_JAIL=record</code>) allows every host
+        check and journals it (<code class="font-[var(--font-mono)] text-xs">event=jail-allow path=… op=…</code>)
+        — nothing is denied, so the workload cannot crash from policy during discovery, and spawned
+        children append to the same journal. The generator,{' '}
+        <code class="font-[var(--font-mono)] text-sm">tfs needs --from-journal</code>, folds the
+        journal (denials included — a denial is an unmet need) into a draft{' '}
+        <code class="font-[var(--font-mono)] text-sm">needs:</code> block: atoms re-substituted,
+        floor/store/exec-cache excluded, strongest observed op wins, ancestor collapse,{' '}
+        <code class="font-[var(--font-mono)] text-xs">why: "TODO — observed: …"</code> for the author
+        to replace. The human gate is the point: the record shows the observed minimum; the author
+        decides what production actually wants. The generator never edits a manifest itself, and
+        shipping <code class="font-[var(--font-mono)] text-sm">record</code> in force is a named
+        lint warning.
+      </p>
+    </div>
+
+    <!-- ============ POST-BAKE SWAP ============ -->
+    <div class="mt-16">
+      <h2 class="mb-3">Swap the composition, not the slice.</h2>
+      <p class="max-w-3xl text-[var(--tb-c-text-2)]">
+        Slice images are immutable and content-addressed — a configuration change never mutates or
+        rebuilds one. In managed mode the swap IS editing{' '}
+        <code class="font-[var(--font-mono)] text-sm">tebako.yaml</code>. A standalone package's
+        baked composition is the DEFAULT; an external document overrides it — first hit wins:{' '}
+        <code class="font-[var(--font-mono)] text-sm">--compose</code>, then{' '}
+        <code class="font-[var(--font-mono)] text-sm">TEBAKO_COMPOSE</code>, then a sidecar{' '}
+        <code class="font-[var(--font-mono)] text-sm">&lt;package&gt;.tebako.yaml</code>. The override
+        replaces the baked policy/mounts/needs/entrypoint; it can never conjure slice content — a
+        slice the trailer does not carry is a named error, and spec 09's trust checks apply to newly
+        referenced slices exactly as at press. The run's provenance is journaled:{' '}
+        <code class="font-[var(--font-mono)] text-xs">event=composition source=external(&lt;path&gt;) sha256=…</code>
+        {' '}or <code class="font-[var(--font-mono)] text-xs">source=baked</code>. Today{' '}
+        <code class="font-[var(--font-mono)] text-sm">tfs exec --compose</code> speaks the
+        image-layer subset; the bootstrap/shim override channels ride Phase-R.
+      </p>
+    </div>
+
+    <!-- ============ THREE NEIGHBORS ============ -->
+    <div class="mt-16 grid gap-6 md:grid-cols-3">
+      <a href="/docs/architecture/jails-and-proxying/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+        <p class="tb-eyebrow">NEXT · JAILS</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">Jails and host proxying</h3>
+        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          The policy grammar the needs-check enforces, and the platform floor.
+        </p>
+      </a>
+      <a href="/docs/architecture/driver-contract/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+        <p class="tb-eyebrow">NEXT · DRIVER CONTRACT</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">The driver contract</h3>
+        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          What the resolved composition becomes on the wire: images, entry, env.
+        </p>
+      </a>
+      <a href="/docs/architecture/store/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+        <p class="tb-eyebrow">NEXT · THE STORE</p>
+        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">Where shared slices live</h3>
+        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
+          <code class="font-[var(--font-mono)] text-xs">~/.tebako</code> — content-addressed,
+          trust-anchored, shared machine-wide.
+        </p>
+      </a>
+    </div>
+  </section>
+</BaseLayout>
