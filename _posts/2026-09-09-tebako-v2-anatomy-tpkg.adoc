@@ -1,0 +1,183 @@
+---
+layout: post
+title:  "Anatomy of a tebako package"
+# PUBLISH-TIME PLACEHOLDER — set the real date when this post ships;
+# the series cadence is one post every 2-3 days (PROGRESS/29).
+date:   2026-09-09 00:00:00 +0800
+categories:
+  - tebako
+  - architecture
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: >-
+  Post 2 of 5. A tebako package is a composition of three
+  independently distributable parts — bootstrap, runtime, payload
+  slices — glued by a 166-byte trailer. Here is exactly which bytes
+  land on a user's machine, and why nothing ever compiles there.
+---
+
+= Anatomy of a tebako package
+
+Post 1 showed a Metanorma compile running end-to-end on a bare machine.
+This post opens the package: what the parts are, how they are glued
+together, and what actually lands on disk.
+
+== The three parts
+
+// source: docs/spec/01-overview.md, docs/spec/02-tpkg-wire-format.md;
+// ecosystem charter §2 (the three parts, the trailer shape).
+A tebako package is a composition of up to three independently
+distributable parts:
+
+. **The bootstrap** — a small Rust loader, under 3 MB and size-gated in
+  CI. It is the process entry point of every stitched package: it reads
+  the package's own trailer, resolves the runtime, verifies it, and
+  hands off. It contains no application knowledge.
+. **The runtime** — *two* artifacts: the interpreter executable and its
+  environment image (a `.tfs` file holding `lib/ruby`, the gems,
+  everything the interpreter's load paths expect). Downloaded once per
+  machine into the shared store, SHA-256 verified, and *mounted, never
+  extracted*.
+. **Payload slices** — bare `.tfs` images: the application, its data,
+  its native toolkits. Every slice is self-describing through an
+  in-image manifest at `/__tpkg__/manifest.yaml`.
+
+The parts are glued by the *tpkg trailer*: a 166-byte header at the end
+of the package file, plus a 280-byte record per slice slot. Slot records
+carry `offset`, `size`, `format_id`, and the mount point; the header
+carries the runtime reference, the launcher ABI version, and the package
+flags. The trailer format is version 1 forever — extensions ride flag
+bits, never version bumps.
+
+== Carried or shared: the composition spectrum
+
+// source: docs/spec/23-declarative-composition.md §13 (owner-locked
+// 2026-08-25, tebako#460): the locked words are "carried"/"shared" per
+// slice and "self-contained"/"shared-runtime" per package preset;
+// fat/lean remain as deprecated aliases with a named warning.
+Every resolved slice is either *carried* (its bytes ride inside the
+package as a trailer slot) or *shared* (resolved at first run into the
+machine cache, verified against the press-time locked digest). Two
+presets cover the ends of the dial:
+
+* **self-contained** — carries the full closure: runtime executable,
+  environment image, and every payload slice. Zero network, empty
+  cache, one file.
+* **shared-runtime** — carries the application payload, shares the
+  runtime and any slices marked shared. This is the default preset, and
+  the shape packed-mn ships.
+
+(The v1-era words for these were "fat" and "lean"; they are still
+accepted as aliases with a named warning, but the locked vocabulary is
+the one above — the dial is which slices are physically embedded,
+nothing else.)
+
+Carry changes where the bytes come from, never *what* runs: press locks
+the concrete version and digest of every slice into the package
+manifest, and run-time resolution verifies against that lock,
+fail-closed.
+
+== The store: `~/.tebako`
+
+// source: ecosystem charter §8 (store layout and rules); docs/spec/05
+// (resolution and cache); docs/spec/09 (trust anchors).
+Shared artifacts live in a machine-wide store:
+
+[source,text]
+----
+~/.tebako/
+  runtimes/<lang>-<lv>-<ver>-<triplet>/   # interpreter exe + env image
+    sha256 / origin                       # trust anchor + provenance
+  payloads/<name>/<version>.tfs           # byte-identical with the
+  payloads/<name>/<version>.tfs.sha256    # registry artifact + anchor
+  shims/                                  # argv0 links to tebako-shim
+  registries/                             # registry cache (24 h TTL)
+  config.yaml                             # defaults, registries, runtimes
+  keys/  trust/  journal.log  locks/  tmp/
+----
+
+The rules that make this safe to share:
+
+* **Content-addressed and trust-anchored.** Every artifact carries a
+  `.sha256` sidecar; verification happens at fetch/install, *never per
+  run*.
+* **Byte-identical.** A payload in the store is exactly what the
+  publisher released — never wrapped, mutated, or re-stitched.
+* **Read-only artifacts, atomic installs.** Installs are tmp-file plus
+  rename, so a partial install is invisible; stored artifacts are
+  read-only; per-entry locks bound concurrent installs.
+* **A run is a run.** Executing a package never installs its slices;
+  `tebako install` is the explicit verb.
+* **`TEBAKO_OFFLINE=1`** turns resolution into cache-or-named-error —
+  the failure names what is missing instead of touching the network.
+
+== Which bytes land on a user's machine
+
+// source: metanorma/packed-mn releases (v1.16.9-x per-triplet assets);
+// tebako-packages/metanorma releases (1.16.9-x payload);
+// tebako-runtime-ruby release layout (exe + .tfs + SHA256SUMS).
+Take the shared-runtime Metanorma package for `aarch64-macos`:
+
+// Byte counts verified against the releases at write time:
+// packed-mn v1.16.9-2 metanorma-darwin-arm64.tgz = 219,489,604 B;
+// tebako-packages/metanorma 1.16.9-6 macos-arm64 .tfs = 157,107,557 B.
+* The download itself: *one file* — the bootstrap with the Metanorma
+  payload slice carried in a trailer slot (the `aarch64-macos` package
+  tarball is 219 MB; the carried application image inside it is 157 MB —
+  Metanorma plus its full gem closure, compressed).
+* On first run: the bootstrap resolves the runtime reference from the
+  trailer, downloads the two runtime artifacts for the host triplet
+  (the interpreter executable and the environment image), verifies both
+  against the factory's published SHA-256 sums, and stores them under
+  `~/.tebako/runtimes/`. Every other tebako package on the machine —
+  present or future — shares them.
+* If the composition declares more slices (Inkscape, say, or a spawned
+  OpenJDK runtime — post 3), each resolves the same way: fetch once,
+  verify, store, share.
+
+At no point does anything compile on the user's machine. That is a
+design law, not an observation: prebuilt artifacts flow downward from
+the factories, and compilation never flows outward to the people
+running packages. The only audience that needs a compiler is the one
+working on tebako itself.
+
+== Resolution: where "the newest compatible" comes from
+
+// source: docs/spec/04 (MECE reference syntax, no default service);
+// docs/spec/05 (resolution); ecosystem charter §6 (the version chain).
+A registry is a YAML index hosted on any git host or release page —
+there is no central server and no default registry. References are
+explicit and MECE: `tfs:github:tebako-packages/metanorma`,
+`tfs:gitlab:…`, `tfs+https://…`, `file://…`, with `?sha256=` pins. An
+unparseable reference is a named error, never a guess.
+
+When you type `metanorma`, version selection walks a fixed chain, first
+hit wins:
+
+. `TEBAKO_METANORMA_VERSION` in the environment,
+. the nearest `.tebako-tools.yaml` walking up from your cwd,
+. `defaults:` in `~/.tebako/config.yaml`,
+. the registry default.
+
+The runtime is chosen the same way in miniature: the entrypoint's
+declared `runtime_requirement` resolves to the newest *compatible*
+cached runtime, or downloads and verifies one. A payload with native
+extensions pins an ABI line (`~> 3.3.0`); a pure-language payload takes
+a range. A wrong line is a named error, never a segfault.
+
+== What the trailer buys you
+
+Because the composition is recorded in 166 bytes plus slot records at
+the end of an ordinary file, a tebako package stays an ordinary file:
+you can `curl` it, `chmod` it, ship it in a tarball, notarize it, or
+hardlink it into a Chocolatey package (which is exactly how
+`fontist.exe` gets onto a Windows user's PATH — post 4). The format's
+job is to make the parts findable; the policy's job — which runtime,
+which slices, what host access — lives in declared documents, which is
+where the next three posts spend their time.
+
+Next: the four-technology compile from post 1, taken apart — the
+spawned JVM, the mounted Inkscape, and the one deliberate host tool.
