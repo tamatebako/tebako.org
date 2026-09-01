@@ -1,0 +1,224 @@
+---
+layout: post
+title:  "Ruby calls Java calls Python: composition in practice"
+# PUBLISH-TIME PLACEHOLDER — set the real date when this post ships;
+# the series cadence is one post every 2-3 days (PROGRESS/29).
+date:   2026-09-11 00:00:00 +0800
+categories:
+  - tebako
+  - architecture
+  - metanorma
+  - java
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: >-
+  Post 3 of 5. Metanorma's PDF pipeline spawns a JVM from inside a
+  packaged Ruby process. In tebako v2.1 that JVM is a spawned runtime —
+  a store-resident child dispatched through tebako, never a co-mounted
+  VFS java, never a host-PATH accident. Here is the whole composition.
+---
+
+= Ruby calls Java calls Python: composition in practice
+
+Post 1's compile exercised four technology stacks. This post is the
+wiring diagram: how a packaged Ruby process legally spawns a JVM it
+cannot see on any host `PATH`, why Inkscape rides as a mounted payload
+instead, and why Python is — for now — a deliberate host tool.
+
+== The composition, declared
+
+// source: tebako-packages/metanorma manifests/payload.yaml (the
+// language + toolkit edges) and #35 (the java runtime edge, java/05);
+// docs/spec/30 §1 (the edge grammar); docs/spec/23 §10-11.
+Everything below is *declared* — in the payload's in-image manifest,
+not discovered at run time. The Metanorma payload's dependency set, in
+the manifest's own grammar:
+
+[source,yaml]
+----
+requires:
+  # the runtime this payload boots on
+  - kind: language
+    engine: ruby
+    constraint: "~> 3.3.0"
+  # the XSL-FO converter (mn2pdf) and the validator (jing) are java
+  - kind: runtime
+    engine: java
+    implementation: temurin
+    constraint: ">= 21, < 26"
+    expose: [java]          # the command names this payload surfaces
+  # figure rasterization is a mounted toolkit payload
+  - kind: toolkit           # isodoc rasterizes SVG figures through
+    name: inkscape          # vectory -> inkscape for doc/html output
+    constraint: ">= 1.3"
+    mount: /opt/inkscape
+----
+
+Three different answers to "I need another technology," each chosen on
+purpose:
+
+* **ruby** — the runtime the package boots on (two artifacts, mounted,
+  shared machine-wide; post 2).
+* **java** — a *spawned runtime*: a separate child process, dispatched
+  through tebako from the machine store.
+* **inkscape** — a *co-mounted payload slice*: bytes in the same
+  process, mounted at `/opt/inkscape`, dispatched longest-prefix.
+* **python** (xml2rfc, IETF flavors) — a *host tool*: used when the
+  host provides it, declared as such, journaled when it runs.
+
+== Java: the spawned runtime (spec 30)
+
+// source: docs/spec/30-runtime-spawned-dependency.md (NORMATIVE,
+// implemented 2026-08-31, tebako#508); docs/spec/29 (the wrapper-exe
+// pattern); PROGRESS/30 (the implementation record).
+The java story is the newest piece of the architecture, and it is worth
+stating precisely, because the first shape was different: the early v2
+Metanorma builds co-mounted a JRE toolkit slice at `/opt/openjdk`. That
+works for library-layer cases — but a VFS mount is un-exec'able by a
+subprocess: `execve` resolves *host* paths, and a mount that lives
+inside the parent's address space is invisible to the kernel. The
+shipped answer is spec 30: **a runtime as a spawned dependency**.
+
+The OpenJDK runtime is itself the second new pattern, spec 29's
+*wrapper exe*. Tebako does not compile Temurin; it ships upstream bytes.
+So the runtime's executable artifact is a small tebako-owned Rust
+binary embedding the driver, and the environment image holds the real
+JRE. The wrapper speaks the exact runtime-driver wire protocol, mounts
+its own env image, and execs the interpreter the image's manifest
+declares (`layout.interpreter: /bin/java`). On POSIX the interpreter
+*replaces* the wrapper process; on Windows, where `exec` does not
+exist, the wrapper spawns it and propagates the exit code verbatim.
+
+When packaged Ruby code calls `java` — mn2pdf joining an XSL-FO
+command line, jing validating against a schema — this happens:
+
+// source: docs/spec/30 §2; ruby#106 (the tfs_spawn_prepare FFI head,
+// merged 2026-09-01); tebako#508.
+. The patched Ruby's spawn interception recognizes `java` as a name the
+  payload's manifest *exposes*, and asks the in-process driver for a
+  spawn plan through a C ABI call. An undeclared command name is never
+  rewritten — it falls to the host `PATH`, journaled as a host spawn.
+. The driver's plan is a full dispatch of the depended runtime's
+  wrapper executable *from the store* — a host path, kernel-visible by
+  construction: the store wrapper, the parent's shared mounts carried
+  as `--tebako-image` triples, and `--tebako-entry java` plus the
+  user's arguments.
+. Arguments that name files under the parent's mounts are carried by
+  *re-mounting the same image in the child at the same mount point* —
+  the argument strings pass through unrewritten. (On Windows, where a
+  child cannot serve in-VFS reads, the file is materialized to the
+  exec cache and the argument rewritten to the host path — the shipped
+  ruby-windows behavior, now the general rule for that visibility
+  class.)
+. The child's environment is scrubbed: the parent's entire
+  runtime-injection surface (mount table, preload shim, jail spec,
+  spawn lock) is deleted, and the child gets its own
+  `TEBAKO_RUNTIME_IMAGE` pointing at the JRE env image. A foreign
+  preload in the child would bind the parent's symbols — the strip is
+  not optional.
+
+Resolution is split between the two actors that can each do their half:
+the *shim* resolves the edge at dispatch — download permitted, like the
+primary runtime — and exports the pins as `TEBAKO_SPAWN_LOCK`
+(`java=21.0.12:2.1.0`). The *driver* resolves cache-only at spawn time
+and never downloads: a locked runtime gone from the store is a named
+error, never a silent re-pick.
+
+// source: docs/spec/30 §3 (the PATH launcher tier); spec 22 §3
+// (wrap-bin); PROGRESS/19 (windows option (b)).
+There is a second surface: shell-form spawns (`system("java -jar …")`)
+never reach the FFI, because the shell is the spawn target. For those,
+the parent's boot plants one generated *launcher* per exposed name in a
+PATH-front directory — a self-contained script that execs the planned
+child. A name that cannot resolve bakes a fail-closed stub that prints
+the named error and exits 69. Windows has no launcher tier; the argv
+bridge is the whole surface there.
+
+And the rule that makes all of this worth the machinery: **a
+depended-runtime spawn that cannot resolve through tebako fails with a
+named error — it never falls through to a system java**. Falling
+through to whatever happens to be on the host is exactly the
+host-fragility bug class this spec exists to kill.
+
+== Inkscape: a mounted payload, on purpose
+
+// source: _posts/2026-07-31-tebako-v2-hermetic.adoc (Inkscape 1.4.3 at
+// /opt/inkscape); docs/spec/03 (DEPENDS mount composition); spec 11
+// (longest-prefix dispatch).
+Inkscape takes the other route: a payload slice *co-mounted* into the
+process at `/opt/inkscape`. Mount composition is declarative and
+versioned; nested mounts are allowed, duplicate mount points are a
+named error, and any mount failure unwinds everything — never a
+partial mount. Why co-mount here and spawn for java? Because the
+consumer is different: the figure pipeline reads Inkscape's bytes in
+the parent's own context, while mn2pdf must *be* a JVM process of its
+own. The architecture has one answer per relationship, and the manifest
+says which.
+
+== Python: the honest host-tool route
+
+// source: PROGRESS/25-command-exposure.md (the chocolatey python313 /
+// xml2rfc version-range saga); PROGRESS/27-multi-runtime-ipc-future.md
+// (xml2rfc as a host pip install today; the hermetic python payload as
+// the direction); PROGRESS/00-INDEX.md 2026-09-01 (python/01 skeleton:
+// CPython relocatable, zero patches).
+xml2rfc — needed only for the IETF document flavors — is the one
+component Metanorma still takes from the host. That is a deliberate,
+declared choice, and an honest one:
+
+* The distribution channels already carry it: the Chocolatey package
+  depends on `python3` and installs xml2rfc as part of the install.
+* The cost of the choice is on record: a chocolatey feed python3 bump
+  (3.14.7) fell *outside* xml2rfc's declared range and broke installs
+  until the dependency was pinned to a compatible line. Host tools mean
+  host version drift; that is the trade-off, stated plainly.
+* The exit is built: a python runtime is in the pipeline (the factory
+  skeleton's relocation probe already returned *relocatable, zero
+  patches* for CPython 3.12/3.13). When it ships, xml2rfc becomes a
+  spec-30 spawned edge like java — hermetic, version-locked, and the
+  host-python saga becomes a war story.
+
+System versus payload is a per-tool decision, made tool by tool, in the
+manifest — not a default the platform imposes.
+
+== The platform story, honestly
+
+// source: docs/spec/29 §3 (the visibility tiers: preload = POSIX
+// default, exec-cache = the windows default and universal fallback);
+// docs/spec/22 §3; PROGRESS/24 (the preload-inheritance asymmetry).
+The mechanism differs per platform, and we would rather document the
+asymmetry than hide it:
+
+* **POSIX (macOS, Linux):** the preload shim — `LD_PRELOAD` /
+  `DYLD_INSERT_LIBRARIES` plus the mount table — is *inherited* by
+  spawned children, so a spawned tool's file reads resolve through the
+  VFS. Dynamic interpreters (the JVM included) run with only their
+  load-closure materialized; the env image stays mounted.
+* **Windows:** there is no interposition API to inherit. The exec-cache
+  tier is the answer: the interpreter's home tree materializes from the
+  mounted image into a content-addressed cache, and the host copy runs.
+  VFS-path arguments are materialized and rewritten at the spawn seam.
+  The store artifact stays pristine either way — the cache is derived,
+  content-keyed, disposable.
+
+== Evidence
+
+// source: PROGRESS/00-INDEX.md 2026-09-01 (openjdk runtime v2.1.0
+// published + smoke: sidecar-verified pair, `TEBAKO_RUNTIME_IMAGE=rt.tfs
+// ./rt --tebako-entry java -version` printed Temurin 21.0.12+8, exit 0);
+// PROGRESS/13-benchmarks.md (the D0 acceptance compile incl. the PDF leg
+// spawning java/mn2pdf).
+The java edge is not a rendering of a design doc. The published OpenJDK
+runtime (release v2.1.0, Temurin 21.0.12+8) was smoke-verified against
+its own published bytes: download the pair, check the SHA-256 sidecars,
+dispatch `--tebako-entry java -version` through the wrapper — Temurin
+answers, exit 0. And the Metanorma acceptance suite's PDF legs are
+exactly the spawn path under load: mn2pdf and jing running as
+dispatched children, fonts and all, on all three shipped payload
+triplets.
+
+Post 4 is about the other half of "nothing leaks": the jail — what
+these composed processes may touch on your host, and who says so.
