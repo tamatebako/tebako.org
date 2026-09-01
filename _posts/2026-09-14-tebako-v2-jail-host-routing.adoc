@@ -1,0 +1,208 @@
+---
+layout: post
+title:  "The jail and the host: declarative filesystem policy"
+# PUBLISH-TIME PLACEHOLDER — set the real date when this post ships;
+# the series cadence is one post every 2-3 days (PROGRESS/29).
+date:   2026-09-14 00:00:00 +0800
+categories:
+  - tebako
+  - security
+  - architecture
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: >-
+  Post 4 of 5. A tebako run is read-only by default: the payload
+  declares what host surface it needs — fontist's ~/.fontist is the
+  worked example — and the running configuration binds it. Record mode
+  discovers the needs; the journal is the audit; verification happens
+  at install, never per run.
+---
+
+= The jail and the host: declarative filesystem policy
+
+The previous posts showed what a tebako run can *reach*. This one is
+about what it may *touch* — and who gets to say.
+
+== Read-only by default
+
+// source: docs/spec/23 §5 (the default policy); spec 08 (the jail);
+// spec 11 (the VFS is read-only by construction).
+The default posture is *deny*. A run with any declaration in force —
+a composition document, a slice with declared needs, a single CLI flag
+— runs under `policy: deny`; `open` must be asked for by name. Under
+deny, the effective world is exactly:
+
+. the VFS itself — the environment image plus every resolved slice
+  image, read-only by construction;
+. the *platform floor* — the host system directories the OS itself
+  needs, read-only, automatic;
+. the *system self-surface* — the store and the exec cache, read-only
+  at bind, declared once by the system in code, never a payload's
+  burden;
+. the union of *declared needs*;
+. whatever the composition and the operator add on top.
+
+Everything else answers EPERM/EROFS — and every denial is journaled,
+naming the path, the operation, and the covering declaration when one
+exists. A need that nothing covers does not surface as a mid-run crash:
+resolution *fails before exec* with a named error naming the slice, the
+path, the declared `why`, and the denying source. That is the
+needs-check law: declared needs are contracts, checked up front.
+
+== The payload declares; the configuration binds
+
+// source: docs/spec/23 §1-§3 (the five-document stack; the
+// docker-compose / docker -v analogues); spec 23 §2 (the needs grammar,
+// mandatory why, symbolic atoms).
+Two laws make the model declarative rather than imperative. The
+*declaration law*: nothing is proxied, mounted, or granted that was not
+written down — by the slice (its `needs:`), by the composition (its
+`tebako.yaml`), or by the operator (config/CLI). The *binding*
+separation: the payload says *what it needs and why*; the running
+configuration decides *how that need is met* — the same relationship as
+a container image's documented volumes and a `docker -v` flag.
+
+A need looks like this, in the slice's in-image manifest:
+
+[source,yaml]
+----
+needs:
+  host:
+    - path: $HOME/.fontist        # symbolic atom, resolved per user
+      access: rw                  # ro | rw
+      when: [macos]               # optional platform filter
+      why: "fontist caches and resolves fonts here"   # MANDATORY
+----
+
+The `why` is mandatory grammar, not a style guide: a declaration that
+cannot explain itself does not parse. Symbolic atoms (`$HOME`,
+`$TMPDIR`, `$CWD`, the store itself) resolve at bind time, per
+invocation, per user — never baked.
+
+== The worked example: fontist and `~/.fontist`
+
+// source: PROGRESS/24-choco-winget-v1169.md (the fontist
+// investigation): host ~/.fontist read+write through the package proven
+// green in packed-mn#251's windows ISO PDF acceptance leg; fontist
+// state is plain host files under ~/.fontist/versions/v5/...; chocolatey
+// #89 (merged 2026-08-31) routes the OIML private fonts through a host
+// fontist laying down host state the packaged metanorma reads.
+This is not a hypothetical grammar. Metanorma's font pipeline is the
+production proof:
+
+* Fontist — the gem inside the packaged Metanorma that resolves and
+  downloads fonts — keeps its state as *plain host files* under
+  `~/.fontist` (catalogs, formulas, downloaded archives, installed
+  font payloads). During a compile, the packaged fontist downloads the
+  fonts a document declares into that host directory, then hands the
+  concrete file paths to the PDF converter.
+* That read+write path through the package into the host `~/.fontist`
+  is exercised green in acceptance CI — including the Windows leg,
+  where fontist registers fonts per-user and the converter consumes
+  explicit paths, so no system-wide font installation is needed.
+* The licensed-font case composes the same way: the OIML flavor needs
+  commercial fonts from a *private* formulas repository. The fix that
+  shipped is host-side state laid down by a host fontist — the packaged
+  Metanorma then reads those same `~/.fontist` files through its
+  declared grant. One directory, one declaration, both sides of the
+  package boundary.
+
+The point of the example: the payload's host needs are *knowable*,
+*writable-down-able*, and *testable* — and once declared, they are the
+same declaration on every platform.
+
+== Record mode: discovery instead of guessing
+
+// source: docs/spec/23 §8 (the record mode; dogfooded 2026-08-14: a JVM
+// boot recorded, drafted, replayed under deny, zero hand edits — the
+// darwin CFPreferences $HOME probe was journal-discovered); spec 24 §6
+// (the write-side extension).
+A slice author usually does not *know* the host surface their
+executable touches — the JVM's home-directory probe on macOS was
+invisible until the journal named it. So discovery is a first-class
+policy mode, not a guess:
+
+. Run under `policy: record` ("permit all and monitor"). Nothing is
+   denied; every host access is journaled.
+. `tfs needs --from-journal` reads that journal and emits a *draft*
+   `needs:` block — one entry per observed path, symbolic atoms
+   re-substituted, the strongest observed access winning, the automatic
+   surface (floor, store, exec cache) excluded.
+. The human gate: the author reviews the draft — flips `ro` to `rw`
+   where production differs from observation, deletes noise, fills in
+   the real `why` — and merges it into the manifest or composition.
+   The generator never edits a manifest itself.
+
+The recorded artifact is the configuration: observe, classify, commit.
+This loop is how the JVM's boot needs were pinned — recorded, drafted,
+and replayed under full `deny` with zero hand edits and zero unexpected
+denials.
+
+Record mode is a development mode: it journals at full volume and
+installs no enforcement, and shipping a composition with `record` in
+force is a named lint warning.
+
+== Writes into images: declared overlays
+
+// source: docs/spec/24 (declarative overlays; status PARTIAL — the
+// TFS-layer mechanism shipped, the manifest wiring is the planned
+// chain); spec 11 §4 (the COW composite).
+The same declaration law extends to the VFS itself. An image is
+read-only by construction; a slice that must write — a cache, a lock
+file — declares `needs.write`, and the run stacks a copy-on-write
+overlay over exactly the declared areas, backed by a per-run ephemeral
+scratch or an operator-bound durable store. An undeclared write is
+EROFS, journaled. Sealed (encrypted) slices declare `needs.decrypt`;
+the composition binds key *references*, never key material.
+
+Honesty note: the overlay mechanism is shipped at the filesystem layer;
+the manifest-side wiring is the still-planned half of spec 24. The
+record-mode loop above already drafts the write blocks.
+
+== Same declaration, per-platform mechanism
+
+// source: docs/spec/22 (POSIX preload interposition; the windows host
+// tier); docs/spec/29 §3 (the visibility tiers); spec 30 §4 (the
+// spawned child's jail: union-of-needs, never inheritance).
+The declaration is platform-neutral; the enforcement mechanism is not:
+
+* **macOS / Linux:** the preload shim interposes the file syscalls of
+  the process and its spawned children; host paths the policy grants
+  pass through, everything else is denied in place.
+* **Windows:** no interposition API exists, so enforcement rides the
+  host tier — materialization into the exec cache and argv rewriting at
+  the spawn seam, with the same policy computed from the same
+  declarations.
+* **Spawned runtimes** (post 3's JVM) get a jail computed *fresh* from
+  their own declared needs unioned with the payload's — never an
+  inheritance of the parent's grants. When neither side declares
+  anything, the child runs unjailed, exactly like an unjailed dispatch.
+
+== Trust: verified at install, never per run
+
+// source: docs/spec/09 (trust and signing); ecosystem charter §6
+// (unsigned is first-class, loud; TEBAKO_REQUIRE_SIGNED=1 fails closed).
+The jail governs what a run touches; the trust model governs what is
+allowed to run at all:
+
+* Verification happens at *fetch/install* — SHA-256 sidecars are the
+  trust anchor of every stored artifact — and **never per run**. A
+  verified artifact starts at mount speed, every time.
+* **Unsigned is first-class**: an unsigned artifact runs, loudly — a
+  warning plus an audit-journal entry — because a local developer's
+  payload is a legitimate citizen.
+* `TEBAKO_REQUIRE_SIGNED=1` flips the posture to fail-closed for
+  environments that want it.
+* Signing and encryption are per-package opt-in; verification of
+  *signed* artifacts is always strict.
+
+The composition itself — the composition document, the overlay and key
+bindings — is operator domain by construction: a package signature
+covers its slices and trailer, not the operator's policy choices, and
+the boot journal always names which composition ran the run.
+
+Next, the last post: how a package like this gets *built* — feedstocks,
+presses, registries — and the benchmark table.
