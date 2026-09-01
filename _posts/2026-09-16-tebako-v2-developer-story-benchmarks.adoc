@@ -1,0 +1,159 @@
+---
+layout: post
+title:  "Build your own: feedstocks, presses, and the benchmark table"
+# PUBLISH-TIME PLACEHOLDER — set the real date when this post ships;
+# the series cadence is one post every 2-3 days (PROGRESS/29).
+date:   2026-09-16 00:00:00 +0800
+categories:
+  - tebako
+  - developers
+  - benchmarks
+  - metanorma
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: >-
+  Post 5 of 5. The developer pipeline behind "one download": one
+  feedstock repo per package, one versions file as the single source of
+  truth, a press that locks what it tested, and a benchmark suite that
+  keeps the v2 line honest against the v1 executables it replaces.
+---
+
+= Build your own: feedstocks, presses, and the benchmark table
+
+The first four posts described what users get. This one is for the
+people who *build* packages — the pipeline behind "one download," and
+the numbers that keep it honest.
+
+== The pipeline: feedstock → release → registry → press → shim
+
+// source: ecosystem charter §5/§9 (the feedstock model and the release
+// chain); docs/spec/13 (factories and releases); spec 04 (registries).
+Every tebako package comes out of the same five-stage pipeline:
+
+. **The feedstock** — one repository per package in the
+  `tebako-packages` org (the conda-forge model): a recipe, patches,
+  manifest templates, and CI. The feedstock builds its payload per
+  platform triplet — or once as `universal` when the bytes are
+  pure-language.
+. **The release** — the feedstock's releases host the payload artifacts
+  plus their SHA-256 sidecars. Repos consume each other's *published
+  artifacts*, never source trees.
+. **The registry** — a YAML index the same repo hosts and regenerates
+  per tag; it mirrors resolution fields only. Users point at it with
+  `tebako add-registry`; there is no central service.
+. **The press** — `tebako press` resolves the full composition closure
+  at build time — runtime plus every payload, transitively — and locks
+  concrete versions and digests into the package manifest. *What press
+  tested is what runs*: a shared slice resolves at run time by locked
+  digest, never by fresh semver.
+. **The shim** — `tebako install` registers the payload's declared
+  commands on `PATH`, with per-invocation version dispatch through the
+  documented chain (environment → nearest `.tebako-tools.yaml` →
+  store config defaults → registry default).
+
+// source: PROGRESS/00-INDEX.md (the packed-mn re-pin entries:
+// one-file version/digest bumps, script-verified against the releases'
+// SHA256SUMS); spec 00 invariant 10 (SSOT for every cross-repo value).
+The single-source-of-truth discipline is the part worth stealing.
+packed-mn — the single-executable Metanorma distribution — keeps every
+moving pin in *one file*, `versions.yaml`: the tebako toolchain
+release, the runtime line with its per-triplet digests, the payload
+versions with theirs. A bump is a one-line edit plus digest refresh,
+script-verified against the upstream release's published sums; nothing
+else in the pipeline hardcodes a version. When a value exists in two
+places, one of them is generated — that is the ecosystem's SSOT
+invariant, and it is why the release chain can re-cut a runtime line
+and have every downstream consumer notice exactly once.
+
+== One pipeline, many runtimes
+
+// source: docs/spec/28 (the engine/implementation spelling); spec 30
+// (the kind: runtime edge; first instance = the java engine);
+// spec 29 (the wrapper pattern for repacked runtimes);
+// PROGRESS/00-INDEX.md 2026-09-01 (python/01 skeleton; TODO.jruby/01
+// is runtime-on-runtime composition).
+The runtime axis is generic, and it is no longer a one-engine claim:
+
+* **ruby** (MRI) — the reference engine: patched-source factory,
+  interpreter exe plus env image, the driver linked in at factory time.
+* **java** (Temurin) — landed with v2.1.0: the first *repacked*
+  runtime, shipped through the wrapper-exe pattern (spec 29) and
+  consumed through the spawned-dependency edge (spec 30) that post 3
+  walked through.
+* **python** — the factory skeleton exists; the relocation probe
+  already returned *relocatable, zero patches* for CPython 3.12/3.13.
+* **jruby / truffleruby** — queued; those are *runtime-on-runtime*
+  composition (a runtime whose process owner is another runtime), a
+  different mechanism from the spawned edge, with its own design queue.
+
+A payload declares its engine, implementation, and constraint in the
+same manifest grammar regardless of engine; resolution, locking, and
+the store layout do not change.
+
+== Prove it: payload checks
+
+// source: docs/spec/26 (the payload-check framework); spec 23 §13.3
+// (the honesty proof: a universal claim with native bytes fails in CI
+// before publication); tebako-packages/metanorma (the compile-a-
+// document acceptance).
+"Works on my machine" is not a release criterion. The payload-check
+framework (spec 26) gives every feedstock a declared, in-image
+acceptance check that CI runs on *every* target triplet before
+publication. Metanorma's check is the model: compile a real document —
+the acceptance suites drive xml, html, rxl, and PDF legs, fonts and
+spawned java included. The check is also the honesty proof for
+`universal` claims: an image declared platform-independent that smuggles
+native bytes fails there, before a user ever downloads it.
+
+== The benchmark table
+
+// source: docs/spec/27 (the benchmark contract); PROGRESS/13 (the
+// bench suite: tebako-bench + benchmarks/{suite,platforms}.yaml,
+// YAML-SSOT, the report renderer re-deriving stats, speedups vs the
+// v1-* baseline cells, cold runs reported separately).
+Benchmarks in this ecosystem are infrastructure, not blog garnish: the
+suite is declared in versioned YAML (one file for the workloads, one
+for the platform matrix — the workflow's matrix is *generated* from
+them), the harness drives released, checksum-verified artifacts only,
+and the report renderer re-derives every statistic from the raw
+measurements rather than trusting carried numbers. The comparison that
+matters for this series: the v2 line — current tebako and runtime —
+against the v1-era packed-mn executables it replaces, cold runs
+reported separately from warm.
+
+// TODO(publish-gate): benchmark table lands here.
+// Gate item (PROGRESS/29 §THE GATE #5): the bench slice validation run
+// (tamatebako/tebako#501 workflow_dispatch) has NOT happened at draft
+// time. When it lands: render the merged report table — rows = the
+// suite's workloads (incl. the metanorma compile), columns = v1-*
+// baseline vs the v2 arm per triplet, speedups vs the baseline cell,
+// cold runs separate, unavailable/failed runs listed, footer = runner
+// metadata + noise caveat + skew note (the renderer's shape is pinned
+// by tebako-bench tests). NUMBERS OR THIS POST DOES NOT SHIP.
+
+The surrounding claims in this post are written to hold with the table
+present; the table is the evidence, and the post ships when the
+evidence does.
+
+== Where this leaves you
+
+A user downloads a file and runs it. A payload author writes a recipe
+and a manifest, and never asks a user for a compiler. A runtime
+operator adds an engine without touching the loader. And every layer
+says what it does in a document you can read before you run it —
+manifest, composition, jail, lock.
+
+That is the v2 architecture, and it is stable now. The series:
+
+// PUBLISH-TIME: fill permalinks for posts 1-4 as they land.
+. *Tebako v2 stable: one download, any document* — the announcement.
+. *Anatomy of a tebako package* — the three-part model and the store.
+. *Ruby calls Java calls Python* — composition in practice.
+. *The jail and the host* — declarative filesystem policy.
+. *Build your own* — this post.
+
+Questions, bug reports, and payload ideas:
+https://github.com/tamatebako/tebako[tamatebako/tebako].
