@@ -133,6 +133,22 @@ reported separately from warm.
 // cold runs separate, unavailable/failed runs listed, footer = runner
 // metadata + noise caveat + skew note (the renderer's shape is pinned
 // by tebako-bench tests). NUMBERS OR THIS POST DOES NOT SHIP.
+//
+// Blocker status (2026-09-03): the managed-arm compile blocker — every
+// v2-arm compile dying at jing with `Unable to access jarfile
+// …/jing-20091111.jar` — is ROOT-CAUSED AND FIXED. Three layers, each
+// named in post 3: the toolkit-era java wiring (retired by the spec-30
+// kind:runtime edge in payload 1.16.9-8; managed dogfood green, run
+// 33731076066), the bootstrap's missing spawned-edge dispatch (tebako
+// v2.1.6/v2.1.7, #519/#521), and the shell-form spawn gap (ruby-jing's
+// quoted backticks vs the array-form-only plan head; fixed by shell-form
+// argument bridging, ruby#107, source v0.2.33, spec 22 §3.1). The
+// publish-time refresh therefore targets payload 1.16.9-8 + ruby runtime
+// 0.16.20 + tebako v2.1.7, and runs as soon as the 0.16.20 factory
+// publish (in flight at refresh time, factory#144) lands. The
+// boot-latency row from the 2026-09-01 local run stays quotable:
+// `metanorma version` warm boot 5.17 s vs the packed-mn executable's
+// 6.36 s (~19% faster, ~0.81 GB vs ~0.99 GB RSS).
 
 The surrounding claims in this post are written to hold with the table
 present; the table is the evidence, and the post ships when the
