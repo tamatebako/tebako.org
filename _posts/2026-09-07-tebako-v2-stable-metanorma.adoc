@@ -134,20 +134,28 @@ your users consume as byte-identical, verified artifacts.
 
 == The versions behind this post
 
-// source: PROGRESS/00-INDEX.md tail entries (2026-09-01): v2.1.0 = run
-// 33437078841, 93 assets; openjdk release v2.1.0 = 17 assets, Temurin
-// 21.0.12+8; factory 0.16.18 publish in flight at write time.
+// source: tebako release v2.1.7 (run 33720864130, 93 assets, published
+// 2026-09-03); tebako-packages/openjdk release v2.1.5 (17 assets,
+// Temurin 21.0.12, published 2026-09-02); tebako-packages/metanorma tag
+// 1.16.9-8 (published 2026-09-01); tamatebako/ruby v0.2.33 (published
+// 2026-09-03) -> factory line 0.16.20 publishing at write time
+// (factory#144 builds in flight); PROGRESS/32.
 * `tamatebako/tebako` — the Rust product (bootstrap, shim, driver, tfs,
-  tpkg, CLI): **v2.1.0** — 93 release assets across seven platform
-  triplets, including the new runtime-launcher tier that post 3 covers.
+  tpkg, CLI): **v2.1.7** — 93 release assets across seven platform
+  triplets, including the runtime-launcher tier and the standalone
+  spawned-runtime dispatch that post 3 covers.
 * `tamatebako/tebako-runtime-ruby` — the ruby runtime factory: line
-  **0.16.18** (publishing at write time).
+  **0.16.20** (publishing at write time — it carries the shell-form
+  spawn fix, ruby#107, whose story post 3 tells).
 * `tebako-packages/openjdk` — the OpenJDK runtime (Temurin 21.0.12),
-  release **v2.1.0**: the first `kind: runtime` payload beyond ruby.
-* `tebako-packages/metanorma` — the Metanorma 1.16.9 payload
-  (PUBLISH-TIME: the exact payload tag carrying the spec-30 java edge —
-  1.16.9-7 — lands with the announcement gate; verify at publish).
-* `metanorma/packed-mn` — the single-executable distribution.
+  tebako line **2.1.5**: the first `kind: runtime` payload beyond ruby.
+* `tebako-packages/metanorma` — the Metanorma 1.16.9 payload, tag
+  **1.16.9-8**: the payload carrying the spec-30 `kind: runtime` java
+  edge.
+* `metanorma/packed-mn` — the single-executable distribution
+  (PUBLISH-TIME: the feat/v2-assembly re-pin — tebako 2.1.7, runtime
+  0.16.20, payload 1.16.9-8 — publishes as release **v1.16.9** when the
+  in-flight chain lands; verify at publish).
 
 == The series
 

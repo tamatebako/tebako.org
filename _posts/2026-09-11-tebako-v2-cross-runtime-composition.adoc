@@ -120,28 +120,93 @@ command line, jing validating against a schema — this happens:
   preload in the child would bind the parent's symbols — the strip is
   not optional.
 
-Resolution is split between the two actors that can each do their half:
-the *shim* resolves the edge at dispatch — download permitted, like the
-primary runtime — and exports the pins as `TEBAKO_SPAWN_LOCK`
-(`java=21.0.12:2.1.0`). The *driver* resolves cache-only at spawn time
+Resolution is split between the actors that can each do their half: the
+dispatching loader resolves the edge up front — the *shim* for a
+managed command, the *bootstrap* for a standalone package (that half
+landed in v2.1.6 — the story below) — download permitted, like the
+primary runtime, and exports the pins as `TEBAKO_SPAWN_LOCK`
+(`java=21.0.12:2.1.5`). The *driver* resolves cache-only at spawn time
 and never downloads: a locked runtime gone from the store is a named
 error, never a silent re-pick.
 
-// source: docs/spec/30 §3 (the PATH launcher tier); spec 22 §3
-// (wrap-bin); PROGRESS/19 (windows option (b)).
-There is a second surface: shell-form spawns (`system("java -jar …")`)
-never reach the FFI, because the shell is the spawn target. For those,
-the parent's boot plants one generated *launcher* per exposed name in a
-PATH-front directory — a self-contained script that execs the planned
-child. A name that cannot resolve bakes a fail-closed stub that prints
-the named error and exits 69. Windows has no launcher tier; the argv
-bridge is the whole surface there.
+// source: docs/spec/30 §3 (the PATH launcher tier, amended 2026-09-03);
+// spec 22 §3.1 (shell-form argument bridging, locked 2026-09-03);
+// ruby#107; PROGRESS/19 (windows option (b)).
+There is a second surface: in a shell-form spawn
+(`system("java -jar …")`) the shell is the exec target, so the *command*
+token resolves through `PATH`. For those, the parent's boot plants one
+generated *launcher* per exposed name in a PATH-front directory — a
+self-contained script that execs the planned child. A name that cannot
+resolve bakes a fail-closed stub that prints the named error and exits
+69. The command's *operands* bridge separately, parent-side, in the
+interpreter's spawn hook: the command line is tokenized on unquoted
+blanks (both quote characters honored), and any token naming an
+embedded path is materialized to its host twin and rewritten —
+byte-identical when nothing bridges. On POSIX the command token itself
+is never planned: the shell keeps the string, so redirections, pipes,
+and `&&` keep their semantics, and the launcher tier resolves the
+command. Windows has no launcher tier; there the shell form's
+first-token command is planned inline through the same plan FFI, and
+the string is rebuilt as the quoted store executable plus the plan argv
+plus the bridged remainder, `cmd.exe`'s separators and redirections
+preserved.
 
 And the rule that makes all of this worth the machinery: **a
 depended-runtime spawn that cannot resolve through tebako fails with a
 named error — it never falls through to a system java**. Falling
 through to whatever happens to be on the host is exactly the
 host-fragility bug class this spec exists to kill.
+
+=== The last red leg: the jar the JVM could not see
+
+// source: PROGRESS/32-standalone-spawn-dispatch.md (the full root-cause
+// record); packed-mn#254 acceptance runs 33689243863 and 33724253024;
+// tebako#519/#521 (v2.1.6/v2.1.7); tamatebako/ruby#107 (source
+// v0.2.33); spec 22 §3.1 (locked 2026-09-03); tebako-packages/metanorma
+// dogfood runs 33686160163/33731076066 (managed, green on 1.16.9-8).
+None of this arrived in one piece, and the way the last gap was found
+is worth telling, because each layer failed *loudly, by name* — which
+is what made the next layer findable. Three times the same compile
+died at the same step — jing's RELAX NG validation — and each death
+was a different layer of the stack:
+
+. **The toolkit era.** The first v2 Metanorma packages co-mounted a JRE
+  slice, and a managed-mode compile died with `Unable to access jarfile
+  /lib/ruby/gems/…/jing-20091111.jar`: a plain host JVM has no business
+  reading a file that lives inside a mounted image. That failure class
+  is exactly why the toolkit form was retired and the java edge became
+  the spawned runtime this post opened with — and with the edge in
+  place (payload 1.16.9-8), the managed acceptance went green.
+. **The loader half.** The first *standalone* package carrying the new
+  edge died differently: `spawn 'java': no cached runtime satisfies
+  engine 'java'`. Spec 30 splits resolution between dispatch and spawn,
+  and the shim had its half — but the *bootstrap*, the loader inside
+  every self-contained package, had none: it never installed the
+  depended OpenJDK runtime and never exported the spawn lock. The fix
+  shipped in tebako v2.1.6/v2.1.7 (#519/#521): the bootstrap now
+  resolves every spawned edge at dispatch — cache hit by recorded
+  digest, carried staging, or a fetch replaying the press-locked
+  coordinates — and the package learned its four-slot layout
+  (application, java executable, java image, inkscape), the spawned
+  slots claimed by the lock and never mounted.
+. **The shell form.** With dispatch fixed, the legs still died on the
+  same jar — one layer down, inside the interpreter. Ruby's jing
+  bindings do not spawn `java` the array way; they shell out through
+  backticks, one quoted command string — and the spawn hook's original
+  plan head (ruby#106) covered array-form spawns only. On POSIX the
+  command string passed through verbatim, so the child JVM booted on
+  its own environment image while the jar argument still spelled a path
+  under the *parent's* mounts — a file the child cannot see. On Windows
+  the bare `java` was never planned at all. The fix is the shell-form
+  argument bridging described above (ruby#107, ruby source v0.2.33,
+  spec'd in spec 22 §3.1): operands materialize parent-side, and on
+  Windows the first-token command plans inline. No driver change was
+  needed — the plan FFI had shipped in v2.1.0; the gap was in the
+  interpreter's spawn hook, and that is where it was fixed.
+
+The runtime line carrying that fix — 0.16.20 — is publishing as this
+series is written; the packed-mn acceptance re-run that closes the arc
+is the publish-time check.
 
 == Inkscape: a mounted payload, on purpose
 
@@ -206,19 +271,23 @@ asymmetry than hide it:
 
 == Evidence
 
-// source: PROGRESS/00-INDEX.md 2026-09-01 (openjdk runtime v2.1.0
-// published + smoke: sidecar-verified pair, `TEBAKO_RUNTIME_IMAGE=rt.tfs
+// source: PROGRESS/00-INDEX.md 2026-09-01 (the wrapper smoke:
+// sidecar-verified pair, `TEBAKO_RUNTIME_IMAGE=rt.tfs
 // ./rt --tebako-entry java -version` printed Temurin 21.0.12+8, exit 0);
-// PROGRESS/13-benchmarks.md (the D0 acceptance compile incl. the PDF leg
-// spawning java/mn2pdf).
+// tebako-packages/openjdk release v2.1.5 (17 assets, 2026-09-02);
+// tebako-packages/metanorma dogfood run 33731076066 (2026-09-03, green
+// on payload 1.16.9-8, all legs); PROGRESS/13-benchmarks.md (the D0
+// acceptance compile incl. the PDF leg spawning java/mn2pdf).
 The java edge is not a rendering of a design doc. The published OpenJDK
-runtime (release v2.1.0, Temurin 21.0.12+8) was smoke-verified against
-its own published bytes: download the pair, check the SHA-256 sidecars,
-dispatch `--tebako-entry java -version` through the wrapper — Temurin
-answers, exit 0. And the Metanorma acceptance suite's PDF legs are
-exactly the spawn path under load: mn2pdf and jing running as
-dispatched children, fonts and all, on all three shipped payload
-triplets.
+runtime (Temurin 21.0.12; tebako line 2.1.5 at write time) was
+smoke-verified against its own published bytes: download the pair,
+check the SHA-256 sidecars, dispatch `--tebako-entry java -version`
+through the wrapper — Temurin answers, exit 0. The feedstock's managed
+dogfood — a real document compile driven through the store-resolved
+payload — runs green on the 1.16.9-8 payload on every leg. And the
+standalone acceptance suite's PDF legs are exactly the spawn path under
+load: mn2pdf and jing running as dispatched children, fonts and all —
+the arc above is the record of getting those legs to green.
 
 Post 4 is about the other half of "nothing leaks": the jail — what
 these composed processes may touch on your host, and who says so.
