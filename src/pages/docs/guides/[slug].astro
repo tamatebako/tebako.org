@@ -1,0 +1,34 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro'
+import { getCollection } from 'astro:content'
+import { getSection } from '../../../config/docs'
+
+export async function getStaticPaths() {
+  const entries = await getCollection('docs-guides')
+  const guides = getSection('guides')
+  return entries
+    .map((entry) => ({
+      entry,
+      reg: guides.entries.find((e) => e.href === `/docs/guides/${entry.id}/`),
+    }))
+    .filter((x): x is { entry: (typeof entries)[number]; reg: { href: string } } => !!x.reg)
+    .map(({ entry, reg }) => ({
+      params: { slug: entry.id },
+      props: { entry, href: reg.href },
+    }))
+}
+
+const { entry, href } = Astro.props
+const html = entry.rendered?.html ?? ''
+---
+
+<DocsLayout
+  section="guides"
+  href={href}
+  title={entry.data.title}
+  heading={entry.data.heading}
+  lede={entry.data.lede}
+  description={entry.data.description}
+>
+  <div class="tb-prose mt-16" set:html={html} />
+</DocsLayout>

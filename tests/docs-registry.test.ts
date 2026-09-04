@@ -18,6 +18,9 @@ function pageExists(href: string): boolean {
     ? [
         join(ROOT, 'src/pages', `${trimmed}.astro`),
         join(ROOT, 'src/pages', trimmed, 'index.astro'),
+        // docs guides can be AsciiDoc collection entries (_docs/guides/<slug>.adoc)
+        // rendered by the dynamic [slug].astro route
+        join(ROOT, '_docs', `${trimmed.replace(/^docs\//, '')}.adoc`),
       ]
     : [join(ROOT, 'src/pages', 'index.astro')]
   return candidates.some((c) => existsSync(c))
@@ -61,6 +64,7 @@ describe('docs registry (src/config/docs.ts)', () => {
       const dir = join(ROOT, 'src/pages/docs', sec.id)
       for (const file of walk(dir)) {
         if (!file.endsWith('.astro')) continue
+        if (file.endsWith('[slug].astro')) continue // dynamic route for collection entries
         const href = sectionHrefFor(file, sec.id)
         if (!registered.has(href)) orphans.push(`${sec.id}: ${file} (${href})`)
       }
