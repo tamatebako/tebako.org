@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Tebako v2 — the hermetic portable-runtime platform"
+title:  "Tebako v2 — the hermetic portable-runtime platform (2 of 5)"
 date:   2026-07-31 00:00:00 +0800
 categories:
   - tebako
@@ -19,7 +19,18 @@ excerpt: >-
   Java, no host Inkscape, no host anything.
 ---
 
-= Tebako v2 — the hermetic portable-runtime platform
+= Tebako v2 — the hermetic portable-runtime platform (2 of 5)
+
+[NOTE]
+====
+Post 2 of 5 in the series *The road to tebako 1.0*.
+
+. link:/blog/2026-07-22-tebako-is-alive-thrift-free-rearchitecture/[Tebako is alive — the thrift-free re-architecture]
+. *Tebako v2 — the hermetic portable-runtime platform* (this post)
+. link:/blog/2026-08-22-tebako-v0.2.0-trace-and-check/[Tebako v0.2.0 — the trace toolkit and payload checks]
+. The tebako docs, rebuilt (coming)
+. Tebako 1.0.0: the image era (coming)
+====
 
 Tebako v2 is here. Rather than tell you what it does, we would like to
 show you.
@@ -56,6 +67,55 @@ mounted inside the process, plus one downloaded runtime:
 Nothing was installed with Homebrew or `apt`, and nothing depended on
 what the machine happened to have. A user who has never heard of Java
 or Inkscape gets the same result as a user who has both.
+
+
+++++
+<figure role="img" aria-label="Diagram of the empty PATH document build: one process, three mounted images, no host tools">
+<svg viewBox="0 0 840 330" style="width:100%;height:auto;font-family:var(--font-mono,monospace);" xmlns="http://www.w3.org/2000/svg">
+  <title>One process, mounted images, an empty PATH</title>
+  <defs>
+    <marker id="t2a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-text-3,#96abb8)"/>
+    </marker>
+    <marker id="t2b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-accent,#c36242)"/>
+    </marker>
+  </defs>
+  <rect x="10" y="20" width="600" height="292" rx="12" style="fill:var(--tb-c-bg-soft,#fdf9e8);stroke:var(--tb-c-divider,#ddd);stroke-width:1"/>
+  <text x="30" y="46" style="font-size:12px;fill:var(--tb-c-text-3,#7a8b94)">one process on your machine</text>
+  <rect x="30" y="60" width="250" height="52" rx="8" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:1.8"/>
+  <text x="155" y="82" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">ruby runtime</text>
+  <text x="155" y="98" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">interpreter exe + mounted env image</text>
+  <rect x="30" y="150" width="180" height="58" rx="8" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5"/>
+  <text x="120" y="172" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">metanorma payload</text>
+  <text x="120" y="188" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">260 gems, one .tfs image</text>
+  <rect x="230" y="150" width="180" height="58" rx="8" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5"/>
+  <text x="320" y="172" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">inkscape payload</text>
+  <text x="320" y="188" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">mounted at /opt/inkscape</text>
+  <rect x="430" y="150" width="160" height="58" rx="8" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5"/>
+  <text x="510" y="172" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">openjdk payload</text>
+  <text x="510" y="188" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">JRE, mounted at /opt/openjdk</text>
+  <line x1="120" y1="150" x2="140" y2="118" style="stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5" marker-end="url(#t2a)"/>
+  <line x1="320" y1="150" x2="170" y2="114" style="stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5" marker-end="url(#t2a)"/>
+  <line x1="510" y1="150" x2="185" y2="110" style="stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5" marker-end="url(#t2a)"/>
+  <text x="310" y="234" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-3,#7a8b94)">everything above is mounted in memory — nothing is extracted to disk</text>
+  <line x1="310" y1="246" x2="310" y2="266" style="stroke:var(--tb-c-accent,#c36242);stroke-width:2" marker-end="url(#t2b)"/>
+  <rect x="230" y="268" width="160" height="34" rx="8" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:1.8"/>
+  <text x="310" y="289" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">PDF 1.7 output</text>
+  <rect x="640" y="20" width="190" height="130" rx="12" style="fill:none;stroke:var(--tb-c-divider,#ddd);stroke-width:1;stroke-dasharray:5 4"/>
+  <text x="735" y="44" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-3,#7a8b94)">the host</text>
+  <text x="735" y="72" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-3,#7a8b94)">PATH= (empty)</text>
+  <text x="735" y="96" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-3,#7a8b94);text-decoration:line-through">host java</text>
+  <text x="735" y="116" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-3,#7a8b94);text-decoration:line-through">host inkscape</text>
+  <text x="735" y="136" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-3,#7a8b94);text-decoration:line-through">system toolchain</text>
+  <text x="735" y="180" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-2,#4a5b66)">none of it is used —</text>
+  <text x="735" y="196" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-2,#4a5b66)">so none of it can break</text>
+  <text x="735" y="212" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-2,#4a5b66)">the build</text>
+</svg>
+</figure>
+++++
+
+_Figure 1 — The empty-PATH build: one process, three mounted payload images, one shared runtime, and a host that contributed nothing._
 
 == What Tebako v2 is
 

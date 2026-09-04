@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Tebako is alive — the thrift-free re-architecture"
+title:  "Tebako is alive — the thrift-free re-architecture (1 of 5)"
 date:   2026-07-22 00:00:00 +0800
 categories:
   - tebako
@@ -18,7 +18,18 @@ excerpt: >-
   from the stack entirely.
 ---
 
-= Tebako is alive — the thrift-free re-architecture
+= Tebako is alive — the thrift-free re-architecture (1 of 5)
+
+[NOTE]
+====
+Post 1 of 5 in the series *The road to tebako 1.0*.
+
+. *Tebako is alive — the thrift-free re-architecture* (this post)
+. link:/blog/2026-07-31-tebako-v2-hermetic/[Tebako v2 — the hermetic portable-runtime platform]
+. link:/blog/2026-08-22-tebako-v0.2.0-trace-and-check/[Tebako v0.2.0 — the trace toolkit and payload checks]
+. The tebako docs, rebuilt (coming)
+. Tebako 1.0.0: the image era (coming)
+====
 
 A fair question reached us recently, and it deserves a straight answer:
 *is the project dead?*
@@ -57,6 +68,57 @@ before the first package is ever produced.
 Patching these breaks one at a time would mean asking you to wait
 through the same failures again and again. So instead, we are removing
 the cause.
+
+
+++++
+<figure role="img" aria-label="Diagram comparing the old source-built stack with the new prebuilt flow">
+<svg viewBox="0 0 840 310" style="width:100%;height:auto;font-family:var(--font-mono,monospace);" xmlns="http://www.w3.org/2000/svg">
+  <title>Why builds broke, and what ships instead</title>
+  <defs>
+    <marker id="t1a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-text-3,#96abb8)"/>
+    </marker>
+    <marker id="t1b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-accent,#c36242)"/>
+    </marker>
+  </defs>
+  <rect x="10" y="18" width="380" height="272" rx="12" style="fill:var(--tb-c-bg-soft,#fdf9e8);stroke:var(--tb-c-divider,#ddd);stroke-width:1"/>
+  <text x="30" y="44" style="font-size:12px;fill:var(--tb-c-text-3,#7a8b94)">BEFORE — compiled on your machine</text>
+  <rect x="30" y="62" width="220" height="36" rx="8" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:1.5;stroke-dasharray:5 4"/>
+  <text x="140" y="78" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">Homebrew · Xcode · openssl</text>
+  <text x="140" y="91" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-accent,#c36242)">moving targets — they update, the build breaks</text>
+  <line x1="140" y1="98" x2="140" y2="128" style="stroke:var(--tb-c-accent,#c36242);stroke-width:1.5" marker-end="url(#t1b)"/>
+  <rect x="30" y="130" width="220" height="58" rx="8" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5"/>
+  <text x="140" y="152" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">tebako setup</text>
+  <text x="140" y="168" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">compiles Ruby, DwarFS, folly, fbthrift</text>
+  <text x="140" y="181" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">plus everything below them</text>
+  <text x="200" y="240" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-accent,#c36242)">hours before the first package,</text>
+  <text x="200" y="256" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-accent,#c36242)">and nothing you can fix locally</text>
+  <line x1="392" y1="154" x2="448" y2="154" style="stroke:var(--tb-c-accent,#c36242);stroke-width:2" marker-end="url(#t1b)"/>
+  <rect x="450" y="18" width="380" height="272" rx="12" style="fill:var(--tb-c-bg-soft,#fdf9e8);stroke:var(--tb-c-divider,#ddd);stroke-width:1"/>
+  <text x="470" y="44" style="font-size:12px;fill:var(--tb-c-text-3,#7a8b94)">NOW — downloaded prebuilt</text>
+  <rect x="470" y="62" width="140" height="34" rx="8" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5"/>
+  <text x="540" y="83" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">github releases</text>
+  <line x1="610" y1="79" x2="648" y2="70" style="stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5" marker-end="url(#t1a)"/>
+  <line x1="610" y1="79" x2="648" y2="107" style="stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5" marker-end="url(#t1a)"/>
+  <line x1="610" y1="79" x2="648" y2="144" style="stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5" marker-end="url(#t1a)"/>
+  <rect x="650" y="54" width="160" height="30" rx="8" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5"/>
+  <text x="730" y="73" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">libtfs (prebuilt)</text>
+  <rect x="650" y="92" width="160" height="30" rx="8" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5"/>
+  <text x="730" y="111" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">ruby runtime (prebuilt)</text>
+  <rect x="650" y="130" width="160" height="30" rx="8" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5"/>
+  <text x="730" y="149" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">tebako CLI (prebuilt)</text>
+  <line x1="730" y1="160" x2="730" y2="186" style="stroke:var(--tb-c-accent,#c36242);stroke-width:1.5" marker-end="url(#t1b)"/>
+  <rect x="610" y="188" width="200" height="40" rx="10" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:1.8"/>
+  <text x="710" y="205" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">tebako press</text>
+  <text x="710" y="220" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">downloads instead of compiling</text>
+  <text x="640" y="262" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-2,#4a5b66)">no C++ toolchain, no hours of setup,</text>
+  <text x="640" y="278" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-2,#4a5b66)">no dependency on your installed versions</text>
+</svg>
+</figure>
+++++
+
+_Figure 1 — The old stack compiled moving targets on your machine; the new one downloads prebuilt parts._
 
 == The fix: remove the problem, then prebuild the rest
 

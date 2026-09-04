@@ -8,7 +8,7 @@
 // ////////////////////////////////////////////////////////////////////////////
 ---
 layout: post
-title:  "Tebako 1.0.0: the image era — a packaging and loading ecosystem, Ruby 3.1 through 4.0"
+title:  "Tebako 1.0.0: the image era — a packaging and loading ecosystem, Ruby 3.1 through 4.0 (5 of 5)"
 date:   2100-01-01 00:00:00 +0800
 categories:
   - tebako
@@ -26,7 +26,18 @@ excerpt: >-
   Runtimes download once per machine into a shared, verified store.
 ---
 
-= Tebako 1.0.0: the image era
+= Tebako 1.0.0: the image era (5 of 5)
+
+[NOTE]
+====
+Post 5 of 5 in the series *The road to tebako 1.0*.
+
+. link:/blog/2026-07-22-tebako-is-alive-thrift-free-rearchitecture/[Tebako is alive — the thrift-free re-architecture]
+. link:/blog/2026-07-31-tebako-v2-hermetic/[Tebako v2 — the hermetic portable-runtime platform]
+. link:/blog/2026-08-22-tebako-v0.2.0-trace-and-check/[Tebako v0.2.0 — the trace toolkit and payload checks]
+. The tebako docs, rebuilt (coming)
+. *Tebako 1.0.0: the image era* (this post)
+====
 
 Tebako 1.0.0 is out. It is not an increment on the 0.x line. It is a new
 package format, a new loading model, and a new trust model, organized
