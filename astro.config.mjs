@@ -15,6 +15,7 @@ export default defineConfig({
     format: 'directory',
   },
   redirects: {
+    '/blog/2026-08-22-tebako-v0.2.0-trace-and-check': '/blog/2026-08-22-trace-and-check/',
     '/docs/architecture/features': '/docs/architecture/overview/',
     '/docs/architecture/rust-track': '/docs/architecture/repositories/',
     '/docs/architecture/pipeline': '/docs/architecture/factories/',
