@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Tebako v2 — the hermetic portable-runtime platform (2 of 5)"
+title:  "Tebako 1.0: The hermetic platform (2 of 5)"
 date:   2026-07-31 00:00:00 +0800
 categories:
   - tebako
@@ -19,17 +19,17 @@ excerpt: >-
   Java, no host Inkscape, no host anything.
 ---
 
-= Tebako v2 — the hermetic portable-runtime platform (2 of 5)
+= Tebako 1.0: The hermetic platform (2 of 5)
 
 [NOTE]
 ====
 Post 2 of 5 in the series *The road to tebako 1.0*.
 
-. link:/blog/2026-07-22-tebako-is-alive-thrift-free-rearchitecture/[Tebako is alive — the thrift-free re-architecture]
-. *Tebako v2 — the hermetic portable-runtime platform* (this post)
-. link:/blog/2026-08-22-tebako-v0.2.0-trace-and-check/[Tebako v0.2.0 — the trace toolkit and payload checks]
-. Documentation for the new tebako (coming)
-. Tebako 1.0.0: the image era (coming)
+. link:/blog/2026-07-22-tebako-is-alive-thrift-free-rearchitecture/[Tebako 1.0: The re-architecture]
+. *Tebako 1.0: The hermetic platform* (this post)
+. link:/blog/2026-08-22-tebako-v0.2.0-trace-and-check/[Tebako 1.0: The trace toolkit and payload checks]
+. Tebako 1.0: The documentation (coming)
+. Tebako 1.0: The image era (coming)
 ====
 
 Tebako v2 is here. Rather than tell you what it does, we would like to

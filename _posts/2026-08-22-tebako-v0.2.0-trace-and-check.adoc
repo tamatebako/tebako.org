@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Tebako v0.2.0 — the trace toolkit and payload checks (3 of 5)"
+title:  "Tebako 1.0: The trace toolkit and payload checks (3 of 5)"
 date:   2026-08-22 00:00:00 +0800
 categories:
   - tebako
@@ -19,17 +19,17 @@ excerpt: >-
   itself.
 ---
 
-= Tebako v0.2.0 — the trace toolkit and payload checks (3 of 5)
+= Tebako 1.0: The trace toolkit and payload checks (3 of 5)
 
 [NOTE]
 ====
 Post 3 of 5 in the series *The road to tebako 1.0*.
 
-. link:/blog/2026-07-22-tebako-is-alive-thrift-free-rearchitecture/[Tebako is alive — the thrift-free re-architecture]
-. link:/blog/2026-07-31-tebako-v2-hermetic/[Tebako v2 — the hermetic portable-runtime platform]
-. *Tebako v0.2.0 — the trace toolkit and payload checks* (this post)
-. Documentation for the new tebako (coming)
-. Tebako 1.0.0: the image era (coming)
+. link:/blog/2026-07-22-tebako-is-alive-thrift-free-rearchitecture/[Tebako 1.0: The re-architecture]
+. link:/blog/2026-07-31-tebako-v2-hermetic/[Tebako 1.0: The hermetic platform]
+. *Tebako 1.0: The trace toolkit and payload checks* (this post)
+. Tebako 1.0: The documentation (coming)
+. Tebako 1.0: The image era (coming)
 ====
 
 Tebako v0.2.0 is out, and it is about *answers*.

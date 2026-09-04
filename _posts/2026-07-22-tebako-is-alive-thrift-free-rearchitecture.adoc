@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Tebako is alive — the thrift-free re-architecture (1 of 5)"
+title:  "Tebako 1.0: The re-architecture (1 of 5)"
 date:   2026-07-22 00:00:00 +0800
 categories:
   - tebako
@@ -18,17 +18,17 @@ excerpt: >-
   from the stack entirely.
 ---
 
-= Tebako is alive — the thrift-free re-architecture (1 of 5)
+= Tebako 1.0: The re-architecture (1 of 5)
 
 [NOTE]
 ====
 Post 1 of 5 in the series *The road to tebako 1.0*.
 
-. *Tebako is alive — the thrift-free re-architecture* (this post)
-. link:/blog/2026-07-31-tebako-v2-hermetic/[Tebako v2 — the hermetic portable-runtime platform]
-. link:/blog/2026-08-22-tebako-v0.2.0-trace-and-check/[Tebako v0.2.0 — the trace toolkit and payload checks]
-. Documentation for the new tebako (coming)
-. Tebako 1.0.0: the image era (coming)
+. *Tebako 1.0: The re-architecture* (this post)
+. link:/blog/2026-07-31-tebako-v2-hermetic/[Tebako 1.0: The hermetic platform]
+. link:/blog/2026-08-22-tebako-v0.2.0-trace-and-check/[Tebako 1.0: The trace toolkit and payload checks]
+. Tebako 1.0: The documentation (coming)
+. Tebako 1.0: The image era (coming)
 ====
 
 A fair question reached us recently, and it deserves a straight answer:
