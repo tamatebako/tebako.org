@@ -62,7 +62,7 @@ format in depth; this one gives you the working model first.
   <text x="459" y="91" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-3,#7a8b94)">the runtime: exe + mounted env image</text>
   <rect x="314" y="110" width="290" height="42" rx="9" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:1.5"/>
   <text x="459" y="128" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-1,#1a2b34)">Java (JVM)</text>
-  <text x="459" y="143" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-3,#7a8b94)">a spawned runtime, spec 30</text>
+  <text x="459" y="143" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-3,#7a8b94)">a spawned runtime</text>
   <rect x="314" y="162" width="290" height="42" rx="9" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5"/>
   <text x="459" y="180" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-1,#1a2b34)">Inkscape</text>
   <text x="459" y="195" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-3,#7a8b94)">a mounted payload at /opt/inkscape</text>
@@ -85,10 +85,6 @@ declared need._
 
 == The 90-second demo
 
-// source: _posts/2026-07-31-tebako-v2-hermetic.adoc (the managed flow);
-// PROGRESS/13-benchmarks.md (2026-08-30 D0 acceptance run: the packed-mn
-// darwin-arm64 asset compiled mn-samples-oiml r060 to all four outputs,
-// COMPILE_EXIT=0).
 Here is the entire setup on a machine that has none of Ruby, Java, or
 Inkscape installed:
 
@@ -124,8 +120,6 @@ $ metanorma compile sources/r060/1/document.adoc
 # → document.pdf  (751 KB)   the print-ready PDF
 ----
 
-// source: PROGRESS/13-benchmarks.md 2026-08-30 — byte counts from the
-// D0 local acceptance run against the published packed-mn asset.
 The PDF step matters most, because it is where the borrowed machinery
 shows: the converter runs a Java XSL-FO engine (mn2pdf) and a Java
 validator (jing), rasterizes the figure with Inkscape, and embeds the
@@ -167,12 +161,6 @@ it to a package you can download today.
 
 == How packed-mn maps to the parts
 
-// source: tebako release v2.1.8 (93 assets, published 2026-09-04);
-// tebako-packages/openjdk release v2.1.5 (17 assets, Temurin 21.0.12,
-// published 2026-09-02); tebako-packages/metanorma tag 1.16.9-8
-// (published 2026-09-01); tamatebako/ruby v0.2.34 (published
-// 2026-09-04) -> factory line 0.16.21 (published 2026-09-04);
-// metanorma/packed-mn v1.16.9-3 (published 2026-09-04); PROGRESS/32.
 The packed-mn executable is one tebako package. Here is every piece
 of it, which tebako part it is, and where it lives when you run it:
 
@@ -233,14 +221,8 @@ never heard of Java or Inkscape gets exactly the same document.
 . link:/blog/2026-09-05-tebako-v2-developer-story-benchmarks/[*Tebako v2: Build your own*] — the
   developer pipeline, and the numbers.
 
-== Migrating from v1
-
-The C++/CMake era is archived as
-https://github.com/tamatebako/tebako-v1[tebako-v1] and receives no new
-development. v1 embedded images do not load in v2; press fresh payloads
-with the v2 tooling. The migration notes in our
-link:/blog/2026-07-31-tebako-v2-hermetic/[hermetic-platform post] still
-apply verbatim.
+Coming from v1? The link:/docs/migrate-v1-v2/[v1 → v2 migration guide]
+maps every flag.
 
 That is the promise kept: one download, and any document. The next post
 opens the package format and shows you every part in detail.
