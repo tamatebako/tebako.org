@@ -26,7 +26,22 @@ const canonical = new URL(Astro.url.pathname, Astro.site).toString()
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <script is:inline>
-    (function(){try{var s=localStorage.getItem('tb-theme');var d=window.matchMedia('(prefers-color-scheme: dark)').matches;if(s==='dark'||(s!=='light'&&d))document.documentElement.classList.add('dark')}catch(e){}})()
+    (function () {
+      var apply = function (doc) {
+        try {
+          var s = localStorage.getItem('tb-theme');
+          var d = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          doc.documentElement.classList.toggle('dark', s === 'dark' || (s !== 'light' && d));
+        } catch (e) {}
+      };
+      apply(document);
+      // ClientRouter swaps the <html> attributes from the SSR'd document, which has
+      // no .dark class — re-apply the theme to the incoming document or every soft
+      // navigation resets to light mode.
+      document.addEventListener('astro:before-swap', function (e) {
+        apply(e.newDocument);
+      });
+    })();
   </script>
 
   <link rel="icon" type="image/png" href="/favicon-96x96.png?v=20260723" sizes="96x96" />

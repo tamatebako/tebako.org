@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 
 interface NavItem {
   label: string
@@ -9,6 +9,11 @@ interface NavItem {
 const props = defineProps<{ nav: NavItem[]; class?: string }>()
 
 const open = ref(false)
+const isClient = ref(false)
+
+watch(open, (v) => {
+  document.body.style.overflow = v ? 'hidden' : ''
+})
 
 function toggle() {
   open.value = !open.value
@@ -19,10 +24,12 @@ function close() {
 }
 
 onMounted(() => {
+  isClient.value = true
   document.addEventListener('astro:after-swap', close)
 })
 
 onBeforeUnmount(() => {
+  document.body.style.overflow = ''
   document.removeEventListener('astro:after-swap', close)
 })
 </script>
@@ -43,12 +50,19 @@ onBeforeUnmount(() => {
     </svg>
   </button>
 
-  <Transition name="tb-mobile-menu">
-    <div
-      v-if="open"
-      class="fixed inset-0 z-[60] md:hidden"
-      style="background: var(--tb-c-bg);"
-    >
+  <!-- Teleported to body only after mount: Astro SSRs islands in isolation, so a
+       Teleport cannot place its hydration anchors in body — hydrating it in place
+       makes Vue adopt (and remove) the real <header>. Teleporting is also what
+       escapes the header's backdrop-filter, which is the containing block for
+       fixed descendants — in place, inset-0 pins this overlay to the 64px header
+       strip instead of the viewport. -->
+  <Teleport v-if="isClient" to="body">
+    <Transition name="tb-mobile-menu">
+      <div
+        v-if="open"
+        class="fixed inset-0 z-[60] md:hidden"
+        style="background: var(--tb-c-bg);"
+      >
       <div class="flex h-16 items-center justify-between px-6">
         <span class="font-[var(--font-display)] text-lg font-medium">tebako</span>
         <button
@@ -75,7 +89,8 @@ onBeforeUnmount(() => {
         </a>
       </nav>
     </div>
-  </Transition>
+    </Transition>
+  </Teleport>
 </template>
 
 <style scoped>

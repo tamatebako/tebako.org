@@ -2,6 +2,7 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 
 const open = ref(false)
+const isClient = ref(false)
 const query = ref('')
 const results = ref<Array<{ url: string; meta: { title?: string }; excerpt?: string; raw_content?: string; weighted_locations?: Array<{ weight: number }> }>>([])
 const loading = ref(false)
@@ -70,6 +71,7 @@ function highlight(result: any): string {
 }
 
 onMounted(() => {
+  isClient.value = true
   document.addEventListener('astro:after-swap', close)
   window.addEventListener('keydown', (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -99,7 +101,14 @@ onBeforeUnmount(() => {
     <span class="hidden font-[var(--font-mono)] text-xs sm:inline">⌘K</span>
   </button>
 
-  <Transition name="tb-search">
+  <!-- Teleported to body only after mount: Astro SSRs islands in isolation, so a
+       Teleport cannot place its hydration anchors in body — hydrating it in place
+       makes Vue adopt (and remove) the real <header>. Teleporting is also what
+       escapes the header's backdrop-filter, which is the containing block for
+       fixed descendants — in place, inset-0 pins this dialog to the 64px header
+       strip instead of the viewport. -->
+  <Teleport v-if="isClient" to="body">
+    <Transition name="tb-search">
     <div
       v-if="open"
       class="fixed inset-0 z-[100] flex items-start justify-center pt-[10vh]"
@@ -160,7 +169,8 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </div>
-  </Transition>
+    </Transition>
+  </Teleport>
 </template>
 
 <style scoped>
