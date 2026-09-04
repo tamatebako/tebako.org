@@ -1,0 +1,94 @@
+// ////////////////////////////////////////////////////////////////////////////
+// HELD — publish after the docs overhaul PR (tamatebako/tebako.org #62) merges
+// and the owner approves: the post points at the reference section, whose stub
+// pages and honest status labels land with that PR. Before publishing: set the
+// real date, verify every link, flip entry 4 in the series lists of posts 1-3
+// and the 1.0.0 draft from "(coming)" to a link.
+// ////////////////////////////////////////////////////////////////////////////
+---
+layout: post
+title:  "Documentation for the new tebako (4 of 5)"
+date:   2100-01-01 00:00:00 +0800
+categories:
+  - tebako
+  - packaging
+  - documentation
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: >-
+  The new tebako is documented end to end: an architecture section that
+  explains every concept, task-shaped guides you can follow by pasting
+  commands, and a reference section that tells you plainly what exists
+  today and what is still coming.
+---
+
+= Documentation for the new tebako (4 of 5)
+
+[NOTE]
+====
+Post 4 of 5 in the series *The road to tebako 1.0*.
+
+. link:/blog/2026-07-22-tebako-is-alive-thrift-free-rearchitecture/[Tebako is alive — the thrift-free re-architecture]
+. link:/blog/2026-07-31-tebako-v2-hermetic/[Tebako v2 — the hermetic portable-runtime platform]
+. link:/blog/2026-08-22-tebako-v0.2.0-trace-and-check/[Tebako v0.2.0 — the trace toolkit and payload checks]
+. *Documentation for the new tebako* (this post)
+. Tebako 1.0.0: the image era (coming)
+====
+
+The previous posts in this series showed what tebako does. This one is
+shorter, and it answers a question you should not have to ask after
+adopting a tool: *where is everything written down?*
+
+The answer is https://tebako.org/docs/[tebako.org/docs], and it is
+organized the way you probably want to use it:
+
+== Three sections, three purposes
+
+* *link:/docs/architecture/[Architecture]* — the concepts. What a
+  package is made of, how the runtime ships as an image, what happens
+  between pressing enter and your program running, how trust and the
+  store work. Twenty-four pages, from the
+  link:/docs/architecture/overview/[overview] to the
+  link:/docs/architecture/contract-model/[contract model], each one
+  naming the normative specification it comes from.
+* *link:/docs/guides/[Guides]* — the tasks. Install, run, package an
+  app, publish to your own registry, trace, check. Each guide is one
+  task with commands you can paste into a terminal; start with
+  link:/docs/guides/install/[Install tebako].
+* *link:/docs/reference/[Reference]* — the lookup surface: the CLI
+  commands, environment variables, exit codes, and schemas. This
+  section is still being written, and it says so: every unwritten page
+  carries a "planned" label and an honest stub instead of a missing
+  page or a dead link.
+
+== What makes these docs trustworthy
+
+Three things we hold ourselves to:
+
+. *Shipped and planned are labelled.* Every feature page carries a
+  status badge — *shipped* or *planned* — so you never discover from a
+  crash that a documented feature was aspirational.
+. *Every page names its source.* Architecture pages link to the exact
+  specification section they describe, in the
+  https://github.com/tamatebako/tebako[product repository]. If the docs
+  and the spec ever disagree, that is a bug, and the spec wins.
+. *Commands are copy-pasteable.* Guides show real commands and their
+  real output, including the failure modes — like which named exit
+  code you get when a check fails.
+
+== Where to start
+
+If you are new, the link:/docs/[documentation home] picks a starting
+point by what you do: run packages, ship data, package applications,
+or work on tebako itself. There is also search — press *⌘K* anywhere
+on the site.
+
+Something missing or wrong? Please
+https://github.com/tamatebako/tebako.org/issues[tell us] — the docs
+live in the same ecosystem as the code, and a fix is usually a small
+pull request away.
+
+**__Press on__** _with Tebako_!

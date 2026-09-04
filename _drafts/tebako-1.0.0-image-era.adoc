@@ -35,7 +35,7 @@ Post 5 of 5 in the series *The road to tebako 1.0*.
 . link:/blog/2026-07-22-tebako-is-alive-thrift-free-rearchitecture/[Tebako is alive — the thrift-free re-architecture]
 . link:/blog/2026-07-31-tebako-v2-hermetic/[Tebako v2 — the hermetic portable-runtime platform]
 . link:/blog/2026-08-22-tebako-v0.2.0-trace-and-check/[Tebako v0.2.0 — the trace toolkit and payload checks]
-. The tebako docs, rebuilt (coming)
+. Documentation for the new tebako (coming)
 . *Tebako 1.0.0: the image era* (this post)
 ====
 
