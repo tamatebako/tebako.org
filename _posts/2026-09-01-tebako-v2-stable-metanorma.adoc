@@ -173,9 +173,8 @@ it to a package you can download today.
 // (published 2026-09-01); tamatebako/ruby v0.2.34 (published
 // 2026-09-04) -> factory line 0.16.21 (published 2026-09-04);
 // metanorma/packed-mn v1.16.9-3 (published 2026-09-04); PROGRESS/32.
-The packed-mn executable (release v1.16.9-3) is one tebako package,
-pressed with tebako toolchain 2.1.7. Here is every piece of it, and
-where each piece lives when you run it:
+The packed-mn executable is one tebako package. Here is every piece
+of it, which tebako part it is, and where it lives when you run it:
 
 [cols="2,3,3",options="header"]
 |===
@@ -185,16 +184,16 @@ where each piece lives when you run it:
 |The bootstrap, the stitched payload slots, and the trailer
 |One file — that is the whole download
 
-|Metanorma 1.16.9 (the application and its 260 gems)
-|A payload slice (`.tfs` image, registry tag 1.16.9-8)
+|Metanorma 1.16.9, with its 260 gems
+|Payload slice 1.16.9-8
 |Stitched into a slot inside the executable
 
-|Ruby 3.3, patched for tebako
-|The runtime, named in the trailer (factory line 0.16.21)
+|Ruby 3.3
+|The runtime 0.16.21, named in the trailer
 |Downloaded once to `~/.tebako`, verified, shared by every package
 
-|OpenJDK 21 (Temurin) for mn2pdf and jing
-|A second runtime, spawned when Ruby runs `java` (registry 2.1.5)
+|OpenJDK 21 (Temurin 21.0.12), for mn2pdf and jing
+|Spawned runtime 2.1.5
 |Resolved from the registry into the store on first use
 
 |Inkscape, for figure rasterization
@@ -212,7 +211,7 @@ deliberate:
 * *Java* is a spawned runtime. When Metanorma's Ruby code runs `java`,
   tebako starts the OpenJDK runtime's own executable with its own
   environment image — the JVM never sits inside the Ruby process and
-  never comes from a host `PATH`. Post 3 tells this story in full.
+  never comes from a host `PATH`.
 * *Inkscape* is a mounted payload. The Metanorma slice declares that it
   needs the Inkscape slice at `/opt/inkscape`, and the driver mounts it
   there — payload depending on payload is an ordinary declaration.
