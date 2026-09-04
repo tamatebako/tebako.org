@@ -1,9 +1,7 @@
 ---
 layout: post
 title:  "Ruby calls Java calls Python: composition in practice"
-# PUBLISH-TIME PLACEHOLDER — set the real date when this post ships;
-# the series cadence is one post every 2-3 days (PROGRESS/29).
-date:   2026-09-11 00:00:00 +0800
+date:   2026-09-03 00:00:00 +0800
 categories:
   - tebako
   - architecture

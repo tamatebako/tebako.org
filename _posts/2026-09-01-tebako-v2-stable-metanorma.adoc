@@ -1,9 +1,7 @@
 ---
 layout: post
 title:  "Tebako v2 stable: one download, any document"
-# PUBLISH-TIME PLACEHOLDER — set the real date when this post ships;
-# the series cadence is one post every 2-3 days (PROGRESS/29).
-date:   2026-09-07 00:00:00 +0800
+date:   2026-09-01 00:00:00 +0800
 categories:
   - tebako
   - release
@@ -134,40 +132,39 @@ your users consume as byte-identical, verified artifacts.
 
 == The versions behind this post
 
-// source: tebako release v2.1.7 (run 33720864130, 93 assets, published
-// 2026-09-03); tebako-packages/openjdk release v2.1.5 (17 assets,
-// Temurin 21.0.12, published 2026-09-02); tebako-packages/metanorma tag
-// 1.16.9-8 (published 2026-09-01); tamatebako/ruby v0.2.33 (published
-// 2026-09-03) -> factory line 0.16.20 publishing at write time
-// (factory#144 builds in flight); PROGRESS/32.
+// source: tebako release v2.1.8 (93 assets, published 2026-09-04);
+// tebako-packages/openjdk release v2.1.5 (17 assets, Temurin 21.0.12,
+// published 2026-09-02); tebako-packages/metanorma tag 1.16.9-8
+// (published 2026-09-01); tamatebako/ruby v0.2.34 (published
+// 2026-09-04) -> factory line 0.16.21 (published 2026-09-04);
+// metanorma/packed-mn v1.16.9-3 (published 2026-09-04); PROGRESS/32.
 * `tamatebako/tebako` — the Rust product (bootstrap, shim, driver, tfs,
-  tpkg, CLI): **v2.1.7** — 93 release assets across seven platform
+  tpkg, CLI): **v2.1.8** — 93 release assets across seven platform
   triplets, including the runtime-launcher tier and the standalone
   spawned-runtime dispatch that post 3 covers.
 * `tamatebako/tebako-runtime-ruby` — the ruby runtime factory: line
-  **0.16.20** (publishing at write time — it carries the shell-form
-  spawn fix, ruby#107, whose story post 3 tells).
+  **0.16.21** (shipped 2026-09-04 — it carries the shell-form spawn
+  fix, ruby#107, whose story post 3 tells, and the msys parity fix,
+  ruby#108).
 * `tebako-packages/openjdk` — the OpenJDK runtime (Temurin 21.0.12),
   tebako line **2.1.5**: the first `kind: runtime` payload beyond ruby.
 * `tebako-packages/metanorma` — the Metanorma 1.16.9 payload, tag
   **1.16.9-8**: the payload carrying the spec-30 `kind: runtime` java
   edge.
-* `metanorma/packed-mn` — the single-executable distribution
-  (PUBLISH-TIME: the feat/v2-assembly re-pin — tebako 2.1.7, runtime
-  0.16.20, payload 1.16.9-8 — publishes as release **v1.16.9** when the
-  in-flight chain lands; verify at publish).
+* `metanorma/packed-mn` — the single-executable distribution: release
+  **v1.16.9-3** (2026-09-04), built on tebako toolchain 2.1.7 with
+  runtime 0.16.21 and payload 1.16.9-8.
 
 == The series
 
-// PUBLISH-TIME: add the permalinks as posts 2-5 land.
 . *Tebako v2 stable: one download, any document* — this post.
-. *Anatomy of a tebako package* — the three-part model: bootstrap,
+. link:/blog/2026-09-02-tebako-v2-anatomy-tpkg/[*Anatomy of a tebako package*] — the three-part model: bootstrap,
   runtime, payload slices, and the store.
-. *Ruby calls Java calls Python: composition in practice* — the spawned
+. link:/blog/2026-09-03-tebako-v2-cross-runtime-composition/[*Ruby calls Java calls Python: composition in practice*] — the spawned
   runtime edge, co-mounted payloads, and the host-tool route.
-. *The jail and the host: declarative filesystem policy* — read-only by
+. link:/blog/2026-09-04-tebako-v2-jail-host-routing/[*The jail and the host: declarative filesystem policy*] — read-only by
   default, declared needs, record mode, and the trust model.
-. *Build your own: feedstocks, presses, and the benchmark table* — the
+. link:/blog/2026-09-05-tebako-v2-developer-story-benchmarks/[*Build your own: feedstocks, presses, and the benchmark table*] — the
   developer pipeline, and the numbers.
 
 == Migrating from v1
@@ -176,7 +173,7 @@ The C++/CMake era is archived as
 https://github.com/tamatebako/tebako-v1[tebako-v1] and receives no new
 development. v1 embedded images do not load in v2; press fresh payloads
 with the v2 tooling. The migration notes in our
-link:/blog/2026/07/31/tebako-v2-hermetic/[hermetic-platform post] still
+link:/blog/2026-07-31-tebako-v2-hermetic/[hermetic-platform post] still
 apply verbatim.
 
 One download. Any document. The next post opens the package and shows
