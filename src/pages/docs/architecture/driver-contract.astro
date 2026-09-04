@@ -222,7 +222,7 @@ const exitRows = [
       <p class="mt-4 max-w-3xl text-sm text-[var(--tb-c-text-3)]">
         Two out-of-band codes complete the picture: the runtime factory uses <strong>132</strong> for
         a pre-era/corrupt source tarball, and <code class="font-[var(--font-mono)] text-xs">--tebako-extract</code>
-        {' '}(the runtime-side option riding the user-arg passthrough) dumps mounted images to disk and
+        {' '}(the runtime-side option, carried through the user-arg passthrough) dumps mounted images to disk and
         exits 0. The trace subcommands carry their own verdict codes (0 clean / 1 finding / 2 error) —
         see observability.
       </p>
@@ -237,7 +237,7 @@ const exitRows = [
         <strong>contract_version 2</strong> in its release manifest, and the compiled-in constant
         (<code class="font-[var(--font-mono)] text-sm">tebako_driver_contract_version()</code>) must
         agree with the manifest. A runtime that declares no contract set is pre-era: the loader
-        refuses it by name with exit 75, before any install or execute. Runtime provenance rides the
+        refuses it by name with exit 75, before any install or execute. Runtime provenance is declared in the
         payload manifest (<code class="font-[var(--font-mono)] text-sm">provides</code> — engine,
         version, abi_line, platform — plus <code class="font-[var(--font-mono)] text-sm">built_from</code>);
         the dispatcher's compatibility check consumes exactly those fields.
@@ -247,21 +247,21 @@ const exitRows = [
     <!-- ============ THREE NEIGHBORS ============ -->
     <div class="mt-16 grid gap-6 md:grid-cols-3">
       <a href="/docs/architecture/anatomy/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
-        <p class="tb-eyebrow">NEXT · ANATOMY</p>
+        <p class="tb-eyebrow">UP NEXT · ANATOMY</p>
         <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">The anatomy of a package</h3>
         <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
           Trailer, slots, extension blocks — the bytes this contract reads.
         </p>
       </a>
       <a href="/docs/architecture/runtime-as-image/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
-        <p class="tb-eyebrow">NEXT · RUNTIME AS IMAGE</p>
+        <p class="tb-eyebrow">UP NEXT · RUNTIME AS IMAGE</p>
         <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">The two-artifact runtime</h3>
         <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
           Exe plus env image — what the driver mounts first, and why.
         </p>
       </a>
       <a href="/docs/architecture/interposition/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
-        <p class="tb-eyebrow">NEXT · INTERPOSITION</p>
+        <p class="tb-eyebrow">UP NEXT · INTERPOSITION</p>
         <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">How native children inherit the VFS</h3>
         <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
           The spawn hook, the preload shim, and the mounts env the driver exports.

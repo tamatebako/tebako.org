@@ -15,7 +15,7 @@ const LINKS = {
 
 const trailerFields = [
   { offset: '0', size: '10', field: 'magic', meaning: '"TEBAKOTFS\\0" — the 4-byte "TEBA" prefix is what tells absent apart from corrupt' },
-  { offset: '10', size: '4', field: 'version', meaning: 'u32, = 1 forever — extensions ride flags, never version bumps' },
+  { offset: '10', size: '4', field: 'version', meaning: 'u32, = 1 forever — extensions live in flags, never in version bumps' },
   { offset: '14', size: '4', field: 'package_flags', meaning: 'u32 — bit 0 LEAN · bit 1 SIGNED_V2 · bit 2 NO_INSTALL (table below)' },
   { offset: '18', size: '4', field: 'slot_count', meaning: 'u32, 1–8 (TPKG_MAX_SLOTS)' },
   { offset: '22', size: '8', field: 'slot_table_offset', meaning: 'u64 — absolute file offset of slot record 0' },
@@ -34,7 +34,7 @@ const slotFields = [
 
 const flagRows = [
   { bit: 'bit 0', name: 'TPKG_FLAG_LEAN', meaning: 'the runtime is named by reference (runtime_ref) and resolved at run time; unset means the package carries it as a slot (fat)' },
-  { bit: 'bit 1', name: 'TPKG_FLAG_SIGNED_V2', meaning: 'the v2 chain-of-trust extension rides between the slot table and the header. v1-era readers pass the bit through and run the package — trust enforcement is a reader capability, not a format barrier' },
+  { bit: 'bit 1', name: 'TPKG_FLAG_SIGNED_V2', meaning: 'the v2 chain-of-trust extension is carried between the slot table and the header. v1-era readers pass the bit through and run the package — trust enforcement is a reader capability, not a format barrier' },
   { bit: 'bit 2', name: 'TPKG_FLAG_NO_INSTALL', meaning: 'publisher-frozen: the package RUNS standalone, but every install attempt is refused by name (exit 76). Absence means installable-on-request' },
 ]
 
@@ -258,7 +258,7 @@ const trailerErrors = [
             </table>
           </div>
           <p class="mt-4 text-sm text-[var(--tb-c-text-3)]">
-            The version field stays 1 forever: new capability rides flags and extension
+            The version field stays 1 forever: new capability arrives through flags and extension
             blocks, so v1-era readers never break on v2 packages.
           </p>
         </div>
@@ -546,7 +546,7 @@ ext block: [u32be type][u32be length][payload]
     <!-- ============ THREE NEIGHBORS ============ -->
     <div class="mt-16 grid gap-6 md:grid-cols-3">
       <a href="/docs/architecture/anatomy/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
-        <p class="tb-eyebrow">NEXT · ANATOMY</p>
+        <p class="tb-eyebrow">UP NEXT · ANATOMY</p>
         <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">How a package works</h3>
         <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
           The concepts on this page in motion: boot sequence, mount model, and every named
@@ -554,7 +554,7 @@ ext block: [u32be type][u32be length][payload]
         </p>
       </a>
       <a href="/docs/architecture/runtime-as-image/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
-        <p class="tb-eyebrow">NEXT · RUNTIME AS IMAGE</p>
+        <p class="tb-eyebrow">UP NEXT · RUNTIME AS IMAGE</p>
         <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">The runtime, as an image</h3>
         <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
           Why part B is two artifacts, and how the env image and your payloads co-mount in
@@ -562,7 +562,7 @@ ext block: [u32be type][u32be length][payload]
         </p>
       </a>
       <a href="/docs/architecture/store/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
-        <p class="tb-eyebrow">NEXT · THE STORE</p>
+        <p class="tb-eyebrow">UP NEXT · THE STORE</p>
         <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">Where everything lives</h3>
         <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
           <code class="font-[var(--font-mono)] text-xs">~/.tebako</code> in full — runtimes,
