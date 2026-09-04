@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Tebako v0.2.0 — the trace toolkit and payload checks"
+title:  "Tracing and checking packaged apps"
 date:   2026-08-22 00:00:00 +0800
 categories:
   - tebako
@@ -12,24 +12,22 @@ author:
   social_links:
     - https://github.com/tamatebako
 excerpt: >-
-  Tebako v0.2.0 answers the two questions every packaged application
-  raises: "what does my payload actually touch on this machine?" with
-  the new trace commands, and "does my payload actually work?" with
-  payload checks — an acceptance test declared inside the payload
-  itself.
+  Two questions come with every packaged application: "what does it
+  actually touch on this machine?" and "does it actually work?" The
+  trace commands answer the first, payload checks answer the second —
+  this post walks both with worked examples.
 ---
 
-= Tebako v0.2.0 — the trace toolkit and payload checks
+= Tracing and checking packaged apps
 
-Tebako v0.2.0 is out, and it is about *answers*.
-
-Packaged applications raise two questions that used to require
-hand-written, throwaway diagnostics: "what does my payload actually
-touch?" and "does my payload actually work?" This release ships a
-toolkit for each. Both are already wired into the new guides —
+Every packaged application raises two questions that no amount of
+hand-written, throwaway diagnostics answers well: *what does my payload
+actually touch?* and *does my payload actually work?* Tebako ships a
+toolkit for each — the trace commands and payload checks — and this
+post walks both with worked examples. Both are also covered as
+step-by-step walkthroughs in the guides:
 https://tebako.org/docs/guides/trace/[Trace a packaged app] and
-https://tebako.org/docs/guides/check/[Check a payload] — if you would
-rather follow a walkthrough than read an announcement.
+https://tebako.org/docs/guides/check/[Check a payload].
 
 == The trace toolkit: see what your payload touches
 
@@ -244,8 +242,9 @@ A few deliberate rules keep checks useful:
 Two things remain open, both known. First, the Windows libc-layer
 live capture waits on the upstream retrace fix described above.
 Second, the metanorma feedstock's `html-xml` gate turns on once the
-feedstock re-pins its workflows to this CLI — the check engine ships
-in v0.2.0, and feedstocks consume released binaries only, because
+feedstock re-pins its workflows to this CLI — the check engine
+shipped with its first release, and feedstocks consume released
+binaries only, because
 releases are the interface between them. Wiring checks into
 `tebako press` and `tebako install` gates is the remaining work.
 
@@ -257,9 +256,8 @@ brew upgrade tamatebako/tap/tebako
 ----
 
 or download the binaries for your platform from the
-https://github.com/tamatebako/tebako/releases/tag/v0.2.0[v0.2.0
-release]. Every asset is built and tested in CI before it is
-uploaded.
+https://github.com/tamatebako/tebako/releases[releases page]. Every
+asset is built and tested in CI before it is uploaded.
 
 As always: if something surprises you, we want to hear about it in
 the https://github.com/tamatebako/tebako/issues[issue tracker].
