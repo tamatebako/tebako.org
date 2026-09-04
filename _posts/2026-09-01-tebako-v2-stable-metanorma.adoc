@@ -12,10 +12,10 @@ author:
   social_links:
     - https://github.com/tamatebako
 excerpt: >-
-  Tebako v2 is stable. One download compiles a real international
-  standard to PDF — Ruby runtime, spawned JVM, mounted Inkscape, host
-  Python and all — with nothing installed on the host but tebako
-  itself. This is post 1 of 5: the announcement.
+  Metanorma — a Ruby application that drives a JVM, Inkscape, and
+  Python — runs as a tebako v2 package on a clean machine. This post
+  shows the demo, explains how tebako works, and maps the packed-mn
+  executable onto its components, one by one. Post 1 of 5.
 ---
 
 = Tebako v2: One download, any document (1 of 5)
@@ -31,14 +31,16 @@ Post 1 of 5 in the series *Tebako v2*.
 . link:/blog/2026-09-05-tebako-v2-developer-story-benchmarks/[Tebako v2: Build your own]
 ====
 
-Tebako v2 is stable, and it is running the hardest workload we could
-find in production shape: the complete Metanorma standards-authoring
-stack, packaged once, running on a clean machine with no toolchain
-installed.
+Metanorma, the standards-authoring toolchain we build, is the hardest
+packaging workload we know: a Ruby application that drives a Java
+XSL-FO converter, calls Inkscape to rasterize figures, and uses a
+Python tool for the IETF document flavors. This post shows that whole
+stack running as one tebako v2 package on a machine with nothing
+installed, and then opens the package to show exactly what is inside
+and how each part gets there.
 
-This is the first post in a five-part series on how Metanorma runs on
-the v2 architecture — and how your application can.
-
+This is the first post in a five-part series. Post 2 opens the package
+format in depth; this one gives you the working model first.
 
 ++++
 <figure role="img" aria-label="Diagram: one download containing four technologies produces any document format">
@@ -77,7 +79,9 @@ the v2 architecture — and how your application can.
 </figure>
 ++++
 
-_Figure 1 — One download carries everything: the runtime it needs, the JVM it spawns, Inkscape it mounts, and a declared host tool._
+_Figure 1 — What the one download carries: the Ruby runtime it needs,
+the JVM it spawns, Inkscape it mounts, and a Python tool it uses by
+declared need._
 
 == The 90-second demo
 
@@ -85,7 +89,8 @@ _Figure 1 — One download carries everything: the runtime it needs, the JVM it 
 // PROGRESS/13-benchmarks.md (2026-08-30 D0 acceptance run: the packed-mn
 // darwin-arm64 asset compiled mn-samples-oiml r060 to all four outputs,
 // COMPILE_EXIT=0).
-On a machine that has never heard of Ruby, Java, or Inkscape:
+Here is the entire setup on a machine that has none of Ruby, Java, or
+Inkscape installed:
 
 [source,console]
 ----
@@ -100,13 +105,17 @@ tebako install metanorma
 metanorma compile document.adoc
 ----
 
-Or skip the store entirely: the packed-mn project ships Metanorma as a
-single executable per platform — download, run, done. The runtime
-downloads once on first run, is verified against its published SHA-256,
-and is shared by every tebako package on the machine.
+You can also skip the store entirely: the
+https://github.com/metanorma/packed-mn[packed-mn project] ships
+Metanorma as a single executable per platform. You download one file
+and run it; the runtime it needs is downloaded and verified the first
+time you use it, and it is then shared by every tebako package on the
+machine.
 
-What a real compile looks like, from the acceptance runs — a real OIML
-standard document, one command:
+The transcript below is from our acceptance run on 30 August — real
+output, not written for this post. One command compiled an actual
+international standard, OIML R 60 (published by the International
+Organization of Legal Metrology), into all four formats:
 
 [source,console]
 ----
@@ -119,69 +128,46 @@ $ metanorma compile sources/r060/1/document.adoc
 
 // source: PROGRESS/13-benchmarks.md 2026-08-30 — byte counts from the
 // D0 local acceptance run against the published packed-mn asset.
-The PDF leg is the interesting one: it runs a Java XSL-FO converter
-(mn2pdf) and a Java validator (jing), rasterizes figures with Inkscape,
-and embeds fonts resolved at compile time. Every one of those
-technologies came with the package.
+The PDF step matters most, because it is where the borrowed machinery
+shows: the converter runs a Java XSL-FO engine (mn2pdf) and a Java
+validator (jing), rasterizes the figure with Inkscape, and embeds the
+fonts it resolved at compile time. Every one of those technologies
+arrived with the package — none of them was installed on the machine.
 
-== One package, four technologies
+== How tebako works
 
-// source: docs/spec/30-runtime-spawned-dependency.md (the java edge);
-// docs/spec/29-wrapper-exe-driver.md; docs/spec/23 §11 (the toolkit-slice
-// form stays legal for library-layer cases); PROGRESS/30 (java/05).
-That single compile exercised four technology stacks, and each one
-reached the process a different, deliberate way:
+Tebako packages an application so it runs anywhere, without installing
+anything else. A package has three kinds of parts:
 
-* **Ruby** — the application itself. A patched Ruby runtime, delivered
-  as two artifacts (an interpreter executable and its environment
-  image), downloaded once per machine and *mounted — never extracted*.
-* **Java** — mn2pdf and jing. The Metanorma payload declares
-  `{kind: runtime, engine: java, expose: [java]}`; when the Ruby code
-  spawns `java`, tebako dispatches a *child process* from the machine
-  store — the OpenJDK runtime's wrapper executable plus its own
-  environment image. The JVM is never co-mounted into the Ruby VFS and
-  never resolved from a host `PATH`. (This is spec 30, new in the v2.1
-  line — post 3 tells the whole story.)
-* **Inkscape** — a *separate payload slice*, mounted at `/opt/inkscape`
-  next to the application image. Payloads mount other payloads at
-  declared paths; dispatch is longest-prefix.
-* **Python** — xml2rfc, for the IETF flavors, is the one deliberate
-  *host-tool* route: a system tool, used when the host provides it,
-  declared as such. Why this one stays on the host — and for how long —
-  is a per-tool decision post 3 unpacks.
+. *The bootstrap* — a small Rust loader (under 3 MB). It is the
+  executable's entry point: it reads the package trailer, finds the
+  runtime, and hands control over.
+. *The runtime* — the language interpreter your application needs,
+  shipped as two files: the interpreter executable and an environment
+  image (the standard library and gems, as a mounted disk image). The
+  runtime is downloaded once per machine into `~/.tebako`, verified
+  against its published SHA-256, and shared by every package.
+. *Payload slices* — your application, your data, and the tools it
+  needs, each a disk image that describes itself with a manifest.
 
-No Homebrew. No `apt`. No `JAVA_HOME`. A user who has never heard of
-Java or Inkscape gets the same document.
+When you run a package, this is the whole sequence:
 
-== What "stable" means
+. The bootstrap reads the trailer at the end of its own file. The
+  trailer names the runtime and lists the slices stitched into the
+  executable.
+. If the runtime is not in the store yet, the bootstrap downloads it,
+  verifies it against the published digest, and caches it.
+. A component inside the runtime called the driver mounts the
+  environment image at the interpreter's root, then mounts each payload
+  slice at the path its manifest declares.
+. The interpreter starts on your application's entrypoint. The files
+  your program reads are served from the mounted images, in memory —
+  nothing is extracted to disk.
 
-// source: docs/spec/00-INDEX.md (the spec set is 00-30); docs/spec/06
-// (contract_version negotiation, fail-closed, exit 75); docs/spec/02
-// (tpkg trailer: format version 1 forever, extensions live in flags).
-"Stable" is a specific claim here, not a vibe:
+Post 2 walks this anatomy with diagrams; the rest of this post applies
+it to a package you can download today.
 
-* **The contract set is written down.** Thirty normative specs
-  (00–30) pin the wire formats, the launcher ABI, the store layout, the
-  jail grammar, and the error vocabulary. Contract changes land in the
-  specs first, then in code.
-* **The wire formats are frozen by policy.** The tpkg trailer is format
-  version 1 forever — extensions live in flag bits, never version bumps.
-  The launcher ABI is version 1. Runtime↔loader semantics negotiate
-  `contract_version` fail-closed: a loader that cannot honor a
-  runtime's contract exits with a named error, never a guess.
-* **The failure modes are named.** Misconfiguration, missing runtimes,
-  denied host access, trust violations — each is a named error with a
-  documented exit code. Silent fallbacks are treated as bugs.
-* **The proof is end-to-end.** The release line you can download today
-  is the one that compiled the documents above, on all shipped
-  platform triplets, in acceptance CI — not a demo build.
-
-For users: install once, run anywhere tebako runs, and nothing you
-install will ever ask you for a compiler. For payload authors: the
-feedstock model (post 5) is one recipe repo per package, with releases
-your users consume as byte-identical, verified artifacts.
-
-== The versions behind this post
+== How packed-mn maps to the parts
 
 // source: tebako release v2.1.8 (93 assets, published 2026-09-04);
 // tebako-packages/openjdk release v2.1.5 (17 assets, Temurin 21.0.12,
@@ -189,22 +175,54 @@ your users consume as byte-identical, verified artifacts.
 // (published 2026-09-01); tamatebako/ruby v0.2.34 (published
 // 2026-09-04) -> factory line 0.16.21 (published 2026-09-04);
 // metanorma/packed-mn v1.16.9-3 (published 2026-09-04); PROGRESS/32.
-* `tamatebako/tebako` — the Rust product (bootstrap, shim, driver, tfs,
-  tpkg, CLI): **v2.1.8** — 93 release assets across seven platform
-  triplets, including the runtime-launcher tier and the standalone
-  spawned-runtime dispatch that post 3 covers.
-* `tamatebako/tebako-runtime-ruby` — the ruby runtime factory: line
-  **0.16.21** (shipped 2026-09-04 — it carries the shell-form spawn
-  fix, ruby#107, whose story post 3 tells, and the msys parity fix,
-  ruby#108).
-* `tebako-packages/openjdk` — the OpenJDK runtime (Temurin 21.0.12),
-  tebako line **2.1.5**: the first `kind: runtime` payload beyond ruby.
-* `tebako-packages/metanorma` — the Metanorma 1.16.9 payload, tag
-  **1.16.9-8**: the payload carrying the spec-30 `kind: runtime` java
-  edge.
-* `metanorma/packed-mn` — the single-executable distribution: release
-  **v1.16.9-3** (2026-09-04), built on tebako toolchain 2.1.7 with
-  runtime 0.16.21 and payload 1.16.9-8.
+The packed-mn executable (release v1.16.9-3) is one tebako package,
+pressed with tebako toolchain 2.1.7. Here is every piece of it, and
+where each piece lives when you run it:
+
+[cols="2,3,3",options="header"]
+|===
+|What you meet |Which tebako part it is |Where it lives
+
+|The executable you download
+|The bootstrap, the stitched payload slots, and the trailer
+|One file — that is the whole download
+
+|Metanorma 1.16.9 (the application and its 260 gems)
+|A payload slice (`.tfs` image, registry tag 1.16.9-8)
+|Stitched into a slot inside the executable
+
+|Ruby 3.3, patched for tebako
+|The runtime, named in the trailer (factory line 0.16.21)
+|Downloaded once to `~/.tebako`, verified, shared by every package
+
+|OpenJDK 21 (Temurin) for mn2pdf and jing
+|A second runtime, spawned when Ruby runs `java` (registry 2.1.5)
+|Resolved from the registry into the store on first use
+
+|Inkscape, for figure rasterization
+|A mounted payload slice, declared as a dependency
+|Mounted at `/opt/inkscape` at run time
+
+|xml2rfc, for the IETF flavors
+|A declared *host tool* — used only if your machine provides it
+|Your machine, stated openly in the manifest
+|===
+
+Three different routes bring the non-Ruby machinery in, and each is
+deliberate:
+
+* *Java* is a spawned runtime. When Metanorma's Ruby code runs `java`,
+  tebako starts the OpenJDK runtime's own executable with its own
+  environment image — the JVM never sits inside the Ruby process and
+  never comes from a host `PATH`. Post 3 tells this story in full.
+* *Inkscape* is a mounted payload. The Metanorma slice declares that it
+  needs the Inkscape slice at `/opt/inkscape`, and the driver mounts it
+  there — payload depending on payload is an ordinary declaration.
+* *Python* is the one honest host-tool route: a system tool, used when
+  the host has it, and declared as such so nothing is hidden.
+
+None of this needs Homebrew, `apt`, or a `JAVA_HOME`: a user who has
+never heard of Java or Inkscape gets exactly the same document.
 
 == The series
 
@@ -227,5 +245,5 @@ with the v2 tooling. The migration notes in our
 link:/blog/2026-07-31-tebako-v2-hermetic/[hermetic-platform post] still
 apply verbatim.
 
-One download. Any document. The next post opens the package and shows
-you the parts.
+That is the promise kept: one download, and any document. The next post
+opens the package format and shows you every part in detail.
