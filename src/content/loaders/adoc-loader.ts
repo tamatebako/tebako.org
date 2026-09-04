@@ -31,7 +31,9 @@ export function adocLoader({ base, attributes = {} }: AdocLoaderOptions): Loader
           safe: 'safe',
           standalone: false,
           attributes: {
-            showtitle: '',
+            // The page template renders the frontmatter title as its own <h1>;
+            // keep the AsciiDoc doctitle out of the body so it never shows twice.
+            notitle: '',
             idprefix: '',
             idseparator: '-',
             imagesdir: '/assets/blog',
