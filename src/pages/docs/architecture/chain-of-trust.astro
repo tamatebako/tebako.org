@@ -1,7 +1,6 @@
 ---
 // normative: spec 09, spec 02 §4+§5b, spec 06 §3–§4, spec 21; docs/root-ceremony.md
-import BaseLayout from '../../../layouts/BaseLayout.astro'
-import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import DocsLayout from '../../../layouts/DocsLayout.astro'
 import StatusPill from '../../../components/docs/StatusPill.astro'
 
 const LINKS = {
@@ -80,18 +79,14 @@ const chainSteps = [
 ]
 ---
 
-<BaseLayout title="The chain of trust — Tebako architecture" description="Binary-part integrity and authenticity: tpkg v2, opt-in OpenPGP signing, the trust store, the root-key ceremony, named verification exit codes, and the v1-legacy rule.">
-  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">ARCHITECTURE · TRUST</p>
-    <h1 class="mt-3">The chain of trust.</h1>
-    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
-      Package parts travel over mirrors and get shared between machines. How do we know
-      they were not messed with? The answer is a chain: one root key, one signature
-      mechanism, and verification at every hand-off — with honesty about what a checksum
-      can and cannot prove.
-    </p>
-
-    <ArchDocsNav />
+<DocsLayout
+  section="architecture"
+  href="/docs/architecture/chain-of-trust/"
+  title="The chain of trust"
+  heading="The chain of trust."
+  lede="Package parts travel over mirrors and get shared between machines. How do we know they were not messed with? The answer is a chain: one root key, one signature mechanism, and verification at every hand-off — with honesty about what a checksum can and cannot prove."
+  description="Binary-part integrity and authenticity: tpkg v2, opt-in OpenPGP signing, the trust store, the root-key ceremony, named verification exit codes, and the v1-legacy rule."
+>
 
     <div class="mt-12 rounded-2xl border p-6" style="border-color: var(--color-gold); background: color-mix(in srgb, var(--color-gold) 6%, transparent);">
       <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">STATED PLAINLY</p>
@@ -482,5 +477,4 @@ canonical signed bytes = slot table ‖ digest array ‖ keyid ‖ trailer heade
         <a href="/docs/architecture/store/" class="tb-link-underline text-[var(--tb-c-accent)]">the store</a>
       </p>
     </div>
-  </section>
-</BaseLayout>
+</DocsLayout>

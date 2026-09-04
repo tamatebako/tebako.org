@@ -1,19 +1,15 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro'
-import GuidesNav from '../../../components/docs/GuidesNav.astro'
+import DocsLayout from '../../../layouts/DocsLayout.astro'
 ---
 
-<BaseLayout title="Install tebako — Tebako guides" description="Install the tebako CLI with Homebrew, the shell installer, or a direct binary: four static binaries, one store directory, no daemon, no root.">
-  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">GUIDES · INSTALL</p>
-    <h1 class="mt-3">Install tebako.</h1>
-    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
-      Four binaries, one directory, no daemon. Everything below runs as your user —
-      nothing needs root, and uninstalling means deleting files.
-    </p>
-
-    <GuidesNav />
-
+<DocsLayout
+  section="guides"
+  href="/docs/guides/install/"
+  title="Install tebako"
+  heading="Install tebako."
+  lede="Four binaries, one directory, no daemon. Everything below runs as your user — nothing needs root, and uninstalling means deleting files."
+  description="Install the tebako CLI with Homebrew, the shell installer, or a direct binary: four static binaries, one store directory, no daemon, no root."
+>
     <!-- ============ ROUTES ============ -->
     <div class="mt-16">
       <h2 class="mb-3">Pick a route.</h2>
@@ -185,5 +181,4 @@ rm -rf ~/.tebako`}</code></pre>
       <a href="/docs/guides/shims/" class="tb-link-underline text-[var(--tb-c-accent)]">Shims &amp; versions</a> ·
       <a href="/docs/architecture/store/" class="tb-link-underline text-[var(--tb-c-accent)]">The store, in the architecture docs</a>
     </p>
-  </section>
-</BaseLayout>
+</DocsLayout>

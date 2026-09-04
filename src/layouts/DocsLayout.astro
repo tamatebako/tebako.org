@@ -1,0 +1,89 @@
+---
+import BaseLayout from './BaseLayout.astro'
+import DocsNav from '../components/docs/DocsNav.astro'
+import { getSection, getEntryContext, type DocsSectionId } from '../config/docs'
+
+interface Props {
+  section: DocsSectionId
+  href: string
+  title: string
+  description: string
+  heading?: string
+  lede?: string
+}
+
+const { section, href, title, description, heading, lede } = Astro.props
+const sec = getSection(section)
+const ctx = getEntryContext(section, href)
+const hasHeadingSlot = Astro.slots.has('heading')
+const hasLedeSlot = Astro.slots.has('lede')
+---
+
+<BaseLayout title={`${title} — ${sec.titleSuffix}`} description={description}>
+  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
+    <nav
+      aria-label="Breadcrumb"
+      class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]"
+    >
+      <a href="/docs/">docs</a>
+      <span class="mx-2 opacity-50">/</span>
+      <a href={sec.homeHref}>{sec.id}</a>
+      <span class="mx-2 opacity-50">/</span>
+      <span aria-current="page" class="text-[var(--tb-c-text-2)]">{ctx.entry.label.toLowerCase()}</span>
+    </nav>
+
+    <p class="tb-eyebrow mt-6">{sec.eyebrowPrefix} · {ctx.number}</p>
+    {
+      hasHeadingSlot ? (
+        <slot name="heading" />
+      ) : (
+        <h1 class="mt-3">{heading ?? title}</h1>
+      )
+    }
+    {
+      lede && (
+        <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+          {lede}
+        </p>
+      )
+    }
+    {hasLedeSlot && <slot name="lede" />}
+
+    <DocsNav section={section} />
+
+    <slot />
+
+    <nav
+      aria-label="Pagination"
+      class="mt-24 flex items-center justify-between gap-4 border-t border-[var(--tb-c-divider)] pt-6 font-[var(--font-mono)] text-sm"
+    >
+      {
+        ctx.prev ? (
+          <a
+            href={ctx.prev.href}
+            class="text-[var(--tb-c-text-2)] transition-colors hover:text-[var(--tb-c-accent)]"
+          >
+            ← {ctx.prev.label}
+          </a>
+        ) : (
+          <span />
+        )
+      }
+      <span class="text-xs text-[var(--tb-c-text-3)]">
+        {ctx.number} / {String(sec.entries.length).padStart(2, '0')}
+      </span>
+      {
+        ctx.next ? (
+          <a
+            href={ctx.next.href}
+            class="text-[var(--tb-c-text-2)] transition-colors hover:text-[var(--tb-c-accent)]"
+          >
+            {ctx.next.label} →
+          </a>
+        ) : (
+          <span />
+        )
+      }
+    </nav>
+  </section>
+</BaseLayout>

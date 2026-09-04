@@ -1,6 +1,5 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro'
-import GuidesNav from '../../../components/docs/GuidesNav.astro'
+import DocsLayout from '../../../layouts/DocsLayout.astro'
 
 const exitCodes = [
   { code: '0', meaning: 'every selected check PASSed or SKIPped — a SKIP never fails the gate' },
@@ -12,19 +11,20 @@ const exitCodes = [
 ]
 ---
 
-<BaseLayout title="Check a payload — Tebako guides" description="Tebako payload checks: the in-image checks: manifest block, tebako check, exec and structural checks, composition checks, the SKIP discipline, and exit code 79.">
-  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">GUIDES · CHECK</p>
-    <h1 class="mt-3">Check a payload.</h1>
-    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+<DocsLayout
+  section="guides"
+  href="/docs/guides/check/"
+  title="Check a payload"
+  heading="Check a payload."
+  description="Tebako payload checks: the in-image checks: manifest block, tebako check, exec and structural checks, composition checks, the SKIP discipline, and exit code 79."
+>
+    <p slot="lede" class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
       A check is the payload's own acceptance test, declared in its in-image manifest and
       carried inside its image: <em>"given my declared needs, I do my one real thing."</em>{' '}
       Verification proves the bytes are the publisher's; a check proves the payload works on
       top of them. One definition, runnable at three moments — by the publisher at press time,
       by the user on their own machine, and under the record policy to discover needs.
     </p>
-
-    <GuidesNav />
 
     <!-- ============ AUTHORING ============ -->
     <div class="mt-16">
@@ -270,5 +270,4 @@ checks:
       <a href="/docs/guides/verify/" class="tb-link-underline text-[var(--tb-c-accent)]">Verify integrity</a> ·
       <a href="/docs/guides/publish/" class="tb-link-underline text-[var(--tb-c-accent)]">Publish to your own registry</a>
     </p>
-  </section>
-</BaseLayout>
+</DocsLayout>

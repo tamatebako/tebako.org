@@ -1,23 +1,17 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro'
-import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import DocsLayout from '../../../layouts/DocsLayout.astro'
 import StatusPill from '../../../components/docs/StatusPill.astro'
 ---
 <!-- normative: spec 03, spec 05, spec 06, spec 09, spec 16 — version strings current-era (tebako CLI 0.2.x, ruby runtimes 0.16.x per the release lines) -->
 
-<BaseLayout title="Migrating from Tebako v1 — Tebako architecture" description="The v1→v2 migration guide: what changed, what to do, and the mapping from gem-era commands to the Rust platform.">
-  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">ARCHITECTURE · 12</p>
-    <h1 class="mt-3">Migrating from Tebako v1.</h1>
-    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
-      Tebako v2 is a re-architecture, not a patch release. The C++/CMake era is
-      archived; the platform is Rust, the runtime is a small artifact set (exe +
-      env image, plus the ruby DLL on windows), and payloads
-      are self-describing slices. This page is the map from there to here.
-    </p>
-
-    <ArchDocsNav />
-
+<DocsLayout
+  section="architecture"
+  href="/docs/architecture/migration/"
+  title="Migrating from Tebako v1"
+  heading="Migrating from Tebako v1."
+  lede="Tebako v2 is a re-architecture, not a patch release. The C++/CMake era is archived; the platform is Rust, the runtime is a small artifact set (exe + env image, plus the ruby DLL on windows), and payloads are self-describing slices. This page is the map from there to here."
+  description="The v1→v2 migration guide: what changed, what to do, and the mapping from gem-era commands to the Rust platform."
+>
     <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
       <StatusPill status="shipped" />
       <span class="text-sm text-[var(--tb-c-text-2)]">ships today — the CLI on the 0.2.x line, ruby runtimes on the 0.16.x line; the migration path below is live</span>
@@ -207,5 +201,4 @@ import StatusPill from '../../../components/docs/StatusPill.astro'
         </p>
       </a>
     </div>
-  </section>
-</BaseLayout>
+</DocsLayout>

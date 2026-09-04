@@ -1,6 +1,5 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro'
-import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import DocsLayout from '../../../layouts/DocsLayout.astro'
 import StatusPill from '../../../components/docs/StatusPill.astro'
 
 const LINKS = {
@@ -38,18 +37,19 @@ const probeRows = [
 ---
 <!-- normative: spec 20 (limnifs backend, default-format rationale §6b, writer floor constraints §5), spec 02 §3/§6 (format_id axis, orthogonality), spec 11 §3 (detection order, compiled-out rule) §5 (mount-source kinds) -->
 
-<BaseLayout title="Image formats — Tebako architecture" description="One axis, one question: format_id answers only 'how do I read these bytes'. LimniFS is the default write format — pure Rust, content-addressed, no toolchain; dwarfs stays a first-class read backend; detection is by magic, never by hint.">
-  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">ARCHITECTURE · 19</p>
-    <h1 class="mt-3">Image formats.</h1>
-    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+<DocsLayout
+  section="architecture"
+  href="/docs/architecture/image-formats/"
+  title="Image formats"
+  heading="Image formats."
+  description="One axis, one question: format_id answers only 'how do I read these bytes'. LimniFS is the default write format — pure Rust, content-addressed, no toolchain; dwarfs stays a first-class read backend; detection is by magic, never by hint."
+>
+    <p slot="lede" class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
       Every payload slice is a byte shape behind one seam. The format axis answers exactly one
       question — <em>how do I read these bytes</em> — and nothing else: what a payload IS, whether
       it is a runtime, where its entrypoint lives, are manifest semantics that never touch the
       format id.
     </p>
-
-    <ArchDocsNav />
 
     <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
       <StatusPill status="shipped" note="six in-tree formats; LimniFS the default write format since v0.2.0; magic detection authoritative" />
@@ -244,5 +244,4 @@ const probeRows = [
         </p>
       </a>
     </div>
-  </section>
-</BaseLayout>
+</DocsLayout>

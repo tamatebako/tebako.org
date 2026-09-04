@@ -1,6 +1,5 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro'
-import GuidesNav from '../../../components/docs/GuidesNav.astro'
+import DocsLayout from '../../../layouts/DocsLayout.astro'
 
 const guides = [
   {
@@ -78,18 +77,14 @@ const guides = [
 ]
 ---
 
-<BaseLayout title="How-to guides — Tebako" description="Task-shaped tebako guides: install, run, package, publish, shim, jail, verify, debug, and inspect — every command copy-pasteable.">
-  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">GUIDES</p>
-    <h1 class="mt-3">Do the thing.</h1>
-    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
-      Each guide is one task: a short explanation, then commands you can paste into a
-      terminal. macOS and Linux are assumed; Windows differences are noted where they exist.
-      The architecture documentation explains the machinery underneath when you want it.
-    </p>
-
-    <GuidesNav />
-
+<DocsLayout
+  section="guides"
+  href="/docs/guides/"
+  title="How-to guides"
+  heading="Do the thing."
+  lede="Each guide is one task: a short explanation, then commands you can paste into a terminal. macOS and Linux are assumed; Windows differences are noted where they exist. The architecture documentation explains the machinery underneath when you want it."
+  description="Task-shaped tebako guides: install, run, package, publish, shim, jail, verify, debug, and inspect — every command copy-pasteable."
+>
     <div class="mt-16 grid gap-6 md:grid-cols-3">
       {guides.map((g) => (
         <a href={g.href} class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
@@ -110,5 +105,4 @@ const guides = [
         </p>
       </a>
     </div>
-  </section>
-</BaseLayout>
+</DocsLayout>

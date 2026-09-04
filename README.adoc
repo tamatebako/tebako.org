@@ -1,36 +1,77 @@
-= Tebako Open Project Site
+= Tebako Website (tebako.org)
 
-== Introduction
+== What this is
 
-This is the Tebako project site,
-part of Ribose Open Project network,
-located at https://www.Tebako.org.
+The public website for the
+https://github.com/tamatebako[tebako packaging and loading ecosystem]:
+marketing pages, how-to guides, architecture documentation, reference
+material, and the blog.
 
-It is a https://jekyllrb.com[Jekyll]-based site
-created with the Open Project Jekyll theme.
+Built with https://astro.build[Astro] 7 (static output),
+https://tailwindcss.com[Tailwind CSS] 4, and Vue islands for the
+interactive chrome (theme toggle, mobile menu, search, hero animation).
+Search is https://pagefind.app[Pagefind], built after the static build.
 
-Refer to their respective docs for details.
+== Quick start
 
+....
+npm install
+npm run dev        # http://localhost:4321
+npm run build      # dist/ + Pagefind index
+npm run preview    # serve the production build
+npm run check      # astro check (types/templates)
+npm test           # vitest — docs registry invariants
+....
 
-== Content management
+== Layout
 
+[cols="1,3"]
+|===
+|`src/pages/` |Routes. Top-level pages plus `docs/architecture/` (24),
+`docs/guides/` (13), `docs/reference/` (home + planned stubs).
 
-== Development
+|`src/layouts/` |`BaseLayout.astro` — head, nav, footer, theme script.
+`DocsLayout.astro` — docs page frame (breadcrumbs, numbering, section
+nav, prev/next), derived from the registry below.
 
-=== Getting started
+|`src/config/site.ts` |Single source for site metadata, top nav, footer
+links.
 
-* Ensure you have reasonable Ruby version
-* Run `bundle` from within site directory to install Ruby dependencies
+|`src/config/docs.ts` |Single source for docs navigation: sections,
+order, labels, hrefs, and `live | planned` status. `DocsLayout` and
+`DocsNav` derive everything from it; `tests/docs-registry.test.ts`
+asserts its invariants against the filesystem.
 
-=== Serving site preview
+|`src/components/` |Astro components plus Vue islands and `docs/`,
+`easter/` subdirectories.
 
-* Run `jekyll serve` from within site directory
+|`src/styles/global.css` |Theme tokens (paper/ink light + dark),
+prose and component styles.
 
+|`_posts/*.adoc` |Blog source — AsciiDoc, loaded by the custom content
+loader (`src/content/loaders/adoc-loader.ts`).
 
-== Workflow
+|`assets/` |Blog imagery referenced by posts. Live content.
 
-. Ensure tests pass
-. Create your feature branch (`git checkout -b my-new-feature`)
-. Commit your changes (`git commit -am 'Add some feature'`)
-. Push to the branch (`git push origin my-new-feature`)
-. Make a pull request
+|`public/` |Static assets served as-is (branding, favicons).
+|===
+
+== Adding a documentation page
+
+. Create `src/pages/docs/<section>/<slug>.astro` using `DocsLayout`
+(pass `section`, the page's `href`, `title`, `description`).
+. Add one entry to the matching section in `src/config/docs.ts`.
+
+That is the whole contract. `npm test` fails if the entry and the file
+disagree; navigation, numbering, breadcrumbs, and prev/next follow the
+registry automatically. Pages that are planned but unwritten carry
+`status: 'planned'` and an honest stub page — never a dead link.
+
+== Legacy remnants (read before cleaning)
+
+This repository was previously a Jekyll site. Some inert Jekyll-era
+paths remain tracked and are kept until they are explicitly retired:
+`parent-hub/`, `_drafts/`, `x.rb`, `.ruby-version`, `.lycheeignore`.
+The gitignored `_site/`, `vendor/`, `.jekyll-cache/` directories are
+stale build output and safe to delete locally. `_posts/` and `assets/`
+are NOT legacy — they are the live blog source and imagery.

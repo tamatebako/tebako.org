@@ -1,6 +1,5 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro'
-import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import DocsLayout from '../../../layouts/DocsLayout.astro'
 import StatusPill from '../../../components/docs/StatusPill.astro'
 
 const LINKS = {
@@ -96,17 +95,14 @@ const stages = [
 ---
 
 <!-- normative: spec 13, spec 19 -->
-<BaseLayout title="The factories — Tebako architecture" description="From an upstream language release to a published runtime, and from a recipe to a published payload: the source factory, the runtime factory, the product repo, and the tebako-packages feedstocks. Releases are the interface.">
-  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">ARCHITECTURE · 05</p>
-    <h1 class="mt-3">The factories.</h1>
-    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
-      How an upstream language release becomes a runtime, how a runtime becomes a
-      package, and how a recipe becomes a payload — across a fleet of repositories
-      that talk to each other only through published, sha256-anchored releases.
-    </p>
-
-    <ArchDocsNav />
+<DocsLayout
+  section="architecture"
+  href="/docs/architecture/factories/"
+  title="The factories"
+  heading="The factories."
+  lede="How an upstream language release becomes a runtime, how a runtime becomes a package, and how a recipe becomes a payload — across a fleet of repositories that talk to each other only through published, sha256-anchored releases."
+  description="From an upstream language release to a published runtime, and from a recipe to a published payload: the source factory, the runtime factory, the product repo, and the tebako-packages feedstocks. Releases are the interface."
+>
 
     <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
       <StatusPill status="shipped" />
@@ -450,5 +446,4 @@ tebako-packages/index/            # the catalog: a registry-of-registries
         </p>
       </a>
     </div>
-  </section>
-</BaseLayout>
+</DocsLayout>

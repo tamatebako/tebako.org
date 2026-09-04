@@ -1,6 +1,5 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro'
-import GuidesNav from '../../../components/docs/GuidesNav.astro'
+import DocsLayout from '../../../layouts/DocsLayout.astro'
 
 const exitCodes = [
   { code: '64', name: 'usage', meaning: 'the command line itself was wrong — a bad flag or a missing argument; the usage line prints' },
@@ -23,17 +22,18 @@ const exitCodes = [
 ---
 <!-- normative: spec 06 §4 + spec 18 §7 (exit allocation), spec 24 §5/§7 (126, 68), spec 26 §2 (79), spec 19 §4 (138), spec 11 §11 (debug logging) — table verified against crates/tpkg/src/lib.rs:275-291, tebako-bootstrap/src/lib.rs:81-106, tebako-shim/src/lib.rs:63-73 -->
 
-<BaseLayout title="Debug & logging — Tebako guides" description="Tebako debugging: TEBAKO_DEBUG levels and per-component overrides, log format, tebako-shim doctor, registry freshness, and the exit codes worth memorizing.">
-  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">GUIDES · DEBUG</p>
-    <h1 class="mt-3">Debug &amp; logging.</h1>
-    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+<DocsLayout
+  section="guides"
+  href="/docs/guides/debug/"
+  title="Debug & logging"
+  description="Tebako debugging: TEBAKO_DEBUG levels and per-component overrides, log format, tebako-shim doctor, registry freshness, and the exit codes worth memorizing."
+>
+    <h1 slot="heading" class="mt-3">Debug &amp; logging.</h1>
+    <p slot="lede" class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
       Everything tebako logs goes to stderr, in one format, under one switch:{' '}
       <code class="font-[var(--font-mono)]">{`tebako[<pid>] <level> <component>: <event> <k=v>…`}</code>.
       stdout belongs to the payload — logs never touch it.
     </p>
-
-    <GuidesNav />
 
     <!-- ============ THE SWITCH ============ -->
     <div class="mt-16">
@@ -197,5 +197,4 @@ $ tebako update-registries`}</code></pre>
       <a href="/docs/guides/info-inspect/" class="tb-link-underline text-[var(--tb-c-accent)]">info &amp; inspect</a> ·
       <a href="/docs/guides/verify/" class="tb-link-underline text-[var(--tb-c-accent)]">Verify integrity</a>
     </p>
-  </section>
-</BaseLayout>
+</DocsLayout>

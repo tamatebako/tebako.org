@@ -1,6 +1,5 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro'
-import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import DocsLayout from '../../../layouts/DocsLayout.astro'
 import StatusPill from '../../../components/docs/StatusPill.astro'
 
 const LINKS = {
@@ -32,18 +31,19 @@ const gatedRows = [
 ---
 <!-- normative: spec 08 (§1 model, §2 semantics + §2.1 platform floor, §3 choke + shipped semantics, §4 manifest integration, §5 scope, §6 executor trust), spec 23 §8 (record mode), spec 25 §4 (trace run generator) -->
 
-<BaseLayout title="Jails and host proxying — Tebako architecture" description="Filesystem-only host-access policy at the one TFS choke point: docker -v semantics, the deny default, the evidence-driven platform floor, symlink re-validation, the audit journal, and the record mode that discovers a payload's needs.">
-  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">ARCHITECTURE · 20</p>
-    <h1 class="mt-3">Jails and host proxying.</h1>
-    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+<DocsLayout
+  section="architecture"
+  href="/docs/architecture/jails-and-proxying/"
+  title="Jails and host proxying"
+  heading="Jails and host proxying."
+  description="Filesystem-only host-access policy at the one TFS choke point: docker -v semantics, the deny default, the evidence-driven platform floor, symlink re-validation, the audit journal, and the record mode that discovers a payload's needs."
+>
+    <p slot="lede" class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
       Every file access a payload makes already flows through the TFS layer — so that one choke
       point is where host access is decided. The policy is docker{' '}
       <code class="font-[var(--font-mono)]">-v</code> semantics: a default, a mount list, and named
       errors instead of surprises. Enforcement exists because coverage is total by construction.
     </p>
-
-    <ArchDocsNav />
 
     <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
       <StatusPill status="shipped" note="policy model, the TFS choke, manifest∩user composition, press/run/shim surfaces, the platform floor, jail-deny journaling, record mode" />
@@ -272,5 +272,4 @@ needs:
         </p>
       </a>
     </div>
-  </section>
-</BaseLayout>
+</DocsLayout>

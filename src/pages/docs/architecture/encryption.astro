@@ -1,6 +1,5 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro'
-import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import DocsLayout from '../../../layouts/DocsLayout.astro'
 import StatusPill from '../../../components/docs/StatusPill.astro'
 
 const LINKS = {
@@ -23,18 +22,14 @@ const homeRows = [
 ---
 <!-- normative: spec 10 (§1 model, §2 key model, §3 memory, §5 PQC, §7 CLI), spec 21 (§2 role map, §4 recommendation D — one crypto home per layer) -->
 
-<BaseLayout title="Encryption — Tebako architecture" description="Selective, in-memory-only decryption as a stacking transform: DEKs as OpenPGP grant envelopes, HKDF subtree keys, one artifact with N audiences, suite-versioned PQC readiness, and the one-crypto-home-per-layer rule.">
-  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">ARCHITECTURE · 21</p>
-    <h1 class="mt-3">Encryption.</h1>
-    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
-      Encryption is per-image opt-in, never default — a stacking transform like COW, not a format.
-      Reads decrypt on demand, in memory only; plaintext blocks never touch disk. One artifact can
-      serve N audiences, each key opening exactly its declared slice.
-    </p>
-
-    <ArchDocsNav />
-
+<DocsLayout
+  section="architecture"
+  href="/docs/architecture/encryption/"
+  title="Encryption"
+  heading="Encryption."
+  lede="Encryption is per-image opt-in, never default — a stacking transform like COW, not a format. Reads decrypt on demand, in memory only; plaintext blocks never touch disk. One artifact can serve N audiences, each key opening exactly its declared slice."
+  description="Selective, in-memory-only decryption as a stacking transform: DEKs as OpenPGP grant envelopes, HKDF subtree keys, one artifact with N audiences, suite-versioned PQC readiness, and the one-crypto-home-per-layer rule."
+>
     <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
       <StatusPill status="shipped" note="EncBackend + tfs encrypt / decrypt / mount at SUITE-1; per-block AES-256-GCM; PKESK envelopes; the envelopes.yaml grant manifest" />
       <StatusPill status="planned" note="PQC suites (construction locked), metadata hiding, merkle verify-on-read" />
@@ -221,5 +216,4 @@ read (documented honestly)</code></pre>
         </p>
       </a>
     </div>
-  </section>
-</BaseLayout>
+</DocsLayout>

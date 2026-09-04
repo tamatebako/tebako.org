@@ -1,21 +1,16 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro'
-import GuidesNav from '../../../components/docs/GuidesNav.astro'
+import DocsLayout from '../../../layouts/DocsLayout.astro'
 ---
 <!-- normative: spec 08 (profiles, TEBAKO_JAIL grammar, §2.1 platform floor), spec 23 §2 (needs: block) + §8 (record mode, tfs needs --from-journal) — record mode + generator shipped at the image layer; D1–D5 manifest/shim/press wiring is Phase-R (planned) -->
 
-<BaseLayout title="Set a jail policy — Tebako guides" description="Tebako jails: a declarative host-filesystem policy for any run — open, deny, deny:arg, the platform floor, mount grants, record mode and the needs: block, baked policies, precedence, and the audit journal.">
-  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">GUIDES · JAILS</p>
-    <h1 class="mt-3">Set a jail policy.</h1>
-    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
-      A jail is a declarative answer to one question: what of the host filesystem can this
-      run see? The policy is enforced in the virtual filesystem layer and installed after the
-      mounts, before your code runs.
-    </p>
-
-    <GuidesNav />
-
+<DocsLayout
+  section="guides"
+  href="/docs/guides/jails/"
+  title="Set a jail policy"
+  heading="Set a jail policy."
+  lede="A jail is a declarative answer to one question: what of the host filesystem can this run see? The policy is enforced in the virtual filesystem layer and installed after the mounts, before your code runs."
+  description="Tebako jails: a declarative host-filesystem policy for any run — open, deny, deny:arg, the platform floor, mount grants, record mode and the needs: block, baked policies, precedence, and the audit journal."
+>
     <!-- ============ IS / IS NOT ============ -->
     <div class="mt-16">
       <h2 class="mb-3">What a jail is not.</h2>
@@ -318,5 +313,4 @@ $ tfs needs --from-journal ~/.tebako/journal.log`}</code></pre>
       <a href="/docs/guides/package-ruby/" class="tb-link-underline text-[var(--tb-c-accent)]">Package a Ruby app</a> ·
       <a href="/docs/architecture/exec-tiers/" class="tb-link-underline text-[var(--tb-c-accent)]">Exec tiers — where the preload shim ends</a>
     </p>
-  </section>
-</BaseLayout>
+</DocsLayout>

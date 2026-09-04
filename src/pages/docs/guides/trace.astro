@@ -1,6 +1,5 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro'
-import GuidesNav from '../../../components/docs/GuidesNav.astro'
+import DocsLayout from '../../../layouts/DocsLayout.astro'
 
 const verbs = [
   { verb: 'tebako trace run', exit0: 'the payload\'s own exit code — the run\'s verdict is the payload\'s', exit1: '—', exit2: '—' },
@@ -16,11 +15,14 @@ const layers = [
 ]
 ---
 
-<BaseLayout title="Trace a packaged app — Tebako guides" description="The tebako trace toolkit: the interception bus, tebako trace run for discovery, trace explain for diagnosis, trace cover for escapes coverage, and the procmon import path on windows.">
-  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">GUIDES · TRACE</p>
-    <h1 class="mt-3">Trace a packaged app.</h1>
-    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+<DocsLayout
+  section="guides"
+  href="/docs/guides/trace/"
+  title="Trace a packaged app"
+  heading="Trace a packaged app."
+  description="The tebako trace toolkit: the interception bus, tebako trace run for discovery, trace explain for diagnosis, trace cover for escapes coverage, and the procmon import path on windows."
+>
+    <p slot="lede" class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
       The trace toolkit is a three-layer telescope. <em>Inside the process</em>, an interception
       bus in the virtual-filesystem layer emits one structured JSON event per decision — every
       mount, open, dlopen, exec, materialize, and jail verdict — identically on linux, macOS,
@@ -31,8 +33,6 @@ const layers = [
       <code class="font-[var(--font-mono)]">explain</code> for diagnosis,{' '}
       <code class="font-[var(--font-mono)]">cover</code> for coverage.
     </p>
-
-    <GuidesNav />
 
     <!-- ============ THE THREE QUESTIONS ============ -->
     <div class="mt-16">
@@ -324,5 +324,4 @@ escape C:/pkg/scss/_hidden.scss func=CreateFile tid=0 pid=9012 class=read`}</cod
       <a href="/docs/guides/jails/" class="tb-link-underline text-[var(--tb-c-accent)]">Set a jail policy</a> ·
       <a href="/docs/guides/debug/" class="tb-link-underline text-[var(--tb-c-accent)]">Debug &amp; logging</a>
     </p>
-  </section>
-</BaseLayout>
+</DocsLayout>

@@ -1,6 +1,5 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro'
-import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import DocsLayout from '../../../layouts/DocsLayout.astro'
 import StatusPill from '../../../components/docs/StatusPill.astro'
 
 const LINKS = {
@@ -60,17 +59,14 @@ const trailerErrors = [
 ---
 <!-- normative: spec 02, spec 03 §6, spec 05, spec 06, spec 17 §1, spec 19 — facts re-verified against crates/tpkg (lib.rs, error.rs, model.rs), tebako-cli/src/lib.rs, tebako-bootstrap/src/lib.rs, tebako-driver/src/handoff.rs @ main 2026-08-25 -->
 
-<BaseLayout title="Concepts — Tebako architecture" description="The three-part tebako package, the tpkg trailer wire format, the two press modes, the shared runtime cache, and press-time vs run-time resolution.">
-  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">ARCHITECTURE · 01</p>
-    <h1 class="mt-3">Concepts.</h1>
-    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
-      The pieces every other page in this section builds on: the three-part package,
-      the tpkg trailer that glues it, the two press modes, the machine-wide runtime
-      cache, and the two distinct moments at which a runtime gets resolved.
-    </p>
-
-    <ArchDocsNav />
+<DocsLayout
+  section="architecture"
+  href="/docs/architecture/"
+  title="Concepts"
+  heading="Concepts."
+  lede="The pieces every other page in this section builds on: the three-part package, the tpkg trailer that glues it, the two press modes, the machine-wide runtime cache, and the two distinct moments at which a runtime gets resolved."
+  description="The three-part tebako package, the tpkg trailer wire format, the two press modes, the shared runtime cache, and press-time vs run-time resolution."
+>
 
     <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
       <span class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">HOW TO READ THIS SECTION:</span>
@@ -574,5 +570,4 @@ ext block: [u32be type][u32be length][payload]
         </p>
       </a>
     </div>
-  </section>
-</BaseLayout>
+</DocsLayout>

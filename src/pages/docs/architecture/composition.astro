@@ -1,6 +1,5 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro'
-import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import DocsLayout from '../../../layouts/DocsLayout.astro'
 import StatusPill from '../../../components/docs/StatusPill.astro'
 
 const LINKS = {
@@ -29,19 +28,14 @@ const comboRows = [
 ---
 <!-- normative: spec 23 (D1–D5, §5 default policy, §6 algorithm, §7 combinations, §8 record, §9 swap), spec 03 §6, spec 05 §3-4; carried/shared terminology per tamatebako/tebako#460 (owner-locked 2026-08-25) — spec 23 amendment rides the implementation PR -->
 
-<BaseLayout title="Declarative composition — Tebako architecture" description="What runs with what, where, and how visible: the five-document declarative stack (D1–D5), jail-safe-by-default policy, the record mode that discovers a slice's needs, and carried-vs-shared slices — the one pipeline behind every package shape.">
-  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">ARCHITECTURE · 17</p>
-    <h1 class="mt-3">Declarative composition.</h1>
-    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
-      A tebako system fully resolves the needs of its payloads and its running configuration:
-      what runs with what, where it mounts, which host paths it may touch — all declared, all
-      resolvable, jail-safe by default. The docker-compose analogue, with named errors instead
-      of surprises.
-    </p>
-
-    <ArchDocsNav />
-
+<DocsLayout
+  section="architecture"
+  href="/docs/architecture/composition/"
+  title="Declarative composition"
+  heading="Declarative composition."
+  lede="A tebako system fully resolves the needs of its payloads and its running configuration: what runs with what, where it mounts, which host paths it may touch — all declared, all resolvable, jail-safe by default. The docker-compose analogue, with named errors instead of surprises."
+  description="What runs with what, where, and how visible: the five-document declarative stack (D1–D5), jail-safe-by-default policy, the record mode that discovers a slice's needs, and carried-vs-shared slices — the one pipeline behind every package shape."
+>
     <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
       <StatusPill status="shipped" note="needs blocks, the deny default, the resolution algorithm, image-layer compose" />
       <StatusPill status="planned" note="the record-mode generator and the bootstrap override channels are phased (spec 23 §8/§9)" />
@@ -312,5 +306,4 @@ needs:                          # composition-level additions, D1 grammar
         </p>
       </a>
     </div>
-  </section>
-</BaseLayout>
+</DocsLayout>

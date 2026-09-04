@@ -1,6 +1,5 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro'
-import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import DocsLayout from '../../../layouts/DocsLayout.astro'
 import StatusPill from '../../../components/docs/StatusPill.astro'
 
 const LINKS = {
@@ -16,18 +15,19 @@ const LINKS = {
 ---
 <!-- normative: spec 17, spec 06 -->
 
-<BaseLayout title="Runtime as image — Tebako architecture" description="A tebako runtime is two artifacts — the interpreter exe and the env .tfs image — co-mounted with your payloads in one process. TEBAKO_RUNTIME_IMAGE, the single-owner mount root, and the TEBAKO_MOUNT_ROOT override.">
-  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">ARCHITECTURE · 04</p>
-    <h1 class="mt-3">Runtime as image.</h1>
-    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+<DocsLayout
+  section="architecture"
+  href="/docs/architecture/runtime-as-image/"
+  title="Runtime as image"
+  heading="Runtime as image."
+  description="A tebako runtime is two artifacts — the interpreter exe and the env .tfs image — co-mounted with your payloads in one process. TEBAKO_RUNTIME_IMAGE, the single-owner mount root, and the TEBAKO_MOUNT_ROOT override."
+>
+  <p slot="lede" class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
       A tebako runtime is not one binary. It is <strong class="text-[var(--tb-c-text-1)]">two artifacts</strong> —
       an interpreter executable and an env <code class="font-[var(--font-mono)] text-base">.tfs</code> image —
       downloaded once, sha256-verified, and <em>mounted</em> — never extracted — into the same
       process as the payloads it runs.
     </p>
-
-    <ArchDocsNav />
 
     <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
       <StatusPill status="shipped" note="spec 17 · crates/tebako-driver" />
@@ -483,5 +483,4 @@ const LINKS = {
         </p>
       </a>
     </div>
-  </section>
-</BaseLayout>
+</DocsLayout>

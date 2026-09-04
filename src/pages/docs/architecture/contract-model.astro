@@ -1,6 +1,5 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro'
-import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import DocsLayout from '../../../layouts/DocsLayout.astro'
 import StatusPill from '../../../components/docs/StatusPill.astro'
 
 const LINKS = {
@@ -34,18 +33,19 @@ const lawRows = [
 ---
 <!-- normative: spec 18 (§2 model, §3 evolution law, §4 edges, §7 exits, §8 non-goals), spec 06 §6 (contract negotiation), spec 00 §10 (SSOT) -->
 
-<BaseLayout title="The contract model — Tebako architecture" description="Nothing is read until it breaks: every interface has one owner, one declarative YAML contract, one fail-closed verification point — and anything undeclared is pre-era, refused by name.">
-  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">ARCHITECTURE · 24</p>
-    <h1 class="mt-3">The contract model.</h1>
-    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+<DocsLayout
+  section="architecture"
+  href="/docs/architecture/contract-model/"
+  title="The contract model"
+  heading="The contract model."
+  description="Nothing is read until it breaks: every interface has one owner, one declarative YAML contract, one fail-closed verification point — and anything undeclared is pre-era, refused by name."
+>
+    <p slot="lede" class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
       Nothing is <em>read until it breaks</em>. Every interface in the ecosystem has exactly ONE
       owner, ONE declarative contract, and ONE verification point. Consumers verify fail-closed
       before execution; a mismatch is a named error naming both sides; anything undeclared is
       pre-era and is refused by name — never assumed, never silently served.
     </p>
-
-    <ArchDocsNav />
 
     <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
       <StatusPill status="shipped" note="the schema registry (9 grammars), era refusals, contract negotiation (exit 75), the layout check (78), the trailer era gate (77)" />
@@ -192,5 +192,4 @@ negotiation (fail-closed, BEFORE any checksum acceptance):
         </p>
       </a>
     </div>
-  </section>
-</BaseLayout>
+</DocsLayout>

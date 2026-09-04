@@ -1,6 +1,5 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro'
-import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import DocsLayout from '../../../layouts/DocsLayout.astro'
 import StatusPill from '../../../components/docs/StatusPill.astro'
 
 const LINKS = {
@@ -22,19 +21,14 @@ const deliveryRows = [
 ---
 <!-- normative: spec 22 (§1 taxonomy, §2 class L + §2.1 phase-W, §3 class E + §3.1 matrix + §3.2 PATH wiring, §4 class R, §5 error model, §6 the documented interface, §7 migration) -->
 
-<BaseLayout title="Runtime-native interposition — Tebako architecture" description="The generalized hooks: how a tebako runtime serves interpreter-level operations whose targets live in the VFS — native-library loads, execs, and C-library resource reads — with zero per-payload or per-gem code.">
-  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">ARCHITECTURE · 22</p>
-    <h1 class="mt-3">Runtime-native interposition.</h1>
-    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
-      A mounted image is not real disk — so three interpreter-level operations physically cannot
-      work without help. The law: interception is RUNTIME-INTERNAL and GENERIC. No per-payload and
-      no per-gem code anywhere in the stack; a payload that exercises these paths needs zero
-      adapter work.
-    </p>
-
-    <ArchDocsNav />
-
+<DocsLayout
+  section="architecture"
+  href="/docs/architecture/interposition/"
+  title="Runtime-native interposition"
+  heading="Runtime-native interposition."
+  lede="A mounted image is not real disk — so three interpreter-level operations physically cannot work without help. The law: interception is RUNTIME-INTERNAL and GENERIC. No per-payload and no per-gem code anywhere in the stack; a payload that exercises these paths needs zero adapter work."
+  description="The generalized hooks: how a tebako runtime serves interpreter-level operations whose targets live in the VFS — native-library loads, execs, and C-library resource reads — with zero per-payload or per-gem code."
+>
     <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
       <StatusPill status="shipped" note="class L POSIX + windows phase-W, class E (ELF + the macOS launcher tier), class R declarative materialization — the runtime gem's per-gem require maps ship EMPTY" />
     </div>
@@ -216,5 +210,4 @@ const deliveryRows = [
         </p>
       </a>
     </div>
-  </section>
-</BaseLayout>
+</DocsLayout>
