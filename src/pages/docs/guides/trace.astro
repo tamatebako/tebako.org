@@ -23,12 +23,12 @@ const layers = [
   description="The tebako trace toolkit: the interception bus, tebako trace run for discovery, trace explain for diagnosis, trace cover for escapes coverage, and the procmon import path on windows."
 >
     <p slot="lede" class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
-      The trace toolkit is a three-layer telescope. <em>Inside the process</em>, an interception
+      The trace toolkit shows what a packaged application really touches, from three vantage points. <em>Inside the process</em>, an interception
       bus in the virtual-filesystem layer emits one structured JSON event per decision — every
       mount, open, dlopen, exec, materialize, and jail verdict — identically on linux, macOS,
       and windows. <em>At the libc boundary</em>, retrace watches the same process from outside.
       <em>At the kernel</em>, ptrace, eBPF, or ETW/procmon see what no userland hook can. The{' '}
-      <code class="font-[var(--font-mono)]">tebako trace</code> verbs ride that model:{' '}
+      <code class="font-[var(--font-mono)]">tebako trace</code> commands work across all three layers:{' '}
       <code class="font-[var(--font-mono)]">run</code> for discovery,{' '}
       <code class="font-[var(--font-mono)]">explain</code> for diagnosis,{' '}
       <code class="font-[var(--font-mono)]">cover</code> for coverage.

@@ -45,7 +45,7 @@ const probeRows = [
   description="One axis, one question: format_id answers only 'how do I read these bytes'. LimniFS is the default write format — pure Rust, content-addressed, no toolchain; dwarfs stays a first-class read backend; detection is by magic, never by hint."
 >
     <p slot="lede" class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
-      Every payload slice is a byte shape behind one seam. The format axis answers exactly one
+      Every payload image is a file. Its format answers exactly one
       question — <em>how do I read these bytes</em> — and nothing else: what a payload IS, whether
       it is a runtime, where its entrypoint lives, are manifest semantics that never touch the
       format id.
@@ -223,21 +223,21 @@ const probeRows = [
     <!-- ============ THREE NEIGHBORS ============ -->
     <div class="mt-16 grid gap-6 md:grid-cols-3">
       <a href="/docs/architecture/vfs/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
-        <p class="tb-eyebrow">NEXT · THE VFS</p>
+        <p class="tb-eyebrow">UP NEXT · THE VFS</p>
         <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">The virtual filesystem</h3>
         <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
           The mount table, longest-prefix dispatch, and the backend seam these formats sit behind.
         </p>
       </a>
       <a href="/docs/architecture/overlays/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
-        <p class="tb-eyebrow">NEXT · OVERLAYS</p>
+        <p class="tb-eyebrow">UP NEXT · OVERLAYS</p>
         <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">Declarative overlays</h3>
         <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
           The COW and ENC transforms that stack above any backend — declared, never silent.
         </p>
       </a>
       <a href="/docs/architecture/wire-format/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
-        <p class="tb-eyebrow">NEXT · WIRE FORMAT</p>
+        <p class="tb-eyebrow">UP NEXT · WIRE FORMAT</p>
         <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">The tpkg wire format</h3>
         <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
           The 166-byte trailer and slot records that carry the format_id hint.
