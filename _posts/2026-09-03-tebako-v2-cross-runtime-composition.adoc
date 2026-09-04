@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Ruby calls Java calls Python: composition in practice"
+title:  "Tebako v2: Ruby calls Java calls Python (3 of 5)"
 date:   2026-09-03 00:00:00 +0800
 categories:
   - tebako
@@ -19,12 +19,58 @@ excerpt: >-
   VFS java, never a host-PATH accident. Here is the whole composition.
 ---
 
-= Ruby calls Java calls Python: composition in practice
+= Tebako v2: Ruby calls Java calls Python (3 of 5)
+
+[NOTE]
+====
+Post 3 of 5 in the series *Tebako v2*.
+
+. link:/blog/2026-09-01-tebako-v2-stable-metanorma/[Tebako v2: One download, any document]
+. link:/blog/2026-09-02-tebako-v2-anatomy-tpkg/[Tebako v2: Anatomy of a package]
+. *Tebako v2: Ruby calls Java calls Python* (this post)
+. link:/blog/2026-09-04-tebako-v2-jail-host-routing/[Tebako v2: The jail and the host]
+. link:/blog/2026-09-05-tebako-v2-developer-story-benchmarks/[Tebako v2: Build your own]
+====
 
 Post 1's compile exercised four technology stacks. This post is the
 wiring diagram: how a packaged Ruby process legally spawns a JVM it
-cannot see on any host `PATH`, why Inkscape rides as a mounted payload
+cannot see on any host `PATH`, why Inkscape travels as a mounted payload
 instead, and why Python is — for now — a deliberate host tool.
+
+
+++++
+<figure role="img" aria-label="Diagram: one Ruby process reaching Java, Inkscape, and Python through three declared mechanisms">
+<svg viewBox="0 0 840 330" style="width:100%;height:auto;font-family:var(--font-mono,monospace);" xmlns="http://www.w3.org/2000/svg">
+  <title>Ruby calls Java calls Python</title>
+  <defs>
+    <marker id="f3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-text-3,#96abb8)"/></marker>
+    <marker id="f3a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-accent,#c36242)"/></marker>
+  </defs>
+  <rect x="40" y="108" width="230" height="96" rx="9" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:1.5;stroke-width:2"/>
+  <text x="155" y="146" text-anchor="middle" style="font-size:13px;fill:var(--tb-c-text-1,#1a2b34)">your packaged</text>
+  <text x="155" y="164" text-anchor="middle" style="font-size:13px;fill:var(--tb-c-text-1,#1a2b34)">Ruby process</text>
+  <text x="155" y="186" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-3,#7a8b94)">metanorma compile</text>
+  <line x1="270" y1="156" x2="324" y2="60" style="stroke:var(--tb-c-accent,#c36242);stroke-width:1.5" marker-end="url(#f3a)"/>
+  <rect x="330" y="26" width="470" height="66" rx="9" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:1.5"/>
+  <text x="565" y="50" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">Java — a spawned runtime</text>
+  <text x="565" y="67" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">the JVM exe + its env image are materialized</text>
+  <text x="565" y="81" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">and started under the same mounts (spec 30)</text>
+  <line x1="270" y1="156" x2="324" y2="156" style="stroke:var(--tb-c-accent,#c36242);stroke-width:1.5" marker-end="url(#f3a)"/>
+  <rect x="330" y="122" width="470" height="66" rx="9" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5"/>
+  <text x="565" y="146" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">Inkscape — a mounted payload</text>
+  <text x="565" y="163" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">one .tfs image mounted at /opt/inkscape,</text>
+  <text x="565" y="177" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">its files read through the VFS like local ones</text>
+  <line x1="270" y1="156" x2="324" y2="252" style="stroke:f3;stroke-width:1.5" marker-end="url(#f3a)"/>
+  <rect x="330" y="218" width="470" height="66" rx="9" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5" stroke-dasharray="5 4"/>
+  <text x="565" y="242" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">Python — a host tool</text>
+  <text x="565" y="259" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">the honest route: declared in the manifest as a need,</text>
+  <text x="565" y="273" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">used from the host, visible in the trace</text>
+  <text x="420" y="316" text-anchor="middle" style="font-size:10.5px;fill:var(--tb-c-text-3,#7a8b94)">three mechanisms, one rule: everything the process uses is declared</text>
+</svg>
+</figure>
+++++
+
+_Figure 1 — Three routes out of one packaged process: a spawned runtime, a mounted payload, and a declared host tool._
 
 == The composition, declared
 

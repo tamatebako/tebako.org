@@ -12,102 +12,149 @@ author:
   social_links:
     - https://github.com/tamatebako
 excerpt: >-
-  Answering "Is the project dead?": no. Maintenance continues under the
-  tamatebako organization, and the dependency churn behind the recurring
+  Answering the question we hear most often: no, the project is not dead.
+  Maintenance continues under the tamatebako organization, and the recurring
   build breakage is being fixed at the root — by removing folly and Thrift
   from the stack entirely.
 ---
 
 = Tebako is alive — the thrift-free re-architecture
 
-https://github.com/tamatebako/tebako/issues/335[tebako#335] asks the
-question directly: is the project dead?
+A fair question reached us recently, and it deserves a straight answer:
+*is the project dead?*
 
-It is a fair question, and it deserves a straight answer.
+It is not. But we understand why it might look that way, so here is an
+honest account of where things stand and what we are doing about it.
+
+== Where we have been
 
 Public activity has been quiet. In February 2026, Maxim Samsonov
-(https://github.com/maxirmx[maxirmx]), Tebako's lead engineer,
-https://github.com/tamatebako/tebako/issues/331#issuecomment-3969085236[stepped
-back from the project]. We are grateful for everything he built — Tebako
-exists because of his work.
+(https://github.com/maxirmx[maxirmx]), Tebako's lead engineer, stepped
+back from the project. We are grateful for everything he built — Tebako
+exists because of his work, and the foundation he laid is what the rest
+of this post builds on.
 
-Since then the visible symptoms have accumulated: Tebako
-https://github.com/tamatebako/tebako/issues/331[no longer builds on current
-macOS], it is
-https://github.com/tamatebako/tebako/issues/329[incompatible with newer
-openssl gems], and the underlying
-https://github.com/tamatebako/tebako/issues/311#issuecomment-2847897015[moving-target
-problem] — library versions shifting under the build on every Homebrew or
-Xcode update — keeps resurfacing.
+Meanwhile, the same kinds of build failures kept coming back: Tebako
+stopped building on current macOS, newer openssl gems stopped loading,
+and every Homebrew or Xcode update seemed to break something new. If
+you hit one of these, you have our sympathy — and our thanks for the
+bug reports. They told us clearly where the real problem was.
 
-So, the answer: *the project is not dead.* Maintenance continues under the
-https://github.com/tamatebako[tamatebako organization]. But we are not
-interested in patching these build breaks one at a time, because they are
-symptoms of a single root cause.
-
-
-== The root cause: dependency churn
+== The real problem: dependencies that move under us
 
 Tebako's filesystem stack — DwarFS, plus its folly and fbthrift
-dependencies — is compiled from source on the packager's machine, against
-whatever Boost, OpenSSL and toolchain versions happen to be installed.
-Every one of those is a moving target. When any of them moves, the build
-breaks, and the failure lands on users who just wanted to package an
-application. Issue
-https://github.com/tamatebako/tebako/issues/331[#331] is exactly this class
-of failure: a folly header no longer compiles under a newer Xcode, and
-there is nothing a Tebako user can do about it locally.
+dependencies — has been compiled from source on *your* machine, against
+whatever Boost, OpenSSL and toolchain versions happened to be installed
+there. When any of those moves, the build breaks, and the failure lands
+on someone who just wanted to package an application. There was nothing
+wrong with those users' machines, and there was nothing they could do
+locally to fix it.
 
-The same architecture is also why `tebako setup` compiles the world —
-Ruby, DwarFS, folly, fbthrift and everything below them — a source build
-that can take hours before the first package is ever produced.
+The same design is also why `tebako setup` takes hours: it compiles
+everything from source — Ruby, DwarFS, and everything below them —
+before the first package is ever produced.
 
+Patching these breaks one at a time would mean asking you to wait
+through the same failures again and again. So instead, we are removing
+the cause.
+
+
+++++
+<figure role="img" aria-label="Diagram comparing the old source-built stack with the new prebuilt flow">
+<svg viewBox="0 0 840 310" style="width:100%;height:auto;font-family:var(--font-mono,monospace);" xmlns="http://www.w3.org/2000/svg">
+  <title>Why builds broke, and what ships instead</title>
+  <defs>
+    <marker id="t1a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-text-3,#96abb8)"/>
+    </marker>
+    <marker id="t1b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-accent,#c36242)"/>
+    </marker>
+  </defs>
+  <rect x="10" y="18" width="380" height="272" rx="12" style="fill:var(--tb-c-bg-soft,#fdf9e8);stroke:var(--tb-c-divider,#ddd);stroke-width:1"/>
+  <text x="30" y="44" style="font-size:12px;fill:var(--tb-c-text-3,#7a8b94)">BEFORE — compiled on your machine</text>
+  <rect x="30" y="62" width="220" height="36" rx="8" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:1.5;stroke-dasharray:5 4"/>
+  <text x="140" y="78" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">Homebrew · Xcode · openssl</text>
+  <text x="140" y="91" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-accent,#c36242)">moving targets — they update, the build breaks</text>
+  <line x1="140" y1="98" x2="140" y2="128" style="stroke:var(--tb-c-accent,#c36242);stroke-width:1.5" marker-end="url(#t1b)"/>
+  <rect x="30" y="130" width="220" height="58" rx="8" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5"/>
+  <text x="140" y="152" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">tebako setup</text>
+  <text x="140" y="168" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">compiles Ruby, DwarFS, folly, fbthrift</text>
+  <text x="140" y="181" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">plus everything below them</text>
+  <text x="200" y="240" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-accent,#c36242)">hours before the first package,</text>
+  <text x="200" y="256" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-accent,#c36242)">and nothing you can fix locally</text>
+  <line x1="392" y1="154" x2="448" y2="154" style="stroke:var(--tb-c-accent,#c36242);stroke-width:2" marker-end="url(#t1b)"/>
+  <rect x="450" y="18" width="380" height="272" rx="12" style="fill:var(--tb-c-bg-soft,#fdf9e8);stroke:var(--tb-c-divider,#ddd);stroke-width:1"/>
+  <text x="470" y="44" style="font-size:12px;fill:var(--tb-c-text-3,#7a8b94)">NOW — downloaded prebuilt</text>
+  <rect x="470" y="62" width="140" height="34" rx="8" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5"/>
+  <text x="540" y="83" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">github releases</text>
+  <line x1="610" y1="79" x2="648" y2="70" style="stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5" marker-end="url(#t1a)"/>
+  <line x1="610" y1="79" x2="648" y2="107" style="stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5" marker-end="url(#t1a)"/>
+  <line x1="610" y1="79" x2="648" y2="144" style="stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5" marker-end="url(#t1a)"/>
+  <rect x="650" y="54" width="160" height="30" rx="8" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5"/>
+  <text x="730" y="73" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">libtfs (prebuilt)</text>
+  <rect x="650" y="92" width="160" height="30" rx="8" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5"/>
+  <text x="730" y="111" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">ruby runtime (prebuilt)</text>
+  <rect x="650" y="130" width="160" height="30" rx="8" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5"/>
+  <text x="730" y="149" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">tebako CLI (prebuilt)</text>
+  <line x1="730" y1="160" x2="730" y2="186" style="stroke:var(--tb-c-accent,#c36242);stroke-width:1.5" marker-end="url(#t1b)"/>
+  <rect x="610" y="188" width="200" height="40" rx="10" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:1.8"/>
+  <text x="710" y="205" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">tebako press</text>
+  <text x="710" y="220" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">downloads instead of compiling</text>
+  <text x="640" y="262" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-2,#4a5b66)">no C++ toolchain, no hours of setup,</text>
+  <text x="640" y="278" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-2,#4a5b66)">no dependency on your installed versions</text>
+</svg>
+</figure>
+++++
+
+_Figure 1 — The old stack compiled moving targets on your machine; the new one downloads prebuilt parts._
 
 == The fix: remove the problem, then prebuild the rest
 
-The re-architecture in flight (the v0.15 line) attacks this at the root:
+The re-architecture now in flight (the v0.15 line) does three things:
 
 * *folly and fbthrift are removed entirely.*
-https://github.com/tamatebako/dwarfs-t[dwarfs-t], Tebako's variant fork of
-DwarFS, rides upstream DwarFS v0.10+ with FlatBuffers metadata — Thrift is
-no longer needed to build or to read images.
-https://github.com/tamatebako/libtfs[libtfs] (renamed from libdwarfs), the
-filesystem layer Tebako links, is folly-free, with CI guards that fail the
-build if folly ever sneaks back into the dependency graph. The overall
-dependency surface shrinks accordingly.
-* *Heavy components ship prebuilt.* libtfs publishes per-platform packages,
-and https://github.com/tamatebako/tebako-runtime-ruby[tebako-runtime-ruby]
-publishes prebuilt, tebako-patched Ruby runtimes. `tebako press` downloads
-these components instead of compiling them: no C++ toolchain on the
-packager's machine, no hours-long setup, and no exposure to the local
-Boost/OpenSSL/Xcode lottery.
+  https://github.com/tamatebako/dwarfs-t[dwarfs-t], Tebako's variant
+  fork of DwarFS, now follows upstream DwarFS v0.10+ and uses
+  FlatBuffers metadata, so Thrift is no longer needed to build or to
+  read images. https://github.com/tamatebako/libtfs[libtfs] (renamed
+  from libdwarfs), the filesystem layer Tebako links, is folly-free,
+  and CI fails the build if folly ever comes back. The dependency
+  surface shrinks accordingly.
+* *Heavy components ship prebuilt.* libtfs publishes per-platform
+  packages, and
+  https://github.com/tamatebako/tebako-runtime-ruby[tebako-runtime-ruby]
+  publishes prebuilt, tebako-patched Ruby runtimes. `tebako press`
+  downloads these components instead of compiling them — no C++
+  toolchain on your machine, no hours-long setup, and no dependence on
+  the versions your package manager happens to have today.
 * *The packaging model gets composable.* Every Tebako binary becomes a
-composition of three parts — a small bootstrap launcher, a language
-runtime, and one or more filesystem images — with tooling to bundle,
-unbundle and reassemble them, and a shared machine-local runtime cache
-under `~/.tebako` so that lean binaries download a runtime once and share
-it across every Tebako application on the machine.
+  composition of three parts — a small bootstrap launcher, a language
+  runtime, and one or more filesystem images — with tooling to bundle,
+  unbundle and reassemble them, and a shared machine-local runtime
+  cache under `~/.tebako`, so lean binaries download a runtime once and
+  share it across every Tebako application on the machine.
 
-The full design — what is current, what is in flight, and what is roadmap —
-is documented on the new link:/architecture/[architecture page].
+The full design — what is current, what is in flight, and what is
+roadmap — is written up on the new link:/architecture/[architecture
+page].
 
+== What this means for you today
 
-== What this means today
-
-* The current release line is v0.14.x, and the work above is *in flight*,
-not shipped. We do not promise dates; each piece is released when its
-platform matrix (glibc, musl, macOS arm64/x86_64, Windows msys) is green.
-* Existing Tebako-packaged binaries and images keep working: the new engine
-keeps read compatibility with thrift-era images, and the classic bundle
-mode remains fully supported.
-* https://github.com/tamatebako/tebako/issues/331[#331],
-https://github.com/tamatebako/tebako/issues/335[#335] and the related build
-issues will be updated as the pieces land. The fix for the macOS breakage
-is not another pin-and-patch round — it is the removal of the dependency
-chain that keeps causing it.
+* The current release line is v0.14.x, and the work above is *in
+  flight*, not shipped. We do not promise dates; each piece is released
+  when its platform matrix (glibc, musl, macOS arm64/x86_64, Windows
+  msys) is green.
+* Existing Tebako-packaged binaries and images keep working: the new
+  engine keeps read compatibility with thrift-era images, and the
+  classic bundle mode remains fully supported.
+* The fix for the recurring breakage is not another pin-and-patch
+  round — it is the removal of the dependency chain that keeps causing
+  it.
 
 If you rely on Tebako: thank you for your patience, and please keep the
-bug reports coming. If you are evaluating Tebako: the architecture page
-linked above shows where the project is and where it is going.
+bug reports coming — they help. If you are evaluating Tebako: the
+link:/architecture/[architecture page] shows where the project is and
+where it is going.
 
 **__Press on__** _with Tebako_!

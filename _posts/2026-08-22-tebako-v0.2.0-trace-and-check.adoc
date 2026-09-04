@@ -12,61 +12,139 @@ author:
   social_links:
     - https://github.com/tamatebako
 excerpt: >-
-  Tebako v0.2.0 ships two answer-machines: the spec-25 trace toolkit —
-  an interception event bus with tebako trace run / explain / cover
-  front-ends — and the spec-26 payload checks, a payload's own
-  acceptance test declared in its image and run with tebako check.
+  Tebako v0.2.0 answers the two questions every packaged application
+  raises: "what does my payload actually touch on this machine?" with
+  the new trace commands, and "does my payload actually work?" with
+  payload checks — an acceptance test declared inside the payload
+  itself.
 ---
 
 = Tebako v0.2.0 — the trace toolkit and payload checks
 
-Tebako v0.2.0 is out — 39 commits since v0.1.9, and the theme is
-*answers*. Until now, two questions about a packaged application were
-answered by hand-rolled one-off diagnostics: "what does my payload
-actually touch?" and "does my payload actually work?" This release
-ships a toolkit for each.
+Tebako v0.2.0 is out, and it is about *answers*.
 
-== The trace toolkit: what happened, and what escaped
+Packaged applications raise two questions that used to require
+hand-written, throwaway diagnostics: "what does my payload actually
+touch?" and "does my payload actually work?" This release ships a
+toolkit for each. Both are already wired into the new guides —
+https://tebako.org/docs/guides/trace/[Trace a packaged app] and
+https://tebako.org/docs/guides/check/[Check a payload] — if you would
+rather follow a walkthrough than read an announcement.
+
+== The trace toolkit: see what your payload touches
 
 Every tebako interception point — mount, path dispatch, `dlopen`,
 exec, materialize, jail verdict, resolve — now emits one structured
-JSON event onto a bus in the virtual-filesystem layer. The stream is
-identical on linux, macOS, and windows, and it names OS-level facts
-only, so every runtime is covered equally. Arm it with one environment
-variable (`TEBAKO_TRACE=/tmp/capture.jsonl`); a channel failure
-degrades to a loud stderr note and never affects the payload's exit
-code — observability never gates.
+JSON event onto a stream inside the virtual-filesystem layer. The
+stream is identical on Linux, macOS, and Windows, and it records
+operating-system facts only, so every runtime is covered equally.
 
-Four verbs ride the bus:
+Turn it on with one environment variable:
 
-* `tebako trace run <pkg>` — *discovery.* Runs a package under the
-  record policy with the bus armed, then synthesizes a suggested
-  manifest fragment: observed host paths as `needs:` grants, raw-fd
-  reads as `materialize:` candidates, closure-covered `dlopen`s and
-  host executables as review notes. Commented YAML, never applied —
-  you review, flip ro↔rw, fill every `why`.
+[source,console]
+----
+TEBAKO_TRACE=/tmp/capture.jsonl
+----
+
+Tracing is deliberately safe to leave on: if the capture channel
+fails, tebako prints a warning to stderr and nothing else happens —
+your application's exit code and behavior are never affected.
+
+
+++++
+<figure role="img" aria-label="Two diagrams: how trace cover subtracts an outside capture from the inside stream, and how payload checks run">
+<svg viewBox="0 0 840 350" style="width:100%;height:auto;font-family:var(--font-mono,monospace);" xmlns="http://www.w3.org/2000/svg">
+  <title>trace cover and payload checks</title>
+  <defs>
+    <marker id="t3a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-text-3,#96abb8)"/>
+    </marker>
+    <marker id="t3b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-accent,#c36242)"/>
+    </marker>
+  </defs>
+  <rect x="10" y="18" width="400" height="314" rx="12" style="fill:var(--tb-c-bg-soft,#fdf9e8);stroke:var(--tb-c-divider,#ddd);stroke-width:1"/>
+  <text x="30" y="44" style="font-size:12px;fill:var(--tb-c-text-3,#7a8b94)">tebako trace cover — what escaped the mounts</text>
+  <rect x="30" y="62" width="170" height="56" rx="8" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5"/>
+  <text x="115" y="84" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">inside stream</text>
+  <text x="115" y="100" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">TEBAKO_TRACE=*.jsonl</text>
+  <rect x="30" y="168" width="170" height="56" rx="8" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5"/>
+  <text x="115" y="190" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">outside capture</text>
+  <text x="115" y="206" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">retrace / procmon</text>
+  <line x1="200" y1="90" x2="238" y2="124" style="stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5" marker-end="url(#t3a)"/>
+  <line x1="200" y1="196" x2="238" y2="162" style="stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5" marker-end="url(#t3a)"/>
+  <rect x="240" y="112" width="150" height="62" rx="10" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:1.8"/>
+  <text x="315" y="138" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">tebako trace cover</text>
+  <text x="315" y="154" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">outside minus inside</text>
+  <line x1="315" y1="174" x2="315" y2="206" style="stroke:var(--tb-c-accent,#c36242);stroke-width:1.5" marker-end="url(#t3b)"/>
+  <rect x="220" y="208" width="190" height="66" rx="8" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:1.5;stroke-dasharray:5 4"/>
+  <text x="315" y="230" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-accent,#c36242)">escapes: files touched</text>
+  <text x="315" y="246" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-accent,#c36242)">below the mounts,</text>
+  <text x="315" y="262" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-accent,#c36242)">straight on the host</text>
+  <text x="210" y="308" style="font-size:10px;fill:var(--tb-c-text-3,#7a8b94)">exit 0 = no escapes · exit 1 = the list</text>
+  <rect x="430" y="18" width="400" height="314" rx="12" style="fill:var(--tb-c-bg-soft,#fdf9e8);stroke:var(--tb-c-divider,#ddd);stroke-width:1"/>
+  <text x="450" y="44" style="font-size:12px;fill:var(--tb-c-text-3,#7a8b94)">tebako check — does the payload work</text>
+  <rect x="450" y="62" width="170" height="56" rx="8" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5"/>
+  <text x="535" y="84" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">the manifest declares</text>
+  <text x="535" y="100" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">checks: entry, fixtures, expect</text>
+  <line x1="620" y1="90" x2="658" y2="90" style="stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5" marker-end="url(#t3a)"/>
+  <rect x="660" y="62" width="150" height="56" rx="10" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:1.8"/>
+  <text x="735" y="84" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">tebako check</text>
+  <text x="735" y="100" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">runs the real entrypoint</text>
+  <line x1="735" y1="118" x2="735" y2="146" style="stroke:var(--tb-c-accent,#c36242);stroke-width:1.5" marker-end="url(#t3b)"/>
+  <rect x="450" y="148" width="110" height="44" rx="8" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:1.5"/>
+  <text x="505" y="166" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-accent,#c36242)">PASS</text>
+  <text x="505" y="182" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-2,#4a5b66)">behavior is right</text>
+  <rect x="575" y="148" width="110" height="44" rx="8" style="fill:none;stroke:var(--color-gold,#f8b883);stroke-width:1.5"/>
+  <text x="630" y="166" text-anchor="middle" style="font-size:11px;fill:var(--color-gold,#f8b883)">SKIP</text>
+  <text x="630" y="182" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-2,#4a5b66)">prerequisite missing</text>
+  <rect x="700" y="148" width="110" height="44" rx="8" style="fill:none;stroke:var(--tb-c-accent-hover,#b4473c);stroke-width:1.5"/>
+  <text x="755" y="166" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-accent-hover,#b4473c)">FAIL</text>
+  <text x="755" y="182" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-2,#4a5b66)">exit 79, reason named</text>
+  <text x="630" y="230" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-3,#7a8b94)">a check fails only when its prerequisites</text>
+  <text x="630" y="246" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-3,#7a8b94)">are present and its behavior is wrong</text>
+  <text x="630" y="286" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-3,#7a8b94)">verification proves the bytes —</text>
+  <text x="630" y="302" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-3,#7a8b94)">a check proves the payload works</text>
+</svg>
+</figure>
+++++
+
+_Figure 1 — The two tools of this release: trace cover compares an outside capture with the inside stream; a payload check declares its own acceptance test._
+
+Four commands read that stream:
+
+* `tebako trace run <pkg>` — *discovery.* Runs a package with the
+  stream armed and drafts a manifest fragment for you: the host paths
+  it touched (as `needs:` grants), the files it read through raw file
+  descriptors (as `materialize:` candidates), and the shared libraries
+  and host executables it loaded. The draft is commented YAML — tebako
+  never applies it for you. You review it, adjust read/write
+  permissions, and note why each grant exists.
 * `tebako trace explain <capture.jsonl>` — *diagnosis.* Replays a
-  capture into the hop chain (mount → manifest read → resolve →
-  materialize → OS bind) and names the first red hop, from a signature
-  table seeded by the incident corpus. Exit 0 is green, exit 1 names
-  the hop.
-* `tebako trace cover` — *coverage.* The escapes report, below.
-* `tebako trace import procmon <capture.csv>` — the windows path, also
-  below.
+  capture through the chain of steps a file access goes through
+  (mount → manifest read → resolve → materialize → OS bind) and names
+  the first step that failed, with a likely cause. Exit code 0 means
+  the chain is green; exit code 1 names the failing step.
+* `tebako trace cover` — *coverage.* The report described below.
+* `tebako trace import procmon <capture.csv>` — the Windows path,
+  also described below.
 
-=== Worked example: the escape the jail can't show you
+=== A worked example: the escape the jail cannot show you
 
-You pressed an app, jailed it `deny`, and it behaves. One question
-remains: did anything reach the host *below* the VFS entirely — a
-native library's own `fopen`, a loader-internal probe? The jail
-journal can't say, and neither can the bus: an escape is invisible
-from inside by definition. The answer is to subtract the inside stream
-from an outside capture of the same run:
+Suppose you packaged an app and jailed it with a deny policy, and it
+behaves. One question remains: did anything reach the host *below* the
+virtual filesystem entirely — a native library's own `fopen`, or a
+probe made by the system loader? The jail journal cannot say, because
+an access that bypasses the virtual filesystem is invisible from
+inside it by definition.
+
+The answer is to compare an inside capture with an outside capture of
+the same run:
 
 [source,console]
 ----
 $ tebako trace run ./myapp --capture inside.jsonl --out draft.yaml -- serve ./public
-$ # …the same run again under an outside capture (a retrace preload capture shown)…
+$ # …the same run again, captured outside the process…
 $ tebako trace cover --inside inside.jsonl --outside retrace.json --prefix /mnt/tfs
 escape /mnt/tfs/secret/keys.pem func=open tid=603 pid=601 class=read
 escape /mnt/tfs/tmp/.lock func=openat tid=604 pid=601 class=read
@@ -74,25 +152,23 @@ $ echo $?
 1
 ----
 
-Two touches under the virtualized prefix that the inside stream never
-saw — reads that bypassed the interposition and hit host bytes
-directly. The escape lines above are the toolkit's golden fixture,
-verbatim: the correlator is byte-identical with upstream
-`retrace-correlate` on the shared fixture tree, and that parity is
-asserted in CI. Exit 0 means no escapes, exit 1 lists them — the
-verdict is CI-gateable, and stderr adds the per-surface coverage
-percentages and the producing layer.
+Two files under the mounted prefix were read through a path the inside
+stream never saw — reads that bypassed the interception layer and hit
+the host's files directly. Exit 0 means no escapes; exit 1 lists them,
+so the verdict can gate CI. Stderr adds the coverage percentage per
+surface and which layer produced the capture.
 
-A coverage report is only as strong as its outside capture's layer,
-and the report says so: a libc-boundary capture (retrace) certifies
-libc-routed escapes only; certifying raw-syscall and loader-internal
-escapes takes a kernel-layer capture (`--layer kernel`).
+One honest caveat, and the report states it too: an outside capture
+can only certify escapes that go through the layer it watches. A
+capture at the libc boundary (retrace) certifies libc-routed escapes;
+certifying raw syscalls and loader-internal probes takes a
+kernel-layer capture (`--layer kernel`).
 
-=== The windows path: procmon in, verdicts out
+=== On Windows: import a Procmon capture
 
-On windows the outside capture that works today is Procmon's CSV
-export, normalized into the retrace JSON shape by an in-process
-converter — byte-parity with upstream's procmon2retrace:
+On Windows, the outside capture that works today is Procmon's CSV
+export. An in-process converter normalizes it into the same JSON
+shape:
 
 [source,console]
 ----
@@ -100,27 +176,28 @@ PS> tebako trace import procmon .\sassc-run.csv > outside.json
 tebako: trace import: entries=1832 bad-rows=0
 PS> tebako trace cover --inside inside.jsonl --outside outside.json --prefix C:/pkg/scss --pid 9012 --layer kernel
 escape C:/pkg/scss/_a.scss func=QueryOpen tid=0 pid=9012 class=probe
-escape C:/pkg/scss/_hidden.scss func=CreateFile tid=0 pid=9012 class=read
+escape C:/pkg/scss/_hidden.scss func=CreateFile tid=0 pid=9012 class=probe
 ----
 
-That verdict is the golden libsass-importer case reproduced from the
-CSV end: a native importer probing Sass partials with raw Win32 calls,
-below every libc hook — the escape class only a kernel-layer capture
-can certify. Honest caveat: the libc-boundary alternative on windows
-(retrace's inline-hook backends with live injection) is a documented
-absent prerequisite at retrace v2.14.0 — the win-run injector crashes
-inside the child's engine boot. The procmon chain carries windows
-coverage until that lands upstream, and a probe leg in tebako's CI
-pins the broken signature so drift in either direction fails the leg.
+That output is a real case: a native Sass importer probing for
+partials with raw Win32 calls, underneath every libc hook — the kind
+of access only a kernel-layer capture can see. The libc-boundary
+alternative on Windows (retrace's live-injection backends) does not
+work at retrace v2.14.0 — the injector crashes inside the child's
+engine boot. Until that is fixed upstream, the Procmon path carries
+Windows coverage, and a CI check watches for the fix so we notice
+either direction.
 
-== Payload checks: does it work, declared
+== Payload checks: does it work, written down
 
 A *check* is the payload's own acceptance test, declared in its
 in-image manifest and carried inside its image: "given my declared
-needs, I do my one real thing." Verification proves the bytes are the
-publisher's; a check proves the payload works on top of them. The
-canonical example is the metanorma formula's Homebrew test, translated
-to a declaration:
+needs, I do my one real thing." Integrity verification proves the
+bytes are the publisher's; a check proves the payload works once the
+bytes are there.
+
+Here is the canonical example — the metanorma formula's Homebrew
+test, written as a declaration:
 
 [source,yaml]
 ----
@@ -133,11 +210,11 @@ checks:
     timeout: 180
 ----
 
-`tebako check` runs the contract — against an installed payload on
-your machine, against a just-pressed image in feedstock CI
-(`--runtime`/`--runtime-image`), against a pressed package, or against
-a composition document, which can declare checks for the binding
-itself:
+`tebako check` runs it against an installed payload on your machine,
+against a just-pressed image in feedstock CI (`--runtime` /
+`--runtime-image`), against a pressed package, or against a
+composition document (which can declare checks for the composition
+itself):
 
 [source,console]
 ----
@@ -148,42 +225,29 @@ $ echo $?
 0
 ----
 
-The discipline is deliberate: an unmet prerequisite SKIPs loudly,
-never FAILs — a check fails only when its prerequisites are present
-and its behavior is wrong. Assertions are existence-plus-non-empty and
-one stdout regex; byte-goldens are forbidden by construction. Any FAIL
-exits 79 (`EX_TEBAKO_CHECK`), with the failed expectation named in the
-verdict line. `--record` runs the checks under the record policy, so
-the acceptance path doubles as the needs-discovery exerciser;
-`--keep-scratch` preserves the scratch dir when you're debugging one.
+A few deliberate rules keep checks useful:
 
-== Fixed: the GNU link-unit floor (#413)
-
-For runtime-factory consumers: `tebako-arscope` now demotes defined
-`STB_GNU_UNIQUE` symbols to weak (undefined references stay strong, and
-FILE bookkeeping symbols are re-scoped to Compilation), so the GNU link
-unit folds under the factory's binutils 2.34 floor — previously the
-unit's group-less GNU_UNIQUE definitions read as strong and a consumer
-link died with hundreds of `multiple definition` errors. A
-zero-GNU_UNIQUE gate and an ld-2.34 floor-link check run in every
-release build, so the factory can pin `link_unit_release` against the
-floor and keep it true.
-
-== Dependency hygiene
-
-The limnifs family now rides crates.io 0.2.50 (the git-rev pins are
-gone), and nothing in the dependency closure resolves onto the yanked
-`arrayref` crate anymore.
+* A missing prerequisite *skips* with a clear reason, and never fails.
+  A check fails only when its prerequisites are present and its
+  behavior is wrong.
+* Assertions are deliberately simple: files must exist and be
+  non-empty, plus one optional stdout pattern. Fragile byte-for-byte
+  golden outputs are not supported on purpose.
+* Any failure exits with code 79 (`EX_TEBAKO_CHECK`) and names the
+  expectation that failed.
+* `--record` runs the checks under the record policy, so the same
+  acceptance test doubles as needs discovery; `--keep-scratch`
+  preserves the scratch directory while you debug one.
 
 == What's next
 
-Two honest loose ends. First, the windows libc-layer live capture
-waits on upstream retrace — the live-injection prerequisite documented
-above. Second, the metanorma feedstock's `html-xml` press gate lands
-once the feedstock re-pins its workflows to this CLI: the check engine
-first ships in v0.2.0, and feedstocks consume released binaries only —
-releases are the interface. The spec-26 wiring of checks into
-`tebako press` and `tebako install` gates is the remaining spec work.
+Two things remain open, both known. First, the Windows libc-layer
+live capture waits on the upstream retrace fix described above.
+Second, the metanorma feedstock's `html-xml` gate turns on once the
+feedstock re-pins its workflows to this CLI — the check engine ships
+in v0.2.0, and feedstocks consume released binaries only, because
+releases are the interface between them. Wiring checks into
+`tebako press` and `tebako install` gates is the remaining work.
 
 == Get it
 
@@ -192,9 +256,12 @@ releases are the interface. The spec-26 wiring of checks into
 brew upgrade tamatebako/tap/tebako
 ----
 
-or pull the binaries for your platform from the
-https://github.com/tamatebako/tebako/releases/tag/v0.2.0[v0.2.0 release]
-— every asset ship-gated before upload. The new guides walk both
-features end to end:
-https://tebako.org/docs/guides/trace/[Trace a packaged app] and
-https://tebako.org/docs/guides/check/[Check a payload].
+or download the binaries for your platform from the
+https://github.com/tamatebako/tebako/releases/tag/v0.2.0[v0.2.0
+release]. Every asset is built and tested in CI before it is
+uploaded.
+
+As always: if something surprises you, we want to hear about it in
+the https://github.com/tamatebako/tebako/issues[issue tracker].
+
+**__Press on__** _with Tebako_!
