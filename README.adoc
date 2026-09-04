@@ -69,9 +69,8 @@ registry automatically. Pages that are planned but unwritten carry
 
 == Legacy remnants (read before cleaning)
 
-This repository was previously a Jekyll site. Some inert Jekyll-era
-paths remain tracked and are kept until they are explicitly retired:
-`parent-hub/`, `_drafts/`, `x.rb`, `.ruby-version`, `.lycheeignore`.
-The gitignored `_site/`, `vendor/`, `.jekyll-cache/` directories are
-stale build output and safe to delete locally. `_posts/` and `assets/`
-are NOT legacy — they are the live blog source and imagery.
+The Jekyll era is fully retired: the theme hub, Ruby tooling files,
+and the old build outputs are gone. What remains from that era is
+intentional: `_posts/` and `assets/` are the live blog source and
+imagery, and `_drafts/` holds unpublished posts held for release-time
+publication.
