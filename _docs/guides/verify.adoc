@@ -1,0 +1,100 @@
+---
+title: Verify integrity
+heading: Verify integrity.
+lede: >-
+  The model fits in one sentence: every artifact carries a SHA-256 anchor,
+  verification happens at fetch and install time — never per run — and
+  anything signed is verified strictly.
+description: >-
+  Tebako verification: the SHA-256 sidecar anchor, verify-at-install
+  semantics, tebako inspect --verify, tebako-pkg validate and sign, and
+  TEBAKO_REQUIRE_SIGNED.
+---
+
+== The anchor: the .sha256 sidecar.
+
+Next to every cached artifact sits a `.sha256` sidecar — the value the
+artifact was verified against when it landed. The sidecar is the trust
+anchor: its presence means _verified at install_. Runs never re-verify,
+which is what makes them fast.
+
+== What install already did for you.
+
+`tebako install` downloaded the payload to a temporary location, hashed
+it, compared the digest against the registry-published SHA-256, and only
+then renamed it into place — read-only, with its sidecar beside it. A
+mismatch aborts with exit 70 and installs nothing; a partial install is
+invisible by construction.
+
+The same happens for runtimes on first run, and for registry indexes on
+refresh. A registry added with a `?sha256=` pin is verified on every
+refresh, not just the first.
+
+== Check an artifact by hand.
+
+[source,console]
+----
+$ shasum -a 256 acme-fonts-2.1.0.tfs    # macOS
+$ sha256sum acme-fonts-2.1.0.tfs          # Linux
+----
+
+Compare the digest against the value the publisher printed at publish
+time — it is mirrored into the registry index and into the `SHA256SUMS`
+on the release.
+
+== Ask tebako to re-verify.
+
+[source,console]
+----
+$ tebako inspect ./myapp                  # kind, slots, trust lines
+$ tebako inspect --verify ./myapp           # re-run the checks now
+$ echo $?
+0
+----
+
+`inspect` auto-detects a package (trailer present) versus a bare image.
+`--verify` exits 0 on pass, or a named failure: 65 malformed · 70 SHA-256
+mismatch · 71 signature invalid (or unsigned under
+`TEBAKO_REQUIRE_SIGNED=1`) · 72 trust failure — the key is not in your
+trusted set. `--require-signed` implies `--verify` and treats unsigned
+as a failure.
+
+[source,console]
+----
+$ tebako-pkg validate ./myapp                # package trailers; adds 77 (era mismatch)
+$ tfs info --verify ./acme-fonts-2.1.0.tfs     # bare images
+----
+
+== Sign your own artifacts.
+
+[source,console]
+----
+$ tebako-pkg sign ./acme-fonts-2.1.0.tfs
+----
+
+On first use this generates the press-local key under
+`$TEBAKO_HOME/keys` and registers its public half automatically. The
+output is a detached signature — `acme-fonts-2.1.0.tfs.asc` — plus a
+signed `SHA256SUMS`. `--key <keyid>` or `--key-file <path>` selects a
+different key; `--no-sums` skips the sums file. Recipients verify with:
+
+[source,console]
+----
+$ tebako-pkg verify --key-file ./acme-press.pub ./acme-fonts-2.1.0.tfs
+----
+
+[NOTE]
+====
+The flag is `--key-file`. The tool's usage line currently prints
+`--keyring`; the parser accepts `--key-file` only.
+====
+
+== Hardened environments.
+
+Set `TEBAKO_REQUIRE_SIGNED=1` and unsigned artifacts fail closed — exit
+71 — at fetch and install. Without it, unsigned is first-class: a loud
+warning, a journal entry, and the run proceeds.
+
+See also: link:/docs/guides/publish/[Publish to your own registry] ·
+link:/docs/guides/info-inspect/[info & inspect] ·
+link:/docs/architecture/chain-of-trust/[The chain of trust].
