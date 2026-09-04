@@ -1,6 +1,5 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro'
-import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import DocsLayout from '../../../layouts/DocsLayout.astro'
 import StatusPill from '../../../components/docs/StatusPill.astro'
 
 const LINKS = {
@@ -110,19 +109,20 @@ const debugRows = [
 ---
 <!-- normative: spec 11, spec 20, spec 24 — facts re-verified against tebako main 2026-08-25 (crates/tfs c_api.rs/mount.rs/backends_*.rs, crates/tebako-log, crates/tpkg format ids, tfs-cli usage) -->
 
-<BaseLayout title="The VFS model — Tebako architecture" description="TFS, tebako's userland virtual filesystem: the Rust tfs crate is the shipping implementation — mount table with longest-prefix dispatch, coverage-vs-presence, COW and ENC transforms, pluggable backends (limnifs, dwarfs-t, squashfs, tar, zip), and one debug contract.">
-  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">ARCHITECTURE · VFS</p>
-    <h1 class="mt-3">The VFS model.</h1>
-    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+<DocsLayout
+  section="architecture"
+  href="/docs/architecture/vfs/"
+  title="The VFS model"
+  heading="The VFS model."
+  description="TFS, tebako's userland virtual filesystem: the Rust tfs crate is the shipping implementation — mount table with longest-prefix dispatch, coverage-vs-presence, COW and ENC transforms, pluggable backends (limnifs, dwarfs-t, squashfs, tar, zip), and one debug contract."
+>
+  <p slot="lede" class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
       TFS is tebako's userland virtual filesystem: a per-process mount table over
       bulk-storage images, with the kernel-VFS shape and none of the kernel. One engine,
       one small C ABI, pluggable backends — and the Rust{' '}
       <a href={LINKS.tfsCrate} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">tfs crate</a>
       {' '}is the shipping implementation.
     </p>
-
-    <ArchDocsNav />
 
     <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
       <StatusPill status="shipped" />
@@ -471,5 +471,4 @@ const debugRows = [
         </p>
       </a>
     </div>
-  </section>
-</BaseLayout>
+</DocsLayout>

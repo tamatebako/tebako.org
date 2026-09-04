@@ -1,19 +1,15 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro'
-import GuidesNav from '../../../components/docs/GuidesNav.astro'
+import DocsLayout from '../../../layouts/DocsLayout.astro'
 ---
 
-<BaseLayout title="Run a packaged app — Tebako guides" description="Three ways to run a tebako package: the file itself, tebako run with jail and mount overrides, or the managed flow with registries and PATH shims.">
-  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">GUIDES · RUN</p>
-    <h1 class="mt-3">Run a packaged app.</h1>
-    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
-      A tebako package is an executable file. There are three ways to run one, and they
-      differ only in how much machinery you want around the run.
-    </p>
-
-    <GuidesNav />
-
+<DocsLayout
+  section="guides"
+  href="/docs/guides/run/"
+  title="Run a packaged app"
+  heading="Run a packaged app."
+  lede="A tebako package is an executable file. There are three ways to run one, and they differ only in how much machinery you want around the run."
+  description="Three ways to run a tebako package: the file itself, tebako run with jail and mount overrides, or the managed flow with registries and PATH shims."
+>
     <!-- ============ A: DIRECT ============ -->
     <div class="mt-16">
       <h2 class="mb-3">A · Execute the file.</h2>
@@ -121,5 +117,4 @@ $ metanorma compile site.adoc`}</code></pre>
       <a href="/docs/guides/jails/" class="tb-link-underline text-[var(--tb-c-accent)]">Set a jail policy</a> ·
       <a href="/docs/architecture/store/" class="tb-link-underline text-[var(--tb-c-accent)]">The store, in the architecture docs</a>
     </p>
-  </section>
-</BaseLayout>
+</DocsLayout>

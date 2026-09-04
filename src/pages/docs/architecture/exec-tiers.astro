@@ -1,6 +1,5 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro'
-import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import DocsLayout from '../../../layouts/DocsLayout.astro'
 import StatusPill from '../../../components/docs/StatusPill.astro'
 
 const tiers = [
@@ -35,18 +34,14 @@ const tiers = [
 ]
 ---
 
-<BaseLayout title="Exec tiers — running binaries from images — Tebako architecture" description="How tebako runs executables that live inside disk images: the dynamic preload shim, TFS-native builds, static closure extraction, and the wrapped tier — what each costs and when to choose it.">
-  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">ARCHITECTURE · EXEC TIERS</p>
-    <h1 class="mt-3">Running a binary that lives inside an image.</h1>
-    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
-      An interpreted application never execs anything — the interpreter runs inside the
-      mounts. But a toolkit payload ships real executables, and an exec target held by a
-      virtual filesystem needs a path to the CPU. Tebako has four, and the payload's
-      manifest declares which one it takes — consumers never care which path a tool took.
-    </p>
-
-    <ArchDocsNav />
+<DocsLayout
+  section="architecture"
+  href="/docs/architecture/exec-tiers/"
+  title="Exec tiers — running binaries from images"
+  heading="Running a binary that lives inside an image."
+  lede="An interpreted application never execs anything — the interpreter runs inside the mounts. But a toolkit payload ships real executables, and an exec target held by a virtual filesystem needs a path to the CPU. Tebako has four, and the payload's manifest declares which one it takes — consumers never care which path a tool took."
+  description="How tebako runs executables that live inside disk images: the dynamic preload shim, TFS-native builds, static closure extraction, and the wrapped tier — what each costs and when to choose it."
+>
 
     <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
       <StatusPill status="shipped" />
@@ -192,5 +187,4 @@ const tiers = [
         </p>
       </div>
     </div>
-  </section>
-</BaseLayout>
+</DocsLayout>

@@ -1,21 +1,21 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro'
-import GuidesNav from '../../../components/docs/GuidesNav.astro'
+import DocsLayout from '../../../layouts/DocsLayout.astro'
 ---
 
-<BaseLayout title="info & inspect — Tebako guides" description="Read-only tebako introspection: tebako info topics with --remote and --json, tebako inspect with the contract card, tebako-pkg info, and tfs ls/tree/cat.">
-  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">GUIDES · INSPECT</p>
-    <h1 class="mt-3">info &amp; inspect.</h1>
-    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+<DocsLayout
+  section="guides"
+  href="/docs/guides/info-inspect/"
+  title="info & inspect"
+  description="Read-only tebako introspection: tebako info topics with --remote and --json, tebako inspect with the contract card, tebako-pkg info, and tfs ls/tree/cat."
+>
+    <h1 slot="heading" class="mt-3">info &amp; inspect.</h1>
+    <p slot="lede" class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
       Two read-only families: <code class="font-[var(--font-mono)]">tebako info</code> reports
       on the store and its contents; <code class="font-[var(--font-mono)]">tebako inspect</code>{' '}
       reads a single artifact. Neither mutates anything;{' '}
       <code class="font-[var(--font-mono)]">--remote</code> is the only flag that reaches the
       network.
     </p>
-
-    <GuidesNav />
 
     <!-- ============ INFO TOPICS ============ -->
     <div class="mt-16">
@@ -206,5 +206,4 @@ $ tfs find ./acme-fonts-2.1.0.tfs Bold`}</code></pre>
       <a href="/docs/guides/verify/" class="tb-link-underline text-[var(--tb-c-accent)]">Verify integrity</a> ·
       <a href="/docs/architecture/store/" class="tb-link-underline text-[var(--tb-c-accent)]">The store, in the architecture docs</a>
     </p>
-  </section>
-</BaseLayout>
+</DocsLayout>

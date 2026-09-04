@@ -1,0 +1,33 @@
+---
+import { getSection, type DocsSectionId } from '../../config/docs'
+
+interface Props {
+  section: DocsSectionId
+}
+
+const { section } = Astro.props
+const sec = getSection(section)
+const pathname = Astro.url.pathname
+const isActive = (href: string) => pathname === href
+---
+
+<nav aria-label={`${sec.label} documentation`} class="mt-10 flex flex-wrap items-center gap-2">
+  {sec.entries.map((item, i) => (
+    <a
+      href={item.href}
+      aria-current={isActive(item.href) ? 'page' : undefined}
+      title={item.status === 'planned' ? 'Planned — landing with the reference wave' : undefined}
+      class:list={[
+        'rounded-full px-4 py-2 font-[var(--font-mono)] text-xs font-medium transition-colors duration-200',
+        isActive(item.href)
+          ? 'bg-[var(--tb-c-accent)] text-[var(--color-paper)]'
+          : item.status === 'planned'
+            ? 'border border-dashed border-[var(--tb-c-divider)] text-[var(--tb-c-text-3)] hover:border-[var(--tb-c-accent)] hover:text-[var(--tb-c-accent)]'
+            : 'border border-[var(--tb-c-divider)] text-[var(--tb-c-text-2)] hover:border-[var(--tb-c-accent)] hover:text-[var(--tb-c-accent)]',
+      ]}
+    >
+      <span class="opacity-60">{String(i + 1).padStart(2, '0')}</span>
+      <span class="ml-1.5">{item.label}</span>
+    </a>
+  ))}
+</nav>

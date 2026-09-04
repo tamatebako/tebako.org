@@ -1,6 +1,5 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro'
-import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import DocsLayout from '../../../layouts/DocsLayout.astro'
 import StatusPill from '../../../components/docs/StatusPill.astro'
 
 const GH = 'https://github.com/tamatebako'
@@ -174,19 +173,20 @@ const successors = [
 ---
 <!-- normative: spec 13, spec 14 — wave-1 rewrite 2026-08-25. Repo set + states verified live via api.github.com; crate map from `cargo metadata` on tebako main (workspace 0.2.4); five binaries + triplets from .github/workflows/release.yml; size-gate history from ci.yml + commit e3005cd + the tebako-bootstrap v0.2.0 release asset sizes. -->
 
-<BaseLayout title="The repositories — Tebako architecture" description="Every tamatebako repository and its lifecycle state, plus the product repo's crate map, the bootstrap size gate, and the golden-parity discipline.">
-  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">ARCHITECTURE · 08</p>
-    <h1 class="mt-3">The repository map.</h1>
-    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+<DocsLayout
+  section="architecture"
+  href="/docs/architecture/repositories/"
+  title="The repositories"
+  heading="The repository map."
+  description="Every tamatebako repository and its lifecycle state, plus the product repo's crate map, the bootstrap size gate, and the golden-parity discipline."
+>
+  <p slot="lede" class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
       The ecosystem is a fleet of small repos, each owning one artifact and one contract.
       They consume each other's published releases, never source trees — so every repo
       builds its own platforms and publishes its own releases
       (<a href={LINKS.spec13} class="tb-link-underline text-[var(--tb-c-accent)]">spec 13</a>).
       Retired repos stay readable; oracle repos stay frozen; neither is a graveyard.
     </p>
-
-    <ArchDocsNav />
 
     <!-- ============ THE MAP ============ -->
     <div class="mt-12 overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
@@ -461,5 +461,4 @@ const successors = [
         </p>
       </a>
     </div>
-  </section>
-</BaseLayout>
+</DocsLayout>

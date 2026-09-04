@@ -1,6 +1,5 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro'
-import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import DocsLayout from '../../../layouts/DocsLayout.astro'
 import StatusPill from '../../../components/docs/StatusPill.astro'
 
 const LINKS = {
@@ -20,11 +19,14 @@ const LINKS = {
 ---
 <!-- normative: spec 01, spec 02, spec 05, spec 09 — rewritten 2026-08-25; dispatch chain from spec 07, exit codes from spec 06 §4, limnifs default from spec 20, router facts from spec 11; 33 tebako_fs_* exports counted at crates/tfs/src/c_api.rs; unverified-first rollout at spec 06 §3 + spec 09 preamble -->
 
-<BaseLayout title="What is tebako? — Tebako Architecture" description="Tebako is a packaging and loading ecosystem: stitch any payload into a single executable, or ship managed, versioned, signed payloads with shared runtimes. Ruby is the first runtime instance; TFS, a userland virtual filesystem, sits underneath.">
-  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">ARCHITECTURE · 00</p>
-    <h1 class="mt-3">What is tebako?</h1>
-    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+<DocsLayout
+  section="architecture"
+  href="/docs/architecture/overview/"
+  title="What is tebako?"
+  heading="What is tebako?"
+  description="Tebako is a packaging and loading ecosystem: stitch any payload into a single executable, or ship managed, versioned, signed payloads with shared runtimes. Ruby is the first runtime instance; TFS, a userland virtual filesystem, sits underneath."
+>
+  <p slot="lede" class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
       Tebako is a <strong class="text-[var(--tb-c-text-1)]">packaging and loading ecosystem</strong> —
       not a Ruby tool. It stitches a payload into a single transparent executable your users never
       think about, or ships it as a managed, versioned, signed payload with shared runtimes. Ruby is
@@ -32,8 +34,6 @@ const LINKS = {
       Underneath sits TFS, a userland virtual filesystem that lets ordinary binaries mount disk
       images in-process.
     </p>
-
-    <ArchDocsNav />
 
     <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
       <StatusPill status="shipped" />
@@ -610,5 +610,4 @@ const LINKS = {
         <a href="/docs/architecture/contributors/" class="tb-link-underline text-[var(--tb-c-accent)]">for contributors</a>.
       </p>
     </div>
-  </section>
-</BaseLayout>
+</DocsLayout>

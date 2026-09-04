@@ -1,6 +1,5 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro'
-import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import DocsLayout from '../../../layouts/DocsLayout.astro'
 
 const blocks = [
   {
@@ -51,20 +50,16 @@ const blocks = [
 ]
 ---
 
-<BaseLayout title="The building blocks — Tebako architecture" description="The nine building blocks of the tebako platform: package, bootstrap, runtime, application, data, toolkit, shims, store, and registry — one page each, one picture overall.">
-  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">ARCHITECTURE · BLOCKS</p>
-    <h1 class="mt-3">Nine parts, no moving pieces left over.</h1>
-    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
-      Every concept in tebako is exactly one of these. Once you can name them, the whole
-      system — packaging, distribution, trust, version management — reads as their
-      combinations.
-    </p>
-
-    <ArchDocsNav />
-
-    <div class="mt-14 rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
-      <pre class="overflow-x-auto font-[var(--font-mono)] text-xs leading-relaxed md:text-sm"><code>{` author                          distribution                     user machine
+<DocsLayout
+  section="architecture"
+  href="/docs/architecture/blocks/"
+  title="The building blocks"
+  heading="Nine parts, no moving pieces left over."
+  lede="Every concept in tebako is exactly one of these. Once you can name them, the whole system — packaging, distribution, trust, version management — reads as their combinations."
+  description="The nine building blocks of the tebako platform: package, bootstrap, runtime, application, data, toolkit, shims, store, and registry — one page each, one picture overall."
+>
+  <div class="mt-14 rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
+    <pre class="overflow-x-auto font-[var(--font-mono)] text-xs leading-relaxed md:text-sm"><code>{` author                          distribution                     user machine
 ──────────────────────────────────────────────────────────────────────────────────
  source code ──press──► slices ──publish──► registry ──download──► local store
                  │                                   │
@@ -72,30 +67,29 @@ const blocks = [
                               │
                               ▼  user runs it
                     bootstrap → runtime → mounted slices → the program runs`}</code></pre>
-    </div>
+  </div>
 
-    <div class="mt-14 space-y-10">
-      {blocks.map((b, i) => (
-        <div class="grid gap-4 md:grid-cols-[3rem_1fr] md:gap-8">
-          <div class="font-[var(--font-mono)] text-sm text-[var(--tb-c-text-2)] pt-1">{String(i + 1).padStart(2, '0')}</div>
-          <div>
-            <div class="flex flex-wrap items-baseline gap-3">
-              <h2 class="!mt-0">{b.name}</h2>
-              <span class="tb-eyebrow">{b.tag.toUpperCase()}</span>
-            </div>
-            <p class="mt-2 max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">{b.body}</p>
+  <div class="mt-14 space-y-10">
+    {blocks.map((b, i) => (
+      <div class="grid gap-4 md:grid-cols-[3rem_1fr] md:gap-8">
+        <div class="font-[var(--font-mono)] text-sm text-[var(--tb-c-text-2)] pt-1">{String(i + 1).padStart(2, '0')}</div>
+        <div>
+          <div class="flex flex-wrap items-baseline gap-3">
+            <h2 class="!mt-0">{b.name}</h2>
+            <span class="tb-eyebrow">{b.tag.toUpperCase()}</span>
           </div>
+          <p class="mt-2 max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">{b.body}</p>
         </div>
-      ))}
-    </div>
+      </div>
+    ))}
+  </div>
 
-    <div class="mt-16 rounded-2xl border border-[var(--tb-c-divider)] px-8 py-8">
-      <h2 class="!mt-0">Go deeper.</h2>
-      <p class="mt-3 leading-relaxed text-[var(--tb-c-text-2)]">
-        Each block has its own page in the repository documentation, with the same
-        structure used here — what it is, what it is for, how it works:
-        <a class="underline decoration-[var(--tb-c-accent)] underline-offset-4" href="https://github.com/tamatebako/tebako/tree/main/docs/blocks">docs/blocks</a>.
-      </p>
-    </div>
-  </section>
-</BaseLayout>
+  <div class="mt-16 rounded-2xl border border-[var(--tb-c-divider)] px-8 py-8">
+    <h2 class="!mt-0">Go deeper.</h2>
+    <p class="mt-3 leading-relaxed text-[var(--tb-c-text-2)]">
+      Each block has its own page in the repository documentation, with the same
+      structure used here — what it is, what it is for, how it works:
+      <a class="underline decoration-[var(--tb-c-accent)] underline-offset-4" href="https://github.com/tamatebako/tebako/tree/main/docs/blocks">docs/blocks</a>.
+    </p>
+  </div>
+</DocsLayout>

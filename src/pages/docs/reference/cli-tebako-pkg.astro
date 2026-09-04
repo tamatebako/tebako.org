@@ -1,0 +1,23 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro'
+import StatusPill from '../../../components/docs/StatusPill.astro'
+---
+<DocsLayout
+  section="reference"
+  href="/docs/reference/cli-tebako-pkg/"
+  title="tebako-pkg CLI"
+  description="Trailer surgery: info, validate, bundle, unbundle, reassemble, insert-image, remove-image, set-runtime, sign, verify."
+>
+  <div class="mt-16 max-w-2xl">
+    <StatusPill status="planned" note="wave 3" />
+    <h2 class="!mt-6">Not written yet — here is the plan.</h2>
+    <p class="mt-3 text-lg leading-relaxed text-[var(--tb-c-text-2)]">Trailer surgery: info, validate, bundle, unbundle, reassemble, insert-image, remove-image, set-runtime, sign, verify.</p>
+    <p class="mt-4 leading-relaxed text-[var(--tb-c-text-2)]">
+      This page lands with the reference wave. Until then, the
+      <a href="/docs/architecture/">architecture section</a> covers the same surfaces at
+      narrative depth, and the
+      <a href="https://github.com/tamatebako/tebako">product repository</a> carries the
+      normative specs.
+    </p>
+  </div>
+</DocsLayout>

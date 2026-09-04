@@ -1,20 +1,15 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro'
-import GuidesNav from '../../../components/docs/GuidesNav.astro'
+import DocsLayout from '../../../layouts/DocsLayout.astro'
 ---
 
-<BaseLayout title="Verify integrity — Tebako guides" description="Tebako verification: the SHA-256 sidecar anchor, verify-at-install semantics, tebako inspect --verify, tebako-pkg validate and sign, and TEBAKO_REQUIRE_SIGNED.">
-  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">GUIDES · VERIFY</p>
-    <h1 class="mt-3">Verify integrity.</h1>
-    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
-      The model fits in one sentence: every artifact carries a SHA-256 anchor, verification
-      happens at fetch and install time — never per run — and anything signed is verified
-      strictly.
-    </p>
-
-    <GuidesNav />
-
+<DocsLayout
+  section="guides"
+  href="/docs/guides/verify/"
+  title="Verify integrity"
+  heading="Verify integrity."
+  lede="The model fits in one sentence: every artifact carries a SHA-256 anchor, verification happens at fetch and install time — never per run — and anything signed is verified strictly."
+  description="Tebako verification: the SHA-256 sidecar anchor, verify-at-install semantics, tebako inspect --verify, tebako-pkg validate and sign, and TEBAKO_REQUIRE_SIGNED."
+>
     <!-- ============ THE ANCHOR ============ -->
     <div class="mt-16">
       <h2 class="mb-3">The anchor: the .sha256 sidecar.</h2>
@@ -130,5 +125,4 @@ $ tfs info --verify ./acme-fonts-2.1.0.tfs     # bare images`}</code></pre>
       <a href="/docs/guides/info-inspect/" class="tb-link-underline text-[var(--tb-c-accent)]">info &amp; inspect</a> ·
       <a href="/docs/architecture/chain-of-trust/" class="tb-link-underline text-[var(--tb-c-accent)]">The chain of trust</a>
     </p>
-  </section>
-</BaseLayout>
+</DocsLayout>

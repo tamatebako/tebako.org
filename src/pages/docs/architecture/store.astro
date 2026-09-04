@@ -1,22 +1,22 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro'
-import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import DocsLayout from '../../../layouts/DocsLayout.astro'
 import StatusPill from '../../../components/docs/StatusPill.astro'
 ---
 
-<BaseLayout title="The store — ~/.tebako — Tebako architecture" description="The tebako store: one directory holding runtimes, payloads, shims, registries, keys, and trust — content-addressed, SHA-256 anchored, installed atomically, shared machine-wide.">
-  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">ARCHITECTURE · STORE</p>
-    <h1 class="mt-3">The store: one directory, nothing hidden.</h1>
-    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+<DocsLayout
+  section="architecture"
+  href="/docs/architecture/store/"
+  title="The store — ~/.tebako"
+  heading="The store: one directory, nothing hidden."
+  description="The tebako store: one directory holding runtimes, payloads, shims, registries, keys, and trust — content-addressed, SHA-256 anchored, installed atomically, shared machine-wide."
+>
+  <p slot="lede" class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
       Everything tebako keeps on your machine lives under one roof —{' '}
       <code class="font-[var(--font-mono)]">~/.tebako</code>. Runtimes download once and are
       shared by every application; payloads stay byte-identical with what the publisher
       released; uninstalling means deleting files. There is no daemon, no database, no
       state anywhere else.
     </p>
-
-    <ArchDocsNav />
 
     <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
       <StatusPill status="shipped" />
@@ -167,5 +167,4 @@ tebako cache prune --all</code></pre>
         24-hour cycle or on <code class="font-[var(--font-mono)] text-xs">tebako update-registries</code>.
       </p>
     </div>
-  </section>
-</BaseLayout>
+</DocsLayout>

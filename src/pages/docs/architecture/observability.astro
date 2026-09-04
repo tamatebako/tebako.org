@@ -1,6 +1,5 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro'
-import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import DocsLayout from '../../../layouts/DocsLayout.astro'
 import StatusPill from '../../../components/docs/StatusPill.astro'
 
 const LINKS = {
@@ -34,18 +33,14 @@ const signatureRows = [
 ---
 <!-- normative: spec 25 (§1 laws, §2 bus, §3 envelope, §4 run, §5 explain, §6 cover + three-layer model + correlator, §8 phasing T1-T4) -->
 
-<BaseLayout title="Trace and observability — Tebako architecture" description="One interception bus, three front-ends: trace run discovers what a payload touches, trace explain names the first failed hop, trace cover proves what escaped virtualization — cross-platform and runtime-independent by construction.">
-  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">ARCHITECTURE · 23</p>
-    <h1 class="mt-3">Trace and observability.</h1>
-    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
-      Virtualizing an application means answering three questions: what does it touch, which hop
-      failed when it breaks, and is anything it does NOT virtualized. Each used to be answered by
-      hand-rolled one-off diagnostics. Now there is one substrate and three front-ends.
-    </p>
-
-    <ArchDocsNav />
-
+<DocsLayout
+  section="architecture"
+  href="/docs/architecture/observability/"
+  title="Trace and observability"
+  heading="Trace and observability."
+  lede="Virtualizing an application means answering three questions: what does it touch, which hop failed when it breaks, and is anything it does NOT virtualized. Each used to be answered by hand-rolled one-off diagnostics. Now there is one substrate and three front-ends."
+  description="One interception bus, three front-ends: trace run discovers what a payload touches, trace explain names the first failed hop, trace cover proves what escaped virtualization — cross-platform and runtime-independent by construction."
+>
     <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
       <StatusPill status="shipped" note="the tfs::trace bus + schema, trace run / explain / cover, the procmon converter — golden-parity with retrace-correlate on the shared fixture tree" />
       <StatusPill status="planned" note="the remainder is dogfood, not code: retrace libc-layer legs on both platforms, the kernel-layer leg, incident-13 capture archival" />
@@ -250,5 +245,4 @@ exit 0 = no escapes · 1 = escapes found (CI-gateable) · 2 = usage/IO</code></p
         </p>
       </a>
     </div>
-  </section>
-</BaseLayout>
+</DocsLayout>

@@ -1,20 +1,20 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro'
-import GuidesNav from '../../../components/docs/GuidesNav.astro'
+import DocsLayout from '../../../layouts/DocsLayout.astro'
 ---
 <!-- normative: spec 03 (the in-image manifest), spec 20 §6 (limnifs is the default format for tfs mkimage; dwarfs an explicit opt-in) — tool_version string current-era (0.2.x) -->
 
-<BaseLayout title="Create a data payload — Tebako guides" description="Turn a directory of files into a versioned, mountable .tfs data payload: the in-image manifest, tfs mkimage, and the consumer-declared mount rule.">
-  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">GUIDES · DATA</p>
-    <h1 class="mt-3">Create a data payload.</h1>
-    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+<DocsLayout
+  section="guides"
+  href="/docs/guides/data-payload/"
+  title="Create a data payload"
+  heading="Create a data payload."
+  description="Turn a directory of files into a versioned, mountable .tfs data payload: the in-image manifest, tfs mkimage, and the consumer-declared mount rule."
+>
+    <p slot="lede" class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
       A data payload is a directory of files — fonts, datasets, word lists — pressed into a
       <code class="font-[var(--font-mono)]">.tfs</code> image with a manifest. No toolchain:
       imaging runs in-process inside the <code class="font-[var(--font-mono)]">tfs</code> CLI.
     </p>
-
-    <GuidesNav />
 
     <!-- ============ LAYOUT ============ -->
     <div class="mt-16">
@@ -148,5 +148,4 @@ $ tfs ls -r -l acme-fonts-2.1.0.tfs`}</code></pre>
       <a href="/docs/guides/info-inspect/" class="tb-link-underline text-[var(--tb-c-accent)]">info &amp; inspect</a> ·
       <a href="/docs/architecture/anatomy/" class="tb-link-underline text-[var(--tb-c-accent)]">The mount model, in the architecture docs</a>
     </p>
-  </section>
-</BaseLayout>
+</DocsLayout>

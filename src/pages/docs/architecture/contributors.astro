@@ -1,6 +1,5 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro'
-import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import DocsLayout from '../../../layouts/DocsLayout.astro'
 import StatusPill from '../../../components/docs/StatusPill.astro'
 
 const LINKS = {
@@ -232,18 +231,14 @@ const onramps = [
 
 <!-- normative: spec 14, spec 18 — corroborated by docs/parity.md, spec 06 §6, spec 13, spec 17 §1; code citations in the wave-1 report -->
 
-<BaseLayout title="For contributors — Tebako architecture" description="Who owns each contract value, which suites execute the contracts, how upstream drift is detected, and the engineering order every change follows.">
-  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">ARCHITECTURE · 15</p>
-    <h1 class="mt-3">For contributors.</h1>
-    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
-      Every interface in the ecosystem has exactly one owner, one declarative contract,
-      and one verification point. Contributing starts with knowing which repo owns the
-      value you are touching — and which suite will judge the change.
-    </p>
-
-    <ArchDocsNav />
-
+<DocsLayout
+  section="architecture"
+  href="/docs/architecture/contributors/"
+  title="For contributors"
+  heading="For contributors."
+  lede="Every interface in the ecosystem has exactly one owner, one declarative contract, and one verification point. Contributing starts with knowing which repo owns the value you are touching — and which suite will judge the change."
+  description="Who owns each contract value, which suites execute the contracts, how upstream drift is detected, and the engineering order every change follows."
+>
     <!-- ============ THE ENGINEERING ORDER ============ -->
     <div class="mt-16">
       <h2 class="mb-3">The engineering order.</h2>
@@ -566,5 +561,4 @@ const onramps = [
         </p>
       </a>
     </div>
-  </section>
-</BaseLayout>
+</DocsLayout>

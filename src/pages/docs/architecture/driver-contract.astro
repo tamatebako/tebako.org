@@ -1,6 +1,5 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro'
-import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import DocsLayout from '../../../layouts/DocsLayout.astro'
 import StatusPill from '../../../components/docs/StatusPill.astro'
 
 const LINKS = {
@@ -30,11 +29,14 @@ const exitRows = [
 ---
 <!-- normative: spec 17 (normative contract), spec 18 §7, spec 06 §4 — exit rows verified against crates/tpkg/src/lib.rs:272-291, crates/tebako-bootstrap/src/lib.rs:81-106, crates/tebako-driver/src/lib.rs:55-64, crates/libtfs-preload/src/spec.rs:18 (tebako main, 2026-08-25) -->
 
-<BaseLayout title="The driver contract — Tebako architecture" description="The normative wire between the tebako loader and any runtime: --tebako-image triples, --tebako-entry, the handoff environment, mount ordering and modes, and the complete named exit-code table.">
-  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">ARCHITECTURE · 16</p>
-    <h1 class="mt-3">The driver contract.</h1>
-    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+<DocsLayout
+  section="architecture"
+  href="/docs/architecture/driver-contract/"
+  title="The driver contract"
+  heading="The driver contract."
+  description="The normative wire between the tebako loader and any runtime: --tebako-image triples, --tebako-entry, the handoff environment, mount ordering and modes, and the complete named exit-code table."
+>
+    <p slot="lede" class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
       The <strong>driver</strong> is the code inside every runtime executable that mounts the
       environment image and the payload slices, applies the jail, and rewrites argv to the
       entrypoint. This page is the wire it speaks — language-agnostic by construction:
@@ -42,8 +44,6 @@ const exitRows = [
       <a href={LINKS.spec17} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">the same contract</a>
       {' '}unchanged.
     </p>
-
-    <ArchDocsNav />
 
     <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
       <StatusPill status="shipped" />
@@ -268,5 +268,4 @@ const exitRows = [
         </p>
       </a>
     </div>
-  </section>
-</BaseLayout>
+</DocsLayout>

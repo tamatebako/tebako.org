@@ -1,6 +1,5 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro'
-import ArchDocsNav from '../../../components/docs/ArchDocsNav.astro'
+import DocsLayout from '../../../layouts/DocsLayout.astro'
 import StatusPill from '../../../components/docs/StatusPill.astro'
 
 const LINKS = {
@@ -24,19 +23,14 @@ const envRows = [
 ---
 <!-- normative: spec 24 (§1 stack order, §2 D1 needs.write/needs.decrypt, §3 D2 bindings, §4 resolution 3a-3c/5', §5 write gate + sealed read, §6 record mode, §7 exit 68, §8 post-bake swap, §9 SSOT), spec 11 §4/§7 (COW mechanics), spec 10 §7 (envelope grant manifest) -->
 
-<BaseLayout title="Declarative overlays — Tebako architecture" description="Nothing is transformed that was not declared: how a slice says 'I write here' or 'I am sealed — bind a key', how the operator binds the store or the recipient, and the one pinned stack — COW over ENC over backend.">
-  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
-    <p class="tb-eyebrow">ARCHITECTURE · 18</p>
-    <h1 class="mt-3">Declarative overlays.</h1>
-    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
-      Images are read-only forever — that is the transforms law. When a workload must write, or a
-      slice arrives sealed, the run gains a transform: a copy-on-write layer, an encryption view.
-      Each enters exclusively through a written declaration, resolved before exec, journaled at
-      run time. Nothing is transformed that was not declared.
-    </p>
-
-    <ArchDocsNav />
-
+<DocsLayout
+  section="architecture"
+  href="/docs/architecture/overlays/"
+  title="Declarative overlays"
+  heading="Declarative overlays."
+  lede="Images are read-only forever — that is the transforms law. When a workload must write, or a slice arrives sealed, the run gains a transform: a copy-on-write layer, an encryption view. Each enters exclusively through a written declaration, resolved before exec, journaled at run time. Nothing is transformed that was not declared."
+  description="Nothing is transformed that was not declared: how a slice says 'I write here' or 'I am sealed — bind a key', how the operator binds the store or the recipient, and the one pinned stack — COW over ENC over backend."
+>
     <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
       <StatusPill status="shipped" note="the gated COW composite, the TEBAKO_OVERLAYS / TEBAKO_DECRYPT env grammars, vfs-deny journaling, the needs generator's write fold, exit 68" />
       <StatusPill status="planned" note="the D1/D2 manifest model and the driver's boot-time consumption are phased (spec 24 preamble)" />
@@ -295,5 +289,4 @@ decrypt:                      # ENC key bindings — REFERENCES, never material
         </p>
       </a>
     </div>
-  </section>
-</BaseLayout>
+</DocsLayout>
