@@ -112,10 +112,8 @@ and run it; the runtime it needs is downloaded and verified the first
 time you use it, and it is then shared by every tebako package on the
 machine.
 
-The transcript below is from our acceptance run on 30 August — real
-output, not written for this post. One command compiled an actual
-international standard, OIML R 60 (published by the International
-Organization of Legal Metrology), into all four formats:
+The following command on an OIML Recommendation written in Metanorma
+outputs all four kinds of format:
 
 [source,console]
 ----
