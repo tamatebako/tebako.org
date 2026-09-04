@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "The jail and the host: declarative filesystem policy"
+title:  "Tebako v2: The jail and the host (4 of 5)"
 date:   2026-09-04 00:00:00 +0800
 categories:
   - tebako
@@ -19,10 +19,64 @@ excerpt: >-
   at install, never per run.
 ---
 
-= The jail and the host: declarative filesystem policy
+= Tebako v2: The jail and the host (4 of 5)
+
+[NOTE]
+====
+Post 4 of 5 in the series *Tebako v2*.
+
+. link:/blog/2026-09-01-tebako-v2-stable-metanorma/[Tebako v2: One download, any document]
+. link:/blog/2026-09-02-tebako-v2-anatomy-tpkg/[Tebako v2: Anatomy of a package]
+. link:/blog/2026-09-03-tebako-v2-cross-runtime-composition/[Tebako v2: Ruby calls Java calls Python]
+. *Tebako v2: The jail and the host* (this post)
+. link:/blog/2026-09-05-tebako-v2-developer-story-benchmarks/[Tebako v2: Build your own]
+====
 
 The previous posts showed what a tebako run can *reach*. This one is
 about what it may *touch* — and who gets to say.
+
+
+++++
+<figure role="img" aria-label="Diagram: a declared need is bound at run time and enforced at the TFS layer before reaching the host">
+<svg viewBox="0 0 840 300" style="width:100%;height:auto;font-family:var(--font-mono,monospace);" xmlns="http://www.w3.org/2000/svg">
+  <title>The jail and the host</title>
+  <defs>
+    <marker id="f4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-text-3,#96abb8)"/></marker>
+    <marker id="f4a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-accent,#c36242)"/></marker>
+  </defs>
+  <rect x="24" y="40" width="200" height="92" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="124" y="66" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-3,#7a8b94)">the payload declares</text>
+  <text x="124" y="86" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">needs: ~/.fontist rw</text>
+  <text x="124" y="104" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">read-only everywhere else</text>
+  <line x1="224" y1="86" x2="276" y2="86" style="stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5" marker-end="url(#f4)"/>
+  <rect x="278" y="40" width="190" height="92" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="373" y="66" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-3,#7a8b94)">the run binds it</text>
+  <text x="373" y="86" text-anchor="middle" style="font-size:10.5px;fill:var(--tb-c-text-1,#1a2b34)">config or flag,</text>
+  <text x="373" y="102" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">per invocation</text>
+  <line x1="468" y1="86" x2="520" y2="86" style="stroke:var(--tb-c-accent,#c36242);stroke-width:1.5" marker-end="url(#f4a)"/>
+  <rect x="522" y="24" width="130" height="124" rx="9" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:1.5;stroke-width:2"/>
+  <text x="587" y="62" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">the TFS layer</text>
+  <text x="587" y="80" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">every file access</text>
+  <text x="587" y="94" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">passes here —</text>
+  <text x="587" y="108" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">one choke point</text>
+  <text x="587" y="130" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-3,#7a8b94)">no daemon, no root</text>
+  <line x1="652" y1="86" x2="704" y2="86" style="stroke:var(--tb-c-accent,#c36242);stroke-width:1.5" marker-end="url(#f4a)"/>
+  <rect x="706" y="40" width="114" height="92" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="763" y="66" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-3,#7a8b94)">the host</text>
+  <text x="763" y="86" text-anchor="middle" style="font-size:10.5px;fill:var(--tb-c-text-1,#1a2b34)">granted: rw</text>
+  <text x="763" y="104" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">everything</text>
+  <text x="763" y="118" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">else: ro</text>
+  <line x1="124" y1="132" x2="124" y2="178" style="stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5" stroke-dasharray="5 4" marker-end="url(#f4)"/>
+  <rect x="24" y="180" width="200" height="56" rx="9" style="fill:none;stroke:var(--color-gold,#f8b883);stroke-width:1.5" stroke-dasharray="5 4"/>
+  <text x="124" y="202" text-anchor="middle" style="font-size:11px;fill:var(--color-gold,#f8b883)">record mode</text>
+  <text x="124" y="218" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">runs it once, writes the grants</text>
+  <text x="124" y="231" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">for you to review</text>
+  <text x="420" y="280" text-anchor="middle" style="font-size:10.5px;fill:var(--tb-c-text-3,#7a8b94)">policy is declared in the manifest, bound at run time, enforced at one choke point</text>
+</svg>
+</figure>
+++++
+
+_Figure 1 — A payload declares what it needs; the run binds it; the TFS layer is the single place it is enforced — record mode can draft the grants for you._
 
 == Read-only by default
 
@@ -170,7 +224,7 @@ The declaration is platform-neutral; the enforcement mechanism is not:
 * **macOS / Linux:** the preload shim interposes the file syscalls of
   the process and its spawned children; host paths the policy grants
   pass through, everything else is denied in place.
-* **Windows:** no interposition API exists, so enforcement rides the
+* **Windows:** no interposition API exists, so enforcement is carried by the
   host tier — materialization into the exec cache and argv rewriting at
   the spawn seam, with the same policy computed from the same
   declarations.

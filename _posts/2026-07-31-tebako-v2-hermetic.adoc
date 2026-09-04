@@ -13,136 +13,185 @@ author:
   social_links:
     - https://github.com/tamatebako
 excerpt: >-
-  Tebako v2 is here: a fully hermetic, Rust-based portable-runtime
-  platform. Proof: a complete standards-document PDF — figures, fonts,
-  Java-based conversion and all — built with an EMPTY PATH, entirely
-  from mounted disk images. No host Java, no host Inkscape, no host
-  anything.
+  Tebako v2 is here. To show what "run anywhere" means in practice, we
+  built a complete standards-document PDF — figures, fonts, Java and
+  all — with an empty PATH, entirely from mounted disk images. No host
+  Java, no host Inkscape, no host anything.
 ---
 
 = Tebako v2 — the hermetic portable-runtime platform
 
-Tebako v2 is here, and it comes with a proof rather than a promise.
+Tebako v2 is here. Rather than tell you what it does, we would like to
+show you.
 
-== The proof: a real document, an empty PATH
+== The demonstration: a real document, an empty PATH
 
-This week we ran the harshest end-to-end test we could devise. One
-command, on an ordinary macOS machine, with *every* host tool made
-unreachable:
+We ran a complete document build with every host tool made
+unreachable, on an ordinary macOS machine:
 
 [source,console]
 ----
 $ PATH= metanorma compile site.adoc
 ----
 
-`PATH=` is not a typo. The environment carried no `java`, no
-`inkscape`, no system toolchain at all. Out came a valid PDF 1.7 — a
-real ISO-standard document, complete with a rasterized figure, embedded
-fonts, and the full XSL-FO conversion pipeline — byte-for-byte the same
-size as the host-built original.
+The `PATH=` is not a typo. The environment had no `java`, no
+`inkscape`, and no system toolchain at all. Out came a valid PDF 1.7 —
+a real ISO-standard document with a rasterized figure, embedded fonts,
+and the full XSL-FO conversion pipeline, byte-for-byte the same size as
+the version built on a fully equipped machine.
 
-Everything that produced that document came out of three disk images
+Everything that produced that document came from three disk images
 mounted inside the process, plus one downloaded runtime:
 
 * the *metanorma payload* — the complete Metanorma 1.16.9 application
   with 260 gems, as a single `.tfs` image;
 * the *inkscape payload* — Inkscape 1.4.3, mounted at `/opt/inkscape`,
-  rasterizing the figure;
+  which rasterized the figure;
 * the *openjdk payload* — a Temurin 21 JRE, mounted at `/opt/openjdk`,
-  running jing validation and mn2pdf;
-* the *ruby runtime* — a patched Ruby 3.3.7, two artifacts (an
+  which ran validation and the PDF conversion;
+* the *ruby runtime* — a patched Ruby 3.3.7 in two parts (an
   interpreter executable and its environment image), downloaded once
   and shared by every tebako package on the machine.
 
-No Homebrew. No `apt`. No "works on my machine." A user who has never
-heard of Java or Inkscape gets the same bytes.
+Nothing was installed with Homebrew or `apt`, and nothing depended on
+what the machine happened to have. A user who has never heard of Java
+or Inkscape gets the same result as a user who has both.
+
+
+++++
+<figure role="img" aria-label="Diagram of the empty PATH document build: one process, three mounted images, no host tools">
+<svg viewBox="0 0 840 330" style="width:100%;height:auto;font-family:var(--font-mono,monospace);" xmlns="http://www.w3.org/2000/svg">
+  <title>One process, mounted images, an empty PATH</title>
+  <defs>
+    <marker id="t2a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-text-3,#96abb8)"/>
+    </marker>
+    <marker id="t2b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-accent,#c36242)"/>
+    </marker>
+  </defs>
+  <rect x="10" y="20" width="600" height="292" rx="12" style="fill:var(--tb-c-bg-soft,#fdf9e8);stroke:var(--tb-c-divider,#ddd);stroke-width:1"/>
+  <text x="30" y="46" style="font-size:12px;fill:var(--tb-c-text-3,#7a8b94)">one process on your machine</text>
+  <rect x="30" y="60" width="250" height="52" rx="8" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:1.8"/>
+  <text x="155" y="82" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">ruby runtime</text>
+  <text x="155" y="98" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">interpreter exe + mounted env image</text>
+  <rect x="30" y="150" width="180" height="58" rx="8" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5"/>
+  <text x="120" y="172" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">metanorma payload</text>
+  <text x="120" y="188" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">260 gems, one .tfs image</text>
+  <rect x="230" y="150" width="180" height="58" rx="8" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5"/>
+  <text x="320" y="172" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">inkscape payload</text>
+  <text x="320" y="188" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">mounted at /opt/inkscape</text>
+  <rect x="430" y="150" width="160" height="58" rx="8" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5"/>
+  <text x="510" y="172" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">openjdk payload</text>
+  <text x="510" y="188" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">JRE, mounted at /opt/openjdk</text>
+  <line x1="120" y1="150" x2="140" y2="118" style="stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5" marker-end="url(#t2a)"/>
+  <line x1="320" y1="150" x2="170" y2="114" style="stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5" marker-end="url(#t2a)"/>
+  <line x1="510" y1="150" x2="185" y2="110" style="stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5" marker-end="url(#t2a)"/>
+  <text x="310" y="234" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-3,#7a8b94)">everything above is mounted in memory — nothing is extracted to disk</text>
+  <line x1="310" y1="246" x2="310" y2="266" style="stroke:var(--tb-c-accent,#c36242);stroke-width:2" marker-end="url(#t2b)"/>
+  <rect x="230" y="268" width="160" height="34" rx="8" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:1.8"/>
+  <text x="310" y="289" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">PDF 1.7 output</text>
+  <rect x="640" y="20" width="190" height="130" rx="12" style="fill:none;stroke:var(--tb-c-divider,#ddd);stroke-width:1;stroke-dasharray:5 4"/>
+  <text x="735" y="44" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-3,#7a8b94)">the host</text>
+  <text x="735" y="72" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-3,#7a8b94)">PATH= (empty)</text>
+  <text x="735" y="96" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-3,#7a8b94);text-decoration:line-through">host java</text>
+  <text x="735" y="116" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-3,#7a8b94);text-decoration:line-through">host inkscape</text>
+  <text x="735" y="136" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-3,#7a8b94);text-decoration:line-through">system toolchain</text>
+  <text x="735" y="180" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-2,#4a5b66)">none of it is used —</text>
+  <text x="735" y="196" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-2,#4a5b66)">so none of it can break</text>
+  <text x="735" y="212" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-2,#4a5b66)">the build</text>
+</svg>
+</figure>
+++++
+
+_Figure 1 — The empty-PATH build: one process, three mounted payload images, one shared runtime, and a host that contributed nothing._
 
 == What Tebako v2 is
 
 Tebako is a *portable-application platform*: package an application
-once, run it anywhere — as a single transparent executable your users
-never think about, or as a managed, versioned payload with shared
-runtimes.
+once, and run it anywhere — as a single executable your users never
+think about, or as a managed, versioned payload with shared runtimes.
 
 A tebako package is a composition of independently distributable parts:
 
-. **The bootstrap** — a small Rust loader (under 3 MB, size-gated in
-  CI). It reads the package trailer, resolves the runtime, verifies it,
-  and hands off.
-. **The runtime** — two artifacts: the interpreter executable and its
+. **The bootstrap** — a small Rust loader (under 3 MB, kept that size
+  by CI). It reads the package trailer, resolves the runtime, verifies
+  it, and hands off.
+. **The runtime** — two parts: the interpreter executable and its
   environment image (`lib/ruby`, gems, everything the load paths
-  expect). Downloaded once per machine into `~/.tebako`, SHA-256
-  verified, *mounted — never extracted*.
+  expect). Downloaded once per machine into `~/.tebako`, verified
+  against a published SHA-256, and *mounted — never extracted*.
 . **Payload slices** — bare `.tfs` images: your app, your data, your
-  native tools. Self-describing via an in-image manifest
+  native tools. Each describes itself with a manifest inside the image
   (`/__tpkg__/manifest.yaml`).
 
-Slices *co-mount* in one process. An application declares what it needs
-— a runtime, a toolkit like Inkscape or a JRE, a data slice — and the
-dispatcher mounts each at its declared path. One payload can require
-another at a mount point; the dependency is declarative, versioned, and
-platform-aware.
+The slices *co-mount* in one process. An application declares what it
+needs — a runtime, a toolkit like Inkscape or a JRE, a data slice —
+and the dispatcher mounts each at its declared path. One payload can
+require another at a mount point; the dependency is written down,
+versioned, and platform-aware.
 
-Two ways to consume the same packages:
+There are two ways to use the same packages:
 
 * **Standalone**: the bootstrap and the slices stitched into one
   executable (fat) or referenced from it (lean). Your users download a
   file and run it. The runtime downloads on first run, then it is
   shared.
-* **Managed**: `tebako install` from a registry, shims on `PATH`, a
-  machine-wide store with content-addressed, trust-anchored artifacts.
-  This is the flow that produced the empty-PATH PDF.
+* **Managed**: `tebako install` from a registry, shims on `PATH`, and
+  a machine-wide store with content-addressed, verified artifacts.
+  This is the flow behind the empty-PATH document above.
 
-== What had to be invented to get here
+== How it works under the hood
 
-Running *binaries that live inside disk images* — a JVM included — took
-a chain of new machinery, all of it in Rust:
+Running *binaries that live inside disk images* — a JVM included —
+needed some new machinery, all of it in Rust:
 
 * **The spawn hook.** Every patched Ruby runtime mediates process
-  spawning: an exec target held by the mounts is materialized to a host
-  cache and executed there, with the preload shim and the current
-  mounts injected into the child's environment.
-* **Dependency-closure extraction.** The platform loader (dyld, ld.so)
-  probes for shared libraries with raw syscalls that no userland hook
-  can serve. So `dlmap2file` now parses the Mach-O/ELF dependency
-  closure of anything it materializes — rpaths, `@executable_path`,
-  `$ORIGIN` — and extracts every in-image library ahead of exec. The
-  JVM's hundred-odd dylibs land in place before it starts.
-* **The preload shim.** Spawned children re-enter the namespace through
-  `DYLD_INSERT_LIBRARIES`/`LD_PRELOAD` plus the mount table — including
-  an `fopen` interposition (the JVM's config reads bypass libc `open`
-  entirely) and an ABI trampoline for Darwin's stack-passed variadic
-  arguments.
-* **Zero-runtime payloads.** Native tools — `hello`, Inkscape, a JRE —
-  need no interpreter. `tebako install` materializes their executables
-  into the store; the shim executes them directly. A whole class of
-  software is now a first-class tebako citizen.
+  spawning: when a program tries to run something that lives in the
+  mounts, tebako copies it to a host cache and runs it there, passing
+  the mounts along to the child.
+* **Dependency-closure extraction.** The system loader (dyld, ld.so)
+  looks for shared libraries with raw syscalls that user-space hooks
+  cannot serve. So `dlmap2file` now reads the Mach-O/ELF dependency
+  closure of anything it materializes — rpaths,
+  `@executable_path`, `$ORIGIN` — and copies every in-image library
+  into place before the exec. The JVM's many dylibs are all in place
+  before it starts.
+* **The preload shim.** Spawned children see the same mount table via
+  `DYLD_INSERT_LIBRARIES`/`LD_PRELOAD` — including an `fopen`
+  interposition (the JVM reads some configuration files without going
+  through libc `open`) and an ABI trampoline for Darwin's stack-passed
+  variadic arguments.
+* **Native tools work directly.** Tools like Inkscape or a JRE need no
+  interpreter. `tebako install` places their executables in the store
+  and the shim runs them as-is — native tools are now ordinary tebako
+  packages, not a special case.
 
 == Seven platforms, one payload model
 
-Everything above publishes per platform, and the matrix is honest
-about its floors:
+Everything above is published per platform, and the table lists the
+oldest system each build runs on — no fine print:
 
 [cols="1,2",options="header"]
 |===
 | Platform | Notes
 
 | `aarch64-macos`, `x86_64-macos`
-| Deployment target pinned at macOS 11.0
+| Runs on macOS 11.0 and newer
 
 | `x86_64-linux-gnu`, `aarch64-linux-gnu`
 | Built on Ubuntu 20.04 (glibc 2.31); runs there and newer
 
 | `x86_64-linux-musl`, `aarch64-linux-musl`
-| Fully static — the universal Linux artifacts, no floor
+| Fully static — the universal Linux artifacts, no minimum
 
 | `x86_64-windows-ucrt`
 | Windows 10 / Server 2016 and newer, runtimes statically linked
 |===
 
-An `aarch64-windows-ucrt` leg is reserved but not yet built. Pure-language
-payloads ship once as `universal` and run on all seven; only payloads
-with native code multiply across the matrix.
+An `aarch64-windows-ucrt` build is planned but not built yet.
+Pure-language payloads ship once as `universal` and run on all seven
+platforms; only payloads with native code are built per platform.
 
 == Using it
 
@@ -161,16 +210,16 @@ metanorma compile site.adoc
 
 [source,console]
 ----
-# native toolkits are zero-runtime citizens
+# native toolkits work the same way
 tebako add-registry tfs:github:tebako-packages/hello
 tebako install hello
 hello            # Hello, world!
 ----
 
 Runtimes download once per machine, are verified against their
-published SHA-256, and are shared by every package. Payloads are
-byte-identical with what the publisher released. A run never installs
-anything; `tebako install` is the explicit verb.
+published SHA-256, and are shared by every package. Payloads stay
+byte-identical with what the publisher released. Running a package
+never installs anything; `tebako install` is the explicit verb.
 
 == Migrating from Tebako v1
 
@@ -179,25 +228,24 @@ https://github.com/tamatebako/tebako-v1[tebako-v1] and will not receive
 new development. What changes for you:
 
 * **The gem is replaced by the Rust CLI.** `tebako press` stays
-  `tebako press` — now a prebuilt binary, no CMake, no compilers on
-  your machine; trailer-level surgery lives in `tebako-pkg`, and image
-  work in `tfs`.
+  `tebako press` — now a prebuilt binary, with no CMake and no
+  compilers on your machine. Trailer-level operations live in
+  `tebako-pkg`, and image work in `tfs`.
 * **Images are v2-only.** v1 embedded images do not load in v2; press
   fresh payloads with the new tooling. The `.tfs` format is the
   dwarfs-t image (FlatBuffers metadata — upstream DwarFS cannot read
   it).
-* **The runtime model changed.** v1 merged environment+application into
-  one image. v2 separates them: a shared runtime (executable + env
-  image) and bare payload slices. Leaner, cacheable, composable.
+* **The runtime model changed.** v1 merged the environment and the
+  application into one image. v2 separates them: a shared runtime
+  (executable + environment image) and bare payload slices. The result
+  is leaner, cacheable, and composable.
 * **Patches live per Ruby version** in
   https://github.com/tamatebako/ruby[tamatebako/ruby], applied and
   released as patched-source tarballs; the runtime factory builds
   runtimes from them. Your `RUBY VERSION` pin maps to a runtime
   constraint like `~> 3.3.0` in the payload manifest.
 
-== Tags
-
-The v2 line tags alongside this announcement:
+== Released alongside this announcement
 
 * `tamatebako/tebako` — the Rust product (bootstrap, shim, driver,
   tfs, tpkg, CLI): *v2.0.0*
@@ -207,11 +255,16 @@ The v2 line tags alongside this announcement:
 * `tebako-runtime` — the in-runtime adapter gem: *0.8.0* on RubyGems
 
 More runtimes (Python next), more payload feedstocks, and the Windows
-legs come next, in that order.
+builds come next, in that order.
 
-== The point
+== What this means
 
-"Package once, run anywhere" has been promised before — usually by
-tools that quietly require a machine that looks like the build machine.
-The empty-PATH compile is our answer: nothing on the host mattered, so
-nothing on the host can break it.
+"Package once, run anywhere" is easy to say. Our empty-PATH build is
+how we hold ourselves to it: nothing on the host was used, so nothing
+on the host can break it. That is the standard we intend to keep — and
+the one we hope you will hold us to.
+
+Questions? We are always happy to hear from you in the
+https://github.com/tamatebako/tebako/issues[issue tracker].
+
+**__Press on__** _with Tebako_!

@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Build your own: feedstocks, presses, and the benchmark table"
+title:  "Tebako v2: Build your own (5 of 5)"
 date:   2026-09-05 00:00:00 +0800
 categories:
   - tebako
@@ -19,11 +19,68 @@ excerpt: >-
   keeps the v2 line honest against the v1 executables it replaces.
 ---
 
-= Build your own: feedstocks, presses, and the benchmark table
+= Tebako v2: Build your own (5 of 5)
+
+[NOTE]
+====
+Post 5 of 5 in the series *Tebako v2*.
+
+. link:/blog/2026-09-01-tebako-v2-stable-metanorma/[Tebako v2: One download, any document]
+. link:/blog/2026-09-02-tebako-v2-anatomy-tpkg/[Tebako v2: Anatomy of a package]
+. link:/blog/2026-09-03-tebako-v2-cross-runtime-composition/[Tebako v2: Ruby calls Java calls Python]
+. link:/blog/2026-09-04-tebako-v2-jail-host-routing/[Tebako v2: The jail and the host]
+. *Tebako v2: Build your own* (this post)
+====
 
 The first four posts described what users get. This one is for the
 people who *build* packages — the pipeline behind "one download," and
 the numbers that keep it honest.
+
+
+++++
+<figure role="img" aria-label="Diagram: the developer pipeline from feedstock to a shim on the user PATH">
+<svg viewBox="0 0 840 260" style="width:100%;height:auto;font-family:var(--font-mono,monospace);" xmlns="http://www.w3.org/2000/svg">
+  <title>Build your own</title>
+  <defs>
+    <marker id="f5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-text-3,#96abb8)"/></marker>
+    <marker id="f5a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-accent,#c36242)"/></marker>
+  </defs>
+  <rect x="24" y="60" width="130" height="66" rx="9" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5"/>
+  <text x="89" y="84" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">feedstock</text>
+  <text x="89" y="101" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-2,#4a5b66)">recipe + CI</text>
+  <line x1="154" y1="93" x2="194" y2="93" style="stroke:var(--tb-c-accent,#c36242);stroke-width:1.5" marker-end="url(#f5a)"/>
+  <rect x="196" y="60" width="130" height="66" rx="9" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5"/>
+  <text x="261" y="84" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">release</text>
+  <text x="261" y="101" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-2,#4a5b66)">artifacts +</text>
+  <line x1="326" y1="93" x2="366" y2="93" style="stroke:var(--tb-c-accent,#c36242);stroke-width:1.5" marker-end="url(#f5a)"/>
+  <rect x="368" y="60" width="130" height="66" rx="9" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5"/>
+  <text x="433" y="84" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">registry</text>
+  <text x="433" y="101" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-2,#4a5b66)">one YAML file,</text>
+  <line x1="498" y1="93" x2="538" y2="93" style="stroke:var(--tb-c-accent,#c36242);stroke-width:1.5" marker-end="url(#f5a)"/>
+  <rect x="540" y="60" width="130" height="66" rx="9" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:1.5;stroke-width:2"/>
+  <text x="605" y="84" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">press</text>
+  <text x="605" y="101" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-2,#4a5b66)">one executable</text>
+  <line x1="670" y1="93" x2="710" y2="93" style="stroke:var(--tb-c-accent,#c36242);stroke-width:1.5" marker-end="url(#f5a)"/>
+  <rect x="712" y="60" width="130" height="66" rx="9" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5"/>
+  <text x="777" y="84" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">shim</text>
+  <text x="777" y="101" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-2,#4a5b66)">a command on</text>
+  <text x="261" y="117" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-2,#4a5b66)">SHA256SUMS</text>
+  <text x="433" y="117" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-2,#4a5b66)">your own repo</text>
+  <text x="605" y="117" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-2,#4a5b66)">per platform</text>
+  <text x="777" y="117" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-2,#4a5b66)">the user PATH</text>
+  <rect x="24" y="170" width="340" height="60" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5" stroke-dasharray="5 4"/>
+  <text x="194" y="192" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-3,#7a8b94)">every hop is gated</text>
+  <text x="194" y="208" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">payload checks: the release proves it works</text>
+  <text x="194" y="221" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">before anything downstream sees it</text>
+  <rect x="420" y="170" width="400" height="60" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5" stroke-dasharray="5 4"/>
+  <text x="620" y="192" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-3,#7a8b94)">no central server anywhere</text>
+  <text x="620" y="208" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">your releases are the store;</text>
+  <text x="620" y="221" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">the registry only mirrors resolution fields</text>
+</svg>
+</figure>
+++++
+
+_Figure 1 — The pipeline: a feedstock builds and releases payloads, a registry points at them, press stitches the executable, and the shim puts it on PATH._
 
 == The pipeline: feedstock → release → registry → press → shim
 
@@ -179,8 +236,8 @@ manifest, composition, jail, lock.
 
 That is the v2 architecture, and it is stable now. The series:
 
-. link:/blog/2026-09-01-tebako-v2-stable-metanorma/[*Tebako v2 stable: one download, any document*] — the announcement.
-. link:/blog/2026-09-02-tebako-v2-anatomy-tpkg/[*Anatomy of a tebako package*] — the three-part model and the store.
+. link:/blog/2026-09-01-tebako-v2-stable-metanorma/[*Tebako v2: One download, any document*] — the announcement.
+. link:/blog/2026-09-02-tebako-v2-anatomy-tpkg/[*Tebako v2: Anatomy of a package*] — the three-part model and the store.
 . link:/blog/2026-09-03-tebako-v2-cross-runtime-composition/[*Ruby calls Java calls Python*] — composition in practice.
 . link:/blog/2026-09-04-tebako-v2-jail-host-routing/[*The jail and the host*] — declarative filesystem policy.
 . *Build your own* — this post.

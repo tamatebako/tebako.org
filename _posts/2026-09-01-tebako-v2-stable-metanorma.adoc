@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Tebako v2 stable: one download, any document"
+title:  "Tebako v2: One download, any document (1 of 5)"
 date:   2026-09-01 00:00:00 +0800
 categories:
   - tebako
@@ -18,7 +18,18 @@ excerpt: >-
   itself. This is post 1 of 5: the announcement.
 ---
 
-= Tebako v2 stable: one download, any document
+= Tebako v2: One download, any document (1 of 5)
+
+[NOTE]
+====
+Post 1 of 5 in the series *Tebako v2*.
+
+. *Tebako v2: One download, any document* (this post)
+. link:/blog/2026-09-02-tebako-v2-anatomy-tpkg/[Tebako v2: Anatomy of a package]
+. link:/blog/2026-09-03-tebako-v2-cross-runtime-composition/[Tebako v2: Ruby calls Java calls Python]
+. link:/blog/2026-09-04-tebako-v2-jail-host-routing/[Tebako v2: The jail and the host]
+. link:/blog/2026-09-05-tebako-v2-developer-story-benchmarks/[Tebako v2: Build your own]
+====
 
 Tebako v2 is stable, and it is running the hardest workload we could
 find in production shape: the complete Metanorma standards-authoring
@@ -27,6 +38,46 @@ installed.
 
 This is the first post in a five-part series on how Metanorma runs on
 the v2 architecture — and how your application can.
+
+
+++++
+<figure role="img" aria-label="Diagram: one download containing four technologies produces any document format">
+<svg viewBox="0 0 840 320" style="width:100%;height:auto;font-family:var(--font-mono,monospace);" xmlns="http://www.w3.org/2000/svg">
+  <title>One download, any document</title>
+  <defs>
+    <marker id="f1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-text-3,#96abb8)"/></marker>
+    <marker id="f1a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-accent,#c36242)"/></marker>
+  </defs>
+  <rect x="20" y="30" width="210" height="84" rx="9" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:1.5;stroke-width:2"/>
+  <text x="125" y="58" text-anchor="middle" style="font-size:13px;fill:var(--tb-c-text-1,#1a2b34)">one download</text>
+  <text x="125" y="76" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-2,#4a5b66)">the metanorma package</text>
+  <text x="125" y="92" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-3,#7a8b94)">one file, all platforms or universal</text>
+  <line x1="230" y1="72" x2="292" y2="72" style="stroke:var(--tb-c-accent,#c36242);stroke-width:1.5" marker-end="url(#f1a)"/>
+  <rect x="294" y="20" width="330" height="250" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="459" y="42" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-3,#7a8b94)">one process on a clean machine</text>
+  <rect x="314" y="58" width="290" height="42" rx="9" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:1.5"/>
+  <text x="459" y="76" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-1,#1a2b34)">Ruby 3.3</text>
+  <text x="459" y="91" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-3,#7a8b94)">the runtime: exe + mounted env image</text>
+  <rect x="314" y="110" width="290" height="42" rx="9" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:1.5"/>
+  <text x="459" y="128" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-1,#1a2b34)">Java (JVM)</text>
+  <text x="459" y="143" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-3,#7a8b94)">a spawned runtime, spec 30</text>
+  <rect x="314" y="162" width="290" height="42" rx="9" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5"/>
+  <text x="459" y="180" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-1,#1a2b34)">Inkscape</text>
+  <text x="459" y="195" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-3,#7a8b94)">a mounted payload at /opt/inkscape</text>
+  <rect x="314" y="214" width="290" height="42" rx="9" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5" stroke-dasharray="5 4"/>
+  <text x="459" y="232" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-1,#1a2b34)">Python</text>
+  <text x="459" y="247" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-3,#7a8b94)">a host tool, used by declared need</text>
+  <line x1="624" y1="72" x2="686" y2="72" style="stroke:var(--tb-c-accent,#c36242);stroke-width:1.5" marker-end="url(#f1a)"/>
+  <rect x="688" y="30" width="136" height="84" rx="9" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:1.5;stroke-width:2"/>
+  <text x="756" y="56" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">any document</text>
+  <text x="756" y="74" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">XML · HTML · DOC · PDF</text>
+  <text x="756" y="90" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-3,#7a8b94)">a real ISO standard</text>
+  <text x="420" y="300" text-anchor="middle" style="font-size:10.5px;fill:var(--tb-c-text-3,#7a8b94)">nothing else installed on the machine — no Ruby, no Java, no Inkscape, no toolchain</text>
+</svg>
+</figure>
+++++
+
+_Figure 1 — One download carries everything: the runtime it needs, the JVM it spawns, Inkscape it mounts, and a declared host tool._
 
 == The 90-second demo
 
@@ -106,7 +157,7 @@ Java or Inkscape gets the same document.
 
 // source: docs/spec/00-INDEX.md (the spec set is 00-30); docs/spec/06
 // (contract_version negotiation, fail-closed, exit 75); docs/spec/02
-// (tpkg trailer: format version 1 forever, extensions ride flags).
+// (tpkg trailer: format version 1 forever, extensions live in flags).
 "Stable" is a specific claim here, not a vibe:
 
 * **The contract set is written down.** Thirty normative specs
@@ -114,7 +165,7 @@ Java or Inkscape gets the same document.
   jail grammar, and the error vocabulary. Contract changes land in the
   specs first, then in code.
 * **The wire formats are frozen by policy.** The tpkg trailer is format
-  version 1 forever — extensions ride flag bits, never version bumps.
+  version 1 forever — extensions live in flag bits, never version bumps.
   The launcher ABI is version 1. Runtime↔loader semantics negotiate
   `contract_version` fail-closed: a loader that cannot honor a
   runtime's contract exits with a named error, never a guess.
@@ -157,14 +208,14 @@ your users consume as byte-identical, verified artifacts.
 
 == The series
 
-. *Tebako v2 stable: one download, any document* — this post.
-. link:/blog/2026-09-02-tebako-v2-anatomy-tpkg/[*Anatomy of a tebako package*] — the three-part model: bootstrap,
+. *Tebako v2: One download, any document* — this post.
+. link:/blog/2026-09-02-tebako-v2-anatomy-tpkg/[*Tebako v2: Anatomy of a package*] — the three-part model: bootstrap,
   runtime, payload slices, and the store.
-. link:/blog/2026-09-03-tebako-v2-cross-runtime-composition/[*Ruby calls Java calls Python: composition in practice*] — the spawned
+. link:/blog/2026-09-03-tebako-v2-cross-runtime-composition/[*Tebako v2: Ruby calls Java calls Python*] — the spawned
   runtime edge, co-mounted payloads, and the host-tool route.
-. link:/blog/2026-09-04-tebako-v2-jail-host-routing/[*The jail and the host: declarative filesystem policy*] — read-only by
+. link:/blog/2026-09-04-tebako-v2-jail-host-routing/[*Tebako v2: The jail and the host*] — read-only by
   default, declared needs, record mode, and the trust model.
-. link:/blog/2026-09-05-tebako-v2-developer-story-benchmarks/[*Build your own: feedstocks, presses, and the benchmark table*] — the
+. link:/blog/2026-09-05-tebako-v2-developer-story-benchmarks/[*Tebako v2: Build your own*] — the
   developer pipeline, and the numbers.
 
 == Migrating from v1

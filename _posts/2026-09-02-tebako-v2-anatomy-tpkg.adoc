@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Anatomy of a tebako package"
+title:  "Tebako v2: Anatomy of a package (2 of 5)"
 date:   2026-09-02 00:00:00 +0800
 categories:
   - tebako
@@ -17,11 +17,74 @@ excerpt: >-
   land on a user's machine, and why nothing ever compiles there.
 ---
 
-= Anatomy of a tebako package
+= Tebako v2: Anatomy of a package (2 of 5)
+
+[NOTE]
+====
+Post 2 of 5 in the series *Tebako v2*.
+
+. link:/blog/2026-09-01-tebako-v2-stable-metanorma/[Tebako v2: One download, any document]
+. *Tebako v2: Anatomy of a package* (this post)
+. link:/blog/2026-09-03-tebako-v2-cross-runtime-composition/[Tebako v2: Ruby calls Java calls Python]
+. link:/blog/2026-09-04-tebako-v2-jail-host-routing/[Tebako v2: The jail and the host]
+. link:/blog/2026-09-05-tebako-v2-developer-story-benchmarks/[Tebako v2: Build your own]
+====
 
 Post 1 showed a Metanorma compile running end-to-end on a bare machine.
 This post opens the package: what the parts are, how they are glued
 together, and what actually lands on disk.
+
+
+++++
+<figure role="img" aria-label="Diagram: the parts of a package file and how they mount at run time">
+<svg viewBox="0 0 840 290" style="width:100%;height:auto;font-family:var(--font-mono,monospace);" xmlns="http://www.w3.org/2000/svg">
+  <title>Anatomy of a package</title>
+  <defs>
+    <marker id="f2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-text-3,#96abb8)"/></marker>
+    <marker id="f2a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-accent,#c36242)"/></marker>
+  </defs>
+  <rect x="20" y="26" width="800" height="74" rx="9" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:1.5;stroke-width:2"/>
+  <text x="420" y="46" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">the package — one file</text>
+  <rect x="40" y="56" width="140" height="34" rx="6" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.2"/>
+  <text x="110.0" y="71" text-anchor="middle" style="font-size:10.5px;fill:var(--tb-c-text-1,#1a2b34)">bootstrap</text>
+  <text x="110.0" y="84" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-3,#7a8b94)">under 3 MB, Rust</text>
+  <rect x="180" y="56" width="220" height="34" rx="6" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.2"/>
+  <text x="290.0" y="71" text-anchor="middle" style="font-size:10.5px;fill:var(--tb-c-text-1,#1a2b34)">slot 1</text>
+  <text x="290.0" y="84" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-3,#7a8b94)">metanorma .tfs</text>
+  <rect x="400" y="56" width="200" height="34" rx="6" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.2"/>
+  <text x="500.0" y="71" text-anchor="middle" style="font-size:10.5px;fill:var(--tb-c-text-1,#1a2b34)">slot 2</text>
+  <text x="500.0" y="84" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-3,#7a8b94)">inkscape .tfs</text>
+  <rect x="600" y="56" width="200" height="34" rx="6" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.2"/>
+  <text x="700.0" y="71" text-anchor="middle" style="font-size:10.5px;fill:var(--tb-c-text-1,#1a2b34)">trailer</text>
+  <text x="700.0" y="84" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-3,#7a8b94)">runtime ref + mounts</text>
+  <text x="420" y="132" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-3,#7a8b94)">at run time</text>
+  <rect x="40" y="148" width="200" height="56" rx="9" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:1.5"/>
+  <text x="140" y="170" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-1,#1a2b34)">the runtime</text>
+  <text x="140" y="186" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">interpreter exe + env image,</text>
+  <text x="140" y="198" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">shared from ~/.tebako</text>
+  <rect x="40" y="224" width="200" height="44" rx="9" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5"/>
+  <text x="140" y="243" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-1,#1a2b34)">the slices</text>
+  <text x="140" y="258" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">mounted in memory,</text>
+  <text x="140" y="269" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">never extracted</text>
+  <line x1="240" y1="176" x2="300" y2="176" style="stroke:var(--tb-c-accent,#c36242);stroke-width:1.5" marker-end="url(#f2a)"/>
+  <line x1="240" y1="246" x2="300" y2="200" style="stroke:var(--tb-c-accent,#c36242);stroke-width:1.5" marker-end="url(#f2a)"/>
+  <rect x="302" y="148" width="240" height="120" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="422" y="186" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">one process</text>
+  <text x="422" y="206" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">the bootstrap read the trailer,</text>
+  <text x="422" y="220" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">resolved the runtime, verified it,</text>
+  <text x="422" y="234" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">and mounted each slice</text>
+  <text x="422" y="252" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">at its declared path</text>
+  <line x1="542" y1="208" x2="604" y2="208" style="stroke:var(--tb-c-accent,#c36242);stroke-width:1.5" marker-end="url(#f2a)"/>
+  <rect x="606" y="148" width="214" height="120" rx="9" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:1.5;stroke-width:2"/>
+  <text x="713" y="186" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">your program runs</text>
+  <text x="713" y="206" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">the same bytes on every machine —</text>
+  <text x="713" y="220" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">the store never re-stitches</text>
+  <text x="713" y="238" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">or patches a payload</text>
+</svg>
+</figure>
+++++
+
+_Figure 1 — The file: a small bootstrap, numbered payload slots, and a trailer that names the runtime and the mounts. At run time the parts co-mount in one process._
 
 == The three parts
 
@@ -47,7 +110,7 @@ The parts are glued by the *tpkg trailer*: a 166-byte header at the end
 of the package file, plus a 280-byte record per slice slot. Slot records
 carry `offset`, `size`, `format_id`, and the mount point; the header
 carries the runtime reference, the launcher ABI version, and the package
-flags. The trailer format is version 1 forever — extensions ride flag
+flags. The trailer format is version 1 forever — extensions live in flag
 bits, never version bumps.
 
 == Carried or shared: the composition spectrum
@@ -56,7 +119,7 @@ bits, never version bumps.
 // 2026-08-25, tebako#460): the locked words are "carried"/"shared" per
 // slice and "self-contained"/"shared-runtime" per package preset;
 // fat/lean remain as deprecated aliases with a named warning.
-Every resolved slice is either *carried* (its bytes ride inside the
+Every resolved slice is either *carried* (its bytes are carried inside the
 package as a trailer slot) or *shared* (resolved at first run into the
 machine cache, verified against the press-time locked digest). Two
 presets cover the ends of the dial:
