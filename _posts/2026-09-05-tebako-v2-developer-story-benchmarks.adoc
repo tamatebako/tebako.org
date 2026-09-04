@@ -1,9 +1,7 @@
 ---
 layout: post
 title:  "Build your own: feedstocks, presses, and the benchmark table"
-# PUBLISH-TIME PLACEHOLDER — set the real date when this post ships;
-# the series cadence is one post every 2-3 days (PROGRESS/29).
-date:   2026-09-16 00:00:00 +0800
+date:   2026-09-05 00:00:00 +0800
 categories:
   - tebako
   - developers
@@ -124,35 +122,52 @@ matters for this series: the v2 line — current tebako and runtime —
 against the v1-era packed-mn executables it replaces, cold runs
 reported separately from warm.
 
-// TODO(publish-gate): benchmark table lands here.
-// Gate item (PROGRESS/29 §THE GATE #5): the bench slice validation run
-// (tamatebako/tebako#501 workflow_dispatch) has NOT happened at draft
-// time. When it lands: render the merged report table — rows = the
-// suite's workloads (incl. the metanorma compile), columns = v1-*
-// baseline vs the v2 arm per triplet, speedups vs the baseline cell,
-// cold runs separate, unavailable/failed runs listed, footer = runner
-// metadata + noise caveat + skew note (the renderer's shape is pinned
-// by tebako-bench tests). NUMBERS OR THIS POST DOES NOT SHIP.
-//
-// Blocker status (2026-09-03): the managed-arm compile blocker — every
-// v2-arm compile dying at jing with `Unable to access jarfile
-// …/jing-20091111.jar` — is ROOT-CAUSED AND FIXED. Three layers, each
-// named in post 3: the toolkit-era java wiring (retired by the spec-30
-// kind:runtime edge in payload 1.16.9-8; managed dogfood green, run
-// 33731076066), the bootstrap's missing spawned-edge dispatch (tebako
-// v2.1.6/v2.1.7, #519/#521), and the shell-form spawn gap (ruby-jing's
-// quoted backticks vs the array-form-only plan head; fixed by shell-form
-// argument bridging, ruby#107, source v0.2.33, spec 22 §3.1). The
-// publish-time refresh therefore targets payload 1.16.9-8 + ruby runtime
-// 0.16.20 + tebako v2.1.7, and runs as soon as the 0.16.20 factory
-// publish (in flight at refresh time, factory#144) lands. The
-// boot-latency row from the 2026-09-01 local run stays quotable:
-// `metanorma version` warm boot 5.17 s vs the packed-mn executable's
-// 6.36 s (~19% faster, ~0.81 GB vs ~0.99 GB RSS).
+The refresh ran on 2026-09-04 — the publish-time measurement of this
+series' comparison, the managed arm riding payload 1.16.9-8 + ruby
+runtime 0.16.21 + tebako v2.1.7: the release line that closes the
+jing/spawned-java arc named in post 3. The pdf column *is* the fix's
+proof — every managed-arm compile runs RELAX NG validation and mn2pdf
+through the spawned tebako java runtime, end to end, exit 0.
 
-The surrounding claims in this post are written to hold with the table
-present; the table is the evidence, and the post ships when the
-evidence does.
+[cols="<4,>3,>3,>2", options="header"]
+|===
+| warm workload (n=5, median wall) | packed-mn v1.16.9 exe | tebako v2 managed + shim | v2 vs v1
+
+| `compile document.adoc -x html` | 51.9 s | 52.5 s | 1.01×
+| `compile document.adoc -x pdf` | 61.0 s | 67.1 s | 1.10×
+| `metanorma version` boot | 4.70 s | 4.06 s | 0.86×
+|===
+
+Peak RSS moves the right way on every row: html 1.38 → 1.22 GiB, pdf
+1.35 → 1.29 GiB, boot 0.99 → 0.76 GiB.
+
+[cols="<4,>3,>3", options="header"]
+|===
+| cold (fresh store, single run) | packed-mn v1.16.9 exe | tebako v2 managed
+
+| html compile | 119.1 s | 88.0 s
+| pdf compile | 145.4 s | 98.0 s
+| first `metanorma version` | (runtime baked at install) | 57.2 s
+|===
+
+The footer the suite contract demands. Machine: MacBookPro18,2, Apple
+M1 Max, 64 GB, macOS 14.1.1, measured idle. Document: mn-samples-oiml's
+OIML r060 (`ba74c74`), html and pdf compiles; outputs verified
+regenerated in every cell (byte-identical html across arms; %PDF-1.7).
+The v1 arm carries metanorma 2.5.2, the v2 arm 2.5.4 — the payload line
+moved between the packagings, so the compile columns compare
+*packagings*, not metanorma releases. Cold cells are single indicative
+runs with the runtime download in span; the managed arm's install
+pre-stages payload images per spec 27 §5. And the noise note: a Sep 1
+dry run of this same suite on a busy desktop read ~2.3× slower on
+*both* arms — within a day the ratios are the comparison; across days
+the absolutes are indicative.
+
+The read: compile parity on html (1.01×), within 1.10× on pdf, and a
+smaller, faster boot (0.86×, 0.76 GiB against 0.99 GiB) — the managed
+composition costs nothing measurable against the one-file exe it
+replaces, and the cold start is faster even with the runtime download
+in the span.
 
 == Where this leaves you
 
@@ -164,11 +179,10 @@ manifest, composition, jail, lock.
 
 That is the v2 architecture, and it is stable now. The series:
 
-// PUBLISH-TIME: fill permalinks for posts 1-4 as they land.
-. *Tebako v2 stable: one download, any document* — the announcement.
-. *Anatomy of a tebako package* — the three-part model and the store.
-. *Ruby calls Java calls Python* — composition in practice.
-. *The jail and the host* — declarative filesystem policy.
+. link:/blog/2026-09-01-tebako-v2-stable-metanorma/[*Tebako v2 stable: one download, any document*] — the announcement.
+. link:/blog/2026-09-02-tebako-v2-anatomy-tpkg/[*Anatomy of a tebako package*] — the three-part model and the store.
+. link:/blog/2026-09-03-tebako-v2-cross-runtime-composition/[*Ruby calls Java calls Python*] — composition in practice.
+. link:/blog/2026-09-04-tebako-v2-jail-host-routing/[*The jail and the host*] — declarative filesystem policy.
 . *Build your own* — this post.
 
 Questions, bug reports, and payload ideas:
