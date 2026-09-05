@@ -1,0 +1,154 @@
+---
+title: Curate a local library
+heading: Curate a local library.
+lede: >-
+  A registry is one YAML file. Put it in a directory with your .tfs
+  artifacts and a SHA256SUMS, add it as file:///, and a fleet of machines
+  installs from it — no server, no service account, no network required.
+description: >-
+  The curated-library pattern: a file:// registry in a shared directory
+  (/opt/my-library), tebako add-registry file:///, TEBAKO_OFFLINE=1
+  discipline, updating the library, and cache hygiene with cache prune
+  --payloads.
+---
+
+== What a file:// registry is.
+
+Every tebako registry — GitHub releases, GitLab, a git repo, a local
+directory — is the same thing: a `tpkg-registry.yaml` index plus the
+artifacts it names (spec 04 §2). A `file://` registry is the local form:
+the index sits in a directory on disk (or an NFS share, or a synced
+folder), and the artifacts sit next to it. There is no server process,
+no daemon, no API — tebako reads the files.
+
+That makes it the on-prem / air-gapped pattern: one team curates the
+library, every machine adds it once, and installs resolve exactly like
+they would from a hosted registry.
+
+== Lay out the library.
+
+[source,console]
+----
+/opt/my-library/
+  tpkg-registry.yaml          # the index
+  SHA256SUMS                  # digests of everything, for humans + audits
+  acme-fonts-2.1.0.tfs
+  acme-tool-1.4.0.tfs
+----
+
+The index mirrors only what resolution needs — name, kind, versions,
+entrypoints, and a `file://` reference per artifact. For a `universal`
+payload the artifact's SHA-256 rides the reference itself as the
+`?sha256=` pin:
+
+[source,yaml]
+----
+schema_version: 1
+payloads:
+  - name: acme-fonts
+    kind: data
+    default: "2.1.0"
+    versions:
+      - version: "2.1.0"
+        platforms: universal
+        release:
+          ref: "file:///opt/my-library/acme-fonts-2.1.0.tfs?sha256=c04d…63"
+  - name: acme-tool
+    kind: app
+    default: "1.4.0"
+    versions:
+      - version: "1.4.0"
+        platforms: universal
+        release:
+          ref: "file:///opt/my-library/acme-tool-1.4.0.tfs?sha256=9f2c…a1"
+        entrypoints: [acme-tool]
+----
+
+The pin is the trust anchor: install verifies the downloaded bytes
+against it before anything lands in the store. (Per-triplet payloads put
+their pins in the `platforms[<triplet>].sha256` map instead — see the
+link:/docs/reference/registry-schema/[registry schema].)
+
+== Consume it.
+
+Each machine adds the library once and installs by name:
+
+[source,console]
+----
+$ tebako add-registry file:///opt/my-library
+$ tebako install acme-tool          # the registry's default version
+$ tebako install acme-fonts@2.1.0   # an explicit version
+----
+
+The registry index itself can be pinned too — quote the ref, it contains
+shell metacharacters:
+
+[source,console]
+----
+$ tebako add-registry 'file:///opt/my-library?sha256=77b1…0e'
+----
+
+From there everything is the standard surface: shims dispatch
+`acme-tool`, `tebako shim use` pins versions, `tebako cache list` shows
+what is cached.
+
+== The offline discipline.
+
+A file library is what makes `TEBAKO_OFFLINE=1` a pleasant default
+instead of a punishment:
+
+[source,console]
+----
+$ export TEBAKO_OFFLINE=1
+----
+
+Offline means _cache or named error_ — never a silent network attempt.
+Seed each machine's store from the library (`tebako install` reads the
+`file://` artifacts locally, verifies them against their pins, and caches
+them), then flip offline on. Runs and dispatch touch only the store;
+anything missing fails with a named error naming exactly what is absent.
+
+== Update the library.
+
+Publishing a new version is three steps, all local:
+
+. Copy the new `.tfs` into the directory (new file — never mutate a
+  published one).
+. Add the version entry to `tpkg-registry.yaml` (bump `default:` when
+  the fleet should roll forward).
+. Append the digest to `SHA256SUMS`.
+
+Consumers pick it up on their next `tebako update-registries` (the
+dispatch-time registry cache has a 24 h TTL; the refresh is the explicit
+verb). Installed versions keep working until they are pruned — updates
+never touch a machine that did not ask.
+
+== Hygiene: prune with confidence.
+
+Stores grow; prune is safe because it never strands a pin:
+
+[source,console]
+----
+$ tebako cache prune --payloads --older-than 90d
+----
+
+The payload arm refuses to remove anything a pin can see: config
+`defaults:` pins (`tebako shim use`), exact `payload@version` disable
+selectors, and the newest installed version of every payload — the
+roll-forward floor — survive even `--all`. One honest caveat, printed by
+prune itself when it applies: `.tebako-tools.yaml` project pins are
+per-directory and invisible to prune, so a pinned-but-old version may be
+removed and will re-fetch from the library on next dispatch (offline:
+a named error).
+
+== The trust note.
+
+`file://` artifacts carry exactly the same verification as hosted ones:
+the registry's SHA-256 pin is checked at install, the cached artifact
+keeps its `.sha256` sidecar as the trust anchor, and runs never
+re-verify — which is what makes them fast. Unsigned artifacts stay
+first-class but loud: a warning at install and a line in the audit
+journal. Fleets that want signatures enforced set
+`TEBAKO_REQUIRE_SIGNED=1`, and every unsigned install fails closed.
+Curate the library directory itself with ordinary filesystem permissions —
+whoever can write the index controls what the fleet installs.
