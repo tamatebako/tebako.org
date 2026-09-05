@@ -1,10 +1,10 @@
 ---
 layout: post
-title:  "Tebako v2: The jail and the host (4 of 5)"
-date:   2026-09-04 00:00:00 +0800
+title:  "Architecture: The host boundary (4 of 5)"
+date:   2026-09-05 00:00:00 +0800
 categories:
   - tebako
-  - tebako
+  - architecture
   - packaging
 author:
   name: The Tebako team
@@ -12,28 +12,38 @@ author:
   social_links:
     - https://github.com/tamatebako
 excerpt: >-
-  What a running package may touch on your machine — read-only by
-  default, granted by declaration, discovered by record mode. Each step
-  is a command you run.
+  How tebako v2 works, concept by concept —
+  this post: the host boundary.
 ---
 
-= Tebako v2: The jail and the host (4 of 5)
+= Architecture: The host boundary (4 of 5)
 
 [NOTE]
 ====
-Post 4 of 5 in the series *Tebako v2*.
+Post 4 of 5 in the series *Tebako v2 architecture*.
 
-. link:/blog/2026-09-01-tebako-v2-stable-metanorma/[Tebako v2: One download, any document]
-. link:/blog/2026-09-02-tebako-v2-anatomy-tpkg/[Tebako v2: Anatomy of a package]
-. link:/blog/2026-09-03-tebako-v2-cross-runtime-composition/[Tebako v2: Ruby calls Java calls Python]
-. *Tebako v2: The jail and the host* (this post)
-. link:/blog/2026-09-05-tebako-v2-developer-story-benchmarks/[Tebako v2: Build your own]
+. link:/blog/2026-09-05-architecture-three-part-package/[Architecture: The three-part package]
+. link:/blog/2026-09-05-architecture-runtime-as-image/[Architecture: The runtime as an image]
+. link:/blog/2026-09-05-architecture-composition/[Architecture: Composition]
+. *Architecture: The host boundary* (this post)
+. link:/blog/2026-09-05-architecture-trust-release-chain/[Architecture: Trust and the release chain]
 ====
 
-A package that can touch anything on your machine is a liability. This
-chapter's subject is the boundary between a running package and the
-host: what it may touch, who decides, and how you find out. Every step
-is a command.
+A package that can touch anything on its host machine is a liability.
+This post describes the boundary tebako draws: what a running package
+may touch, who decides, and how the decision is enforced.
+
+The model has three rules:
+
+. *Read-only by default.* Every file access a payload makes flows
+  through one choke point in tebako's filesystem layer, and the default
+  answer to each access is no.
+. *The payload declares; the run binds.* Grants are written in the
+  manifest under `needs:`, with a reason for each one, and the run
+  binds them per invocation.
+. *Denials are named.* A denied access is reported with the path, the
+  operation, and a documented exit code — never a crash.
+
 
 ++++
 <figure role="img" aria-label="Diagram: a declared need is bound at run time and enforced at the TFS layer before reaching the host">
@@ -77,75 +87,39 @@ is a command.
 
 _Figure 1 — A payload declares what it needs; the run binds it; one choke point enforces it — and record mode can draft the grants for you._
 
-== Level 1: the default is nothing
+== The grant
 
-Run a package with the jail closed and watch:
-
-[source,console]
-----
-$ tebako run ./myapp --jail deny -- --help
-tebako: jail: denied host read: $HOME/.config/myapp/settings.yml (exit 73)
-----
-
-Read-only by default: every file access a payload makes flows through
-one choke point inside tebako, and with `--jail deny` the answer to
-each one is no. The denial is named — the path, the operation, the exit
-code — never a crash.
-
-== Level 2: grant what is needed
-
-The package declares what it needs; the run binds it. A grant looks
-like this:
+A grant names a path, an access level, and a reason:
 
 [source,yaml]
 ----
 needs:
   host:
-    - path: $HOME/.fontist        # symbolic atom, resolved per user
-      access: rw                  # ro | rw
-      when: [macos]               # optional platform filter
-      why: "fontist caches and resolves fonts here"   # MANDATORY
-----
-
-The `why` is mandatory grammar, not a style preference: a declaration
-that cannot explain itself does not parse. Symbolic paths (`$HOME`,
-`$TMPDIR`, `$CWD`, the store itself) resolve at bind time, per user,
-per run. Everything not granted stays invisible.
-
-== Level 3: don't guess — record
-
-Writing the grants by hand means guessing. Record mode runs the package
-for real and drafts them for you:
-
-[source,console]
-----
-$ TEBAKO_JAIL=record tebako run ./myapp -- build
-$ tfs needs --from-journal ~/.tebako/journal.log
-needs:
-  host:
     - path: $HOME/.fontist
       access: rw
-      why: ""
+      when: [macos]
+      why: "fontist caches and resolves fonts here"
 ----
 
-The journal holds every host access the run attempted; the draft lists
-them as grants. You review it, adjust `ro` and `rw`, fill in every
-`why`, and bind it — the acceptance path and the discovery path are the
-same run.
+The `why` is mandatory grammar: a declaration that cannot explain
+itself does not parse. Symbolic paths (`$HOME`, `$TMPDIR`, `$CWD`, the
+store itself) resolve at bind time, per user, per run.
+
+== Discovery, not guessing
+
+Record mode runs the package for real and writes the draft grants from
+what the run actually touched. The operator reviews the draft, adjusts
+read and write, fills in the reasons, and binds it — the same run
+serves as both acceptance test and policy discovery.
 
 == One declaration, every platform
 
-The declaration is identical everywhere; only the enforcement differs.
-On Linux and macOS the choke point sits in the filesystem layer. On
-Windows, where no such interposition exists, enforcement moves to the
-spawn tier — executables are materialized into a cache and started with
+The declaration is identical everywhere; only enforcement differs. On
+Linux and macOS the choke point sits in the filesystem layer. On
+Windows, where that layer is not interposable, enforcement moves to the
+spawn tier — executables materialize into a cache and start with
 rewritten arguments, under the same policy computed from the same
-declarations. And trust is settled before any of this: artifacts are
-verified when they enter the store, never re-verified per run, so a
-run with a jail is as fast as a run without one.
+declarations.
 
-== What you can do now
-
-You can take any package and decide, precisely, what it may touch —
-and produce the grants from a real run instead of a guess. One thing
-remains: building a package of your own. That is the last chapter.
+The last post in this series covers what holds the whole ecosystem
+together: trust.

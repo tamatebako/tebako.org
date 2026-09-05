@@ -1,0 +1,132 @@
+---
+layout: post
+title:  "Basic payloads: Data payloads: make one, read one (2 of 5)"
+date:   2026-09-05 00:00:00 +0800
+categories:
+  - tebako
+  - packaging
+  - tutorial
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: >-
+  The basic payloads series, hands-on: data payloads: make one, read one.
+---
+
+= Basic payloads: Data payloads: make one, read one (2 of 5)
+
+[NOTE]
+====
+Post 2 of 5 in the series *Basic payloads*.
+
+. link:/blog/2026-09-05-basic-payloads-run-first-package/[payloads: Run your first package]
+. *payloads: Data payloads: make one, read one* (this post)
+. link:/blog/2026-09-05-basic-payloads-ruby-application/[payloads: Package a Ruby application]
+. link:/blog/2026-09-05-basic-payloads-rails-sinatra/[payloads: Package a Rails or Sinatra application]
+. link:/blog/2026-09-05-basic-payloads-publish/[payloads: Publish to your users]
+====
+
+The simplest payload there is: a directory of files. Fonts, schemas,
+dictionaries, word lists, datasets — anything versioned that
+applications read. No code, no compilation, one command. This post
+makes one and then reads it back two ways.
+
+
+++++
+<figure role="img" aria-label="Diagram: a directory becomes one image you can mount or read directly">
+<svg viewBox="0 0 840 290" style="width:100%;height:auto;font-family:var(--font-mono,monospace);" xmlns="http://www.w3.org/2000/svg">
+  <title>Data payloads</title>
+  <defs>
+    <marker id="da" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-text-3,#7a8b94)"/></marker>
+    <marker id="daa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-accent,#c36242)"/></marker>
+  </defs>
+  <rect x="20" y="20" width="250" height="250" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="40" y="46" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-3,#7a8b94)">a directory</text>
+  <rect x="40" y="56" width="210" height="150" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="145" y="80" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-1,#1a2b34)">acme-fonts/</text>
+  <text x="145" y="100" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">fonts/*.ttf</text>
+  <text x="145" y="120" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">__tpkg__/</text>
+  <text x="145" y="138" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-3,#7a8b94)">  manifest.yaml</text>
+  <line x1="270" y1="145" x2="320" y2="145" style="stroke:var(--tb-c-text-3,#7a8b94);stroke-width:1.5" marker-end="url(#da)"/>
+  <rect x="322" y="105" width="170" height="80" rx="9" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:2.2"/>
+  <text x="407" y="132" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">tfs mkimage</text>
+  <text x="407" y="150" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">one command</text>
+  <line x1="492" y1="145" x2="542" y2="145" style="stroke:var(--tb-c-text-3,#7a8b94);stroke-width:1.5" marker-end="url(#da)"/>
+  <rect x="544" y="20" width="278" height="250" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="564" y="46" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-3,#7a8b94)">one image, two ways to use it</text>
+  <rect x="564" y="56" width="238" height="74" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="683" y="78" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-1,#1a2b34)">mount it</text>
+  <text x="683" y="96" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">press --image …:/usr/share/fonts/acme</text>
+  <text x="683" y="112" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">apps read the files in place</text>
+  <rect x="564" y="156" width="238" height="74" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="683" y="178" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-1,#1a2b34)">read it directly</text>
+  <text x="683" y="196" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">tfs ls · tfs cat · tfs extract</text>
+  <text x="683" y="212" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">inspect and unpack on any machine</text>
+</svg>
+</figure>
+++++
+
+_Figure 1 — A directory with a manifest becomes one image; applications mount it at a path, or you read it directly with the tfs commands._
+
+== Make the payload
+
+Give the directory a manifest and press it into an image:
+
+[source,console]
+----
+$ mkdir -p acme-fonts/fonts acme-fonts/__tpkg__
+$ cp ~/Downloads/acme-*.ttf acme-fonts/fonts/
+$ cat > acme-fonts/__tpkg__/manifest.yaml <<EOF
+schema_version: 1
+kind: data
+name: acme-fonts
+version: 2.1.0
+provides:
+  paths:
+    - /fonts
+EOF
+$ tfs mkimage acme-fonts/ -o acme-fonts-2.1.0.tfs
+----
+
+You now have one file — `acme-fonts-2.1.0.tfs` — that is a complete,
+versioned, self-describing payload.
+
+== Read it back
+
+The `tfs` commands inspect and unpack any image on any machine, with
+nothing installed:
+
+[source,console]
+----
+$ tfs info acme-fonts-2.1.0.tfs     # kind, manifest, byte counts
+$ tfs ls acme-fonts-2.1.0.tfs       # list the tree
+$ tfs cat acme-fonts-2.1.0.tfs /fonts/acme-bold.ttf > acme-bold.ttf
+$ tfs extract acme-fonts-2.1.0.tfs -o ./unpacked/
+----
+
+`info` and `ls` never leave the image in place faster than a
+directory listing; `cat` pulls out one file; `extract` unpacks the
+whole tree.
+
+== Mount it into an application
+
+The other way to consume a data payload is to mount it, so an
+application reads the files in place. That is a press-time decision,
+and it belongs to the next post's subject.
+
+[source,console]
+----
+$ tebako press -r ./myapp -e bin/myapp -o myapp \
+    --image acme-fonts-2.1.0.tfs:/usr/share/fonts/acme
+----
+
+When that packaged app runs, `/usr/share/fonts/acme` is the mounted
+image — the same bytes, no copies on disk.
+
+== What you can do now
+
+You can turn any directory of files into a versioned payload, inspect
+it, pull files out of it, and mount it into an application. The next
+post packages the application itself.

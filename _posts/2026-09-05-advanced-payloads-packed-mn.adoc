@@ -1,0 +1,162 @@
+---
+layout: post
+title:  "Advanced payloads: packed-mn: one download, any document (5 of 5)"
+date:   2026-09-05 00:00:00 +0800
+categories:
+  - tebako
+  - packaging
+  - tutorial
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: >-
+  The advanced payloads series: packed-mn: one download, any document.
+---
+
+= Advanced payloads: packed-mn: one download, any document (5 of 5)
+
+[NOTE]
+====
+Post 5 of 5 in the series *Advanced payloads*.
+
+. link:/blog/2026-09-05-advanced-payloads-trace/[payloads: Trace: see what your payload touches]
+. link:/blog/2026-09-05-advanced-payloads-jails-profiles/[payloads: Jails and profiles: decide what it may touch]
+. link:/blog/2026-09-05-advanced-payloads-image-toolbox/[payloads: The image toolbox]
+. link:/blog/2026-09-05-advanced-payloads-runtimes-native/[payloads: Runtimes and native code]
+. *payloads: packed-mn: one download, any document* (this post)
+====
+
+The last subject in the series is the whole stack at once: packed-mn,
+the single-executable Metanorma distribution — a Ruby application that
+drives a JVM, mounts Inkscape, and borrows a Python tool. Every concept
+from all three series appears in this one package.
+
+
+++++
+<figure role="img" aria-label="Diagram: one Ruby process reaching Java, Inkscape, and Python through three declared mechanisms">
+<svg viewBox="0 0 840 330" style="width:100%;height:auto;font-family:var(--font-mono,monospace);" xmlns="http://www.w3.org/2000/svg">
+  <title>Ruby calls Java calls Python</title>
+  <defs>
+    <marker id="f3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-text-3,#96abb8)"/></marker>
+    <marker id="f3a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-accent,#c36242)"/></marker>
+  </defs>
+  <rect x="40" y="108" width="230" height="96" rx="9" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:1.5;stroke-width:2"/>
+  <text x="155" y="146" text-anchor="middle" style="font-size:13px;fill:var(--tb-c-text-1,#1a2b34)">your packaged</text>
+  <text x="155" y="164" text-anchor="middle" style="font-size:13px;fill:var(--tb-c-text-1,#1a2b34)">Ruby process</text>
+  <text x="155" y="186" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-3,#7a8b94)">metanorma compile</text>
+  <line x1="270" y1="156" x2="324" y2="60" style="stroke:var(--tb-c-accent,#c36242);stroke-width:1.5" marker-end="url(#f3a)"/>
+  <rect x="330" y="26" width="470" height="66" rx="9" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:1.5"/>
+  <text x="565" y="50" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">Java — a spawned runtime</text>
+  <text x="565" y="67" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">the JVM exe + its env image are materialized</text>
+  <text x="565" y="81" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">and started under the same mounts</text>
+  <line x1="270" y1="156" x2="324" y2="156" style="stroke:var(--tb-c-accent,#c36242);stroke-width:1.5" marker-end="url(#f3a)"/>
+  <rect x="330" y="122" width="470" height="66" rx="9" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5"/>
+  <text x="565" y="146" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">Inkscape — a mounted payload</text>
+  <text x="565" y="163" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">one .tfs image mounted at /opt/inkscape,</text>
+  <text x="565" y="177" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">its files read through the VFS like local ones</text>
+  <line x1="270" y1="156" x2="324" y2="252" style="stroke:f3;stroke-width:1.5" marker-end="url(#f3a)"/>
+  <rect x="330" y="218" width="470" height="66" rx="9" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5" stroke-dasharray="5 4"/>
+  <text x="565" y="242" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">Python — a host tool</text>
+  <text x="565" y="259" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">the honest route: declared in the manifest as a need,</text>
+  <text x="565" y="273" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-2,#4a5b66)">used from the host, visible in the trace</text>
+  <text x="420" y="316" text-anchor="middle" style="font-size:10.5px;fill:var(--tb-c-text-3,#7a8b94)">three mechanisms, one rule: everything the process uses is declared</text>
+</svg>
+</figure>
+++++
+
+_Figure 1 — Three routes out of one packaged process: a spawned runtime, a mounted payload, and a declared host tool._
+
+== The compile
+
+The following command on an OIML Recommendation written in Metanorma
+outputs all four kinds of format:
+
+[source,console]
+----
+$ metanorma compile sources/r060/1/document.adoc
+# → document.xml  (191 KB)   the semantic XML
+# → document.html (225 KB)   the HTML rendering
+# → document.rxl  (11 KB)    the Relaton bibliographic extract
+# → document.pdf  (751 KB)   the print-ready PDF
+----
+
+== How it maps
+
+The packed-mn executable is one tebako package. Every piece of it, and
+where each piece lives at run time:
+
+[cols="2,3,3",options="header"]
+|===
+|What you meet |Which tebako part it is |Where it lives
+
+|The executable you download
+|The bootstrap, the stitched payload slots, and the trailer
+|One file — that is the whole download
+
+|Metanorma 1.16.9, with its 260 gems
+|Payload slice 1.16.9-8
+|Stitched into a slot inside the executable
+
+|Ruby 3.3
+|The runtime 0.16.21, named in the trailer
+|Downloaded once to `~/.tebako`, verified, shared by every package
+
+|OpenJDK 21 (Temurin 21.0.12), for mn2pdf and jing
+|Spawned runtime 2.1.5
+|Resolved from the registry into the store on first use
+
+|Inkscape, for figure rasterization
+|A mounted payload slice, declared as a dependency
+|Mounted at `/opt/inkscape` at run time
+
+|xml2rfc, for the IETF flavors
+|A declared *host tool* — used only if your machine provides it
+|Your machine, stated openly in the manifest
+|===
+
+The manifest that declares it is the `requires:` grammar from the
+architecture series; the JVM arrives by the spawned-runtime route, and
+Inkscape by the mounted-payload route, exactly as drawn above.
+
+== The numbers
+
+The v2 composition against the one-file executable it replaces, on the
+compile above:
+
+[cols="<4,>3,>3,>2", options="header"]
+|===
+| warm workload (n=5, median wall) | packed-mn v1.16.9 exe | tebako v2 managed + shim | v2 vs v1
+
+| `compile document.adoc -x html` | 51.9 s | 52.5 s | 1.01×
+| `compile document.adoc -x pdf` | 61.0 s | 67.1 s | 1.10×
+| `metanorma version` boot | 4.70 s | 4.06 s | 0.86×
+|===
+
+Peak RSS moves the right way on every row: html 1.38 → 1.22 GiB, pdf
+1.35 → 1.29 GiB, boot 0.99 → 0.76 GiB.
+
+[cols="<4,>3,>3", options="header"]
+|===
+| cold (fresh store, single run) | packed-mn v1.16.9 exe | tebako v2 managed
+
+| html compile | 119.1 s | 88.0 s
+| pdf compile | 145.4 s | 98.0 s
+| first `metanorma version` | (runtime baked at install) | 57.2 s
+|===
+
+Machine: MacBookPro18,2, Apple M1 Max, 64 GB, macOS 14.1.1, measured
+idle; document: mn-samples-oiml's OIML r060 (`ba74c74`), outputs
+verified regenerated in every cell.
+
+== Where the three series end
+
+Understand it in the
+link:/blog/2026-09-05-architecture-three-part-package/[architecture
+series], do it in the
+link:/blog/2026-09-05-basic-payloads-run-first-package/[basics], and
+push it this far. If you build a payload this interesting, we would
+love to https://github.com/tamatebako/tebako/issues[hear about it].
+
+**__Press on__** _with Tebako_!

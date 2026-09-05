@@ -1,0 +1,124 @@
+---
+layout: post
+title:  "Advanced payloads: Runtimes and native code (4 of 5)"
+date:   2026-09-05 00:00:00 +0800
+categories:
+  - tebako
+  - packaging
+  - tutorial
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: >-
+  The advanced payloads series: runtimes and native code.
+---
+
+= Advanced payloads: Runtimes and native code (4 of 5)
+
+[NOTE]
+====
+Post 4 of 5 in the series *Advanced payloads*.
+
+. link:/blog/2026-09-05-advanced-payloads-trace/[payloads: Trace: see what your payload touches]
+. link:/blog/2026-09-05-advanced-payloads-jails-profiles/[payloads: Jails and profiles: decide what it may touch]
+. link:/blog/2026-09-05-advanced-payloads-image-toolbox/[payloads: The image toolbox]
+. *payloads: Runtimes and native code* (this post)
+. link:/blog/2026-09-05-advanced-payloads-packed-mn/[payloads: packed-mn: one download, any document]
+====
+
+The basics treated the runtime as the thing that resolves and mounts.
+This post makes it a choice: which runtime engine, and what happens
+when your payload contains compiled code. The headline is the reason
+tebako exists: *your users never compile a gem.*
+
+
+++++
+<figure role="img" aria-label="Diagram: runtime engines are declarative choices; native gems compile once at press and ship per platform">
+<svg viewBox="0 0 840 340" style="width:100%;height:auto;font-family:var(--font-mono,monospace);" xmlns="http://www.w3.org/2000/svg">
+  <title>Runtimes and native code</title>
+  <defs>
+    <marker id="ja4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-text-3,#7a8b94)"/></marker>
+    <marker id="ja4a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-accent,#c36242)"/></marker>
+  </defs>
+  <rect x="20" y="20" width="380" height="300" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="40" y="46" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-3,#7a8b94)">the runtime is a choice</text>
+  <rect x="40" y="66" width="340" height="40" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="210" y="84" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">engine: ruby (MRI)</text>
+  <text x="210" y="97" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-3,#7a8b94)">the default, ABI-line pinned</text>
+  <rect x="40" y="122" width="340" height="40" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="210" y="140" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">engine: jruby</text>
+  <text x="210" y="153" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-3,#7a8b94)">a JVM runtime, same two artifacts</text>
+  <text x="210" y="190" text-anchor="middle" style="font-size:10.5px;fill:var(--tb-c-text-2,#4a5b66)">one constraint grammar covers both;</text>
+  <text x="210" y="206" text-anchor="middle" style="font-size:10.5px;fill:var(--tb-c-text-2,#4a5b66)">the payload declares, tebako resolves</text>
+  <line x1="400" y1="160" x2="450" y2="160" style="stroke:var(--tb-c-text-3,#7a8b94);stroke-width:1.5" marker-end="url(#ja4)"/>
+  <rect x="452" y="20" width="370" height="300" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="472" y="46" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-3,#7a8b94)">native gems, compiled once</text>
+  <rect x="472" y="56" width="330" height="40" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="637" y="74" text-anchor="middle" style="font-size:10.5px;fill:var(--tb-c-text-1,#1a2b34)">your gem with C extensions</text>
+  <line x1="637" y1="96" x2="637" y2="126" style="stroke:var(--tb-c-text-3,#7a8b94);stroke-width:1.5" marker-end="url(#ja4a)"/>
+  <rect x="472" y="128" width="330" height="40" rx="9" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:2.2"/>
+  <text x="637" y="146" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">compiled at press, on your CI</text>
+  <text x="637" y="160" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">users never compile anything</text>
+  <line x1="637" y1="168" x2="637" y2="196" style="stroke:var(--tb-c-text-3,#7a8b94);stroke-width:1.5" marker-end="url(#ja4a)"/>
+  <rect x="472" y="198" width="150" height="40" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="547" y="222" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-1,#1a2b34)">macos-arm64</text>
+  <rect x="642" y="198" width="150" height="40" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="717" y="222" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-1,#1a2b34)">macos-x86_64</text>
+  <rect x="472" y="246" width="150" height="40" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="547" y="270" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-1,#1a2b34)">linux-gnu / musl</text>
+  <rect x="642" y="246" width="150" height="40" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="717" y="270" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-1,#1a2b34)">windows-ucrt</text>
+  <text x="637" y="308" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-3,#7a8b94)">one file per triplet — prebuilt, verified, mounted</text>
+</svg>
+</figure>
+++++
+
+_Figure 1 — Runtime engines are declared, not configured; native gems compile once at press time and ship as prebuilt, verified files per platform._
+
+== Runtime engines
+
+The manifest declares the engine; tebako resolves it:
+
+[source,yaml]
+----
+requires:
+  - kind: language
+    engine: ruby          # or jruby
+    constraint: "~> 3.3.0"
+----
+
+An MRI runtime and a JRuby runtime are the same two artifacts — an
+interpreter executable and an environment image — under the same
+constraint grammar. A payload with native extensions pins an ABI line
+(`~> 3.3.0`) so that a runtime from the wrong line is a named error at
+startup, never a segfault at 2 a.m.
+
+== Native code, compiled once
+
+Gems with C extensions are the classic packaging pain: every user
+needs a compiler toolchain, matching headers, and luck. Tebako moves
+the compilation to press time, on your machine or your CI:
+
+[source,console]
+----
+$ tebako press -r ./myapp -e bin/myapp -o dist/myapp \
+    --target macos-arm64 --target macos-x86_64 \
+    --target linux-gnu-x86_64 --target windows-ucrt-x86_64
+----
+
+Each target produces one file with its native gems compiled for that
+triplet. What your users download is a prebuilt, SHA-256-verified
+binary — no compiler, no headers, no luck. For payloads with no native
+code at all, one `universal` file covers every platform.
+
+This is the distribution model in one sentence: *the people who build
+a package compile it; the people who use it never do.*
+
+== What you can do now
+
+You can choose a runtime engine declaratively, pin ABI lines for
+native payloads, and ship compiled gems as binaries per platform. The
+last post shows all of it working at once, on the hardest payload we
+ship.

@@ -1,0 +1,127 @@
+---
+layout: post
+title:  "Basic payloads: Run your first package (1 of 5)"
+date:   2026-09-05 00:00:00 +0800
+categories:
+  - tebako
+  - packaging
+  - tutorial
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: >-
+  The basic payloads series, hands-on: run your first package.
+---
+
+= Basic payloads: Run your first package (1 of 5)
+
+[NOTE]
+====
+Post 1 of 5 in the series *Basic payloads*.
+
+. *payloads: Run your first package* (this post)
+. link:/blog/2026-09-05-basic-payloads-data-payload/[payloads: Data payloads: make one, read one]
+. link:/blog/2026-09-05-basic-payloads-ruby-application/[payloads: Package a Ruby application]
+. link:/blog/2026-09-05-basic-payloads-rails-sinatra/[payloads: Package a Rails or Sinatra application]
+. link:/blog/2026-09-05-basic-payloads-publish/[payloads: Publish to your users]
+====
+
+This series teaches tebako v2 hands-on, one subject per post: run a
+package, make payloads, package applications, publish them. Every step
+is a command you can run right now.
+
+This post's subject is the first one: running a package. You do not
+need Ruby, any other language, or any toolchain — only tebako itself.
+
+
+++++
+<figure role="img" aria-label="Diagram: install tebako, install a payload, get an ordinary command">
+<svg viewBox="0 0 840 340" style="width:100%;height:auto;font-family:var(--font-mono,monospace);" xmlns="http://www.w3.org/2000/svg">
+  <title>Run your first package</title>
+  <defs>
+    <marker id="ba" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-text-3,#7a8b94)"/></marker>
+    <marker id="baa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-accent,#c36242)"/></marker>
+  </defs>
+  <rect x="20" y="20" width="280" height="250" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="40" y="46" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-3,#7a8b94)">install once</text>
+  <rect x="40" y="60" width="240" height="40" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="160" y="78" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">brew install tebako</text>
+  <text x="160" y="91" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-3,#7a8b94)">or the shell installer</text>
+  <rect x="40" y="120" width="240" height="40" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="160" y="138" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">tebako add-registry …</text>
+  <text x="160" y="151" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-3,#7a8b94)">point at any payload registry</text>
+  <rect x="40" y="180" width="240" height="40" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="160" y="198" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">tebako install hello</text>
+  <text x="160" y="211" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-3,#7a8b94)">downloads + verifies</text>
+  <line x1="300" y1="145" x2="350" y2="145" style="stroke:var(--tb-c-text-3,#7a8b94);stroke-width:1.5" marker-end="url(#ba)"/>
+  <rect x="352" y="20" width="470" height="250" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="372" y="46" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-3,#7a8b94)">what you get</text>
+  <rect x="372" y="56" width="200" height="46" rx="9" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:2.2"/>
+  <text x="472" y="77" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-1,#1a2b34)">a command on PATH</text>
+  <text x="472" y="93" text-anchor="middle" style="font-size:15px;fill:var(--tb-c-text-1,#1a2b34)">hello</text>
+  <rect x="372" y="140" width="200" height="46" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="472" y="161" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">the ruby runtime</text>
+  <text x="472" y="177" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-3,#7a8b94)">downloads on first run, shared</text>
+  <rect x="600" y="56" width="200" height="46" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="700" y="77" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">or: a fat executable</text>
+  <text x="700" y="93" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-3,#7a8b94)">download, chmod, run</text>
+  <line x1="672" y1="102" x2="500" y2="136" style="stroke:var(--tb-c-text-3,#7a8b94);stroke-width:1.5" marker-end="url(#ba)"/>
+  <text x="587" y="312" text-anchor="middle" style="font-size:10.5px;fill:var(--tb-c-text-3,#7a8b94)">both ways run the same bytes — no ruby installed, nothing compiled</text>
+</svg>
+</figure>
+++++
+
+_Figure 1 — Install tebako once, install a payload from any registry, and you get an ordinary command; a fat executable works the other way, with no install at all._
+
+== Install tebako
+
+[source,console]
+----
+# macOS or Linux — pick one
+$ brew install tamatebako/tap/tebako
+$ curl -fsSL https://tebako.org/install.sh | sh
+
+$ tebako --version
+Tebako executable packager version 2.1.8
+----
+
+== Install a payload and run it
+
+Payloads live in registries — a registry is just a YAML file hosted
+next to someone's releases. Add one, install from it, and run:
+
+[source,console]
+----
+$ tebako add-registry tfs:github:tamatebako/hello
+$ tebako install hello
+$ hello
+Hello, world!
+----
+
+An ordinary command appeared on your PATH. That command is a *shim*: a
+small link that dispatches, every time you invoke it, to the right
+payload version and runtime. You will meet version pinning in the last
+chapter of this series.
+
+== The other way: a fat executable
+
+Some projects ship a single executable with everything carried inside.
+You download it, make it runnable, and run it — the runtime it needs is
+resolved and verified on first run, then shared with every other tebako
+package on the machine:
+
+[source,console]
+----
+$ chmod +x ./metanorma-1.16.9-arm64-macos
+$ ./metanorma-1.16.9-arm64-macos compile document.adoc
+resolving runtime: ruby >= 3.3, < 5.0 (arm64-macos)
+runtime ruby-3.3.7 (downloaded, verified)
+----
+
+Both ways run the same bytes. What you just used is the whole model
+from the
+link:/blog/2026-09-05-architecture-three-part-package/[architecture
+series]: a bootstrap, a mounted runtime, payload slices. The next post
+makes your first payload.
