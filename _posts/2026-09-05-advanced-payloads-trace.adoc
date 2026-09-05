@@ -1,0 +1,142 @@
+---
+layout: post
+title:  "Advanced payloads: Trace: see what your payload touches (1 of 5)"
+date:   2026-09-05 00:00:00 +0800
+categories:
+  - tebako
+  - packaging
+  - tutorial
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: >-
+  The advanced payloads series: trace: see what your payload touches.
+---
+
+= Advanced payloads: Trace: see what your payload touches (1 of 5)
+
+[NOTE]
+====
+Post 1 of 5 in the series *Advanced payloads*.
+
+. *payloads: Trace: see what your payload touches* (this post)
+. link:/blog/2026-09-05-advanced-payloads-jails-profiles/[payloads: Jails and profiles: decide what it may touch]
+. link:/blog/2026-09-05-advanced-payloads-image-toolbox/[payloads: The image toolbox]
+. link:/blog/2026-09-05-advanced-payloads-runtimes-native/[payloads: Runtimes and native code]
+. link:/blog/2026-09-05-advanced-payloads-packed-mn/[payloads: packed-mn: one download, any document]
+====
+
+The advanced series picks up where the basics ended. Its first
+subject is the question every packaged application eventually raises:
+*what does my payload actually touch on this machine?* The `tebako
+trace` commands answer it with evidence, not guesses.
+
+
+++++
+<figure role="img" aria-label="Two diagrams: how trace cover subtracts an outside capture from the inside stream, and how payload checks run">
+<svg viewBox="0 0 840 350" style="width:100%;height:auto;font-family:var(--font-mono,monospace);" xmlns="http://www.w3.org/2000/svg">
+  <title>trace cover and payload checks</title>
+  <defs>
+    <marker id="t3a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-text-3,#96abb8)"/>
+    </marker>
+    <marker id="t3b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-accent,#c36242)"/>
+    </marker>
+  </defs>
+  <rect x="10" y="18" width="400" height="314" rx="12" style="fill:var(--tb-c-bg-soft,#fdf9e8);stroke:var(--tb-c-divider,#ddd);stroke-width:1"/>
+  <text x="30" y="44" style="font-size:12px;fill:var(--tb-c-text-3,#7a8b94)">tebako trace cover — what escaped the mounts</text>
+  <rect x="30" y="62" width="170" height="56" rx="8" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5"/>
+  <text x="115" y="84" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">inside stream</text>
+  <text x="115" y="100" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">TEBAKO_TRACE=*.jsonl</text>
+  <rect x="30" y="168" width="170" height="56" rx="8" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5"/>
+  <text x="115" y="190" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">outside capture</text>
+  <text x="115" y="206" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">retrace / procmon</text>
+  <line x1="200" y1="90" x2="238" y2="124" style="stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5" marker-end="url(#t3a)"/>
+  <line x1="200" y1="196" x2="238" y2="162" style="stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5" marker-end="url(#t3a)"/>
+  <rect x="240" y="112" width="150" height="62" rx="10" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:1.8"/>
+  <text x="315" y="138" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">tebako trace cover</text>
+  <text x="315" y="154" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">outside minus inside</text>
+  <line x1="315" y1="174" x2="315" y2="206" style="stroke:var(--tb-c-accent,#c36242);stroke-width:1.5" marker-end="url(#t3b)"/>
+  <rect x="220" y="208" width="190" height="66" rx="8" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:1.5;stroke-dasharray:5 4"/>
+  <text x="315" y="230" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-accent,#c36242)">escapes: files touched</text>
+  <text x="315" y="246" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-accent,#c36242)">below the mounts,</text>
+  <text x="315" y="262" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-accent,#c36242)">straight on the host</text>
+  <text x="210" y="308" style="font-size:10px;fill:var(--tb-c-text-3,#7a8b94)">exit 0 = no escapes · exit 1 = the list</text>
+  <rect x="430" y="18" width="400" height="314" rx="12" style="fill:var(--tb-c-bg-soft,#fdf9e8);stroke:var(--tb-c-divider,#ddd);stroke-width:1"/>
+  <text x="450" y="44" style="font-size:12px;fill:var(--tb-c-text-3,#7a8b94)">tebako check — does the payload work</text>
+  <rect x="450" y="62" width="170" height="56" rx="8" style="fill:none;stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5"/>
+  <text x="535" y="84" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">the manifest declares</text>
+  <text x="535" y="100" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">checks: entry, fixtures, expect</text>
+  <line x1="620" y1="90" x2="658" y2="90" style="stroke:var(--tb-c-text-3,#96abb8);stroke-width:1.5" marker-end="url(#t3a)"/>
+  <rect x="660" y="62" width="150" height="56" rx="10" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:1.8"/>
+  <text x="735" y="84" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">tebako check</text>
+  <text x="735" y="100" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">runs the real entrypoint</text>
+  <line x1="735" y1="118" x2="735" y2="146" style="stroke:var(--tb-c-accent,#c36242);stroke-width:1.5" marker-end="url(#t3b)"/>
+  <rect x="450" y="148" width="110" height="44" rx="8" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:1.5"/>
+  <text x="505" y="166" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-accent,#c36242)">PASS</text>
+  <text x="505" y="182" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-2,#4a5b66)">behavior is right</text>
+  <rect x="575" y="148" width="110" height="44" rx="8" style="fill:none;stroke:var(--color-gold,#f8b883);stroke-width:1.5"/>
+  <text x="630" y="166" text-anchor="middle" style="font-size:11px;fill:var(--color-gold,#f8b883)">SKIP</text>
+  <text x="630" y="182" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-2,#4a5b66)">prerequisite missing</text>
+  <rect x="700" y="148" width="110" height="44" rx="8" style="fill:none;stroke:var(--tb-c-accent-hover,#b4473c);stroke-width:1.5"/>
+  <text x="755" y="166" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-accent-hover,#b4473c)">FAIL</text>
+  <text x="755" y="182" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-2,#4a5b66)">exit 79, reason named</text>
+  <text x="630" y="230" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-3,#7a8b94)">a check fails only when its prerequisites</text>
+  <text x="630" y="246" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-3,#7a8b94)">are present and its behavior is wrong</text>
+  <text x="630" y="286" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-3,#7a8b94)">verification proves the bytes —</text>
+  <text x="630" y="302" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-3,#7a8b94)">a check proves the payload works</text>
+</svg>
+</figure>
+++++
+
+_Figure 1 — trace cover compares an outside capture with the inside stream; a payload check declares its own acceptance test (the publish post of the basics series)._
+
+== Arm the stream
+
+One environment variable records every decision the runtime makes —
+each mount, open, dlopen, exec, and jail verdict — as structured JSON,
+identically on Linux, macOS, and Windows:
+
+[source,console]
+----
+$ TEBAKO_TRACE=/tmp/capture.jsonl ./myapp build
+----
+
+Tracing can never change how your application runs: if the capture
+channel fails, tebako prints a warning and nothing else happens.
+
+== Draft a policy from a real run
+
+`tebako trace run` records a run and drafts the manifest fragment for
+you — the host paths touched, the files read through raw descriptors,
+the libraries loaded:
+
+[source,console]
+----
+$ tebako trace run ./myapp --capture run.jsonl --out draft.yaml -- build
+$ cat draft.yaml
+needs:
+  host:
+    - path: $HOME/.fontist
+      access: rw
+      why: ""
+----
+
+The draft is commented YAML. You review it, adjust read and write, and
+fill in every `why` — exactly the grant grammar the next post binds.
+
+== Name the failing step
+
+When a run misbehaves, `tebako trace explain` replays the capture
+through the chain of steps a file access passes — mount, manifest
+read, resolve, materialize, OS bind — and names the first step that
+failed. Exit 0 is a clean chain; exit 1 names the step.
+
+== What you can do now
+
+You can see what a payload touches, draft its policy from a real run,
+and diagnose a failure to a named step. The next post binds that
+policy.

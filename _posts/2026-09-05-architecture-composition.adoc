@@ -1,0 +1,124 @@
+---
+layout: post
+title:  "Architecture: Composition (3 of 5)"
+date:   2026-09-05 00:00:00 +0800
+categories:
+  - tebako
+  - architecture
+  - packaging
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: >-
+  How tebako v2 works, concept by concept —
+  this post: composition.
+---
+
+= Architecture: Composition (3 of 5)
+
+[NOTE]
+====
+Post 3 of 5 in the series *Tebako v2 architecture*.
+
+. link:/blog/2026-09-05-architecture-three-part-package/[Architecture: The three-part package]
+. link:/blog/2026-09-05-architecture-runtime-as-image/[Architecture: The runtime as an image]
+. *Architecture: Composition* (this post)
+. link:/blog/2026-09-05-architecture-host-boundary/[Architecture: The host boundary]
+. link:/blog/2026-09-05-architecture-trust-release-chain/[Architecture: Trust and the release chain]
+====
+
+The first two posts covered the parts: packages, runtimes, payload
+slices. This post covers the grammar that ties them together — how a
+package says what it needs, and how those needs become mounts in one
+process.
+
+Everything is declared in the payload's manifest, under `requires:`:
+
+
+++++
+<figure role="img" aria-label="Diagram: a manifest declares requirements; resolution mounts them into one process">
+<svg viewBox="0 0 840 340" style="width:100%;height:auto;font-family:var(--font-mono,monospace);" xmlns="http://www.w3.org/2000/svg">
+  <title>Composition</title>
+  <defs>
+    <marker id="ca" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-text-3,#7a8b94)"/></marker>
+    <marker id="caa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-accent,#c36242)"/></marker>
+  </defs>
+  <rect x="20" y="20" width="360" height="250" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="40" y="46" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-3,#7a8b94)">the manifest declares</text>
+  <rect x="40" y="60" width="320" height="40" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="200" y="78" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">requires: a language runtime</text>
+  <text x="200" y="91" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-3,#7a8b94)">engine: ruby, constraint: ~> 3.3.0</text>
+  <rect x="40" y="116" width="320" height="40" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="200" y="134" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">requires: a spawned runtime</text>
+  <text x="200" y="147" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-3,#7a8b94)">engine: java, expose: [java]</text>
+  <rect x="40" y="172" width="320" height="40" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="200" y="190" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">requires: a toolkit payload</text>
+  <text x="200" y="203" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-3,#7a8b94)">name: inkscape, mount: /opt/inkscape</text>
+  <line x1="380" y1="145" x2="440" y2="145" style="stroke:var(--tb-c-text-3,#7a8b94);stroke-width:1.5" marker-end="url(#ca)"/>
+  <rect x="442" y="105" width="150" height="80" rx="9" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:2.2"/>
+  <text x="517" y="137" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">resolution</text>
+  <text x="517" y="155" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">newest compatible</text>
+  <text x="517" y="170" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">per triplet</text>
+  <line x1="592" y1="145" x2="650" y2="145" style="stroke:var(--tb-c-text-3,#7a8b94);stroke-width:1.5" marker-end="url(#ca)"/>
+  <rect x="652" y="20" width="170" height="250" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="672" y="46" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-3,#7a8b94)">one process</text>
+  <rect x="670" y="60" width="134" height="40" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="737" y="78" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">ruby runtime</text>
+  <text x="737" y="91" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-3,#7a8b94)">mounted</text>
+  <rect x="670" y="116" width="134" height="40" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="737" y="134" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">java runtime</text>
+  <text x="737" y="147" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-3,#7a8b94)">spawned</text>
+  <rect x="670" y="172" width="134" height="40" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="737" y="190" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">toolkit at</text>
+  <text x="737" y="203" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-3,#7a8b94)">/opt/inkscape</text>
+  <text x="420" y="312" text-anchor="middle" style="font-size:10.5px;fill:var(--tb-c-text-3,#7a8b94)">declarative and per-invocation: pinned, side-by-side versions are possible</text>
+</svg>
+</figure>
+++++
+
+_Figure 1 — The manifest declares requirements; resolution turns them into mounted runtimes, spawned runtimes, and toolkits inside one process._
+
+[source,yaml]
+----
+requires:
+  - kind: language
+    engine: ruby
+    constraint: "~> 3.3.0"
+  - kind: runtime
+    engine: java
+    constraint: ">= 21, < 26"
+    expose: [java]
+  - kind: toolkit
+    name: inkscape
+    constraint: ">= 1.3"
+    mount: /opt/inkscape
+----
+
+Three kinds of requirement, three mechanisms:
+
+* A *language* runtime boots the application: its two artifacts mount
+  as described in the previous post.
+* A *runtime* requirement like java is spawned, not mounted: when the
+  application runs `java`, tebako starts that runtime's own executable
+  with its own environment image, as a child process. The `expose:`
+  list names the commands that appear.
+* A *toolkit* requirement mounts at a declared path, exactly like a
+  data slice.
+
+== Resolution
+
+Resolution picks, per platform triplet, the newest artifact that
+satisfies every constraint. The result is deterministic and
+recorded — the same package resolves the same way on the same machine,
+and a payload with native code can pin an ABI line so a wrong runtime
+is a named error, never a crash.
+
+== Declarative, per invocation
+
+The same declaration drives dispatch: an installed payload provides
+commands, and each invocation resolves the declared composition before
+it starts. Because nothing is implied, pinned and side-by-side versions
+of the same tool are ordinary — the next post covers what those
+processes may touch on the host.

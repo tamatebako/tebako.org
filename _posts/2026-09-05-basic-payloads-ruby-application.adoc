@@ -1,0 +1,127 @@
+---
+layout: post
+title:  "Basic payloads: Package a Ruby application (3 of 5)"
+date:   2026-09-05 00:00:00 +0800
+categories:
+  - tebako
+  - packaging
+  - tutorial
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: >-
+  The basic payloads series, hands-on: package a ruby application.
+---
+
+= Basic payloads: Package a Ruby application (3 of 5)
+
+[NOTE]
+====
+Post 3 of 5 in the series *Basic payloads*.
+
+. link:/blog/2026-09-05-basic-payloads-run-first-package/[payloads: Run your first package]
+. link:/blog/2026-09-05-basic-payloads-data-payload/[payloads: Data payloads: make one, read one]
+. *payloads: Package a Ruby application* (this post)
+. link:/blog/2026-09-05-basic-payloads-rails-sinatra/[payloads: Package a Rails or Sinatra application]
+. link:/blog/2026-09-05-basic-payloads-publish/[payloads: Publish to your users]
+====
+
+A Ruby application, one executable. This post's subject is pressing
+your app — and the choices you make at press time: what the executable
+carries, and which platforms it targets.
+
+
+++++
+<figure role="img" aria-label="Diagram: press turns a source tree into a fat or lean executable per platform">
+<svg viewBox="0 0 840 350" style="width:100%;height:auto;font-family:var(--font-mono,monospace);" xmlns="http://www.w3.org/2000/svg">
+  <title>Package a Ruby application</title>
+  <defs>
+    <marker id="pa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-text-3,#7a8b94)"/></marker>
+    <marker id="paa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-accent,#c36242)"/></marker>
+  </defs>
+  <rect x="20" y="20" width="230" height="300" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="40" y="46" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-3,#7a8b94)">your source</text>
+  <rect x="40" y="60" width="190" height="110" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="135" y="84" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-1,#1a2b34)">myapp/</text>
+  <text x="135" y="104" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">bin/myapp</text>
+  <text x="135" y="122" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">lib/…</text>
+  <text x="135" y="140" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">Gemfile</text>
+  <text x="135" y="158" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-3,#7a8b94)">provides: [myapp]</text>
+  <line x1="250" y1="165" x2="300" y2="165" style="stroke:var(--tb-c-text-3,#7a8b94);stroke-width:1.5" marker-end="url(#pa)"/>
+  <rect x="302" y="125" width="150" height="80" rx="9" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:2.2"/>
+  <text x="377" y="152" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">tebako press</text>
+  <text x="377" y="170" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">resolve · slice ·</text>
+  <text x="377" y="184" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">stitch the trailer</text>
+  <line x1="452" y1="145" x2="502" y2="105" style="stroke:var(--tb-c-text-3,#7a8b94);stroke-width:1.5" marker-end="url(#pa)"/>
+  <line x1="452" y1="185" x2="502" y2="225" style="stroke:var(--tb-c-text-3,#7a8b94);stroke-width:1.5" marker-end="url(#pa)"/>
+  <rect x="504" y="56" width="318" height="88" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="663" y="78" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">fat</text>
+  <text x="663" y="96" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">payload carried inside — one self-contained file</text>
+  <text x="663" y="114" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">runtime resolves on first run</text>
+  <rect x="504" y="186" width="318" height="88" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="663" y="208" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">lean</text>
+  <text x="663" y="226" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">everything resolved at run time — smallest file</text>
+  <text x="663" y="244" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">same bytes, same behavior</text>
+  <text x="663" y="262" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-3,#7a8b94)">your users never tell the difference</text>
+  <text x="420" y="322" text-anchor="middle" style="font-size:10.5px;fill:var(--tb-c-text-3,#7a8b94)">and per platform: one universal build for pure ruby, one per triplet for native</text>
+</svg>
+</figure>
+++++
+
+_Figure 1 — Press turns a source tree into an executable; fat carries the payload, lean resolves everything at run time, and you build one universal file for pure Ruby or one per platform for native code._
+
+== Press the application
+
+Give `tebako press` the source tree, the entrypoint, and a name:
+
+[source,console]
+----
+$ tebako press -r ./myapp -e bin/myapp -o myapp
+$ ./myapp
+----
+
+Your gems are resolved at press time and travel inside the payload
+slice; your users get a file that runs without Ruby installed. If your
+app's entrypoint should become a command on your users' PATH — the
+shim you met in the first post — declare it in the manifest:
+
+[source,yaml]
+----
+provides:
+  commands:
+    - myapp
+----
+
+One entrypoint per command: a CLI with `myapp` and `myapp-db` gets two
+shims.
+
+== The first choice: fat or lean
+
+* *Fat* — the payload is carried inside the executable. One
+  self-contained file, the simplest thing to hand someone.
+* *Lean* — the executable references the payload, and everything
+  resolves at run time. The smallest file; the same bytes and behavior.
+
+Your users cannot tell the difference at run time; the difference is
+where the bytes come from on the first run.
+
+== The second choice: which platforms
+
+* Pure Ruby presses once, `universal` — one file runs on every
+  supported platform.
+* Native extensions — gems with compiled C — press once per *triplet*:
+  `macos-arm64`, `macos-x86_64`, `linux-gnu-x86_64`,
+  `linux-gnu-aarch64`, `linux-musl-x86_64`, `linux-musl-aarch64`,
+  `windows-ucrt-x86_64`. The compilation happens on your machine or
+  your CI, and your users never compile anything.
+
+The advanced series covers native code in depth — including the case
+where shipping prebuilt binaries is the entire point.
+
+== What you can do now
+
+You can press a Ruby application into a fat or lean executable, choose
+its platforms, and declare the commands it provides. The next post
+does the same for a web application.

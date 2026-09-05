@@ -1,0 +1,123 @@
+---
+layout: post
+title:  "Architecture: The runtime as an image (2 of 5)"
+date:   2026-09-05 00:00:00 +0800
+categories:
+  - tebako
+  - architecture
+  - packaging
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: >-
+  How tebako v2 works, concept by concept —
+  this post: the runtime as an image.
+---
+
+= Architecture: The runtime as an image (2 of 5)
+
+[NOTE]
+====
+Post 2 of 5 in the series *Tebako v2 architecture*.
+
+. link:/blog/2026-09-05-architecture-three-part-package/[Architecture: The three-part package]
+. *Architecture: The runtime as an image* (this post)
+. link:/blog/2026-09-05-architecture-composition/[Architecture: Composition]
+. link:/blog/2026-09-05-architecture-host-boundary/[Architecture: The host boundary]
+. link:/blog/2026-09-05-architecture-trust-release-chain/[Architecture: Trust and the release chain]
+====
+
+The previous post introduced the three parts of a package. This one
+describes the part that does the most work: the runtime, shipped and
+consumed as an image.
+
+A tebako runtime is two artifacts:
+
+* *The interpreter executable* — a normal binary, patched so that
+  tebako can mount images into the process it starts.
+* *The environment image* — a single `.tfs` file holding everything
+  the interpreter's load paths expect: the standard library, the gems,
+  the configuration. It mounts whole at the interpreter's root and is
+  never extracted to disk.
+
+
+++++
+<figure role="img" aria-label="Diagram: the runtime ships as two artifacts and mounts at run time">
+<svg viewBox="0 0 840 340" style="width:100%;height:auto;font-family:var(--font-mono,monospace);" xmlns="http://www.w3.org/2000/svg">
+  <title>The runtime as an image</title>
+  <defs>
+    <marker id="ra" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-text-3,#7a8b94)"/></marker>
+    <marker id="raa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-accent,#c36242)"/></marker>
+  </defs>
+  <rect x="20" y="20" width="460" height="300" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="40" y="46" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-3,#7a8b94)">the runtime — two artifacts</text>
+  <rect x="40" y="56" width="200" height="46" rx="9" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:2.2"/>
+  <text x="140" y="77" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">the interpreter</text>
+  <text x="140" y="93" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-3,#7a8b94)">executable — a normal binary</text>
+  <rect x="40" y="128" width="200" height="46" rx="9" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:2.2"/>
+  <text x="140" y="149" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">the environment image</text>
+  <text x="140" y="165" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-3,#7a8b94)">stdlib + gems, one .tfs file</text>
+  <line x1="140" y1="174" x2="140" y2="206" style="stroke:var(--tb-c-text-3,#7a8b94);stroke-width:1.5" marker-end="url(#ra)"/>
+  <rect x="40" y="208" width="200" height="40" rx="9" style="fill:none;stroke:var(--tb-c-text-3,#7a8b94);stroke-width:1.5"/>
+  <text x="140" y="232" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">downloaded once to ~/.tebako</text>
+  <text x="250" y="150" text-anchor="middle" style="font-size:10.5px;fill:var(--tb-c-text-2,#4a5b66)">verified against the</text>
+  <text x="250" y="166" text-anchor="middle" style="font-size:10.5px;fill:var(--tb-c-text-2,#4a5b66)">published SHA-256,</text>
+  <text x="250" y="182" text-anchor="middle" style="font-size:10.5px;fill:var(--tb-c-text-2,#4a5b66)">mounted — never extracted</text>
+  <line x1="480" y1="170" x2="530" y2="170" style="stroke:var(--tb-c-text-3,#7a8b94);stroke-width:1.5" marker-end="url(#ra)"/>
+  <rect x="532" y="20" width="288" height="300" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="552" y="46" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-3,#7a8b94)">at run time</text>
+  <rect x="552" y="56" width="250" height="46" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="677" y="77" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">the driver</text>
+  <text x="677" y="93" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-3,#7a8b94)">inside the interpreter executable</text>
+  <rect x="552" y="128" width="250" height="74" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="677" y="152" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-1,#1a2b34)">the environment image</text>
+  <text x="677" y="168" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">mounts whole at the</text>
+  <text x="677" y="183" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">interpreter’s root</text>
+  <rect x="552" y="226" width="250" height="46" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="677" y="247" text-anchor="middle" style="font-size:10.5px;fill:var(--tb-c-text-1,#1a2b34)">payload slices mount beside it</text>
+  <text x="677" y="263" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">at their declared paths</text>
+  <text x="420" y="312" text-anchor="middle" style="font-size:10.5px;fill:var(--tb-c-text-3,#7a8b94)">one runtime serves every tebako package on the machine</text>
+</svg>
+</figure>
+++++
+
+_Figure 1 — The runtime ships as two artifacts; the environment image mounts whole at the interpreter’s root, and one runtime serves every package on the machine._
+
+== Why two artifacts
+
+Splitting the interpreter from its environment is what makes sharing
+possible. The first package on a machine that needs a runtime downloads
+both artifacts once, verifies them against the published SHA-256 sums,
+and stores them under `~/.tebako/runtimes/`. Every other tebako package
+on that machine — present or future — reuses the same two files.
+
+Upgrading the runtime therefore never rebuilds an application:
+applications declare a version range, and the newest compatible
+runtime in the store is mounted.
+
+== What runs inside the runtime
+
+A component inside the interpreter executable, the driver, does the
+mounting: the environment image at the interpreter's root, then each
+payload slice at the path its manifest declares. When it is done, the
+interpreter starts on the application's entrypoint, and the program
+reads its files from the mounted images as if they were an ordinary
+filesystem.
+
+A failure at any step unmounts everything and reports a named error —
+there is no partial mount.
+
+== What this buys you
+
+The lean-versus-fat choice you meet as a packager is a direct
+consequence of this model:
+
+* A *fat* executable carries its payload and resolves its runtime on
+  first run — small file, shared runtime.
+* A *lean* executable references everything and resolves it all at run
+  time — smaller file, same guarantees.
+
+The next post covers the grammar that ties runtimes, toolkits, and
+slices together: composition.

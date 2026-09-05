@@ -1,0 +1,129 @@
+---
+layout: post
+title:  "Advanced payloads: Jails and profiles: decide what it may touch (2 of 5)"
+date:   2026-09-05 00:00:00 +0800
+categories:
+  - tebako
+  - packaging
+  - tutorial
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: >-
+  The advanced payloads series: jails and profiles: decide what it may touch.
+---
+
+= Advanced payloads: Jails and profiles: decide what it may touch (2 of 5)
+
+[NOTE]
+====
+Post 2 of 5 in the series *Advanced payloads*.
+
+. link:/blog/2026-09-05-advanced-payloads-trace/[payloads: Trace: see what your payload touches]
+. *payloads: Jails and profiles: decide what it may touch* (this post)
+. link:/blog/2026-09-05-advanced-payloads-image-toolbox/[payloads: The image toolbox]
+. link:/blog/2026-09-05-advanced-payloads-runtimes-native/[payloads: Runtimes and native code]
+. link:/blog/2026-09-05-advanced-payloads-packed-mn/[payloads: packed-mn: one download, any document]
+====
+
+The observe half of the boundary was the last post. This post is the
+constrain half: profiles and jails — how the policy you drafted becomes
+the policy that runs, and what is enforced where.
+
+
+++++
+<figure role="img" aria-label="Diagram: profiles select a policy; the run binds it; record mode drafts grants">
+<svg viewBox="0 0 840 300" style="width:100%;height:auto;font-family:var(--font-mono,monospace);" xmlns="http://www.w3.org/2000/svg">
+  <title>Jails and profiles</title>
+  <defs>
+    <marker id="ja2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-text-3,#7a8b94)"/></marker>
+    <marker id="ja2a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--tb-c-accent,#c36242)"/></marker>
+  </defs>
+  <rect x="20" y="20" width="380" height="260" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="40" y="46" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-3,#7a8b94)">one payload, three profiles</text>
+  <rect x="40" y="70" width="160" height="40" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="120" y="88" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">profile: strict</text>
+  <text x="120" y="101" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-3,#7a8b94)">deny, nothing granted</text>
+  <rect x="40" y="130" width="160" height="40" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="120" y="148" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">profile: standard</text>
+  <text x="120" y="161" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-3,#7a8b94)">deny + declared needs</text>
+  <rect x="40" y="190" width="160" height="40" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="120" y="208" text-anchor="middle" style="font-size:11px;fill:var(--tb-c-text-1,#1a2b34)">profile: open</text>
+  <text x="120" y="221" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-3,#7a8b94)">legacy escape hatch</text>
+  <line x1="200" y1="150" x2="250" y2="150" style="stroke:var(--tb-c-text-3,#7a8b94);stroke-width:1.5" marker-end="url(#ja2)"/>
+  <rect x="252" y="110" width="130" height="80" rx="9" style="fill:none;stroke:var(--tb-c-accent,#c36242);stroke-width:2.2"/>
+  <text x="317" y="142" text-anchor="middle" style="font-size:12px;fill:var(--tb-c-text-1,#1a2b34)">one jail</text>
+  <text x="317" y="160" text-anchor="middle" style="font-size:10px;fill:var(--tb-c-text-2,#4a5b66)">grammar</text>
+  <line x1="382" y1="150" x2="420" y2="150" style="stroke:var(--tb-c-text-3,#7a8b94);stroke-width:1.5" marker-end="url(#ja2)"/>
+  <rect x="422" y="20" width="400" height="260" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="442" y="46" text-anchor="middle" style="font-size:11.5px;fill:var(--tb-c-text-3,#7a8b94)">the run binds</text>
+  <rect x="442" y="70" width="360" height="40" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="622" y="88" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-1,#1a2b34)">TEBAKO_JAIL=deny · --jail deny:arg · jail.yaml</text>
+  <text x="622" y="101" text-anchor="middle" style="font-size:9px;fill:var(--tb-c-text-3,#7a8b94)">env, flag, or baked manifest — precedence is fixed</text>
+  <rect x="442" y="150" width="360" height="80" rx="9" style="fill:none;stroke:var(--tb-c-divider,#ccc);stroke-width:1.5"/>
+  <text x="622" y="174" text-anchor="middle" style="font-size:10.5px;fill:var(--tb-c-text-2,#4a5b66)">record mode drafts the grants:</text>
+  <text x="622" y="192" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-1,#1a2b34)">TEBAKO_JAIL=record tebako run ./myapp -- build</text>
+  <text x="622" y="210" text-anchor="middle" style="font-size:9.5px;fill:var(--tb-c-text-1,#1a2b34)">tfs needs --from-journal ~/.tebako/journal.log</text>
+</svg>
+</figure>
+++++
+
+_Figure 1 — Profiles select a policy, the run binds it from env, flag, or manifest, and record mode drafts the grants from a real run._
+
+== The grammar
+
+A jail policy has one setting and a list of grants:
+
+[source,yaml]
+----
+jail:
+  default: deny        # or open
+  mounts:
+    - path: $HOME/.fontist
+      access: rw
+      when: [macos]
+      why: "fontist caches and resolves fonts here"
+----
+
+Everything not granted is invisible to the process. The `why` is
+mandatory: a declaration that cannot explain itself does not parse.
+
+== Binding, three ways
+
+The same policy binds from an environment variable, a command flag, or
+the manifest itself — `TEBAKO_JAIL=deny`, `--jail deny:arg`, or a
+baked `jail.yaml` — with a fixed precedence. Per-invocation flags win,
+so an operator can tighten any payload for one run without touching
+it:
+
+[source,console]
+----
+$ tebako run ./myapp --jail deny -- --help
+$ tebako run ./myapp --mount "$HOME/sources:/work:ro" -- build /work
+----
+
+== Draft, don't guess
+
+Record mode — the bridge from the previous post — turns a real run
+into the draft policy:
+
+[source,console]
+----
+$ TEBAKO_JAIL=record tebako run ./myapp -- build
+$ tfs needs --from-journal ~/.tebako/journal.log
+----
+
+== One declaration, every platform
+
+The declaration is identical everywhere. On Linux and macOS the choke
+point sits in the filesystem layer; on Windows, enforcement moves to
+the spawn tier — executables materialize into a cache and start under
+the same policy computed from the same declarations.
+
+== What you can do now
+
+You can take any payload and decide, precisely and reviewably, what it
+may touch — on every platform tebako ships. The next post opens the
+images themselves.

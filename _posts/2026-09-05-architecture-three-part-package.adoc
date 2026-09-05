@@ -1,10 +1,10 @@
 ---
 layout: post
-title:  "Tebako v2: Anatomy of a package (2 of 5)"
-date:   2026-09-02 00:00:00 +0800
+title:  "Architecture: The three-part package (1 of 5)"
+date:   2026-09-05 00:00:00 +0800
 categories:
   - tebako
-  - tebako
+  - architecture
   - packaging
 author:
   name: The Tebako team
@@ -12,28 +12,43 @@ author:
   social_links:
     - https://github.com/tamatebako
 excerpt: >-
-  Open a tebako package and take it apart. The store on your machine,
-  the three parts of a package, the trailer at the end of the file, and
-  exactly which bytes land where — every step is a command you run.
+  The tebako v2 model in five concepts: the three-part package,
+  the runtime as an image, composition, the host boundary, and
+  trust.
 ---
 
-= Tebako v2: Anatomy of a package (2 of 5)
+= Architecture: The three-part package (1 of 5)
 
 [NOTE]
 ====
-Post 2 of 5 in the series *Tebako v2*.
+Post 1 of 5 in the series *Tebako v2 architecture*.
 
-. link:/blog/2026-09-01-tebako-v2-stable-metanorma/[Tebako v2: One download, any document]
-. *Tebako v2: Anatomy of a package* (this post)
-. link:/blog/2026-09-03-tebako-v2-cross-runtime-composition/[Tebako v2: Ruby calls Java calls Python]
-. link:/blog/2026-09-04-tebako-v2-jail-host-routing/[Tebako v2: The jail and the host]
-. link:/blog/2026-09-05-tebako-v2-developer-story-benchmarks/[Tebako v2: Build your own]
+. *Architecture: The three-part package* (this post)
+. link:/blog/2026-09-05-architecture-runtime-as-image/[Architecture: The runtime as an image]
+. link:/blog/2026-09-05-architecture-composition/[Architecture: Composition]
+. link:/blog/2026-09-05-architecture-host-boundary/[Architecture: The host boundary]
+. link:/blog/2026-09-05-architecture-trust-release-chain/[Architecture: Trust and the release chain]
 ====
 
-Chapter 1 left you with a running package and a machine that now holds
-a few things. This chapter's subject is the package itself: what is
-inside one. Every claim below comes with a command, so you can check
-each one as we go.
+This series describes how tebako v2 works — one concept per post. This
+first post covers the model everything else builds on: what a tebako
+package is made of.
+
+A tebako package is an executable built from three kinds of parts, and
+each part does exactly one job:
+
+. *The bootstrap* — a small Rust loader, under 3 MB. It is the entry
+  point of every package: it reads the package trailer, finds the
+  runtime, verifies it, and hands control over. It never runs your code
+  itself.
+. *The runtime* — the language interpreter your application needs. It
+  ships as two artifacts — the interpreter executable, and an
+  environment image holding the standard library and gems. The next
+  post covers it in full.
+. *Payload slices* — your application, your data, and the tools it
+  needs, each a disk image that describes itself with a manifest
+  inside the image.
+
 
 ++++
 <figure role="img" aria-label="Diagram: the parts of a package file and how they mount at run time">
@@ -86,104 +101,35 @@ each one as we go.
 
 _Figure 1 — The file: a small bootstrap, numbered payload slots, and a trailer that names the runtime and the mounts. At run time the parts co-mount in one process._
 
-== Look at what landed on your machine
+== What holds the parts together
 
-Start with the store — everything tebako keeps locally lives under
-`~/.tebako`, and you can list it:
+The composition is recorded in a small trailer — 166 bytes plus one
+record per slot — at the end of an otherwise ordinary file. The trailer
+names the runtime the package needs and lists the slices stitched into
+the executable.
 
-[source,console]
-----
-$ tebako info
-tebako      0.15.9
-platform    macos-arm64
-
-$ tebako info runtimes
-ruby-3.3-3.3.7-macos-arm64
-  exe + env image · 142 MB
-
-$ tebako info payloads
-metanorma  1.2.3  tfs:github:tebako-packages/metanorma
-----
-
-Three kinds of things are listed there, and they are the three parts of
-every tebako package:
-
-. *The bootstrap* — the small Rust loader that starts every package. It
-  is the executable you actually run: it reads the package trailer,
-  finds the runtime, and hands control over. It is under 3 MB.
-. *The runtime* — the language interpreter, shipped as two files: the
-  interpreter executable and an environment image holding the standard
-  library and gems. It downloads once per machine, is verified against
-  its published SHA-256, and every package on the machine shares it.
-. *Payload slices* — the application, its data, and the tools it needs,
-  each a disk image that describes itself with a manifest.
-
-== Take a package apart
-
-`tebako inspect` opens any package and prints what is in it:
-
-[source,console]
-----
-$ tebako inspect ./myapp
-kind        package (trailer present)
-slots
-  0   payload   dwarfs   157 MB   /
-runtime     ruby ~> 3.3.0
-trust       unsigned (verified at install, SHA-256 sidecar)
-----
-
-Read the lines against the model: the slot is a payload slice stitched
-into the file; the runtime line is the reference the bootstrap resolves
-on first run; the trust line names what was verified when the artifact
-entered the store.
+Because the parts are glued at the end of a normal file, a tebako
+package stays a normal file: you can `curl` it, `chmod` it, ship it in
+a tarball, notarize it, or hardlink it into a Chocolatey package.
 
 == Carried or shared
 
-Every slice in a package is one of two kinds, and `tebako press` locks
-the choice when you build it:
+Every slice is one of two kinds, and the choice is made when the
+package is pressed:
 
-* *Carried* — the slice's bytes are inside the executable you ship. One
-  file, everything included; this is what the metanorma package does
-  with its application slice.
+* *Carried* — the slice's bytes are inside the executable. One file,
+  everything included.
 * *Shared* — the executable names the slice, and it resolves from a
   registry into the machine's store on first use. Runtimes always work
-  this way; toolkits like Inkscape can too.
+  this way; toolkits can too.
 
 Carry changes where the bytes come from, never what runs: the mounted
 result is identical either way.
 
-== Which bytes land on a user's machine
+== Where this series goes
 
-Take the shared-runtime metanorma package for `aarch64-macos` and count:
-
-* The download is *one file* — the bootstrap with the application slice
-  carried in a slot. The package tarball is 219 MB; the application
-  image inside it is 157 MB (Metanorma plus its full gem closure,
-  compressed).
-* On first run, the bootstrap resolves the runtime reference and
-  downloads the two runtime artifacts for the host, verifies both
-  against the published SHA-256 sums, and stores them under
-  `~/.tebako/runtimes/`. Every other tebako package on the machine
-  shares them.
-* Anything else the composition declares — the Inkscape slice, the
-  OpenJDK runtime from chapter 3 — resolves the same way: fetch once,
-  verify, store, share.
-
-Nothing compiles on the user's machine, ever. Prebuilt artifacts flow
-down from the factories; the only audience that needs a compiler is the
-one building tebako itself.
-
-== The trailer
-
-The whole composition is recorded in a 166-byte trailer plus slot
-records at the end of an otherwise ordinary file. That is why a tebako
-package stays an ordinary file: you can `curl` it, `chmod` it, ship it
-in a tarball, notarize it, or hardlink it into a Chocolatey package —
-which is exactly how `fontist.exe` reaches a Windows user's PATH.
-
-== What you can do now
-
-You can look at any tebako package — yours or someone else's — and
-predict what it contains, what it will download, and where every byte
-will land. The next chapter makes packages do something new: use
-another runtime.
+The next four posts cover each part of the model in depth: the runtime
+as an image, the composition grammar, the host boundary, and trust. If
+you would rather start doing than reading, the
+link:/blog/2026-09-05-basic-payloads-run-first-package/[basic payloads
+series] runs the whole model hands-on.
