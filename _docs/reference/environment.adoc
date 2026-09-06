@@ -1,0 +1,18 @@
+---
+title: Environment variables
+description: >-
+  The consolidated TEBAKO_* table: HOME, OFFLINE, DEBUG*, TRACE, JAIL*, RUNTIME_IMAGE, MOUNT_ROOT, and friends.
+---
+
+[NOTE]
+====
+Status: planned — this page lands with the reference wave.
+====
+
+The consolidated TEBAKO_* table: HOME, OFFLINE, DEBUG*, TRACE, JAIL*, RUNTIME_IMAGE, MOUNT_ROOT, and friends.
+
+This page is not written yet. Until it lands, the
+link:/docs/architecture/[architecture section] covers the same surfaces
+at narrative depth, and the
+https://github.com/tamatebako/tebako[product repository] carries the
+normative specifications.

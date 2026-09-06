@@ -1,0 +1,18 @@
+---
+title: tebako-pkg CLI
+description: >-
+  Trailer surgery: info, validate, bundle, unbundle, reassemble, insert-image, remove-image, set-runtime, sign, verify.
+---
+
+[NOTE]
+====
+Status: planned — this page lands with the reference wave.
+====
+
+Trailer surgery: info, validate, bundle, unbundle, reassemble, insert-image, remove-image, set-runtime, sign, verify.
+
+This page is not written yet. Until it lands, the
+link:/docs/architecture/[architecture section] covers the same surfaces
+at narrative depth, and the
+https://github.com/tamatebako/tebako[product repository] carries the
+normative specifications.

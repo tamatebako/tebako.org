@@ -1,0 +1,29 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro'
+import { getCollection } from 'astro:content'
+import { getSection } from '../../../config/docs'
+
+export async function getStaticPaths() {
+  const entries = await getCollection('docs-reference')
+  const reference = getSection('reference')
+  return entries.flatMap((entry) => {
+    const reg = reference.entries.find((e) => e.href === `/docs/reference/${entry.id}/`)
+    if (!reg) return []
+    return [{ params: { slug: entry.id }, props: { entry, href: reg.href } }]
+  })
+}
+
+const { entry, href } = Astro.props
+const html = entry.rendered?.html ?? ''
+---
+
+<DocsLayout
+  section="reference"
+  href={href}
+  title={entry.data.title}
+  heading={entry.data.heading}
+  lede={entry.data.lede}
+  description={entry.data.description}
+>
+  <div class="tb-prose mt-16" set:html={html} />
+</DocsLayout>
