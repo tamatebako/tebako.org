@@ -39,7 +39,10 @@ jobs:
         with:
           enablement: true
 
-      - name: Test (docs registry invariants)
+      - name: Check (types and templates)
+        run: npm run check
+
+      - name: Test (registry invariants + prose lint)
         run: npm test
 
       - name: Build with Astro
