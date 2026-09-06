@@ -1,0 +1,203 @@
+---
+title: Check a payload
+heading: Check a payload.
+lede: >-
+  A check is the payload's own acceptance test, declared in its in-image
+  manifest and carried inside its image: _"given my declared needs, I do my
+  one real thing."_ Verification proves the bytes are the publisher's; a
+  check proves the payload works on top of them. One definition, runnable at
+  three moments — by the publisher at press time, by the user on their own
+  machine, and under the record policy to discover needs.
+description: >-
+  Tebako payload checks: the in-image checks: manifest block, tebako check,
+  exec and structural checks, composition checks, the SKIP discipline, and
+  exit code 79.
+---
+
+== Author a check: the checks: block.
+
+Add a top-level `checks:` map to the payload's manifest. The canonical
+example — the metanorma slice's `html-xml` check, the Homebrew formula's
+test block translated to a declaration:
+
+[source,yaml]
+----
+checks:
+  html-xml:
+    entry: /bin/metanorma            # in-image executable — usually the payload's own entrypoint
+    argv: ["--type", "iso", "{scratch}/test-iso.adoc", "--agree-to-terms"]
+    fixtures: /__tpkg__/check/html-xml   # in-image dir; its CONTENTS land at the scratch root
+    expect: { exit: 0, files: ["test-iso.xml", "test-iso.html"] }
+    timeout: 180                     # seconds; expiry is a FAIL
+----
+
+* `entry` is always an in-image path — a check never names a host system
+  executable. On a runtime slice only, the reserved spelling `self` runs
+  the runtime exe itself, with the env image mounted.
+* `{scratch}` is the one argv substitution: the per-run host scratch
+  directory the engine creates, auto-granted `rw` for the check's
+  duration. Fixtures materialize to that host scratch root — never
+  VFS-spelled — because the consumer may be the payload's own
+  raw-surface component.
+* `expect.files` asserts existence + non-empty, scratch-relative;
+  `expect.exit` defaults to 0; `expect.stdout` takes one regex the run's
+  stdout must match. Byte-golden assertions do not exist by construction —
+  output bytes churn with dependency versions.
+* `when: [windows, macos, linux]` filters by OS family — a non-matching
+  platform SKIPs, loudly. `requires: { provides: [jvm] }` names
+  composition prerequisites — an unmet capability SKIPs with the missing
+  one named, never FAILs. A check fails only when its prerequisites are
+  present and its behavior is wrong.
+* `needs:` adds host grants for the check run only (rare — the needs
+  grammar). Check names match `[A-Za-z0-9][A-Za-z0-9._-]*`; a slice may
+  declare any number of checks.
+
+== One grammar, three slice kinds.
+
+One key decides the shape: a check _with_ `entry` is an exec check; a
+check without one is structural. A runtime slice checks its own boot; a
+data slice checks its in-image invariants with no runtime, no
+composition, no exec at all:
+
+[source,yaml]
+----
+# a runtime slice's minimal self-check (the factory authors it into the env image's manifest)
+checks:
+  boot-and-stdlib:
+    entry: self
+    argv: ["-e", "require 'json'; puts JSON.generate({ok: 1})"]
+    expect: { exit: 0, stdout: '"ok":1' }
+    timeout: 60
+
+# a data slice's structural check — the engine mounts the image and asserts
+checks:
+  layout:
+    expect:
+      image_files: ["/templates/org/cover.adoc", "/templates/org/header.html"]
+----
+
+Structural checks need only the mount, so a data slice's acceptance is
+provable anywhere the image can be read. The runtime's full acceptance
+stays with the factory's dogfood — the `self` check is the user-side
+smoke: it proves the runtime on the machine that resolved it.
+
+== Run them: tebako check.
+
+The target is whatever you have — an installed payload's name, a bare
+image fresh out of the press, a pressed package, or a composition
+document:
+
+[source,console]
+----
+$ tebako check metanorma                    # an installed payload — the user's machine, the user's grants
+slice metanorma: html-xml PASS 41s
+slice metanorma: pdf SKIP (no jvm in the composition)
+$ echo $?
+0
+
+$ tebako check out/metanorma-1.16.9-universal.tfs \   # the press-time gate, per platform
+    --runtime "$RUNTIME" --runtime-image "$RUNTIME_IMAGE"
+check html-xml PASS 38s
+----
+
+* `--check <c>` runs one named check; `--list` prints the selected checks
+  (`slice metanorma: html-xml (exec)`, `check layout (structural)`) and
+  runs none.
+* `--record` runs the checks under the record policy — the journal feeds
+  `tfs needs --from-journal`, so the acceptance path is also the
+  needs-discovery exerciser. `--keep-scratch` preserves each check's
+  scratch dir for debugging (its path is printed); otherwise it is
+  removed.
+* The bare-image form resolves nothing: exec checks need
+  `--runtime <exe>`, and `--runtime-image <env.tfs>` is required for
+  non-runtime images (a runtime slice's `self` checks default it to the
+  checked image itself).
+* A check run is a run: store artifacts stay byte-identical, nothing is
+  fetched, mirrored, or mutated. A FAIL verdict names the expectation —
+  `check html-xml FAIL (expected file missing: test-iso.xml)`.
+
+== Test the binding, not just the slices.
+
+A composition document (the org's `tebako.yaml`) can declare checks for
+the binding it assembles — the slice checks prove each slice in
+isolation; a composition check proves they work _together_. A composition
+has no image of its own, so it speaks two fixture sources of its own:
+`fixtures_inline` (name → content, written into scratch) and
+`fixtures_host` (a path relative to the composition file):
+
+[source,yaml]
+----
+# tebako.yaml — metanorma + the org's templates: one config, bind AND test
+version: 1
+runtime: { name: ruby, requirement: "~> 4.0" }
+slices:
+  - { name: metanorma, requirement: ">= 2.1" }
+  - { name: acme-templates, requirement: "3", mount: /templates/acme }
+entrypoint: metanorma
+policy: deny
+checks:
+  org-compile:
+    entry: /bin/metanorma
+    argv: ["--type", "acme", "{scratch}/doc.adoc", "--agree-to-terms"]
+    fixtures_inline:
+      doc.adoc: |
+        = Quarterly report
+        ACME Secretariat
+        :nodoc:
+        :novalid:
+    expect: { exit: 0, files: ["doc.xml", "doc.html"] }
+    timeout: 180
+----
+
+`tebako check tebako.yaml` runs the slice checks _and_ the composition
+checks, slice-first — a broken slice is diagnosed before the binding that
+depends on it — and the report groups by owner:
+`slice metanorma: html-xml PASS` / `composition: org-compile PASS`.
+
+== Exit codes.
+
+[cols="1,1,4"]
+|===
+| Exit | Name | What it means
+
+| 0
+| —
+| every selected check PASSed or SKIPped — a SKIP never fails the gate
+
+| 79
+| check
+| at least one check FAILed; the verdict line names the failed expectation (missing file, exit code, stdout pattern, timeout)
+
+| 64
+| usage
+| a malformed command line
+
+| 65
+| manifest
+| a malformed checks: block — caught at press / validate time, never discovered mid-run
+
+| 69
+| unavailable
+| a runtime or slice could not be resolved
+
+| 127
+| not found
+| the check target does not exist
+
+|===
+
+Why 79 and not a rounder number: the draft design allocated 72, but 72
+already belongs to the trust-chain refusal — one code, one class — so the
+check class took the next free code in the loader block.
+
+== The metanorma gate, landing.
+
+The `html-xml` block above is queued for the metanorma feedstock as a
+press-time gate — the check running against the just-pressed image, per
+platform, before publish. It waited on this CLI release: feedstocks pin
+released tebako binaries (releases are the interface), and the check
+engine first ships in v0.2.0. Until the feedstock re-pins, authoring the
+block into your own payload manifests works today — the model and the
+engine are one release.
+
+See also: link:/docs/guides/trace/[Trace a packaged app] · link:/docs/guides/verify/[Verify integrity] · link:/docs/guides/publish/[Publish to your own registry]

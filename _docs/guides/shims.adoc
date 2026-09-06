@@ -1,0 +1,151 @@
+---
+title: Shims & versions
+heading: Shims & versions.
+lede: >-
+  A shim is an ordinary command on your PATH. Behind it: a link in
+  ~/.tebako/shims pointing at the dispatcher, and the link's own name as
+  the selector — argv0 decides which payload, which version, and which
+  runtime this invocation gets.
+description: >-
+  Tebako shims put packaged commands on PATH with per-invocation
+  version dispatch: the version chain, enable/disable, which, doctor,
+  and install-shell.
+---
+
+== Put the shim directory on PATH, once.
+
+[source,console]
+----
+$ tebako-shim install-shell            # detects your shell
+$ tebako-shim install-shell --shell zsh  # or name it: bash|zsh|fish|csh
+----
+
+`install-shell` prepends `~/.tebako/shims` to PATH inside a managed
+block in your shell startup file — idempotent, and removed by
+`tebako-shim uninstall-shell`. On Windows the shim directory goes on the
+user PATH in the registry (HKCU). Open a new shell afterwards.
+
+== Where shims come from.
+
+`tebako install` registers them — registry installs always do; installing
+a local package file does it only with `--shims`. `tebako uninstall
+<name>` removes the shims and the cache entry. There is no
+`tebako shim add/remove/list` — the read-side verb is `tebako-shim list`.
+
+== The version chain: four levels, first hit wins.
+
+Every invocation re-evaluates the chain. The environment beats the
+project, the project beats your config, your config beats the
+publisher's default.
+
+*1. Environment — one shell, one pin.*
+
+[source,console]
+----
+$ export TEBAKO_METANORMA_VERSION=1.2.2
+----
+
+The variable name is the tool name uppercased, non-alphanumerics
+replaced with underscores — a tool `mn-cli` answers to
+`TEBAKO_MN_CLI_VERSION`. Highest precedence, easiest to undo.
+
+*2. Project file — pinned with the code.*
+
+[source,yaml]
+----
+# .tebako-tools.yaml, at the project root
+metanorma: 1.2.1
+----
+
+The dispatcher walks up from the current directory; the nearest file
+that pins the command wins. A nearer file that does not mention the
+command does _not_ shadow a farther one that does. Commit the file with
+the project.
+
+*3. Your defaults in `~/.tebako/config.yaml`.*
+
+[source,yaml]
+----
+defaults:
+  metanorma: 1.2.3
+----
+
+Hand-edited. The only command that ever writes this file is `tebako
+add-registry`; there is no `tebako use`.
+
+*4. Registry default — the publisher's word.*
+
+If nothing above pins a version, the registry's own `default:` entry
+decides.
+
+== Then the runtime.
+
+The chosen entrypoint declares a runtime requirement. The dispatcher
+picks the newest _compatible_ runtime already in the cache — no
+download — or, if none fits, downloads, verifies, and caches one.
+Pure-language payloads declare a range (`>= 3.3, < 5.0`);
+native-extension payloads pin an ABI line (`~> 3.3.0`) plus a platform
+ABI string, and a wrong line is a named error, never a segfault.
+Entrypoints that need no interpreter — native tools — declare no runtime
+and get none.
+
+== Preview and diagnose.
+
+[source,console]
+----
+$ tebako-shim which metanorma
+payload     metanorma 1.2.3
+version     defaults: in ~/.tebako/config.yaml
+image       ~/.tebako/payloads/metanorma/1.2.3.tfs
+entrypoint  /bin/metanorma — ruby >= 3.3, < 5.0
+runtime     ruby 3.3.7 (cached)
+mounts      / (app) · /opt/inkscape · /opt/openjdk
+exec        tebako-runtime-… --tebako-image … --tebako-entry metanorma
+----
+
+`which` is read-only: it shows what this invocation _would_ dispatch —
+payload, where the version came from, image, entrypoint, runtime,
+mounts, and the final exec argv — without running anything. Output above
+is representative.
+
+[source,console]
+----
+$ tebako-shim doctor
+----
+
+`doctor` checks that the shim directory is on PATH, that every shim
+resolves, that payload records and their trust anchors exist, that the
+config parses, that registries are fresh, and that the runtime cache is
+intact. It ends with _no problems found_ (exit 0) or a problem count
+(exit 1). Note the binary: there is no `tebako doctor` — the verb is
+`tebako-shim doctor`.
+
+== Park a version, or a whole tool.
+
+[source,console]
+----
+$ tebako-shim disable metanorma@1.2.2   # one version
+$ tebako-shim disable metanorma          # every version
+$ tebako-shim enable metanorma           # bring it back
+----
+
+`disable` parks a version — or the whole tool — so dispatch no longer
+selects it; `enable` restores it. The state lives in
+`~/.tebako/shims/.disabled.yaml`: a plain YAML file you can read or
+edit.
+
+== Per-run overrides at the shim.
+
+[source,console]
+----
+$ metanorma --jail deny:arg compile site.adoc
+$ metanorma --mount "$HOME/extra:/extra:ro" compile site.adoc
+----
+
+Leading `--jail`, `--mount`, and `--no-host` tokens are consumed by the
+dispatcher; everything after them reaches the payload verbatim. The
+policy grammar is in link:/docs/guides/jails/[the jails guide].
+
+See also: link:/docs/guides/jails/[Set a jail policy] ·
+link:/docs/guides/debug/[Debug & logging] ·
+link:/docs/architecture/dispatch/[Dispatch, in the architecture docs].

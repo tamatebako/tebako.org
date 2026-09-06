@@ -1,0 +1,181 @@
+---
+title: Debug & logging
+heading: Debug & logging.
+lede: >-
+  Everything tebako logs goes to stderr, in one format, under one switch:
+  `tebako[<pid>] <level> <component>: <event> <k=v>…`. stdout belongs to the
+  payload — logs never touch it.
+description: >-
+  Tebako debugging: TEBAKO_DEBUG levels and per-component overrides, log
+  format, tebako-shim doctor, registry freshness, and the exit codes worth
+  memorizing.
+---
+
+// normative: spec 06 §4 + spec 18 §7 (exit allocation), spec 24 §5/§7 (126, 68), spec 26 §2 (79), spec 19 §4 (138), spec 11 §11 (debug logging) — table verified against crates/tpkg/src/lib.rs:275-291, tebako-bootstrap/src/lib.rs:81-106, tebako-shim/src/lib.rs:63-73
+
+== The switch.
+
+Turn logging on with `TEBAKO_DEBUG`:
+
+[source,console]
+----
+$ TEBAKO_DEBUG=debug tebako install metanorma
+$ TEBAKO_DEBUG=warn,resolve=trace tebako install metanorma
+----
+
+* Levels: `off` (default), `error`, `warn`, `debug`, `trace`. A comma list
+  sets a base level plus per-component exceptions. `1`/`true`/`yes` mean
+  debug; `0`/`false`/`no` mean off.
+* The components: `preload, tfs, driver, shim, bootstrap, cli, pkg,
+  resolve`. `TEBAKO_DEBUG_COMPONENTS=resolve,cli` filters output to a
+  subset.
+* `TEBAKO_DEBUG_FILE=<path>` appends to a file instead of stderr; `%p` in
+  the path expands to the pid, so parallel runs do not interleave.
+* Legacy: any non-empty `TEBAKO_DEBUG_TFS` means `tfs=debug`. Payload
+  contents and key material are never logged. For a structured capture —
+  one JSON event per interception decision, machine-consumable — arm the
+  trace bus instead: see link:/docs/guides/trace/[Trace a packaged app].
+
+== A worked session: a failing install.
+
+A failing install under `TEBAKO_DEBUG=debug` looks like this:
+
+[source,console]
+----
+$ TEBAKO_DEBUG=debug tebako install metanorma
+tebako[81234] debug cli: install name=metanorma
+tebako[81234] debug resolve: registry cache fresh age=3h file=~/.tebako/registries/9f2c….yaml
+tebako[81234] debug resolve: select metanorma version=1.2.3 artifact=metanorma-1.2.3.tfs
+tebako[81234] error resolve: download failed status=404 url=https://github.com/…/releases/download/…
+----
+
+Read a line left to right: pid, level, component, event, then key=value
+detail. This trace says the registry index named an artifact the release
+page does not have — a publisher-side break, not your machine. _Log
+output shown is representative._
+
+== doctor: the first thing to run.
+
+The diagnostic verb is `tebako-shim doctor`:
+
+[source,console]
+----
+$ tebako-shim doctor
+----
+
+It checks that the shim directory is on PATH, that every shim resolves,
+that payload records and their trust anchors exist, that the config
+parses, that registries are fresh, and that the runtime cache is intact.
+It ends with _no problems found_ (exit 0) or a problem count (exit 1).
+When a shim misbehaves, run this before anything else. Note the binary:
+there is no `tebako doctor` — the verb is `tebako-shim doctor`.
+
+== "The version the publisher just shipped isn't there."
+
+Registry indexes are cached for dispatch with a 24-hour TTL. A stale cache
+is the most common cause of a missing new version — check the state, then
+refresh:
+
+[source,console]
+----
+$ tebako info registries
+tfs:github:tebako-packages/metanorma   fetched 3 h ago    fresh
+tfs:github:tamatebako/hello            fetched 26 h ago   stale
+$ tebako update-registries
+----
+
+_Output representative._
+
+== Every exit code, one table.
+
+Every loader failure prints a one-line reason before exiting — read that
+line first. The codes exist so scripts can branch.
+
+[cols="1,1,4"]
+|===
+| Exit | Refusal | What it means
+
+| 64
+| usage
+| the command line itself was wrong — a bad flag or a missing argument; the usage line prints
+
+| 65
+| manifest
+| the trailer or a manifest is missing, corrupt, or names no usable entrypoint
+
+| 66
+| launcher ABI
+| the package speaks a handoff wire format this runtime predates
+
+| 67
+| runtime reference
+| the runtime reference in the trailer cannot be parsed or honored
+
+| 68
+| overlay
+| an overlay/decrypt binding failed — an unbound retained store, missing or non-opening key material, an unwritable store, an orphan binding, or a malformed TEBAKO_OVERLAYS / TEBAKO_DECRYPT
+
+| 69
+| unavailable
+| an artifact could not be resolved — offline miss or download failure; check TEBAKO_OFFLINE, the network, the release page
+
+| 70
+| sha256
+| a checksum verification failed; nothing was installed
+
+| 71
+| signature
+| a signature is invalid — or the artifact is unsigned under TEBAKO_REQUIRE_SIGNED=1
+
+| 72
+| trust
+| the signing key is not in the trusted set
+
+| 73
+| jail
+| the jail policy is malformed; the run failed closed, nothing mounted
+
+| 74
+| I/O
+| a filesystem, lock, or install operation failed
+
+| 75
+| contract
+| runtime and loader generations do not meet — the message names both and the remedy
+
+| 76
+| install
+| installation was refused — the publisher froze the package (no-install), or the verb belongs to the CLI
+
+| 77
+| era
+| the artifact comes from a different tebako generation, in either direction
+
+| 78
+| layout
+| the env image does not match the layout the interpreter was compiled for — or a mount-root override the image does not grant
+
+| 79
+| check
+| a payload check FAILed — the tebako check aggregate; the verdict line names the check and the failed expectation
+
+|===
+
+The everyday two: 69 (something could not be fetched — check
+`TEBAKO_OFFLINE` first) and 73 (a malformed jail policy — fail closed,
+nothing mounted).
+
+Three codes live outside the loader block, each owned by its own layer:
+`126` is not a loader exit but the `ENOKEY` errno — a read of a sealed
+(encrypted) path without the key material answers it, and a payload that
+surfaces the errno exits with it; `132` is the runtime factory's refusal
+of a pre-era or corrupt source tarball — you meet it in factory CI, not
+on a user machine; `138` is a press-time miss: `TEBAKO_OFFLINE=1` with
+the bootstrap not yet in the local store.
+
+== CI logs.
+
+`TEBAKO_NO_PROGRESS=1` — or `NO_COLOR`, or `TERM=dumb` — switches progress
+rendering to plain lines that read cleanly in a build log.
+
+See also: link:/docs/guides/trace/[Trace a packaged app] · link:/docs/guides/shims/[Shims & versions] · link:/docs/guides/info-inspect/[info & inspect] · link:/docs/guides/verify/[Verify integrity]
