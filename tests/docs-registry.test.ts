@@ -21,6 +21,8 @@ function pageExists(href: string): boolean {
         // docs guides can be AsciiDoc collection entries (_docs/guides/<slug>.adoc)
         // rendered by the dynamic [slug].astro route
         join(ROOT, '_docs', `${trimmed.replace(/^docs\//, '')}.adoc`),
+        // blog posts are _posts/<slug>.adoc rendered by [slug].astro
+        join(ROOT, '_posts', `${trimmed.replace(/^blog\//, '')}.adoc`),
       ]
     : [join(ROOT, 'src/pages', 'index.astro')]
   return candidates.some((c) => existsSync(c))
@@ -67,6 +69,16 @@ describe('docs registry (src/config/docs.ts)', () => {
         if (file.endsWith('[slug].astro')) continue // dynamic route for collection entries
         const href = sectionHrefFor(file, sec.id)
         if (!registered.has(href)) orphans.push(`${sec.id}: ${file} (${href})`)
+      }
+      // AsciiDoc collection entries (guides): an unregistered .adoc renders nowhere
+      const adocDir = join(ROOT, '_docs', sec.id)
+      if (existsSync(adocDir)) {
+        for (const file of walk(adocDir)) {
+          if (!file.endsWith('.adoc')) continue
+          const slug = file.slice(adocDir.length + 1).replace(/\.adoc$/, '')
+          const href = `/docs/${sec.id}/${slug}/`
+          if (!registered.has(href)) orphans.push(`${sec.id}: ${file} (${href}) — unregistered .adoc, never rendered`)
+        }
       }
     }
     expect(orphans).toEqual([])
