@@ -1,0 +1,135 @@
+---
+title: Runtime-native interposition
+heading: Runtime-native interposition.
+lede: >-
+  A mounted image is not real disk — so three interpreter-level operations
+  physically cannot work without help. The law: interception is
+  RUNTIME-INTERNAL and GENERIC. No per-payload and no per-gem code anywhere in
+  the stack; a payload that exercises these paths needs zero adapter work.
+description: >-
+  The generalized hooks: how a tebako runtime serves interpreter-level
+  operations whose targets live in the VFS — native-library loads, execs, and
+  C-library resource reads — with zero per-payload or per-gem code.
+---
+
+// normative: spec 22 (§1 taxonomy, §2 class L + §2.1 phase-W, §3 class E + §3.1 matrix + §3.2 PATH wiring, §4 class R, §5 error model, §6 the documented interface, §7 migration)
+
+[NOTE]
+====
+Status: shipped — class L POSIX + windows phase-W, class E (ELF + the macOS
+launcher tier), class R declarative materialization — the runtime gem's
+per-gem require maps ship EMPTY.
+====
+
+== Every need reduces to three classes.
+
+[cols="2,3,3,3"]
+|===
+|CLASS |TRIGGER |CONSUMERS |FAILS BECAUSE
+
+|`L — native-lib load` |dlopen / LoadLibrary of a VFS path |the interpreter's dln_load, ffi, fiddle, C extensions self-loading |the OS loader reads real files only
+|`E — exec of a VFS binary` |execvp / posix_spawn / shell strings whose argv0 is VFS-resident |mn2pdf's java, inkscape CLI, any payload tool |the kernel execs real files only
+|`R — C-library resource paths` |a C lib reads a path through its own IO, bypassing the interpreter's patched IO |OpenSSL reading the CA cert, ICU data files |the path doesn't exist on the host
+|===
+
+Anything that does not fit L/E/R is a design smell — the spec gets extended,
+never a bolted-on one-off. The v1-era per-gem require adapters were the legacy
+form; this mechanism retires them, and an adapter's deletion merges only with
+the dogfood green WITHOUT it (metanorma + fontist are the oracle pair —
+ffi/fiddle/excavate-load + java-exec + cert-resource all exercised).
+
+== Class L — materialize and load the real file.
+
+A load whose path resolves inside a mounted image materializes the library —
+and its dependency closure — to the runtime's exec cache, and loads the real
+file. A host path passes through untouched. The decision is a path-prefix
+check against the mount table, nothing more. The interposed symbols are
+`dlopen` and `dlerror`; `dlsym` is deliberately NOT interposed — the wrapper
+returns real loader handles, so symbol resolution needs no routing. A failed
+VFS materialization surfaces the tebako context line (the library, the mount,
+the verdict) through the standard dlerror channel — never a stale loader
+message, never a silent fallback.
+
+[cols="2,4,4,4"]
+|===
+|PLATFORM |CLASS L DELIVERY |EXEC, ARRAY FORM |EXEC, SHELL STRING
+
+|ELF (gnu/musl) |exe-defined dlopen/dlerror wrappers preempt for the whole process |spawn hook materializes + injects the child (LD_PRELOAD + TEBAKO_TFS_MOUNTS) |works unmodified — inherited LD_PRELOAD injects every child at exec, /bin/sh included
+|macOS |driver self-inserts an interpose dylib (DYLD_INSERT_LIBRARIES + sentinel, one re-exec) |the same hook; the materialized child is a non-Apple binary, insertion honored |named boundary — SIP strips/fatals an inherited insertion at Apple-binary exec; the launcher tier (wrap-bin) re-arms per spawn
+|windows (msys) |the patched dln.c dlmap route + the phase-W IAT rebind for path-carrying raw calls |boot-materialized alias dirs on PATH carry declared bare names interception-free |deferred (phases after class L)
+|===
+
+The macOS mechanics bear stating: dyld honors interpose tuples only from a
+DYLIB image, so the driver SELF-INSERTS at boot — writes an embedded micro
+interpose-dylib to a content-keyed cache path, sets `DYLD_INSERT_LIBRARIES`
+plus a sentinel, and re-executes itself exactly once, before any mount. On
+windows there is no process-wide preemption surface: coverage routes through
+the interpreter's own patched `dln.c`, extended by the phase-W IAT rebind for
+path-carrying raw `LoadLibrary` calls, and by DECLARED aliases whose
+boot-materialized copies bind through the OS's own search for bare-name
+callers — interception-free.
+
+== Class E — exec a binary that isn't on disk.
+
+Exec of a VFS-resident binary materializes it plus its loader closure and execs
+the real path with the original argv/env; a covered path the mounts do not hold
+answers ENOENT, so a libc PATH loop simply moves to its next candidate. A VFS
+binary that itself spawns children re-enters the same interposition — children
+of materialized binaries keep the VFS view, never a silent host fallback. And
+a bare command name resolves with no payload code learning tebako: **the driver
+prepends every co-mounted dependency image's declared bin dirs to PATH in the
+handoff env** — the image declares, the driver flows. The explicit,
+windows-safe, shell-free reference surface is `TEBAKO_MOUNT_<SLUG>` per
+dependency mount (slug derived from the mount path: drop the drive qualifier,
+uppercase alphanumerics, map the rest to `_`, trim; the root mount is reserved
+and exports nothing).
+
+[source,text]
+----
+# metanorma → openjdk: mn2pdf runs `java -jar …` by shell string.
+# The openjdk payload declares its bin dir; the driver's handoff env
+# leads PATH with the launcher dir, then dependency bin dirs:
+#   <exec-cache>/wrap-bin  (self-injecting launchers — re-arm the
+#   platform's injection var past the SIP strip)
+#   then every co-mounted image's declared bin dirs
+# The JVM boots under the jail: platform floor (automatic) + the JRE
+# tree (an authored ro grant) + the user domain (an authored home read).
+----
+
+== Class R — declarative boot materialization.
+
+An image manifest MAY declare `materialize: [paths]` — absolute in-image
+regular files the driver extracts after the mounts and the jail, before the
+interpreter handoff, landing at
+`<TEBAKO_EXEC_CACHE>/resources/<image-key>/<P>`. The canonical consumer
+pattern is an image-OWNED default: the image that ships a resource also ships
+the configuration pointing at its materialized location (the runtime env
+image's own OpenSSL cert default is the first entry; the driver exports
+`SSL_CERT_FILE` at boot as the one env-surface exception). The mechanics are
+locked: write-once with the tfs-merkle-1 file construction, re-hash before
+install, the digest record renamed into place BEFORE the content file so a
+crash never leaves content without its record; per-boot re-verification — a
+mismatch is a named sha256-mismatch (exit 70), never a silently served
+corruption; the installed copy is read-only; a listed path absent from the
+image is a named 65 — the manifest lied, never a skipped entry.
+
+== The stable surface, forever.
+
+Payload authors and runtime factories may rely on: the path rule (a native
+library or executable inside a mounted image loads/execs exactly as if on
+disk, from any caller — no gem- or payload-specific action ever);
+`TEBAKO_EXEC_CACHE` (read-only to payloads; per-image-sha segregation
+contractual, contents an implementation detail; POSIX materializations are
+per-process and reaped at exit, windows DLLs are OS-locked so they are
+leave-in-place, content-keyed, and reaped by the store's cache maintenance);
+the materialized-resource convention; the `TEBAKO_MOUNT_<SLUG>` discovery
+surface; and the dependency PATH wiring. Everything else — the mount table
+layout, the closure-walk order, the cache's on-disk naming — is implementation
+detail and may change between runtime releases. Loader-side failures keep the
+loader's named codes (65–78); runtime-side failures surface as the
+interpreter's own error with the tebako context line. No silent fallbacks,
+ever.
+
+See also: link:/docs/architecture/driver-contract/[The driver contract] ·
+link:/docs/architecture/jails-and-proxying/[Jails and host proxying] ·
+link:/docs/architecture/observability/[Trace and observability].

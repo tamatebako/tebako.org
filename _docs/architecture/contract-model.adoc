@@ -1,0 +1,131 @@
+---
+title: The contract model
+heading: The contract model.
+lede: >-
+  Every interface in the ecosystem has exactly one owner, one declarative
+  contract, and one verification point. Consumers verify fail-closed before
+  execution; a mismatch is a named error that names both sides; anything
+  undeclared is refused by name — never assumed, never silently served.
+description: >-
+  Nothing is read until it breaks: every interface has one owner, one
+  declarative YAML contract, one fail-closed verification point — and anything
+  undeclared is pre-era, refused by name.
+---
+
+// normative: spec 18 (§2 model, §3 evolution law, §4 edges, §7 exits, §8 non-goals), spec 06 §6 (contract negotiation), spec 00 §10 (SSOT)
+
+[NOTE]
+====
+Status: shipped — the schema registry (9 grammars), era refusals, contract
+negotiation (exit 75), the layout check (78), the trailer era gate (77).
+
+Status: planned — the S1–S61 scenario catalog completes as the e2e suite
+grows.
+====
+
+== Two kinds of YAML — never conflated.
+
+**Schemas** are the grammars themselves — versioned, living in ONE registry
+(`docs/spec/schemas/` in the product repo), each carrying its name, MAJOR
+version, and evolution metadata. **Declarations** are the per-artifact
+instances conforming to a schema — in-image manifests, the runtime release
+card, the registry file, the package L2 block, the store config. Every
+producer validates its declarations against the schema it owns in its own CI;
+every consumer validates before use and refuses invalid input with a named
+error. And per the SSOT invariant: a cross-repo contract value has exactly ONE
+authoritative owner — every other consumer FLOWS it (generated file, manifest,
+exported symbol) or ASSERTS parity in CI. A second hand-written copy of any
+contract value, in any language, any repo, is a bug on arrival.
+
+== The edges that gate a run.
+
+Twenty contract edges map the ecosystem (C1–C20). The load-bearing ones, with
+their refusal shapes:
+
+[cols="2,4,4"]
+|===
+|EDGE |DECLARATION |REFUSAL
+
+|C1 · source tarball → runtime factory |tebako-mount-root + versions.yml schema + SHA256SUMS |absent/corrupt → exit 132 at configure
+|C2 · runtime factory → loader (the release card) |runtime-manifest.yaml: era, contract_version, mount_root, abi, image_layout, digests |pre-download — era-1 refusal; contract too new → exit 75
+|C3 · runtime exe ↔ env image |in-image /lib/tebako/layout.yaml |driver post-mount, pre-init: missing → era-1; mismatch → exit 78
+|C6 · loader → package trailer |header + L2 package-manifest block (era, pressed_by, reader_era) |era mismatch → exit 77 either direction; unknown critical block → refusal
+|C8 · loader → registry |tpkg-registry.yaml schema_version |missing version → era-1 refusal; newer MAJOR → upgrade refusal
+|C10 · payload → runtime |per-entry runtime_requirement + abi facets in the L1 manifest |unsatisfiable → named error naming the entrypoint — never a segfault
+|C13 · everything local → store |~/.tebako/layout-version + config schema |newer → upgrade refusal; older → the named migration, never a silent mix
+|C17 · jail declaration → enforcement |tpkg::jail authored shape |malformed → exit 73; unknown directive → named error
+|===
+
+== The schema evolution law.
+
+Every schema in the ecosystem obeys these rules. No exceptions, no local
+dialects.
+
+[cols="1,6"]
+|===
+|# |RULE
+
+|1 |Two numbers, one meaning — schema_version is MAJOR (breaks), schema_minor adds
+|2 |Readers ignore unknown fields within their MAJOR — and must not invent semantics for them
+|3 |Unknown MAJOR is a named refusal: artifact, its version, consumer, its max spoken, "upgrade"
+|4 |Missing schema_version = era 1 — a named refusal, never a silent default
+|5 |Type changes are MAJOR — no silent coercion, ever
+|6 |Deprecation window — rename/retype inside one MAJOR: writers dual-emit for two MINORs, readers prefer new + warn on old, then drop
+|7 |critical: true — a reader that doesn't understand a critical entry REFUSES; non-critical skips are for decoration, never semantics
+|8 |Lists stay lists — entries carry identity fields; no keyed maps for multiplicity data
+|9 |YAML for everything authored; JSON Schema documents the shape; CI validates producers
+|===
+
+[source,text]
+----
+       MINOR +1                    MINOR +2                    MAJOR +1
+┌──────────────┐          ┌──────────────┐          ┌──────────────┐
+│ field added  │  rename? │ old+new both │  after   │ old dropped  │
+│ (additive,   │ ───────▶ │ written; old │ 2 MINORs │ entirely;    │
+│ readers skip)│          │ deprecated   │ ───────▶ │ readers of   │
+└──────────────┘          └──────────────┘          │ old MAJOR    │
+                                                    │ are refused  │
+                                                    └──────────────┘
+----
+
+== Contract negotiation: the handoff's semantics version.
+
+The launcher ABI is the wire format; the **contract version** is its semantics
+version, declared by the runtime release manifest and enforced by the loader —
+so a future handoff change never silently mis-executes under an old bootstrap.
+
+[source,text]
+----
+contract 1  the original handoff: --tebako-image/--tebako-entry argv,
+TEBAKO_RUNTIME_IMAGE, trailer/ABI gating
+contract 2  the widened grammar: image-path triples, bare-file slot tokens,
+env-image-first multi-mount, direct entry execution
+negotiation (fail-closed, BEFORE any checksum acceptance):
+declared == SUPPORTED  → proceed
+absent/unparseable     → a pre-contract release = contract 1 by definition
+any other value        → exit 75 naming both generations and the remedy —
+nothing installed, the cache untouched
+----
+
+The bump rule: any change to env/argv/handoff semantics increments the
+contract by exactly one; additive payload-side changes old runtimes may ignore
+do NOT bump it. The runtime driver carries the same value compiled in, and the
+factory's CI fails any release where manifest and driver disagree. A
+negotiation failure is never a crash and never a silent accept — a clean,
+explained refusal.
+
+== Locked non-goals.
+
+No old-path readers — era 1 is refused, not adapted. No silent skipping of
+load-bearing fields. No type coercion in readers, no second grammar for the
+handoff — this model is the declaration layer around it. No per-run trust
+checks — verification happens at fetch and install, never per run. And the
+accountability mechanism: every rule answers to the scenario catalog (S1–S61)
+— bootstrap×package, loader×runtime, driver×env image, driver×payloads,
+shim×payloads, payload×payload, press×inputs, store, registry, factory, trust,
+and the evolution cases — each scenario an e2e id with its expected named
+behavior.
+
+See also: link:/docs/architecture/driver-contract/[The driver contract] ·
+link:/docs/architecture/factories/[The factories] ·
+link:/docs/architecture/composition/[Declarative composition].

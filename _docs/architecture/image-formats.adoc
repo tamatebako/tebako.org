@@ -1,0 +1,148 @@
+---
+title: Image formats
+heading: Image formats.
+lede: >-
+  Every payload image is a file. Its format answers exactly one question — how
+  do I read these bytes — and nothing else: what a payload IS, whether it is a
+  runtime, where its entrypoint lives, are manifest semantics that never touch
+  the format id.
+description: >-
+  One axis, one question: format_id answers only 'how do I read these bytes'.
+  LimniFS is the default write format — pure Rust, content-addressed, no
+  toolchain; dwarfs stays a first-class read backend; detection is by magic,
+  never by hint.
+---
+
+// normative: spec 20 (limnifs backend, default-format rationale §6b, writer floor constraints §5), spec 02 §3/§6 (format_id axis, orthogonality), spec 11 §3 (detection order, compiled-out rule) §5 (mount-source kinds)
+
+[NOTE]
+====
+Status: shipped — six in-tree formats; LimniFS the default write format since
+v0.2.0; magic detection authoritative.
+
+Status: planned — the pure-Rust runtime line (backend-limnifs only) is a
+recorded goal, its own release line.
+====
+
+== The format_id axis.
+
+A 32-bit field in each trailer slot record — a HINT. Magic detection on the
+actual bytes is authoritative; a slot stamped 5 whose bytes do not open with
+`LMFS` mounts as what the magic says. Ids ≥ 6 are unallocated.
+
+[cols="1,2,4,3,4"]
+|===
+|ID |FORMAT |READER |TOOLCHAIN |STATUS
+
+|0 |`auto` |magic detection decides |— |the hint value that defers to bytes
+|1 |`dwarfs` |dwarfs-t (FlatBuffers metadata) |C++ (vcpkg/cmake) |first-class read; explicit --format dwarfs write opt-in
+|2 |`squashfs` |squashfs-tools-ng |C (POSIX-only today) |read backend
+|3 |`zip` |pure Rust |none |read backend
+|4 |`—` |never mounted |— |legacy runtime-role wart — never reused, never given new meaning
+|5 |`limnifs` |limnifs-core, #![forbid(unsafe_code)] |pure Rust, zero system deps |THE DEFAULT write format; read everywhere
+|===
+
+Id 4 is the v1 wart: a runtime ROLE smuggled into the format field so v1
+loaders skip handing the runtime slot over as a mount. It is kept for backward
+compatibility and never reused — roles live in manifests, and new semantics are
+never again smuggled into the format axis. Documented deviation, locked: the
+reference C99 reader keeps its bound at 4 and rejects a format-5 slot with its
+NAMED invalid error — fail-closed and correct, since a v1-era reader cannot
+read limnifs bytes.
+
+== Detection: strong magic first, weak heuristics last.
+
+One 512-byte sniff window, one locked probe order. Every mount — host file,
+memory, file-region (offset+length), or VFS-file-region (an image addressed by
+a path INSIDE an existing mount, read through the owning mount's pread) —
+serves one byte-slice core.
+
+[cols="1,4,4"]
+|===
+|# |MAGIC |FORMAT
+
+|1 |`PK\x03\x04 / PK\x05\x06` |zip
+|2 |`DWARFS` |dwarfs
+|3 |`hsqs` |squashfs
+|4 |`LMFS` |limnifs — disjoint 4-byte prefix against every arm above
+|5 |`\x1f\x8b\x08 · \x28\xb5\x2f\xfd` |tar envelopes (gzip, zstd)
+|6 |`header-checksum heuristic` |tar — always LAST (weak)
+|7 |`—` |Unknown → EINVAL at mount
+|===
+
+== Compile separation: ship exactly the formats you must read.
+
+Backends compile in per cargo feature. The `enc` transform feature is
+orthogonal — it stacks over any backend.
+
+[cols="3,3,4"]
+|===
+|FEATURE |BACKEND |TOOLCHAIN
+
+|`backend-dwarfs-t` |dwarfs-t (FlatBuffers) |C++ (vcpkg/cmake via dwarfs-t-rs)
+|`backend-squashfs` |squashfs |C (squashfs-tools-ng; POSIX-only today)
+|`backend-zip` |zip |pure Rust
+|`backend-tar` |tar (+ gz/zst envelopes) |pure Rust
+|`backend-limnifs` |limnifs |pure Rust, #![forbid(unsafe_code)], no system deps
+|===
+
+Per-product defaults: the packager and human tools (tebako-cli, tfs-cli,
+tebako-pkg) ship ALL backends; the driver inside every runtime exe and the
+preload shim ship all backends, so any package runs on any runtime; the
+bootstrap ships NO backend, ever — it never mounts, it stays format-agnostic
+and inside its size gate. The compiled-out rule is locked: a mount whose
+detected format has no compiled-in backend fails with the NAMED `ENOTSUP`,
+naming the format — never a silent re-route, never a partial read, never a
+crash.
+
+== Why LimniFS is the default.
+
+The default is the format every payload takes when the operator says nothing,
+so it must be the one with the least toolchain exposure, the least build cost,
+and no loss of capability.
+
+[source,text]
+----
+1. Pure Rust, #![forbid(unsafe_code)], zero system dependencies —
+   reading AND writing the default format needs no C++ toolchain,
+   no vcpkg, no cmake
+2. Build wall-clock: limnifs-core compiles everywhere Rust compiles,
+   semver-pinned from crates.io — the dwarfs-t vcpkg ports were the
+   CI cost driver (per-target C++ cross-compilation)
+3. Content-addressed: every drop is BLAKE3(plaintext) — image-internal
+   integrity and dedup come from the format, not bolted-on machinery
+4. Read efficiency: on-demand per-class decompression; inline drops
+   serve small files straight from the metadata blob, no slab access
+5. Unambiguous detection: the strong LMFS magic is disjoint from
+   every existing probe arm
+6. Nothing else changes: existing dwarfs packages, runtimes, and
+   payload artifacts are untouched; dwarfs stays a first-class
+   explicit --format dwarfs opt-in and a supported read backend
+   forever
+----
+
+Both writer entry points — `tfs mkimage` and `tebako press` — default to
+limnifs and work fully in-process: no `limni` or `mkdwarfs` binary, no PATH
+lookup, no shell-out. While the published runtime fleet's readers span pre-fix
+limnifs lines, the writers pin a floor-safe recipe (no shared-inline dedup,
+lz4-HC metadata, lz4-or-store content drops); every constraint names its lift
+condition — a factory runtime cut whose link unit carries limnifs-core ≥
+0.2.53. A payload written outside the constraints is not rejected — it is
+simply below the floor's guarantee: it may mount on newer readers and fail
+closed, by name, on older ones.
+
+== Read-only at runtime, forever.
+
+The transforms law binds every backend: no format backend learns to write;
+creation-time writers are the only write path; COW and ENC stack above as
+transforms. Writes to a read-only mount fail `EROFS` at the mode gate, above
+the backend; `TEBAKO_MOUNT_RW` stays `ENOTSUP` in-tree. LimniFS's own
+AEAD-sealed images are an image-format concern — a mount of one without key
+support fails `ENOTSUP` by name; tebako-side encryption stays the stacking
+transform. And the in-image manifest never names a format: payload artifacts
+stay `.tfs`-named and byte-identical with the registry artifact whatever the
+backend.
+
+See also: link:/docs/architecture/vfs/[The virtual filesystem] ·
+link:/docs/architecture/overlays/[Declarative overlays] ·
+link:/docs/architecture/wire-format/[The tpkg wire format].

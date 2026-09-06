@@ -53,4 +53,17 @@ const docsReference = defineCollection({
   }),
 })
 
-export const collections = { blog, 'docs-guides': docsGuides, 'docs-reference': docsReference }
+const docsArchitecture = defineCollection({
+  loader: adocLoader({
+    base: '_docs/architecture',
+    attributes: { relfileprefix: '/docs/architecture/', outfilesuffix: '/' },
+  }),
+  schema: z.object({
+    title: z.string(),
+    heading: z.string().optional(),
+    lede: z.string().optional(),
+    description: z.string(),
+  }),
+})
+
+export const collections = { blog, 'docs-guides': docsGuides, 'docs-reference': docsReference, 'docs-architecture': docsArchitecture }

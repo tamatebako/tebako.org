@@ -1,0 +1,653 @@
+---
+title: Migrate from v1 to v2
+heading: Migrate from v1 to v2.
+lede: >-
+  You know tebako as the Ruby gem: gem install tebako, a tebako setup that
+  built Ruby from source, and a tebako press that produced one monolithic
+  binary with the runtime embedded. v2 is the same press, rebuilt in Rust: one
+  static binary, no gem, no CMake, no setup step — and a package format that
+  can share one runtime between every tebako app on a machine. This page maps
+  your v1 workflow onto v2: flags, outputs, CI, and the behavior differences
+  that bite.
+description: >-
+  The migration guide for existing tebako gem users: the press flag map, lean
+  vs fat packages, three verified CI before/afters, and the behavior
+  differences that bite.
+---
+
+// normative: spec 03, spec 06, spec 16 — absorbed from PR #53; version/link facts re-verified against tebako main 2026-08-25 (CLI quotes verbatim at main.rs:160/738, lib.rs:162; default runtime 0.16.9; windows-ucrt64 shipped)
+
+Every v2 command and workflow on this page was executed end-to-end — CLI
+build, press, run — in a clean `ubuntu:24.04` container against
+link:https://github.com/tamatebako/tebako[tamatebako/tebako] (`ec12734`, the
+tip of main at writing time). Where v2 does not yet cover a v1 behavior, this
+page says so plainly instead of papering over it.
+
+== The short version.
+
+**V1 — the gem (≤ 0.13.x):**
+
+[source,console]
+----
+gem install tebako
+tebako setup        # first time, up to 1 h
+tebako press -r ./myapp -e start.rb -o myapp.tebako
+./myapp.tebako      # monolith: runtime embedded, runs anywhere
+----
+
+**V2 — the Rust CLI:**
+
+[source,console]
+----
+# install the tebako binary (next section)
+tebako press -r ./myapp -e start.rb -o myapp.tebako
+./myapp.tebako      # lean: runtime fetched once, then cached
+tebako press -m fat -r ./myapp -e start.rb -o myapp-fat   # ≈ the v1 monolith
+----
+
+The press flags you type every day — `-r`, `-e`, `-o`, `-p`, `-c`, `-R`, `-l` —
+are spelled exactly the same. What changed is what they produce and what no
+longer exists.
+
+== Installing v2.
+
+v2 is a single static binary (plus its `tebako-bootstrap` companion). Prebuilt
+binaries for the six POSIX platforms land with the first tagged release — the
+link:https://github.com/tamatebako/tebako/blob/main/.github/workflows/release.yml[release pipeline]
+is in final validation on main. Until the
+link:https://github.com/tamatebako/tebako/releases[releases page] carries
+`tebako-<version>-<platform>` assets, build from source — once, 20–40 minutes,
+no Ruby required:
+
+[source,console]
+----
+# Debian/Ubuntu (macOS: brew the same list, minus build-essential)
+sudo apt-get install -y build-essential cmake ninja-build pkg-config git \
+  autoconf automake autoconf-archive libtool curl zip unzip tar ca-certificates \
+  python3 clang libclang-dev zlib1g-dev libbz2-dev
+curl -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.94.1
+. "$HOME/.cargo/env"
+git clone https://github.com/tamatebako/tebako tebako
+git clone --recurse-submodules https://github.com/tamatebako/dwarfs-rs   # sibling path dep
+git clone https://github.com/microsoft/vcpkg
+git -C vcpkg checkout f14401ca0f2754347c3864da7488a9b955b4e47a           # the CI pin
+vcpkg/bootstrap-vcpkg.sh -disableMetrics
+cd tebako
+# Cargo.lock is not tracked upstream; a fresh resolve today pulls a broken
+# rnp-rs 0.1.9 (its vendored Botan build fails) — pin the version the
+# workspace's own builds use:
+cargo update -p rnp-rs --precise 0.1.7
+TRIPLET=x64-linux-static; [ "$(uname -m)" = "aarch64" ] && TRIPLET=arm64-linux-static
+../vcpkg/vcpkg install --vcpkg-root "$PWD/../vcpkg" --x-wait-for-lock \
+  --x-manifest-root crates/sqfs-sys --x-install-root "$PWD/../.sqfs-installed" \
+  --triplet "$TRIPLET" \
+  --overlay-triplets crates/sqfs-sys/vcpkg_triplets \
+  --overlay-ports crates/sqfs-sys/vcpkg_ports
+# static Botan for the OpenPGP signer (rnp-rs links -lbotan-3 and no
+# prebuilt ships the archive — the release legs provide it the same way):
+../vcpkg/vcpkg install botan --vcpkg-root "$PWD/../vcpkg" --x-wait-for-lock \
+  --x-install-root "$PWD/../.crypto-vcpkg" --triplet "$TRIPLET" \
+  --overlay-triplets ../dwarfs-rs/dwarfs-t/vcpkg_triplets
+mkdir -p .crypto-static && cp "../.crypto-vcpkg/$TRIPLET/lib/libbotan-3.a" .crypto-static/
+SQFS_SYS_VCPKG_INSTALLED_DIR="$PWD/../.sqfs-installed/$TRIPLET" \
+  DWARFS_RS_VCPKG_ROOT="$PWD/../vcpkg" \
+  RUSTFLAGS="-L $PWD/.crypto-static" \
+  cargo build --release -p tebako-cli -p tebako-bootstrap
+sudo install -m755 target/release/tebako target/release/tebako-bootstrap /usr/local/bin/
+tebako --version   # Tebako executable packager version 0.2.5
+# On Linux, also make cc clang if you will press apps whose gems build
+# from source (json/bigdecimal/brotli & co. — "behavior differences" 07):
+sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang 50
+----
+
+Keep `tebako` and `tebako-bootstrap` side by side — the press picks the
+bootstrap up from next to the CLI (override with `--bootstrap` or
+`$TEBAKO_BOOTSTRAP`). The v1 gem can stay installed; the two do not interfere,
+and they share the same `~/.tebako` runtime cache.
+
+== The concept map: `tebako press`, flag by flag.
+
+The v1 column is the long-lived gem surface (≤ 0.13.x, the releases most
+production CI encodes). If you are on v1 0.14–0.15 — the short
+prebuilt-runtime transition — your flags already look like v2's; the
+differences for you are only `classic` mode, `setup/clean/hash`, and the
+tebafile, all covered below.
+
+[cols="3,3,6"]
+|===
+|V1 (GEM ≤ 0.13) |V2 (RUST) |WHAT CHANGED
+
+|`-r, --root` |`-r, --root` |unchanged
+|`-e, --entry-point (--entry)` |`-e, --entry-point (--entry)` |unchanged
+|`-o, --output` |`-o, --output` |unchanged (entry-point base name in the current folder by default)
+|`-p, --prefix` |`-p, --prefix` |unchanged (packaging work area, ~/.tebako by default)
+|`-c, --cwd` |`-c, --cwd` |unchanged (packaged app's working directory, relative to root)
+|`-R, --Ruby` |`-R, --Ruby` |same role, but limited to the rubies the prebuilt runtime release carries (3.1.6–4.0.6 at v0.16.9 — no 2.7/3.0)
+|`-l, --log-level` |`-l, --log-level` |unchanged (error|warn|debug|trace)
+|`-m, --mode bundle|both|runtime|application` |`-m, --mode lean|fat` |see the mode map below
+|`-P, --patchelf` |`—` |removed (v1 dropped it in 0.14 too): the GLIBC_PRIVATE/patchelf era ended with prebuilt runtimes
+|`-u, --ref` |`—` |removed: named an external runtime package; a v2 lean package carries its runtime reference automatically
+|`-t, --tebafile` |`—` |removed: v2 exits with ".tebako.yml is not supported by the tebako-rs CLI (pass the options directly)"
+|`-D, --devmode` |`-D, --devmode` |unchanged (skips the cache version guard)
+|`--image <path>:<mount>` (v1 ≥ 0.14) |`--image <path>:<mount>` |unchanged, repeatable
+|===
+
+=== The mode map.
+
+[cols="3,3,6"]
+|===
+|V1 MODE |V2 EQUIVALENT |WHY
+
+|`bundle (default) — one monolith, runtime embedded` |`-m fat` |fat carries the runtime as a payload slot; the first run installs it into the shared cache with no network — the monolith's offline guarantee.
+|`application / runtime — split app and runtime files` |`-m lean (default)` |lean _is_ the split form, productized: the runtime is named in the package trailer and resolved into the machine cache on first run — no --ref, no separate file to ship.
+|`both` |`press twice (lean + fat)` |the two modes are cheap enough to run as two presses.
+|`classic (v1 0.14–0.15) — app image stitched onto a prebuilt runtime` |`not yet` |named but rejected: "the 'classic' press mode is a later tebako-rs milestone (use --mode=lean or --mode=fat)". Use fat for the one-file shape.
+|`runtime` |`exit 133` |same answer as late v1: runtime packages come from the link:https://github.com/tamatebako/tebako-runtime-ruby[tebako-runtime-ruby] pipeline, never from a press.
+|===
+
+**Removed commands.**
+
+* `tebako setup` → `nothing` — there is no environment to build — runtimes are prebuilt downloads. v2 answers "'tebako setup' is a later tebako-rs milestone".
+* `tebako clean` → `tebako cache prune [--all]` — prune covers the runtime cache; the packaging prefix is disposable — delete the directory.
+* `tebako clean_ruby` → `—` — gone with the in-gem Ruby source build.
+* `tebako hash` → `—` — no build script to cache-key; key CI caches on the Ruby version instead.
+* `tebako cache list / prune` → `tebako cache list [--json] / prune` — same commands; --json adds a machine-readable contract (the banner moves to stderr).
+
+**New in v2.**
+
+* `--suite <suite.yaml>` — one package, N commands: per-entry images and slots, one runtime per entry. Lean only; -r/-e are not accepted with it.
+* `--bootstrap <path>` — override the bootstrap binary (default: the tebako-bootstrap next to the tebako binary, else a downloaded release; $TEBAKO_BOOTSTRAP also works).
+* `--tebako-version <v>` — pin the runtime release to press against (default 0.16.9).
+* `--prefer-local` — restores the gem-era bundle install --prefer-local (resolution prefers the runtime's own gems). Off by default; a no-op with a complete Gemfile.lock.
+* `tebako install / uninstall` — install a published payload (.tfs) from a registry and register its shims.
+* `tebako add-registry / list-registries / update-registries` — the registry surface behind tebako install.
+* `tebako publish` — press → sign → upload → registry entry → tap formula (the developer/publisher flow).
+
+== What a press produces now.
+
+A v1 press gave you one thing: a monolithic binary with the runtime embedded —
+big, and identical on every machine. A v2 press gives you a three-part package
+(bootstrap + your app as a filesystem image + a trailer naming the runtime), in
+two flavors. The anatomy is detailed in the
+link:/docs/architecture/[concepts page]; what matters for the migration is the
+choice:
+
+**lean** (default)::
+Bootstrap (< 3 MB) + your app image + trailer. Small enough to attach to every
+CI build. The first run on a machine downloads the runtime once into
+`~/.tebako` (SHA-256-verified) — every tebako app on that machine reuses it
+from then on.
+
+**fat**::
+Lean _plus_ the runtime itself as a payload slot. The first run installs the
+payload into the same cache, verified, with zero network. This is the v1
+monolith's distribution shape: one file, runs anywhere, sized like the v1
+binary.
+
+**How to choose.** Pick **fat** when you hand the binary to machines you don't
+control, when the first run must work air-gapped, or when "download it and it
+just runs" is the contract (that was v1's contract). Pick **lean** when
+artifact size matters, when you ship several apps that can share one Ruby, or
+when first-run network access is acceptable. Either way the runtime lands in
+the same cache — a machine that already ran any tebako app runs your lean
+package offline. `TEBAKO_OFFLINE=1` forces cache-only resolution;
+`TEBAKO_RUNTIME_MIRROR` redirects downloads to your own mirror; `TEBAKO_HOME`
+moves the cache root.
+
+One mental shift: in v1 the runtime was _yours_ — built by your setup, embedded
+in your binary. In v2 the runtime is a _shared, versioned system resource_ —
+built by the tebako-runtime-ruby pipeline, fetched once per machine, and
+referred to by every package. Your v1 binaries keep their embedded runtime
+forever; nothing about v2 reaches back into them.
+
+== CI migration: the three shapes everyone runs.
+
+The three v1 CI shapes below cover nearly every gem-era workflow in the wild.
+Each "after" was executed end-to-end in a clean container (build the CLI,
+press, run the package) — the exact `run:` lines you see.
+
+The install-tebako block is identical in all three workflows and is inlined
+once, in pair A — copy it verbatim into B and C where marked. It builds from
+source because no binary release exists yet; when the first tagged v2 release
+lands, the whole block collapses to a two-line download of `tebako` and
+`tebako-bootstrap`.
+
+=== A · Press in CI (a script app, no Gemfile)
+
+**Before — v1 gem:**
+
+[source,yaml]
+----
+name: package
+on: [push]
+jobs:
+  press:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+      - name: Install tebako
+        run: gem install tebako -v 0.13.4
+      - name: Cache the packaging environment
+        uses: actions/cache@v4
+        with:
+          path: ~/.tebako
+          key: tebako-v1-{{ runner.os }}-0.13.4
+      - name: Build the packaging environment
+        #  cache miss = a from-source Ruby build, up to 1 h
+        run: tebako setup
+      - name: Press
+        run: tebako press -r . -e start.rb -o dist/myapp
+      - name: Smoke-test the package
+        run: ./dist/myapp
+      - uses: actions/upload-artifact@v4
+        with:
+          name: myapp-linux
+          path: dist/myapp
+----
+
+**After — v2 Rust CLI:**
+
+[source,yaml]
+----
+name: package
+on: [push]
+jobs:
+  press:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: app        # keep the app root clean of build trees
+      # --- begin: install tebako v2 (source build, until the
+      #     first binary release — then two download lines) ---
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config git \
+            autoconf automake autoconf-archive libtool \
+            curl zip unzip tar ca-certificates python3 clang libclang-dev \
+            zlib1g-dev libbz2-dev
+      - uses: dtolnay/rust-toolchain@1.94.1
+      - name: Check out the tebako v2 sources
+        uses: actions/checkout@v4
+        with:
+          repository: tamatebako/tebako
+          path: tebako
+      - name: Check out dwarfs-rs (sibling path dependency)
+        uses: actions/checkout@v4
+        with:
+          repository: tamatebako/dwarfs-rs
+          path: dwarfs-rs
+          submodules: recursive
+      - name: Set up vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg "$RUNNER_TEMP/vcpkg"
+          git -C "$RUNNER_TEMP/vcpkg" checkout \
+            f14401ca0f2754347c3864da7488a9b955b4e47a
+          "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+      - name: Pre-install squashfs-tools-ng
+        working-directory: tebako
+        run: |
+          TRIPLET=x64-linux-static
+          [ "$(uname -m)" = "aarch64" ] && TRIPLET=arm64-linux-static
+          "$RUNNER_TEMP/vcpkg/vcpkg" install \
+            --vcpkg-root "$RUNNER_TEMP/vcpkg" --x-wait-for-lock \
+            --x-manifest-root crates/sqfs-sys \
+            --x-install-root "$RUNNER_TEMP/.sqfs-installed" \
+            --triplet "$TRIPLET" \
+            --overlay-triplets crates/sqfs-sys/vcpkg_triplets \
+            --overlay-ports crates/sqfs-sys/vcpkg_ports
+          echo "SQFS_SYS_VCPKG_INSTALLED_DIR=$RUNNER_TEMP/.sqfs-installed/$TRIPLET" \
+            >> "$GITHUB_ENV"
+      - name: Build the tebako CLI
+        working-directory: tebako
+        env:
+          DWARFS_RS_VCPKG_ROOT: {{ runner.temp }}/vcpkg
+        run: |
+          # Cargo.lock is untracked upstream; fresh resolves pull a
+          # broken rnp-rs 0.1.9 — pin the version CI builds with:
+          cargo update -p rnp-rs --precise 0.1.7
+          # static Botan for the OpenPGP signer (rnp-rs links -lbotan-3):
+          TRIPLET=x64-linux-static
+          [ "$(uname -m)" = "aarch64" ] && TRIPLET=arm64-linux-static
+          "$RUNNER_TEMP/vcpkg/vcpkg" install botan \
+            --vcpkg-root "$RUNNER_TEMP/vcpkg" --x-wait-for-lock \
+            --x-install-root "$RUNNER_TEMP/.crypto-vcpkg" \
+            --triplet "$TRIPLET" \
+            --overlay-triplets ../dwarfs-rs/dwarfs-t/vcpkg_triplets
+          mkdir -p .crypto-static
+          cp "$RUNNER_TEMP/.crypto-vcpkg/$TRIPLET/lib/libbotan-3.a" .crypto-static/
+          RUSTFLAGS="-L $PWD/.crypto-static" \
+            cargo build --release -p tebako-cli -p tebako-bootstrap
+      - name: Put tebako on PATH
+        run: echo "$GITHUB_WORKSPACE/tebako/target/release" >> "$GITHUB_PATH"
+      # --- end: install tebako v2 ---
+      - name: Press (lean — the default; add -m fat for the v1 shape)
+        run: tebako press -r app -e start.rb -o dist/myapp
+      - name: Smoke-test the package
+        run: ./dist/myapp
+      - uses: actions/upload-artifact@v4
+        with:
+          name: myapp-linux
+          path: dist/myapp
+----
+
+What fell away: the Ruby install, the gem install, the `~/.tebako` cache dance,
+and the setup hour. What appeared: a one-time CLI build (cache `~/.cache/vcpkg`
+and `tebako/target` if you run this often) and a press-time runtime download
+that replaces the setup hour with a minute.
+
+=== B · Press from a Gemfile (a bundled app — the fontist fixture)
+
+**Before — v1 gem:**
+
+[source,yaml]
+----
+name: package
+on: [push]
+jobs:
+  press:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4   # Gemfile + Gemfile.lock + main.rb
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+      - name: Install tebako
+        run: gem install tebako -v 0.13.4
+      - name: Cache the packaging environment
+        uses: actions/cache@v4
+        with:
+          path: ~/.tebako
+          key: tebako-v1-{{ runner.os }}-0.13.4
+      - name: Build the packaging environment
+        run: tebako setup -R 3.3.7
+      - name: Press (the Gemfile is picked up automatically)
+        run: tebako press -r . -e main.rb -o dist/fontist-app -R 3.3.7
+      - name: Smoke-test the package
+        run: ./dist/fontist-app    # => fontist 3.0.10
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fontist-app-linux
+          path: dist/fontist-app
+----
+
+**After — v2 Rust CLI:**
+
+[source,yaml]
+----
+name: package
+on: [push]
+jobs:
+  press:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: app
+      # … the identical "install tebako v2" steps — copy them
+      # from pair A above …
+      - name: Prefer clang as the system cc
+        #  the prebuilt runtimes are compiled with clang, and a press that
+        #  builds a native gem from source replays their build flags
+        #  against the host cc — gcc rejects -fdeclspec and the press dies
+        #  in mkmf. This lockfile pins ruby-platform-only natives
+        #  (json, bigdecimal, brotli), so clang is required here.
+        run: sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang 50
+      - name: Press (the Gemfile is still picked up automatically)
+        run: tebako press -r app -e main.rb -o dist/fontist-app
+        #  the Ruby version comes from the Gemfile's ruby directive
+        #  (or -R); no host Ruby is involved at all
+      - name: Smoke-test the package
+        run: ./dist/fontist-app    # => fontist 3.0.10
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fontist-app-linux
+          path: dist/fontist-app
+----
+
+Verified against the
+link:https://github.com/tamatebako/tebako/tree/main/crates/tebako-cli/tests/fixtures/fontist-app[fontist fixture]
+(fontist 3.0.10 on Ruby 3.3.7 — the package prints `fontist 3.0.10`). Bundler
+runs _inside the target runtime_ during the press, so the host's Ruby and
+bundler versions are irrelevant — delete the ruby/setup-ruby and bundler-cache
+steps. Commit your `Gemfile.lock`: locked specs install exactly as resolved,
+and the lockfile pins the bundler version too.
+
+=== C · Native-extension gems (nokogiri, ffi & co.)
+
+**Before — v1 gem:**
+
+[source,yaml]
+----
+name: package
+on: [push]
+jobs:
+  press:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+      - name: Install build tools
+        #  v1 built every native extension from source
+        #  (force_ruby_platform) — a C toolchain is required
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential
+      - name: Install tebako
+        run: gem install tebako -v 0.13.4
+      - name: Cache the packaging environment
+        uses: actions/cache@v4
+        with:
+          path: ~/.tebako
+          key: tebako-v1-{{ runner.os }}-0.13.4
+      - name: Build the packaging environment
+        run: tebako setup -R 3.3.7
+      - name: Press
+        run: tebako press -r . -e main.rb -o dist/nokogiri-app -R 3.3.7
+      - name: Smoke-test the package
+        run: ./dist/nokogiri-app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nokogiri-app-linux
+          path: dist/nokogiri-app
+----
+
+**After — v2 Rust CLI:**
+
+[source,yaml]
+----
+name: package
+on: [push]
+jobs:
+  press:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: app
+      # … the identical "install tebako v2" steps — copy them
+      # from pair A above …
+      - name: Prefer clang as the system cc
+        #  no lockfile here: resolution pulls the newest racc, which only
+        #  ships as a ruby-platform source gem — its press-time build
+        #  needs clang as cc (gcc rejects the replayed -fdeclspec flag).
+        #  Alternatives: commit a Gemfile.lock with precompiled pins, or
+        #  press with --prefer-local to use the runtime's bundled racc.
+        run: sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang 50
+      - name: Press
+        run: tebako press -r app -e main.rb -o dist/nokogiri-app
+        #  nokogiri installs as the PRECOMPILED platform gem —
+        #  no compiler, no source build, no extra flags
+      - name: Smoke-test the package
+        run: ./dist/nokogiri-app
+        #  => Hello from nokogiri app with nokogiri 1.19.4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nokogiri-app-linux
+          path: dist/nokogiri-app
+----
+
+The inversion: v1 forced every native gem into a source build inside the
+packaging environment; v2 resolves through the modern compact index and
+installs precompiled platform gems (nokogiri, ffi) as-is — the C toolchain
+usually disappears from CI. Gems that only exist as Ruby-platform sources
+build during the press against an auto-provisioned Runtime SDK (a network
+fetch; mirror it with `TEBAKO_SDK_SRC_MIRROR`, `file://` works offline).
+`--prefer-local` is the escape hatch when you want the runtime's own
+bundled/default gems used in place.
+
+== Behavior differences that bite.
+
+The flags look the same; these are the places the ground moved under them.
+
+**01 — Press-time network.**
+A v2 press downloads the target runtime into the shared cache on a cold
+machine — the deploy (your `bundle install`) runs _inside that runtime_, not
+under your host Ruby. First press on a fresh CI runner needs network (or a warm
+`~/.tebako`, or `TEBAKO_RUNTIME_MIRROR`). The packaged binary then downloads
+the runtime again on its own first run unless you pressed fat or the machine's
+cache is warm.
+
+**02 — The image era.**
+Your app ships as a `.tfs` image with dwarfs-t-native (FlatBuffers) metadata,
+built in-process: no mkdwarfs binary anywhere, no FUSE, no extraction. The
+runtime is transitioning to the same form — image-era releases carry it as a
+`.tfs` with `.sha256`/`.origin` trust markers; where a release still ships the
+classic package, the cache keeps an extracted layout instead. Both forms share
+the same cache and the same packages run against either. Details:
+link:/docs/architecture/runtime-as-image/[runtime as image].
+
+**03 — .tebako.yml is not read.**
+v1 auto-loaded `$PWD/.tebako.yml` and merged its `options:` map under your CLI
+flags — an invisible configuration layer. v2 does not read it, and
+`-t/--tebafile` exits with an explicit error. Migration: paste the tebafile's
+options into the press command line (or your CI step) directly.
+
+**04 — Exit codes.**
+The packaging error table is unchanged — 106 (entry point missing), 107 (root
+missing), 120–125 (runtime resolution), 133 (the removed runtime mode), and
+the `Tebako script failed: <message> [<code>]` line your CI may grep for.
+Usage errors exit 1 in both worlds. New codes you may meet: 134 (fat mode
+needs a payload-capable bootstrap) and 135 (Runtime SDK provisioning failed).
+`tebako cache list --json` is a machine contract — stdout is the JSON document
+alone, the banner moves to stderr.
+
+**05 — Bundler behavior, modernized.**
+v1 passed `--prefer-local` unconditionally, which could silently degrade a
+remote resolution (fontist 3.0.10 came out as the dependency-free 0.1.0), and
+forced `force_ruby_platform=true`, which doomed precompiled gems to source
+builds. v2 resolves through the compact index, installs precompiled platform
+gems, and keeps `--prefer-local` as an opt-in flag (a no-op with a complete
+lockfile). If your v1 press "worked" but produced a strangely old gem set —
+this is why, and it is fixed.
+
+**06 — Platform reality check.**
+Rubies: v2 presses only the rubies the pinned runtime release carries (3.1.6–
+4.0.6 at v0.16.9) — the 2.7/3.0 lines were v1 source-build-only. Windows:
+shipped — the v2 loader and runtime releases cover all seven triplets,
+windows-ucrt64 included. Gem/gemspec press scenarios (packaging a gem itself)
+are not yet ported. On macOS the deploy re-signs ad-hoc after stripping, so
+precompiled `.bundle` files keep loading.
+
+**07 — On Linux, source builds need clang as cc.**
+The prebuilt runtimes are compiled with clang. When a press must build a
+native gem from source (a gem that only ships as a ruby-platform source —
+json, bigdecimal, brotli in the verified fixture), the Runtime SDK replays the
+runtime's recorded build flags against your host `cc` — and gcc rejects
+`-fdeclspec`, dying in mkmf with "The compiler failed to generate an
+executable file". macOS is unaffected (cc is clang there). On Linux, point cc
+at clang before pressing:
+`sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang 50`.
+Verified: with clang as cc, the fontist fixture builds json 2.7.2, bigdecimal
+3.1.5 and brotli 0.8.0 from source inside the press and runs.
+
+**08 — Every run of an unsigned package warns.**
+v1 binaries start silently. The v2 bootstrap prints a two-line warning on
+_every run_ of a package whose trailer is unsigned (the v1-era legacy form):
+
+[source,console]
+----
+tebako-bootstrap: WARNING: ./myapp.tebako carries an unsigned v1 (legacy) tpkg trailer
+— accepted for compatibility; re-bundle the package for integrity protection
+----
+
+It goes to stderr, the exit code is unaffected, and unsigned packages stay
+first-class — but your users will see it, so say so in your release notes (or
+sign the package; see
+link:/docs/architecture/chain-of-trust/[the chain of trust]).
+
+== New capability you could not do in v1.
+
+**Suites — one package, N commands.**
+v1 pressed one entry point per package. v2's `--suite` presses several apps —
+each with its own root, entry point, and even its own runtime — into one file
+whose binary name selects the command (shim/symlink dispatch):
+
+[source,yaml]
+----
+# suite.yaml
+name: myproduct
+entries:
+- name: app
+  root: ./app
+  entry: bin/app
+- name: worker
+  root: ./worker
+  entry: bin/worker
+----
+
+`tebako press --suite suite.yaml -o myproduct` (lean only; `-r`/`-e` come from
+the suite file). Verified: the package runs entries[0] by default, and a
+symlink named after an entry runs that entry.
+
+**Jails — host-access policy.**
+v1 packages saw the host filesystem with no policy at all. v2 has the
+enforcement engine in the VFS layer (docker `-v` semantics; denied paths fail
+EPERM, writes to read-only grants fail EROFS; `tfs exec <image> --jail <spec>
+-- <cmd>` is the shipped surface for native binaries under the preload shim):
+
+[source,console]
+----
+#  spec grammar: default open|deny ; host:mount:ro|rw grants ; @file = read-only arg file
+tfs exec app.tfs:/__tebako_memfs__ --jail 'deny;/home/u/src:/work:rw' -- /bin/tool in.csv
+----
+
+Honestly scoped, with two limits a v1 user should know today. It is
+filesystem-only (no network confinement). And it does not reach pressed
+packages yet: **a pressed app ignores `TEBAKO_JAIL`** (verified — the package
+reads the host unaffected by it), and in our Linux container the shim's mount
+of a dwarfs-t app image answered ENOTSUP. The dispatch-surface and manifest
+integration are the planned next step; treat jails as in-flight, not as a
+migration blocker.
+
+== Staying on v1 — and what its status is.
+
+* **The gem is not going away.** Every v1 release stays published on
+link:https://rubygems.org/gems/tebako[rubygems.org] — nothing is yanked,
+nothing is sabotaged. `gem install tebako` keeps working, and binaries you
+already pressed keep running (they are self-contained; 0.15.9 is the final v1
+release).
+
+* **The v1 codebase is archived.** It lives on as
+link:https://github.com/tamatebako/tebako-v1[tamatebako/tebako-v1], read-only
+— the history, tags, and issues remain readable; development happens only in
+link:https://github.com/tamatebako/tebako[tamatebako/tebako].
+
+* **Support status, plainly:** v1 is unmaintained — no further releases,
+fixes, or reviewed PRs. If your v1 setup works, it keeps working; migrate when
+you need what v2 adds (shared runtimes, suites, jails, signing, active
+support) or when a future Ruby/platform change leaves the v1 pipeline behind.
+
+See also: link:https://github.com/tamatebako/tebako/blob/main/docs/spec/00-INDEX.md[the normative spec set] ·
+link:/docs/[the manual] — hit a migration case this page misses?
+link:https://github.com/tamatebako/tebako/issues[Open an issue]; the guide is
+maintained with v2.

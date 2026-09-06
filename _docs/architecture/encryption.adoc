@@ -1,0 +1,145 @@
+---
+title: Encryption
+heading: Encryption.
+lede: >-
+  Encryption is per-image opt-in, never default — a stacking transform like
+  COW, not a format. Reads decrypt on demand, in memory only; plaintext blocks
+  never touch disk. One artifact can serve N audiences, each key opening
+  exactly its declared slice.
+description: >-
+  Selective, in-memory-only decryption as a stacking transform: DEKs as
+  OpenPGP grant envelopes, HKDF subtree keys, one artifact with N audiences,
+  suite-versioned PQC readiness, and the one-crypto-home-per-layer rule.
+---
+
+// normative: spec 10 (§1 model, §2 key model, §3 memory, §5 PQC, §7 CLI), spec 21 (§2 role map, §4 recommendation D — one crypto home per layer)
+
+[NOTE]
+====
+Status: shipped — EncBackend + tfs encrypt / decrypt / mount at SUITE-1;
+per-block AES-256-GCM; PKESK envelopes; the envelopes.yaml grant manifest.
+
+Status: planned — PQC suites (construction locked), metadata hiding, merkle
+verify-on-read.
+====
+
+== The model: a transform, not a format.
+
+`EncBackend { base: dyn Backend, key_source }` — it wraps any backend and
+answers reads by decrypting on demand. Per the transforms law it lives ONLY in
+the Rust TFS; backends and dwarfs-t stay ignorant of it. The primitive is
+OpenPGP via rnp-rs (AES-256/SHA-2, botan backend, vendored) — encryption AFTER
+compression, since ciphertext doesn't compress and individually compressed
+blocks are individually encryptable. Optional padding blurs per-block sizes.
+
+[source,text]
+----
+COW  →  ENC  →  format backend        # the one pinned stack
+COW(Enc(base))   # the writable sealed-base mount — the declarative spelling
+Enc(COW(base))   # expressible at the mount API, never the declarative spelling —
+                 # Enc is a decrypting READ view; no write can pass through it
+----
+
+== The key model: session keys are grant envelopes.
+
+Data keys (DEKs) encrypt content blocks — and a DEK IS a persisted OpenPGP
+session key: rnp's native wrap/unwrap (PKESK packets to N recipients) is the
+envelope. No custom crypto anywhere. Sharing = wrapping the DEK to a recipient
+— offline, accountless, auditable. A wrapped DEK plus the manifest digest IS a
+capability: possessing it grants exactly that subtree, nothing else.
+
+[source,text]
+----
+identity lives at the PLAINTEXT layer — manifests carry TWO digests:
+tree hash (plaintext)   → semantic identity: CAS, dedup, sign/verify,
+audit-without-access
+ciphertext blob hash    → transport identity
+encryption is a per-audience transform; CAS never keys content-identity
+to any one wrapping
+hierarchical derivation: K(/a/b) = HKDF(root DEK, info="/a/b")
+grants /a/b/** but not /a/c or /a (one-way) —
+sharing a directory subtree = handing over its derived key
+revocation is prospective: re-issue the manifest without the recipient,
+or rotate the DEK for FUTURE versions — you cannot un-read what was
+read (documented honestly)
+----
+
+Composition rules: JOIN of layers with different DEKs is authorized
+re-encryption under a new joined key, or preserved per-layer key domains in
+the joined manifest (lazy join). Encapsulated images keep INDEPENDENT key
+domains — the outer may be readable while the inner stays sealed (transport vs
+payload audiences). Per-directory recipient mapping in the manifest gives
+selective disclosure: ONE artifact, N audiences, each key opening only its
+slice. The in-image `/__tpkg__/envelopes.yaml` is the grant manifest the mount
+binds against — a read of a sealed path outside every opened grant answers
+ENOKEY, never garbage. Memory discipline: decrypted blocks live in mlock'd
+heap, zeroized on free; keys come via agent, passphrase, or PKCS#11 — never
+written to disk, never in swap.
+
+== PQC readiness: agility from day one.
+
+Every manifest, envelope, and signature carries a cipher-suite id from a
+versioned registry — nothing hardcoded; unknown ids fail with a named error,
+never a guess. Signatures are the migration surface, envelopes the
+confidentiality surface — both suite-versioned, so migration is additive.
+
+[cols="1,4,3"]
+|===
+|SUITE |CONSTRUCTION |NOTE
+
+|`SUITE-1` |X25519 + Ed25519 + AES-256-GCM + SHA-256 |classical — SHIPPED
+|`SUITE-2` |ML-KEM-1024+X25519 composite KEM · ML-DSA-87+Ed25519 composite signatures · AES-256-GCM · SHA-384 |HYBRID — secure if EITHER family holds; the transition form
+|`SUITE-3` |SLH-DSA hash-based signatures |maximal-conservatism tier
+|===
+
+HNDL (harvest-now-decrypt-later): long-lived encrypted images SHOULD use
+hybrid envelopes NOW. AES-256 keeps ~128-bit post-Grover strength and the
+merkle/hash layer is PQC-safe by construction — the asymmetric pair is what
+Shor threatens, and that is exactly what the suites version. Recipients may
+hold classical AND PQC keys; multi-recipient envelopes are native.
+
+== One crypto home per layer.
+
+LimniFS brings format-native cryptography (per-drop AEAD, Ed25519 over the
+BLAKE3 manifest root). The consolidation decision draws the boundary once:
+format-native crypto is consumed as EVIDENCE, never as anchor.
+
+[cols="2,4,4"]
+|===
+|QUESTION |HOME |NOTE
+
+|WHO signed it? |the trust-and-signing layer — OpenPGP trailer signature + signed release indexes + the trust store |the ONLY authenticity decision point, for every backend
+|WHO may read it? |the encryption layer — the ENC transform (PKESK DEK envelopes, HKDF subtree keys) |stacks over ANY backend, limnifs included
+|HOW are the bytes sealed? |the format's own business (limnifs per-drop AEAD) |consumed as EVIDENCE, never as anchor — tebako-pressed images ship aead = 0
+|===
+
+Concretely: limnifs Ed25519 keys never enter the key or trust stores — a slice
+author manages exactly ONE keypair, their OpenPGP key. Mounting a
+self-encrypted limnifs image (`aead ≠ 0`) fails the named ENOTSUP — the v2.x
+posture, not a stopgap. An embedded signature bundle MAY later be verified as
+non-authoritative integrity evidence — only after the signing chain has
+decided authenticity, only against a key the OpenPGP-signed metadata binds to
+the author identity; absence is never an error, mismatch is a loud warning
+plus journal entry, never the trust decision. Admission of any format-native
+envelope into the grant path requires the full PQC gate list (ML-DSA signing,
+hybrid ML-KEM envelopes, explicit registry ids, external audit posture) —
+recorded, gated, not committed.
+
+== The CLI surface and why it matters.
+
+`tfs encrypt` (root grant `--recipient`, subtree grants
+`--subtree <path>=<pubkey>`; `--rewrap` rotates grants to a new recipient set
+with the bulk ciphertext byte-identical), `tfs decrypt` (plaintext to a tar
+stream — never a staging tree), `tfs mount --key` (the unlock/grant report).
+A wrong key is a named EKEY-class error, never garbage. And the operational
+algebra: object security beats channel security — artifacts self-protect over
+any transport or mirror; disk snapshots and caches hold ciphertext only;
+destroying a data key (or re-issuing the manifest without a recipient) is
+crypto-shredding — content unrecoverable everywhere, provably, with no
+mirror-purge problem. Honest risks, stated: access-pattern side channels on
+serve, key-agent UX is the hard part, mlock/zeroize is the baseline and not a
+panacea.
+
+See also: link:/docs/architecture/overlays/[Declarative overlays] ·
+link:/docs/architecture/chain-of-trust/[The chain of trust] ·
+link:/docs/architecture/image-formats/[Image formats].

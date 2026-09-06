@@ -1,0 +1,526 @@
+---
+title: What is tebako?
+heading: What is tebako?
+lede: >-
+  Tebako is a packaging and loading ecosystem — not a Ruby tool. It stitches a
+  payload into a single transparent executable your users never think about, or
+  ships it as a managed, versioned, signed payload with shared runtimes. Ruby is
+  the first runtime instance; the loader neither knows nor cares what language it
+  starts. Underneath sits TFS, a userland virtual filesystem that lets ordinary
+  binaries mount disk images in-process.
+description: >-
+  Tebako is a packaging and loading ecosystem: stitch any payload into a single
+  executable, or ship managed, versioned, signed payloads with shared runtimes.
+  Ruby is the first runtime instance; TFS, a userland virtual filesystem, sits
+  underneath.
+---
+
+// normative: spec 01, spec 02, spec 05, spec 09 — rewritten 2026-08-25; dispatch chain from spec 07, exit codes from spec 06 §4, limnifs default from spec 20, router facts from spec 11; 33 tebako_fs_* exports counted at crates/tfs/src/c_api.rs; unverified-first rollout at spec 06 §3 + spec 09 preamble
+
+[NOTE]
+====
+Status: shipped — standalone press: lean and fat executables, released and
+downloadable today.
+
+Status: shipped — managed mode: shims, per-invocation dispatch, the shared
+cache.
+
+Status: planned, in part — OpenPGP verification in the loader follows the
+unverified-first rollout; see
+link:/docs/architecture/chain-of-trust/[the chain of trust] for details.
+====
+
+== Generic by construction.
+
+One design, generic across four axes. Nothing in the loader, the container, or
+the store is Ruby-shaped — Ruby simply happens to be the first runtime the
+factories produce.
+
+Any runtime::
+A runtime is a payload that _provides_ an interpreter — ruby today; python,
+julia, anything later. The loader hands off to an entrypoint; it never learns a
+language.
+
+Any platform::
+Artifacts are built per platform triplet — seven are locked, from
+`aarch64-macos` to `x86_64-windows-ucrt`. Pure-language payloads may also be
+`universal`.
+
+Any payload::
+Application code, data, fonts, native tools, runtimes themselves — all `.tfs`
+images of the same kind, differing only in what their manifests declare.
+
+Any composition::
+Payloads stitch onto a single binary, and payloads recursively mount other
+payloads at paths. Composition is a manifest declaration, not a rebuild.
+
+== Six capabilities.
+
+Everything tebako does decomposes into six verbs.
+
+[%header,cols="1,3"]
+|===
+| Capability | What it does
+
+| Stitch
+| N payload images + the bootstrap into one executable (fat), or a small executable that resolves the parts on demand (lean).
+
+| Load
+| Mount payloads — recursively — into one VFS, then transfer control to the declared entrypoint.
+
+| Share
+| Runtimes and payloads download once into a machine-wide content cache; every package on the machine reuses them.
+
+| Shim
+| Every executable an installed payload provides becomes a registered command on PATH, dispatched per invocation.
+
+| Jail
+| A declarative host-filesystem policy per run, enforced by the VFS layer — not by the payload's good behavior.
+
+| Trust
+| Opt-in per package: signatures and encryption. Unsigned stays first-class — verified strictly when signed, never silently downgraded.
+|===
+
+== The platform, on one map.
+
+Everything orbits one seam: the
+link:/docs/architecture/vfs/[tebako_fs_* C ABI], implemented by the Rust tfs
+crate. The factories feed it runtimes; feedstock repos — one per package —
+build payloads on those runtimes and host them on their own releases
+(link:/docs/architecture/factories/[the factories] walk the chain). The trust
+layer sits beneath everything that moves bytes.
+
+++++
+<figure role="img" aria-label="Platform map: the TFS core, the factories and the product line around it, the trust layer beneath">
+<svg viewBox="0 0 940 540" class="w-full min-w-[760px]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Platform map: the TFS core, the factories and the product line around it, the trust layer beneath">
+          <defs>
+            <marker id="pm-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 Z" fill="var(--tb-c-text-3)" />
+            </marker>
+          </defs>
+
+          <!-- top satellites -->
+          <g transform="translate(30, 24)">
+            <rect width="260" height="92" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="130" y="26" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13.5" font-weight="600" fill="var(--tb-c-text-1)">tamatebako/ruby</text>
+            <text x="130" y="44" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">the source factory — canonical patches,</text>
+            <text x="130" y="58" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">versions.yml, the release monitor</text>
+            <text x="130" y="78" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" font-weight="600" fill="var(--tb-c-accent)">patched-src tarballs · SHIPPED</text>
+          </g>
+          <g transform="translate(340, 24)">
+            <rect width="260" height="92" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="130" y="26" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13.5" font-weight="600" fill="var(--tb-c-text-1)">tebako-runtime-ruby</text>
+            <text x="130" y="44" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">the runtime factory — interpreter exe</text>
+            <text x="130" y="58" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">+ env .tfs image per ruby × triplet</text>
+            <text x="130" y="78" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" font-weight="600" fill="var(--tb-c-accent)">exe + image + index · SHIPPED</text>
+          </g>
+          <g transform="translate(650, 24)">
+            <rect width="260" height="92" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="130" y="26" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13.5" font-weight="600" fill="var(--tb-c-text-1)">tebako-bootstrap</text>
+            <text x="130" y="44" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">the loader — reads its trailer, resolves</text>
+            <text x="130" y="58" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">the runtime, verifies, hands off</text>
+            <text x="130" y="78" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" font-weight="600" fill="var(--tb-c-accent)">Rust · static · &lt; 3 MB · SHIPPED</text>
+          </g>
+
+          <!-- connectors: top satellites → core -->
+          <line x1="160" y1="116" x2="380" y2="196" stroke="var(--tb-c-text-3)" stroke-width="1.5" marker-end="url(#pm-arrow)" />
+          <line x1="470" y1="116" x2="470" y2="196" stroke="var(--tb-c-text-3)" stroke-width="1.5" marker-end="url(#pm-arrow)" />
+          <line x1="780" y1="116" x2="560" y2="196" stroke="var(--tb-c-text-3)" stroke-width="1.5" marker-end="url(#pm-arrow)" />
+
+          <!-- core -->
+          <g transform="translate(320, 200)">
+            <rect width="300" height="118" rx="12" fill="var(--color-ink)" stroke="var(--tb-c-accent)" stroke-width="1.5" />
+            <text x="150" y="30" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="16" font-weight="600" fill="var(--color-mist-pale)">TFS · the tfs crate</text>
+            <text x="150" y="50" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10" fill="var(--color-gold)">tebako_fs_* — the 33-export C ABI seam</text>
+            <text x="150" y="68" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--color-mist)" opacity="0.85">limnifs · dwarfs-t · squashfs · zip · tar · multi-mount</text>
+            <text x="150" y="82" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--color-mist)" opacity="0.85">binaries mount disk images in-process — userland,</text>
+            <text x="150" y="94" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--color-mist)" opacity="0.85">no kernel, no FUSE required</text>
+          </g>
+
+          <!-- trust layer -->
+          <g transform="translate(320, 330)">
+            <rect width="300" height="52" rx="10" fill="var(--color-gold)" opacity="0.12" stroke="var(--color-gold)" stroke-width="1.5" />
+            <text x="150" y="22" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12" font-weight="600" fill="var(--color-gold)">THE TRUST LAYER</text>
+            <text x="150" y="38" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">OpenPGP (rnp-rs) · tpkg v2 digests + signature · TOFU key pins</text>
+          </g>
+
+          <!-- connectors: bottom satellites → core/trust -->
+          <line x1="160" y1="436" x2="380" y2="386" stroke="var(--tb-c-text-3)" stroke-width="1.5" marker-end="url(#pm-arrow)" />
+          <line x1="470" y1="436" x2="470" y2="386" stroke="var(--tb-c-text-3)" stroke-width="1.5" marker-end="url(#pm-arrow)" />
+          <line x1="780" y1="436" x2="560" y2="386" stroke="var(--tb-c-text-3)" stroke-width="1.5" marker-end="url(#pm-arrow)" />
+
+          <!-- bottom satellites -->
+          <g transform="translate(30, 440)">
+            <rect width="260" height="92" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="130" y="26" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13.5" font-weight="600" fill="var(--tb-c-text-1)">dwarfs-t · dwarfs-t-rs</text>
+            <text x="130" y="44" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">the image format — the only C++ in the</text>
+            <text x="130" y="58" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">ecosystem — + its standalone Rust binding</text>
+            <text x="130" y="78" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" font-weight="600" fill="var(--tb-c-accent)">SHIPPED</text>
+          </g>
+          <g transform="translate(340, 440)">
+            <rect width="260" height="92" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="130" y="26" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13.5" font-weight="600" fill="var(--tb-c-text-1)">the tebako CLI</text>
+            <text x="130" y="44" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">the packager — press lean/fat, install,</text>
+            <text x="130" y="58" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">publish, cache — one static binary</text>
+            <text x="130" y="78" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" font-weight="600" fill="var(--tb-c-accent)">tamatebako/tebako · SHIPPED</text>
+          </g>
+          <g transform="translate(650, 440)">
+            <rect width="260" height="92" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="130" y="26" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13.5" font-weight="600" fill="var(--tb-c-text-1)">tebako-pkg · tfs</text>
+            <text x="130" y="44" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">trailer surgery · the generic image CLI —</text>
+            <text x="130" y="58" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">parity-pinned against the C++ oracle</text>
+            <text x="130" y="78" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" font-weight="600" fill="var(--tb-c-accent)">SHIPPED in tamatebako/tebako</text>
+          </g>
+        </svg>
+</figure>
+++++
+
+_Figure 1 — Platform map: the TFS core, the factories and the product line around it, the trust layer beneath._
+
+The gem-era orchestrator is retired: the C++/gem codebase is archived at
+link:https://github.com/tamatebako/tebako-v1[tamatebako/tebako-v1] and the
+product is the Rust workspace at
+link:https://github.com/tamatebako/tebako[tamatebako/tebako].
+
+== The three parts of every package.
+
+A tebako package is a composition of up to three independently distributable
+parts, glued by the **tpkg trailer**: a 166-byte header at end of file plus
+280-byte slot records. The format version is 1 forever — extensions live in
+flags (`LEAN`, `SIGNED_V2`, `NO_INSTALL`), never version bumps, so v1 readers
+parse v2 packages untouched. The full byte tables live in
+link:/docs/architecture/[concepts].
+
+++++
+<figure role="img" aria-label="Anatomy of a tebako package: the bootstrap, an optional runtime image (fat packages), one to eight payload image slots, an optional v2 signature extension, and the tpkg trailer header at end of file">
+<img src="/assets/diagrams/package-anatomy.svg" alt="Anatomy of a tebako package: the bootstrap, an optional runtime image (fat packages), one to eight payload image slots, an optional v2 signature extension, and the tpkg trailer header at end of file" class="w-full min-w-[760px]" loading="lazy" />
+</figure>
+++++
+
+_Figure 2 — Anatomy of a tebako package: bootstrap, optional runtime slot (fat packages), one to eight payload slots, optional v2 signature extension, and the tpkg trailer header at end of file._
+
+**A · the bootstrap** — the
+link:https://github.com/tamatebako/tebako/tree/main/crates/tebako-bootstrap[Rust loader],
+a static binary under 3 MB. It is the process entry point of every stitched
+package: reads its own trailer, resolves the runtime, verifies, hands off.
+
+**B · the runtime** — two artifacts, not one: the interpreter executable and
+the _env image_ (a `.tfs` carrying the runtime's files). They are downloaded
+once into the shared cache, sha256-verified, and
+link:/docs/architecture/runtime-as-image/[mounted — never extracted]. Fat
+packages carry the runtime as a slot; lean packages carry a reference and fetch
+on first run.
+
+**C · the payload slices** — bare `.tfs` images, self-describing via an
+in-image manifest (`/__tpkg__/manifest.yaml`). The container's `format_id`
+answers exactly one question — how to read the bytes (limnifs, dwarfs-t,
+squashfs, zip); whether a slot is a runtime and which payload carries the
+entrypoint are manifest semantics, never encoded in the format axis. LimniFS is
+the default image format since tebako v0.2.0; dwarfs-t stays first-class as a
+read backend.
+
+== Two ways to run it.
+
+Same engine, two relationships between the developer and the user: hand over
+one file and disappear, or publish versioned payloads that a dispatcher
+assembles per invocation.
+
+++++
+<figure role="img" aria-label="Standalone mode versus managed mode, side by side">
+<svg viewBox="0 0 940 470" class="w-full min-w-[760px]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Standalone mode versus managed mode, side by side">
+          <defs>
+            <marker id="sm-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 Z" fill="var(--tb-c-accent)" />
+            </marker>
+            <marker id="sm-arrow-gold" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 Z" fill="var(--color-gold)" />
+            </marker>
+          </defs>
+
+          <!-- left panel: standalone -->
+          <rect x="10" y="10" width="450" height="450" rx="14" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+          <text x="235" y="40" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="14" font-weight="600" fill="var(--tb-c-text-1)">STANDALONE — fully transparent</text>
+          <text x="235" y="58" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" font-weight="600" fill="var(--tb-c-accent)">SHIPPED</text>
+
+          <g transform="translate(60, 76)">
+            <rect width="350" height="64" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="175" y="28" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--tb-c-text-1)">developer: tebako press</text>
+            <text x="175" y="46" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">once per app per platform — e.g. metanorma</text>
+          </g>
+          <line x1="235" y1="142" x2="235" y2="164" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#sm-arrow)" />
+
+          <g transform="translate(60, 170)">
+            <rect width="350" height="76" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="175" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--tb-c-text-1)">per-platform executables</text>
+            <text x="175" y="42" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">myapp-macos-arm64 · myapp-linux-x86_64 · myapp.exe</text>
+            <text x="175" y="58" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">bootstrap + runtime slot (fat) + payload image(s) + tpkg trailer</text>
+          </g>
+          <line x1="235" y1="248" x2="235" y2="270" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#sm-arrow)" />
+          <text x="247" y="263" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">lean: the runtime downloads ONCE, ever</text>
+
+          <g transform="translate(60, 276)">
+            <rect width="350" height="64" rx="10" fill="var(--tb-c-accent)" stroke="var(--tb-c-accent)" stroke-width="1.5" />
+            <text x="175" y="28" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--color-paper)">user downloads one file → runs</text>
+            <text x="175" y="46" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--color-paper)" opacity="0.85">no ruby · no gems · no tebako to install</text>
+          </g>
+
+          <g transform="translate(60, 360)">
+            <rect width="350" height="76" rx="10" fill="none" stroke="var(--tb-c-divider-strong)" stroke-width="1" stroke-dasharray="4 3" />
+            <text x="175" y="26" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">downloads: once ever (lean) · never (fat)</text>
+            <text x="175" y="44" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">the runtime cache is shared machine-wide</text>
+            <text x="175" y="60" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">users never know tebako exists</text>
+          </g>
+
+          <!-- right panel: managed -->
+          <rect x="480" y="10" width="450" height="450" rx="14" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+          <text x="705" y="40" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="14" font-weight="600" fill="var(--tb-c-text-1)">MANAGED — shims + dispatch</text>
+          <text x="705" y="58" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" font-weight="600" fill="var(--tb-c-accent)">SHIPPED</text>
+
+          <g transform="translate(530, 76)">
+            <rect width="350" height="76" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="175" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--tb-c-text-1)">developer: press + sign → publish</text>
+            <text x="175" y="42" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">signed .tfs payloads on their OWN GitHub releases</text>
+            <text x="175" y="58" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">+ tpkg-registry.yaml — zero central infrastructure</text>
+          </g>
+          <line x1="705" y1="154" x2="705" y2="176" stroke="var(--color-gold)" stroke-width="2" marker-end="url(#sm-arrow-gold)" />
+          <text x="717" y="169" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">install once: download + verify</text>
+
+          <g transform="translate(530, 182)">
+            <rect width="350" height="64" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="175" y="26" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--tb-c-text-1)">~/.tebako/shims/metanorma</text>
+            <text x="175" y="44" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">one directory on PATH — one-time setup, no eval-init</text>
+          </g>
+          <line x1="705" y1="248" x2="705" y2="270" stroke="var(--color-gold)" stroke-width="2" marker-end="url(#sm-arrow-gold)" />
+
+          <g transform="translate(530, 276)">
+            <rect width="350" height="76" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="175" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--tb-c-text-1)">the dispatcher picks, per invocation</text>
+            <text x="175" y="42" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">payload version (env → project pin → user default)</text>
+            <text x="175" y="58" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">+ a compatible CACHED runtime — no download</text>
+          </g>
+          <line x1="705" y1="354" x2="705" y2="376" stroke="var(--color-gold)" stroke-width="2" marker-end="url(#sm-arrow-gold)" />
+
+          <g transform="translate(530, 382)">
+            <rect width="350" height="56" rx="10" fill="var(--color-gold)" opacity="0.15" stroke="var(--color-gold)" stroke-width="1.5" />
+            <text x="175" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--color-gold)">runs — payloads immutable</text>
+            <text x="175" y="42" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-2)">swap runtimes without touching the payload</text>
+          </g>
+        </svg>
+</figure>
+++++
+
+_Figure 3 — Standalone mode versus managed mode, side by side._
+
+=== 1 · Standalone — ship the app, hide the machinery.
+
+[NOTE]
+====
+Status: shipped.
+====
+
+A developer presses their app once per platform with the
+link:https://github.com/tamatebako/tebako/tree/main/crates/tebako-cli[tebako CLI]
+— a single static binary, no host Ruby required — and publishes plain
+executables. Their users download one file and run it: no Ruby, no gem
+environment, no tebako to install, nothing to know. The _lean_ variant keeps
+the download small: the first run fetches the shared runtime once into the
+machine-wide cache, where every tebako package on the machine reuses it. The
+_fat_ variant carries the runtime inside and never touches the network.
+
+++++
+<figure role="img" aria-label="Lean versus fat package flows: lean resolves the runtime from the shared machine cache and downloads it once on a cache miss; fat embeds the runtime and never touches the network; both land in the same machine-wide cache">
+<img src="/assets/diagrams/lean-vs-fat.svg" alt="Lean versus fat package flows: lean resolves the runtime from the shared machine cache and downloads it once on a cache miss; fat embeds the runtime and never touches the network; both land in the same machine-wide cache" class="w-full min-w-[760px]" loading="lazy" />
+</figure>
+++++
+
+_Figure 4 — Lean versus fat package flows: lean resolves the runtime from the shared cache on first run; fat embeds the runtime and never touches the network._
+
+`TEBAKO_OFFLINE=1` forces cache-only mode: a hit, or the named error
+`EX_TEBAKO_UNAVAILABLE` (exit 69) — never a surprise download.
+
+=== 2 · Managed — shims and dispatch.
+
+[NOTE]
+====
+Status: shipped.
+====
+
+A developer publishes **signed .tfs payloads** to their own GitHub releases —
+the registry is a `tpkg-registry.yaml` manifest on infrastructure they already
+have; there is no central service and no default registry. A user with tebako
+installed puts `~/.tebako/shims` on PATH once and just runs `metanorma`: the
+dispatcher picks the payload version and a compatible _cached_ runtime — no
+download, no per-shell hook. Payloads are immutable; swapping rubies under a
+running tool is a dispatch choice, not a reinstall. Native-extension payloads
+lock to the ABI line they were built against — honestly, with a named
+compatibility error instead of a segfault.
+link:https://github.com/metanorma/mnenv[mnenv] retires to the dispatcher —
+metanorma is the first dogfood. The mechanism:
+link:/docs/architecture/dispatch/[dispatch].
+
+++++
+<figure role="img" aria-label="Version resolution: payload version chain, then a compatible runtime from the cache">
+<svg viewBox="0 0 940 440" class="w-full min-w-[760px]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Version resolution: payload version chain, then a compatible runtime from the cache">
+            <defs>
+              <marker id="vr-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 Z" fill="var(--tb-c-accent)" />
+              </marker>
+            </defs>
+
+            <text x="225" y="26" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10.5" font-weight="600" fill="var(--tb-c-text-3)">STEP 1 — WHICH PAYLOAD VERSION (first hit wins)</text>
+            <g transform="translate(30, 40)">
+              <rect width="390" height="58" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+              <text x="195" y="26" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="11" font-weight="600" fill="var(--tb-c-text-1)">1 · TEBAKO_&lt;TOOL&gt;_VERSION</text>
+              <text x="195" y="43" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="10" fill="var(--tb-c-text-3)">environment override — highest precedence</text>
+            </g>
+            <line x1="225" y1="100" x2="225" y2="118" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#vr-arrow)" />
+            <g transform="translate(30, 124)">
+              <rect width="390" height="58" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+              <text x="195" y="26" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="11" font-weight="600" fill="var(--tb-c-text-1)">2 · .tebako-tools.yaml</text>
+              <text x="195" y="43" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="10" fill="var(--tb-c-text-3)">nearest file walking up from cwd — per-project pin</text>
+            </g>
+            <line x1="225" y1="184" x2="225" y2="202" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#vr-arrow)" />
+            <g transform="translate(30, 208)">
+              <rect width="390" height="58" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+              <text x="195" y="26" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="11" font-weight="600" fill="var(--tb-c-text-1)">3 · defaults: in ~/.tebako/config.yaml</text>
+              <text x="195" y="43" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="10" fill="var(--tb-c-text-3)">the user default</text>
+            </g>
+            <line x1="225" y1="268" x2="225" y2="286" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#vr-arrow)" />
+            <g transform="translate(30, 292)">
+              <rect width="390" height="58" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+              <text x="195" y="26" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="11" font-weight="600" fill="var(--tb-c-text-1)">4 · registry default</text>
+              <text x="195" y="43" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="10" fill="var(--tb-c-text-3)">the publisher's recommendation</text>
+            </g>
+
+            <line x1="420" y1="150" x2="488" y2="120" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#vr-arrow)" />
+            <text x="455" y="112" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">constraint</text>
+
+            <text x="705" y="26" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10.5" font-weight="600" fill="var(--tb-c-text-3)">STEP 2 — WHICH RUNTIME</text>
+            <g transform="translate(500, 60)">
+              <rect width="410" height="72" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+              <text x="205" y="26" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="11" font-weight="600" fill="var(--tb-c-text-1)">the payload's declared constraint</text>
+              <text x="205" y="44" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="10" fill="var(--tb-c-text-3)">pure-language: a range — ruby &gt;= 3.3, &lt; 5.0</text>
+              <text x="205" y="60" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="10" fill="var(--tb-c-text-3)">native-ext: the ABI line — ruby ~&gt; 3.3.0 + platform</text>
+            </g>
+            <line x1="705" y1="134" x2="705" y2="156" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#vr-arrow)" />
+            <g transform="translate(500, 162)">
+              <rect width="410" height="64" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-accent)" stroke-width="1.5" />
+              <text x="205" y="28" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--tb-c-text-1)">newest compatible runtime ALREADY CACHED</text>
+              <text x="205" y="47" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-accent)">the common case — no download, ever</text>
+            </g>
+            <line x1="705" y1="228" x2="705" y2="250" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#vr-arrow)" />
+            <text x="717" y="243" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">cache miss only</text>
+            <g transform="translate(500, 256)">
+              <rect width="410" height="64" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+              <text x="205" y="28" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--tb-c-text-1)">download newest compatible → verify → cache</text>
+              <text x="205" y="47" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">from the runtime factory releases — once, then shared</text>
+            </g>
+            <line x1="705" y1="322" x2="705" y2="344" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#vr-arrow)" />
+            <g transform="translate(500, 350)">
+              <rect width="410" height="56" rx="10" fill="var(--tb-c-accent)" stroke="var(--tb-c-accent)" stroke-width="1.5" />
+              <text x="205" y="26" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12.5" font-weight="600" fill="var(--color-paper)">exec the payload against the runtime</text>
+              <text x="205" y="44" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--color-paper)" opacity="0.85">mount + exec — verified at install, not per run</text>
+            </g>
+          </svg>
+</figure>
+++++
+
+_Figure 5 — Version resolution: the payload version chain, then a compatible runtime from the cache._
+
+== The engine underneath.
+
+TFS is a product in its own right: a userland virtual filesystem — mount
+table, longest-prefix dispatch, pluggable read-only backends, copy-on-write and
+encryption transforms above them. The
+link:https://github.com/tamatebako/tebako/tree/main/crates/tfs[Rust tfs crate]
+**is** the shipping implementation of the `tebako_fs_*` C ABI — 33 exports —
+and drives every mount on this page. The C++
+link:https://github.com/tamatebako/libtfs[libtfs] survives as the legacy
+parity oracle: the Rust ABI runs its contract suite, byte-for-byte.
+
+++++
+<figure role="img" aria-label="The TFS router: calls enter through the tebako_fs_* C ABI; the Rust router dispatches by longest mount-point prefix onto read-only backends — limnifs, dwarfs-t, squashfs, zip, tar — with a copy-on-write overlay above; paths outside every mount pass through to the host filesystem">
+<img src="/assets/diagrams/tfs-router.svg" alt="The TFS router: calls enter through the tebako_fs_* C ABI; the Rust router dispatches by longest mount-point prefix onto read-only backends — limnifs, dwarfs-t, squashfs, zip, tar — with a copy-on-write overlay above; paths outside every mount pass through to the host filesystem" class="w-full min-w-[760px]" loading="lazy" />
+</figure>
+++++
+
+_Figure 6 — The TFS router: longest-prefix dispatch onto read-only backends, with a copy-on-write overlay above and pass-through to the host outside every mount._
+
+Any project, in any language, can attach images to its binaries through the
+same ABI, or drive images from the shell with the
+link:https://github.com/tamatebako/tebako/tree/main/crates/tfs-cli[tfs CLI].
+link:https://github.com/tamatebako/dwarfs-t[dwarfs-t] — the only C++ in the
+ecosystem — and
+link:https://github.com/tamatebako/dwarfs-t-rs[dwarfs-t-rs], its standalone
+Rust binding, are consumable without knowing tebako exists. Every backend is
+read-only at runtime forever; writing exists only as the copy-on-write overlay
+plus a creation-time Writer. The full model:
+link:/docs/architecture/vfs/[the VFS model].
+
+== The trust chain.
+
+One signature mechanism — OpenPGP via rnp-rs — from the publisher's key to the
+user's run. Signing is per-package opt-in; verification of anything signed is
+always strict. Verification happens at install, never per run; failures are
+named exits, never crashes. Details:
+link:/docs/architecture/chain-of-trust/[the chain of trust].
+
+++++
+<figure role="img" aria-label="The tebako chain of trust: a root key signs release keys, release keys sign the release manifest, the manifest carries per-artifact SHA256 digests; on the package side the tpkg v2 trailer carries per-slot SHA256 and an OpenPGP signature, verified at install with named failure exits">
+<img src="/assets/diagrams/trust-chain.svg" alt="The tebako chain of trust: a root key signs release keys, release keys sign the release manifest, the manifest carries per-artifact SHA256 digests; on the package side the tpkg v2 trailer carries per-slot SHA256 and an OpenPGP signature, verified at install with named failure exits" class="w-full min-w-[760px]" loading="lazy" />
+</figure>
+++++
+
+_Figure 7 — The tebako chain of trust: root key, release keys, per-artifact SHA256 digests, and the tpkg v2 signature verified at install._
+
+[NOTE]
+====
+*Stated plainly: the rollout phase.* Today's shipped loader is built
+**without** OpenPGP verification — the unverified-first rollout. Signed
+packages run with a loud `UNVERIFIED` warning plus an audit-journal entry
+while their per-slot sha256 is still enforced as integrity; unsigned packages
+run with the legacy warning. `TEBAKO_REQUIRE_SIGNED=1` fails closed with exit
+71 — a strict-mode request is never silently downgraded. Full signature
+verification in the loader returns with the crypto-toolkit payload. The
+target model — embedded root fingerprint, TOFU key pins under
+`$TEBAKO_HOME/trust/`, exits `70` (sha256 mismatch), `71` (bad signature),
+`72` (untrusted or changed signer key) — is on
+link:/docs/architecture/chain-of-trust/[the chain-of-trust page].
+====
+
+== Who it's for.
+
+The audience rule, stated once: prebuilt artifacts flow downward; compilation
+never flows outward. Only people building tebako itself ever compile tebako.
+
+People running packages::
+No compilation machinery, no libraries, nothing to install — download it and
+run it. With a fat package, not even a network. With tebako installed, one
+shims directory on PATH puts every managed tool a command away, with version
+pinning that just works.
+
+Developers shipping data::
+Data-only payloads need no compilation machinery: `tfs mkimage`, a manifest,
+a release. Fonts, datasets, tool assets — content-addressed, signed if you
+want it, mounted whole.
+
+Developers shipping applications::
+You compile only your own code. Tebako itself arrives as binaries; the
+runtimes are prebuilt downloads. Press once per platform in a matrix CI job —
+no heroics per target — and publish to releases you already own.
+
+People hacking on tebako::
+The only audience that needs the tebako toolchain: the factories, the product
+workspace, the contract suites. Start with
+link:/docs/architecture/repositories/[the repo map] and
+link:/docs/architecture/contributors/[the contributor page].
+
+See also: link:/docs/architecture/[concepts] ·
+link:/docs/architecture/factories/[the factories] ·
+link:/docs/architecture/vfs/[the VFS model] ·
+link:/docs/architecture/runtime-as-image/[runtime as image] ·
+link:/docs/architecture/dispatch/[dispatch] ·
+link:/docs/architecture/store/[the store] ·
+link:/docs/architecture/chain-of-trust/[the chain of trust] ·
+link:/docs/architecture/repositories/[the repo map] ·
+link:/docs/architecture/contributors/[for contributors].
