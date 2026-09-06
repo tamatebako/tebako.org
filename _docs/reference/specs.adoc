@@ -1,0 +1,18 @@
+---
+title: Spec index
+description: >-
+  The normative specification set with one-line summaries and links to the product repository.
+---
+
+[NOTE]
+====
+Status: planned — this page lands with the reference wave.
+====
+
+The normative specification set with one-line summaries and links to the product repository.
+
+This page is not written yet. Until it lands, the
+link:/docs/architecture/[architecture section] covers the same surfaces
+at narrative depth, and the
+https://github.com/tamatebako/tebako[product repository] carries the
+normative specifications.

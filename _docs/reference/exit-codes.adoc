@@ -1,0 +1,18 @@
+---
+title: Exit codes
+description: >-
+  The complete named-exit table — 64–79 plus 126, 132, 138 — with the layer that owns each code.
+---
+
+[NOTE]
+====
+Status: planned — this page lands with the reference wave.
+====
+
+The complete named-exit table — 64–79 plus 126, 132, 138 — with the layer that owns each code.
+
+This page is not written yet. Until it lands, the
+link:/docs/architecture/[architecture section] covers the same surfaces
+at narrative depth, and the
+https://github.com/tamatebako/tebako[product repository] carries the
+normative specifications.

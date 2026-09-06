@@ -1,0 +1,18 @@
+---
+title: Manifest reference
+description: >-
+  The payload manifest: IDENTITY, PROVIDES, DEPENDS, kinds, needs, checks — plus the L2 package manifest block.
+---
+
+[NOTE]
+====
+Status: planned — this page lands with the reference wave.
+====
+
+The payload manifest: IDENTITY, PROVIDES, DEPENDS, kinds, needs, checks — plus the L2 package manifest block.
+
+This page is not written yet. Until it lands, the
+link:/docs/architecture/[architecture section] covers the same surfaces
+at narrative depth, and the
+https://github.com/tamatebako/tebako[product repository] carries the
+normative specifications.

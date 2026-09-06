@@ -18,7 +18,8 @@ function pageExists(href: string): boolean {
     ? [
         join(ROOT, 'src/pages', `${trimmed}.astro`),
         join(ROOT, 'src/pages', trimmed, 'index.astro'),
-        // docs guides can be AsciiDoc collection entries (_docs/guides/<slug>.adoc)
+        // docs guides/reference can be AsciiDoc collection entries
+        // (_docs/guides/<slug>.adoc, _docs/reference/<slug>.adoc)
         // rendered by the dynamic [slug].astro route
         join(ROOT, '_docs', `${trimmed.replace(/^docs\//, '')}.adoc`),
         // blog posts are _posts/<slug>.adoc rendered by [slug].astro
@@ -70,7 +71,7 @@ describe('docs registry (src/config/docs.ts)', () => {
         const href = sectionHrefFor(file, sec.id)
         if (!registered.has(href)) orphans.push(`${sec.id}: ${file} (${href})`)
       }
-      // AsciiDoc collection entries (guides): an unregistered .adoc renders nowhere
+      // AsciiDoc collection entries (guides/reference): an unregistered .adoc renders nowhere
       const adocDir = join(ROOT, '_docs', sec.id)
       if (existsSync(adocDir)) {
         for (const file of walk(adocDir)) {
