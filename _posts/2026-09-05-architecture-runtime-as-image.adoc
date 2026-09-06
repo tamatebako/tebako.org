@@ -14,20 +14,11 @@ author:
 excerpt: >-
   How tebako v2 works, concept by concept —
   this post: the runtime as an image.
+series: tebako-v2-architecture
+series_post: 2
 ---
 
 = Architecture: The runtime as an image (2 of 5)
-
-[NOTE]
-====
-Post 2 of 5 in the series *Tebako v2 architecture*.
-
-. link:/blog/2026-09-05-architecture-three-part-package/[Architecture: The three-part package]
-. *Architecture: The runtime as an image* (this post)
-. link:/blog/2026-09-05-architecture-composition/[Architecture: Composition]
-. link:/blog/2026-09-05-architecture-host-boundary/[Architecture: The host boundary]
-. link:/blog/2026-09-05-architecture-trust-release-chain/[Architecture: Trust and the release chain]
-====
 
 The previous post introduced the three parts of a package. This one
 describes the part that does the most work: the runtime, shipped and

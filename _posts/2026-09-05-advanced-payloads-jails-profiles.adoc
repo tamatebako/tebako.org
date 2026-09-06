@@ -13,20 +13,11 @@ author:
     - https://github.com/tamatebako
 excerpt: >-
   The advanced payloads series: jails and profiles: decide what it may touch.
+series: advanced-payloads
+series_post: 2
 ---
 
 = Advanced payloads: Jails and profiles: decide what it may touch (2 of 5)
-
-[NOTE]
-====
-Post 2 of 5 in the series *Advanced payloads*.
-
-. link:/blog/2026-09-05-advanced-payloads-trace/[payloads: Trace: see what your payload touches]
-. *payloads: Jails and profiles: decide what it may touch* (this post)
-. link:/blog/2026-09-05-advanced-payloads-image-toolbox/[payloads: The image toolbox]
-. link:/blog/2026-09-05-advanced-payloads-runtimes-native/[payloads: Runtimes and native code]
-. link:/blog/2026-09-05-advanced-payloads-packed-mn/[payloads: packed-mn: one download, any document]
-====
 
 The observe half of the boundary was the last post. This post is the
 constrain half: profiles and jails — how the policy you drafted becomes

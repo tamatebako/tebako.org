@@ -13,20 +13,11 @@ author:
     - https://github.com/tamatebako
 excerpt: >-
   The advanced payloads series: trace: see what your payload touches.
+series: advanced-payloads
+series_post: 1
 ---
 
 = Advanced payloads: Trace: see what your payload touches (1 of 5)
-
-[NOTE]
-====
-Post 1 of 5 in the series *Advanced payloads*.
-
-. *payloads: Trace: see what your payload touches* (this post)
-. link:/blog/2026-09-05-advanced-payloads-jails-profiles/[payloads: Jails and profiles: decide what it may touch]
-. link:/blog/2026-09-05-advanced-payloads-image-toolbox/[payloads: The image toolbox]
-. link:/blog/2026-09-05-advanced-payloads-runtimes-native/[payloads: Runtimes and native code]
-. link:/blog/2026-09-05-advanced-payloads-packed-mn/[payloads: packed-mn: one download, any document]
-====
 
 The advanced series picks up where the basics ended. Its first
 subject is the question every packaged application eventually raises:

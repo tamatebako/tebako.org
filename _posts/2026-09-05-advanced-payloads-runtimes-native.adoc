@@ -13,20 +13,11 @@ author:
     - https://github.com/tamatebako
 excerpt: >-
   The advanced payloads series: runtimes and native code.
+series: advanced-payloads
+series_post: 4
 ---
 
 = Advanced payloads: Runtimes and native code (4 of 5)
-
-[NOTE]
-====
-Post 4 of 5 in the series *Advanced payloads*.
-
-. link:/blog/2026-09-05-advanced-payloads-trace/[payloads: Trace: see what your payload touches]
-. link:/blog/2026-09-05-advanced-payloads-jails-profiles/[payloads: Jails and profiles: decide what it may touch]
-. link:/blog/2026-09-05-advanced-payloads-image-toolbox/[payloads: The image toolbox]
-. *payloads: Runtimes and native code* (this post)
-. link:/blog/2026-09-05-advanced-payloads-packed-mn/[payloads: packed-mn: one download, any document]
-====
 
 The basics treated the runtime as the thing that resolves and mounts.
 This post makes it a choice: which runtime engine, and what happens

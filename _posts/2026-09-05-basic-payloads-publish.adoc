@@ -13,20 +13,11 @@ author:
     - https://github.com/tamatebako
 excerpt: >-
   The basic payloads series, hands-on: publish to your users.
+series: basic-payloads
+series_post: 5
 ---
 
 = Basic payloads: Publish to your users (5 of 5)
-
-[NOTE]
-====
-Post 5 of 5 in the series *Basic payloads*.
-
-. link:/blog/2026-09-05-basic-payloads-run-first-package/[payloads: Run your first package]
-. link:/blog/2026-09-05-basic-payloads-data-payload/[payloads: Data payloads: make one, read one]
-. link:/blog/2026-09-05-basic-payloads-ruby-application/[payloads: Package a Ruby application]
-. link:/blog/2026-09-05-basic-payloads-rails-sinatra/[payloads: Package a Rails or Sinatra application]
-. *payloads: Publish to your users* (this post)
-====
 
 The last subject in this series is the hand-off: getting your payload
 from your machine to your users'. Three steps — prove it, publish it,

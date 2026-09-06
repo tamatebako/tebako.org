@@ -13,20 +13,11 @@ author:
     - https://github.com/tamatebako
 excerpt: >-
   The basic payloads series, hands-on: data payloads: make one, read one.
+series: basic-payloads
+series_post: 2
 ---
 
 = Basic payloads: Data payloads: make one, read one (2 of 5)
-
-[NOTE]
-====
-Post 2 of 5 in the series *Basic payloads*.
-
-. link:/blog/2026-09-05-basic-payloads-run-first-package/[payloads: Run your first package]
-. *payloads: Data payloads: make one, read one* (this post)
-. link:/blog/2026-09-05-basic-payloads-ruby-application/[payloads: Package a Ruby application]
-. link:/blog/2026-09-05-basic-payloads-rails-sinatra/[payloads: Package a Rails or Sinatra application]
-. link:/blog/2026-09-05-basic-payloads-publish/[payloads: Publish to your users]
-====
 
 The simplest payload there is: a directory of files. Fonts, schemas,
 dictionaries, word lists, datasets — anything versioned that

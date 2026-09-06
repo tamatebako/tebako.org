@@ -15,20 +15,11 @@ excerpt: >-
   The tebako v2 model in five concepts: the three-part package,
   the runtime as an image, composition, the host boundary, and
   trust.
+series: tebako-v2-architecture
+series_post: 1
 ---
 
 = Architecture: The three-part package (1 of 5)
-
-[NOTE]
-====
-Post 1 of 5 in the series *Tebako v2 architecture*.
-
-. *Architecture: The three-part package* (this post)
-. link:/blog/2026-09-05-architecture-runtime-as-image/[Architecture: The runtime as an image]
-. link:/blog/2026-09-05-architecture-composition/[Architecture: Composition]
-. link:/blog/2026-09-05-architecture-host-boundary/[Architecture: The host boundary]
-. link:/blog/2026-09-05-architecture-trust-release-chain/[Architecture: Trust and the release chain]
-====
 
 This series describes how tebako v2 works — one concept per post. This
 first post covers the model everything else builds on: what a tebako

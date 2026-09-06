@@ -2,6 +2,7 @@ import { createRequire } from 'node:module'
 import { parse as parseYaml } from 'yaml'
 import { readFile, readdir } from 'node:fs/promises'
 import { join, basename, extname } from 'node:path'
+import { seriesBlock } from '../../config/series'
 import type { Loader } from 'astro/loaders'
 
 const require = createRequire(import.meta.url)
@@ -22,12 +23,18 @@ export function adocLoader({ base, attributes = {} }: AdocLoaderOptions): Loader
       for (const filePath of files) {
         const raw = await readFile(filePath, 'utf-8')
         const { frontmatter, body } = extractFrontmatter(raw)
+        let renderBody = body
 
         if (frontmatter.author && !Array.isArray(frontmatter.author)) {
           frontmatter.author = [frontmatter.author]
         }
 
-        const html = (await asciidoctor.convert(body, {
+        const seriesId = typeof frontmatter.series === 'string' ? frontmatter.series : undefined
+        const seriesPost = typeof frontmatter.series_post === 'number' ? frontmatter.series_post : undefined
+        if (seriesId && seriesPost) {
+          renderBody = seriesBlock(seriesId, seriesPost) + '\n\n' + body
+        }
+        const html = (await asciidoctor.convert(renderBody, {
           safe: 'safe',
           standalone: false,
           attributes: {
@@ -52,7 +59,7 @@ export function adocLoader({ base, attributes = {} }: AdocLoaderOptions): Loader
         store.set({
           id,
           data,
-          body,
+          body: renderBody,
           filePath,
           digest,
           rendered: { html },

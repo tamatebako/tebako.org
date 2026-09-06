@@ -14,20 +14,11 @@ author:
 excerpt: >-
   How tebako v2 works, concept by concept —
   this post: composition.
+series: tebako-v2-architecture
+series_post: 3
 ---
 
 = Architecture: Composition (3 of 5)
-
-[NOTE]
-====
-Post 3 of 5 in the series *Tebako v2 architecture*.
-
-. link:/blog/2026-09-05-architecture-three-part-package/[Architecture: The three-part package]
-. link:/blog/2026-09-05-architecture-runtime-as-image/[Architecture: The runtime as an image]
-. *Architecture: Composition* (this post)
-. link:/blog/2026-09-05-architecture-host-boundary/[Architecture: The host boundary]
-. link:/blog/2026-09-05-architecture-trust-release-chain/[Architecture: Trust and the release chain]
-====
 
 The first two posts covered the parts: packages, runtimes, payload
 slices. This post covers the grammar that ties them together — how a

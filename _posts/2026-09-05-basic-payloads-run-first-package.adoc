@@ -13,20 +13,11 @@ author:
     - https://github.com/tamatebako
 excerpt: >-
   The basic payloads series, hands-on: run your first package.
+series: basic-payloads
+series_post: 1
 ---
 
 = Basic payloads: Run your first package (1 of 5)
-
-[NOTE]
-====
-Post 1 of 5 in the series *Basic payloads*.
-
-. *payloads: Run your first package* (this post)
-. link:/blog/2026-09-05-basic-payloads-data-payload/[payloads: Data payloads: make one, read one]
-. link:/blog/2026-09-05-basic-payloads-ruby-application/[payloads: Package a Ruby application]
-. link:/blog/2026-09-05-basic-payloads-rails-sinatra/[payloads: Package a Rails or Sinatra application]
-. link:/blog/2026-09-05-basic-payloads-publish/[payloads: Publish to your users]
-====
 
 This series teaches tebako v2 hands-on, one subject per post: run a
 package, make payloads, package applications, publish them. Every step
