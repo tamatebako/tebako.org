@@ -1,573 +1,70 @@
 ---
-import DocsLayout from '../../../layouts/DocsLayout.astro'
-import StatusPill from '../../../components/docs/StatusPill.astro'
+import BaseLayout from '../../../layouts/BaseLayout.astro'
+import DocsNav from '../../../components/docs/DocsNav.astro'
+import { getSection } from '../../../config/docs'
 
-const LINKS = {
-  tpkgCrate: 'https://github.com/tamatebako/tebako/tree/main/crates/tpkg',
-  bootstrapCrate: 'https://github.com/tamatebako/tebako/tree/main/crates/tebako-bootstrap',
-  spec02: 'https://github.com/tamatebako/tebako/blob/main/docs/spec/02-tpkg-wire-format.md',
-  spec03: 'https://github.com/tamatebako/tebako/blob/main/docs/spec/03-payload-manifest.md',
-  spec19: 'https://github.com/tamatebako/tebako/blob/main/docs/spec/19-bootstrap-distribution.md',
-  spec20: 'https://github.com/tamatebako/tebako/blob/main/docs/spec/20-limnifs-backend.md',
-  runtimeReleases: 'https://github.com/tamatebako/tebako-runtime-ruby/releases',
-  c99oracle: 'https://github.com/tamatebako/tebako-bootstrap',
+const sec = getSection('architecture')
+const DESCRIPTIONS: Record<string, string> = {
+  'Overview': 'What tebako is and what it does — the one-page picture.',
+  'Concepts': 'The wire format, the trailer, slot records, flags, and format IDs.',
+  'Anatomy': 'What is inside a running tebako process, exit codes included.',
+  'Building blocks': 'The nine parts of the system, one page each.',
+  'Factories': 'How an upstream language release becomes a runtime, and a recipe becomes a package.',
+  'Runtime as image': 'The two-artifact model: interpreter executable plus mounted environment image.',
+  'Dispatch': 'How a command name becomes the right payload, version, and runtime.',
+  'The store': 'The ~/.tebako directory: runtimes, payloads, shims, registries, trust.',
+  'VFS model': 'The userland virtual filesystem: mount table, longest-prefix dispatch, pluggable backends.',
+  'Exec tiers': 'Four ways to run a binary inside an image, from interpreted to spawned.',
+  'Chain of trust': 'SHA-256 anchors, verification at install, signing, and the root ceremony.',
+  'Repositories': 'The repo map: who owns what, and the product crate map.',
+  'Comparisons': 'How tebako compares to version managers, containers, and language packagers.',
+  'Migration (v1→v2)': 'What changed between the v1 and v2 architectures.',
+  'v1→v2 flag map': 'The flag-by-flag migration guide for the tebako CLI.',
+  'Contributors': 'The engineering order, contract suites, and the SSOT ownership table.',
+  'Driver contract': 'The wire format the bootstrap uses to hand off to the runtime.',
+  'Composition': 'The dependency grammar: requires, needs, mounts, resolution.',
+  'Overlays': 'Declared writes and sealed reads on read-only images.',
+  'Image formats': 'The format axis: limnifs, dwarfs, squashfs, zip — and auto-detection.',
+  'Jails & proxying': 'Declarative host-filesystem policy, record mode, and the platform floor.',
+  'Encryption': 'Per-image opt-in encryption, key model, and the PQC suites.',
+  'Interposition': 'The L/E/R taxonomy and per-platform delivery of filesystem interposition.',
+  'Observability': 'The trace toolkit: what a payload touches, which hop failed, what escaped.',
+  'Contract model': 'The edges, the evolution law, and the non-goals.',
 }
-
-const trailerFields = [
-  { offset: '0', size: '10', field: 'magic', meaning: '"TEBAKOTFS\\0" — the 4-byte "TEBA" prefix is what tells absent apart from corrupt' },
-  { offset: '10', size: '4', field: 'version', meaning: 'u32, = 1 forever — extensions live in flags, never in version bumps' },
-  { offset: '14', size: '4', field: 'package_flags', meaning: 'u32 — bit 0 LEAN · bit 1 SIGNED_V2 · bit 2 NO_INSTALL (table below)' },
-  { offset: '18', size: '4', field: 'slot_count', meaning: 'u32, 1–8 (TPKG_MAX_SLOTS)' },
-  { offset: '22', size: '8', field: 'slot_table_offset', meaning: 'u64 — absolute file offset of slot record 0' },
-  { offset: '30', size: '128', field: 'runtime_ref', meaning: 'resolution hint, e.g. ruby@3.4.2;tebako=0.16.9;image — fat appends ;sha256=<64 hex>' },
-  { offset: '158', size: '4', field: 'launcher_abi', meaning: 'u32 — the bootstrap→runtime wire version the package requires (currently 1)' },
-  { offset: '162', size: '4', field: 'header_crc32', meaning: 'CRC32 over header bytes [0, 162) — accident integrity, never authenticity' },
-]
-
-const slotFields = [
-  { offset: '0', size: '8', field: 'offset', meaning: 'u64 — absolute file offset of the image bytes' },
-  { offset: '8', size: '8', field: 'size', meaning: 'u64 — image length in bytes' },
-  { offset: '16', size: '4', field: 'format_id', meaning: 'how to read the bytes: 0 auto · 1 dwarfs · 2 squashfs · 3 zip · 5 limnifs — nothing more (see below)' },
-  { offset: '20', size: '4', field: 'flags', meaning: 'u32, 0 today — the future home of slot role bits' },
-  { offset: '24', size: '256', field: 'mount_point', meaning: 'UTF-8, NUL-padded — where the driver mounts the image' },
-]
-
-const flagRows = [
-  { bit: 'bit 0', name: 'TPKG_FLAG_LEAN', meaning: 'the runtime is named by reference (runtime_ref) and resolved at run time; unset means the package carries it as a slot (fat)' },
-  { bit: 'bit 1', name: 'TPKG_FLAG_SIGNED_V2', meaning: 'the v2 chain-of-trust extension is carried between the slot table and the header. v1-era readers pass the bit through and run the package — trust enforcement is a reader capability, not a format barrier' },
-  { bit: 'bit 2', name: 'TPKG_FLAG_NO_INSTALL', meaning: 'publisher-frozen: the package RUNS standalone, but every install attempt is refused by name (exit 76). Absence means installable-on-request' },
-]
-
-const formatRows = [
-  { id: '0', name: 'auto', note: 'detect from the image magic' },
-  { id: '1', name: 'dwarfs', note: 'dwarfs-t — the FlatBuffers-metadata format; read-only at runtime, creation-time Writer' },
-  { id: '2', name: 'squashfs', note: 'SquashFS images, read as-is' },
-  { id: '3', name: 'zip', note: 'zip archives, read as-is' },
-  { id: '4', name: 'runtime', note: 'LEGACY ROLE WART — marks the fat runtime slot so v1-era loaders skip handing it over as a mount. Kept for backward compatibility only; never use it for new code' },
-  { id: '5', name: 'limnifs', note: 'LimniFS (spec 20) — pure-Rust, content-addressed; the default format for tfs mkimage and tebako press since v0.2.0' },
-]
-
-const trailerErrors = [
-  { name: 'NoTrailer', meaning: 'no "TEBA" prefix in the last 166 bytes — absent, not corrupt (a classic-era bundle; callers may fall back to offset auto-detection)' },
-  { name: 'Magic', meaning: 'prefix present but the full magic mismatches — the trailer is corrupt' },
-  { name: 'Crc', meaning: 'magic valid, header CRC32 bad — the trailer is corrupt' },
-  { name: 'Version', meaning: 'version field ≠ 1' },
-  { name: 'Slots', meaning: 'slot_count outside 1–8' },
-  { name: 'Bounds', meaning: 'slot table outside file bounds' },
-  { name: 'Invalid', meaning: 'structural validation failed (overflowing offset+size, unterminated fixed fields, format_id > 5, …)' },
-]
 ---
-<!-- normative: spec 02, spec 03 §6, spec 05, spec 06, spec 17 §1, spec 19 — facts re-verified against crates/tpkg (lib.rs, error.rs, model.rs), tebako-cli/src/lib.rs, tebako-bootstrap/src/lib.rs, tebako-driver/src/handoff.rs @ main 2026-08-25 -->
 
-<DocsLayout
-  section="architecture"
-  href="/docs/architecture/"
-  title="Concepts"
-  heading="Concepts."
-  lede="The pieces every other page in this section builds on: the three-part package, the tpkg trailer that glues it, the two press modes, the machine-wide runtime cache, and the two distinct moments at which a runtime gets resolved."
-  description="The three-part tebako package, the tpkg trailer wire format, the two press modes, the shared runtime cache, and press-time vs run-time resolution."
+<BaseLayout
+  title="Architecture — Tebako"
+  description="The tebako architecture: the three-part package model, the wire format, the runtime, the VFS, the store, trust, and every subsystem."
 >
+  <section class="mx-auto max-w-5xl px-6 pb-24 pt-32">
+    <p class="tb-eyebrow">ARCHITECTURE</p>
+    <h1 class="mt-3">The system, page by page.</h1>
+    <p class="mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      Every concept in tebako has exactly one page here — from the wire format
+      to the trust model, from the VFS to the trace toolkit.
+    </p>
 
-    <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
-      <span class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">HOW TO READ THIS SECTION:</span>
-      <StatusPill status="shipped" />
-      <span class="text-sm text-[var(--tb-c-text-2)]">released and downloadable today — every claim links its artifact</span>
-      <StatusPill status="planned" />
-      <span class="text-sm text-[var(--tb-c-text-2)]">locked design, not yet shipped</span>
-    </div>
+    <DocsNav section="architecture" />
 
-    <!-- ============ THE THREE PARTS ============ -->
-    <div class="mt-16">
-      <div class="mb-3 flex flex-wrap items-center gap-3">
-        <h2>The three-part package.</h2>
-        <StatusPill status="shipped" />
-      </div>
-      <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
-        Every tebako package is a composition of up to three independently distributable
-        parts — a bootstrap loader, a language runtime, and one or more filesystem
-        images — glued together by a <strong class="text-[var(--tb-c-text-1)]">tpkg trailer</strong> at
-        the end of the file. The wire format is normative in{' '}
-        <a href={LINKS.spec02} class="tb-link-underline font-medium text-[var(--tb-c-accent)]">spec 02</a>;
-        the single authoritative implementation is{' '}
-        <a href={LINKS.tpkgCrate} class="tb-link-underline font-medium text-[var(--tb-c-accent)]"><code class="font-[var(--font-mono)] text-sm">crates/tpkg</code></a>
-        {' '}in the product repo (<code class="font-[var(--font-mono)] text-xs">#![forbid(unsafe_code)]</code> Rust,
-        pinned byte-exact against the C99 reference header by golden vectors).
-      </p>
-
-      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
-        <svg viewBox="0 0 940 205" class="w-full min-w-[760px]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Package byte layout: bootstrap, payload slots, optional fat runtime slot, slot table, extension blocks, 166-byte trailer header at end of file">
-          <text x="10" y="24" font-family="var(--font-mono), monospace" font-size="11" fill="var(--tb-c-text-3)">byte 0 →</text>
-          <text x="930" y="24" text-anchor="end" font-family="var(--font-mono), monospace" font-size="11" fill="var(--tb-c-text-3)">→ EOF</text>
-
-          <g transform="translate(10, 40)">
-            <rect width="145" height="110" rx="10" fill="var(--color-ink)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
-            <text x="72" y="28" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--color-mist-pale)">A · Bootstrap</text>
-            <text x="72" y="48" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-mist)" opacity="0.8">the Rust loader</text>
-            <text x="72" y="62" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-mist)" opacity="0.8">&lt; 3 MB, CI size-gated</text>
-            <text x="72" y="88" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-gold)">the process entry point</text>
-          </g>
-
-          <g transform="translate(167, 40)">
-            <rect width="145" height="110" rx="10" fill="var(--tb-c-accent)" opacity="0.12" stroke="var(--tb-c-accent)" stroke-width="1.5" />
-            <text x="72" y="28" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--tb-c-accent)">C · Payload slots</text>
-            <text x="72" y="48" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">slot 0: the app image</text>
-            <text x="72" y="62" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">slots 1–7: data, tools</text>
-            <text x="72" y="88" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">mounted at run time</text>
-          </g>
-
-          <g transform="translate(324, 40)">
-            <rect width="145" height="110" rx="10" fill="var(--color-gold)" opacity="0.1" stroke="var(--color-gold)" stroke-width="1" stroke-dasharray="4 3" />
-            <text x="72" y="28" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--color-gold)">B · Runtime slot</text>
-            <text x="72" y="48" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">fat packages only</text>
-            <text x="72" y="62" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">format_id 4 (legacy)</text>
-            <text x="72" y="88" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">installed, never mounted</text>
-          </g>
-
-          <g transform="translate(481, 40)">
-            <rect width="145" height="110" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
-            <text x="72" y="28" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--tb-c-text-1)">Slot table</text>
-            <text x="72" y="48" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">n × 280 B records</text>
-            <text x="72" y="62" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">offset · size · format_id</text>
-            <text x="72" y="88" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">· mount point</text>
-          </g>
-
-          <g transform="translate(638, 40)">
-            <rect width="145" height="110" rx="10" fill="var(--tb-c-accent)" opacity="0.06" stroke="var(--tb-c-accent)" stroke-width="1" stroke-dasharray="4 3" />
-            <text x="72" y="28" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--tb-c-accent)">Ext blocks</text>
-            <text x="72" y="48" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">type 2: package manifest</text>
-            <text x="72" y="62" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">type 1: v2 signature</text>
-            <text x="72" y="88" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">optional</text>
-          </g>
-
-          <g transform="translate(795, 40)">
-            <rect width="135" height="110" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-accent)" stroke-width="1.5" />
-            <text x="67" y="28" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--tb-c-accent)">Trailer header</text>
-            <text x="67" y="48" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">166 B, always at EOF</text>
-            <text x="67" y="62" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">magic · flags · CRC</text>
-            <text x="67" y="88" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">read last, parsed first</text>
-          </g>
-
-          <text x="470" y="186" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="11" fill="var(--tb-c-text-3)">
-            lean = A + C + trailer · fat = A + B + C + trailer · classic — refused by name: v2 has exactly two package shapes
-          </text>
-        </svg>
-      </div>
-
-      <div class="mt-8 grid gap-4 sm:grid-cols-3">
-        <div class="tb-card p-6">
-          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">PART A</p>
-          <h3 class="mt-1 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">Bootstrap</h3>
+    <div class="mt-16 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      {sec.entries.map((entry, i) => (
+        <a
+          href={entry.href}
+          class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]"
+          style="background: var(--tb-c-bg-soft);"
+        >
+          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+            {String(i + 1).padStart(2, '0')}
+          </p>
+          <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">
+            {entry.label}
+          </h3>
           <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-            A small, static Rust binary — under 3&nbsp;MB, a budget enforced in CI on every
-            platform — that parses the trailer of its own executable, resolves the runtime
-            into the shared cache (cache → embedded fat slot → verified download), and execs
-            it. It carries its own HTTP, TLS, and archive handling: nothing shells out.
-            The{' '}
-            <a href={LINKS.bootstrapCrate} class="tb-link-underline text-[var(--tb-c-accent)]"><code class="font-[var(--font-mono)] text-xs">tebako-bootstrap</code> crate</a>
-            {' '}is the shipping implementation; the{' '}
-            <a href={LINKS.c99oracle} class="tb-link-underline text-[var(--tb-c-accent)]">C99 repo</a>
-            {' '}survives as the behavioral oracle its messages are byte-compared against — it
-            builds nothing you can download. Published per platform triplet with every tebako
-            release (<a href={LINKS.spec19} class="tb-link-underline text-[var(--tb-c-accent)]">spec 19</a>).
+            {DESCRIPTIONS[entry.label] || 'The details.'}
           </p>
-        </div>
-        <div class="tb-card p-6">
-          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">PART B</p>
-          <h3 class="mt-1 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">Language runtime</h3>
-          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-            Two artifacts, published per (version × platform) by the runtime factory's{' '}
-            <a href={LINKS.runtimeReleases} class="tb-link-underline text-[var(--tb-c-accent)]">releases</a>:
-            the interpreter executable, and an <em>env image</em> — one{' '}
-            <code class="font-[var(--font-mono)] text-xs">.tfs</code> holding the standard
-            library, gems, everything the load paths expect. Downloaded once per machine,
-            SHA-256 verified, <strong class="text-[var(--tb-c-text-1)]">mounted, never
-            extracted</strong> — see{' '}
-            <a href="/docs/architecture/runtime-as-image/" class="tb-link-underline text-[var(--tb-c-accent)]">runtime as image</a>.
-            Lean packages resolve it on first run; fat packages carry the interpreter as a
-            payload slot and install it offline.
-          </p>
-        </div>
-        <div class="tb-card p-6">
-          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">PART C</p>
-          <h3 class="mt-1 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">Payload slices</h3>
-          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-            Bare <code class="font-[var(--font-mono)] text-xs">.tfs</code> filesystem images —
-            the application tree, data, native tools — created in-process (no mkdwarfs, no
-            shell-outs) and self-describing through a manifest inside the image at{' '}
-            <code class="font-[var(--font-mono)] text-xs">/__tpkg__/manifest.yaml</code>.
-            Embedded as trailer-described slots, each mounted straight out of the package
-            file at its declared mount point: no extraction, no temp copies.
-          </p>
-        </div>
-      </div>
+        </a>
+      ))}
     </div>
-
-    <!-- ============ THE TPKG TRAILER ============ -->
-    <div class="mt-16">
-      <div class="mb-3 flex flex-wrap items-center gap-3">
-        <h2>The tpkg trailer.</h2>
-        <StatusPill status="shipped" note="format v1" />
-      </div>
-      <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
-        The trailer is the byte-level contract of the whole stack, and it has exactly one
-        owner:{' '}
-        <a href={LINKS.tpkgCrate} class="tb-link-underline font-medium text-[var(--tb-c-accent)]"><code class="font-[var(--font-mono)] text-sm">crates/tpkg</code></a>.
-        Everything else — the bootstrap, <code class="font-[var(--font-mono)] text-xs">tebako-pkg</code>,
-        the runtime driver — consumes the crate; nothing hand-writes a second copy of the
-        layout. The reader checks magic and CRC, then walks the slot table backwards from
-        EOF. All header integers are little-endian.
-      </p>
-
-      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
-        <table class="w-full min-w-[640px] text-left text-sm">
-          <thead>
-            <tr class="border-b border-[var(--tb-c-divider-strong)] font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
-              <th class="px-5 py-3 font-medium">OFFSET</th>
-              <th class="px-5 py-3 font-medium">BYTES</th>
-              <th class="px-5 py-3 font-medium">FIELD</th>
-              <th class="px-5 py-3 font-medium">MEANING</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-[var(--tb-c-divider)]">
-            {trailerFields.map((f) => (
-              <tr>
-                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">{f.offset}</td>
-                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">{f.size}</td>
-                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-accent)]">{f.field}</td>
-                <td class="px-5 py-2.5 text-[var(--tb-c-text-2)]">{f.meaning}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div class="mt-8 grid gap-6 lg:grid-cols-2">
-        <div>
-          <h3 class="mb-3 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)]">package_flags — three bits, all pass-through.</h3>
-          <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
-            <table class="w-full text-left text-sm">
-              <tbody class="divide-y divide-[var(--tb-c-divider)]">
-                {flagRows.map((f) => (
-                  <tr>
-                    <td class="px-5 py-2.5 align-top font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">{f.bit}</td>
-                    <td class="px-5 py-2.5 align-top font-[var(--font-mono)] text-xs text-[var(--tb-c-accent)]">{f.name}</td>
-                    <td class="px-5 py-2.5 text-[var(--tb-c-text-2)]">{f.meaning}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p class="mt-4 text-sm text-[var(--tb-c-text-3)]">
-            The version field stays 1 forever: new capability arrives through flags and extension
-            blocks, so v1-era readers never break on v2 packages.
-          </p>
-        </div>
-        <div>
-          <h3 class="mb-3 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)]">Each slot record — 280 bytes.</h3>
-          <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
-            <table class="w-full text-left text-sm">
-              <tbody class="divide-y divide-[var(--tb-c-divider)]">
-                {slotFields.map((f) => (
-                  <tr>
-                    <td class="px-5 py-2.5 align-top font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">{f.offset}</td>
-                    <td class="px-5 py-2.5 align-top font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">{f.size}</td>
-                    <td class="px-5 py-2.5 align-top font-[var(--font-mono)] text-xs text-[var(--tb-c-accent)]">{f.field}</td>
-                    <td class="px-5 py-2.5 text-[var(--tb-c-text-2)]">{f.meaning}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <div class="mt-8">
-        <h3 class="mb-3 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)]">format_id answers exactly one question.</h3>
-        <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
-          <table class="w-full min-w-[560px] text-left text-sm">
-            <tbody class="divide-y divide-[var(--tb-c-divider)]">
-              {formatRows.map((f) => (
-                <tr>
-                  <td class="px-5 py-2.5 align-top font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">{f.id}</td>
-                  <td class="px-5 py-2.5 align-top font-[var(--font-mono)] text-xs text-[var(--tb-c-accent)]">{f.name}</td>
-                  <td class="px-5 py-2.5 text-[var(--tb-c-text-2)]">{f.note}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div class="mt-4 rounded-2xl border border-[var(--color-gold)] p-6" style="background: color-mix(in srgb, var(--color-gold) 6%, transparent);">
-          <p class="text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-            <strong class="text-[var(--tb-c-text-1)]">Stated plainly:</strong> <em>how do I
-            read these bytes</em> is the only thing a format id may say. Whether a slot is a
-            runtime, and which payload carries the entrypoint, are <strong class="text-[var(--tb-c-text-1)]">roles</strong> —
-            declared by manifests, never encoded in the format axis.{' '}
-            <code class="font-[var(--font-mono)] text-xs">format_id 4</code> is the one
-            historical violation, kept so old loaders keep working; ids ≥ 6 are unallocated,
-            and new semantics must never again be smuggled into the format field. That is the
-            orthogonality law, and it is why a runtime image and an app image can share one
-            container format.
-          </p>
-        </div>
-      </div>
-
-      <div class="mt-8">
-        <h3 class="mb-3 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)]">Absent vs corrupt — named errors, never partial behavior.</h3>
-        <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]" style="background: var(--tb-c-bg-soft);">
-          <table class="w-full min-w-[560px] text-left text-sm">
-            <tbody class="divide-y divide-[var(--tb-c-divider)]">
-              {trailerErrors.map((e) => (
-                <tr>
-                  <td class="px-5 py-2.5 align-top font-[var(--font-mono)] text-xs text-[var(--tb-c-accent)]">{e.name}</td>
-                  <td class="px-5 py-2.5 text-[var(--tb-c-text-2)]">{e.meaning}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p class="mt-4 max-w-2xl text-sm text-[var(--tb-c-text-3)]">
-          The <code class="font-[var(--font-mono)] text-xs">TpkgError</code> set is 1:1 with
-          the C reference's <code class="font-[var(--font-mono)] text-xs">TPKG_ERR_*</code>{' '}
-          codes, and the <code class="font-[var(--font-mono)] text-xs">strerror</code> strings
-          are byte-identical — the golden parity rule applies to the error surface too.
-        </p>
-      </div>
-    </div>
-
-    <!-- ============ EXTENSION BLOCKS ============ -->
-    <div class="mt-16">
-      <div class="mb-3 flex flex-wrap items-center gap-3">
-        <h2>Extension blocks: where v2 lives.</h2>
-        <StatusPill status="shipped" />
-      </div>
-      <p class="mb-6 max-w-2xl text-[var(--tb-c-text-2)]">
-        Between the slot table and the trailer header sits a chain of typed extension
-        blocks — invisible to v1-era readers, which only ever read the header at EOF and the
-        slot table at its recorded offset. Blocks walk forward from the end of the slot
-        table, self-delimiting by type and length; readers skip unknown types and carry them
-        verbatim, while{' '}
-        <code class="font-[var(--font-mono)] text-xs">tebako-pkg validate</code> rejects them
-        with a named error.
-      </p>
-      <pre class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-sm leading-relaxed text-[var(--tb-c-text-2)]" style="background: var(--tb-c-bg-soft);"><code>[bootstrap][payload slots][slot table][ext blocks…][v2 signing ext?][header @EOF]
-
-ext block: [u32be type][u32be length][payload]
-  type 1 — v2 signing extension (when present, LAST before the header)
-  type 2 — package manifest (YAML)</code></pre>
-
-      <div class="mt-6 grid gap-4 md:grid-cols-2">
-        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
-          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">TYPE 1 · CHAIN OF TRUST</p>
-          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-            Per-slot SHA-256 digests (8 × 32&nbsp;B), the signer's keyid (the low 64 bits of
-            the OpenPGP fingerprint), and a detached OpenPGP signature (≤ 64&nbsp;KiB). All
-            its numerics are <strong class="text-[var(--tb-c-text-1)]">big-endian</strong> —
-            the header stays v1-little-endian. The canonical signed bytes are{' '}
-            <code class="font-[var(--font-mono)] text-xs">slot table ‖ digests ‖ keyid ‖ header</code>.
-            Flagged by <code class="font-[var(--font-mono)] text-xs">TPKG_FLAG_SIGNED_V2</code>,
-            never by a version bump — see{' '}
-            <a href="/docs/architecture/chain-of-trust/" class="tb-link-underline text-[var(--tb-c-accent)]">the chain of trust</a>.
-          </p>
-        </div>
-        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
-          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">TYPE 2 · PACKAGE MANIFEST (L2)</p>
-          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-            A YAML block that owns composition (<a href={LINKS.spec03} class="tb-link-underline text-[var(--tb-c-accent)]">spec 03 §6</a>):
-            package identity; <code class="font-[var(--font-mono)] text-xs">entries[]</code> mapping
-            each command to its slot, entrypoint, and per-entry{' '}
-            <code class="font-[var(--font-mono)] text-xs">runtime_ref</code> (suites and
-            multi-runtime packages, past the trailer's 128-byte single-ref limit);
-            package-level <code class="font-[var(--font-mono)] text-xs">jail:</code> and{' '}
-            <code class="font-[var(--font-mono)] text-xs">env:</code>; and{' '}
-            <code class="font-[var(--font-mono)] text-xs">mounts[]</code> per slot
-            (exclusive by default, or union with declared precedence). It references slots;
-            payload manifests stay inside the images — no duplicated authority.
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <!-- ============ PRESS MODES ============ -->
-    <div class="mt-16">
-      <div class="mb-3 flex flex-wrap items-center gap-3">
-        <h2>Press modes: lean and fat. Only.</h2>
-        <StatusPill status="shipped" />
-      </div>
-      <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
-        <code class="rounded bg-[var(--tb-c-divider)] px-1.5 py-0.5 font-[var(--font-mono)] text-sm text-[var(--tb-c-accent)]">tebako press</code>
-        {' '}produces two package shapes. Payload images default to{' '}
-        <a href={LINKS.spec20} class="tb-link-underline text-[var(--tb-c-accent)]">LimniFS</a>
-        {' '}since v0.2.0 (<code class="font-[var(--font-mono)] text-xs">--format dwarfs</code> stays
-        a first-class opt-in); the shape question is only about where the runtime lives.
-      </p>
-      <div class="grid gap-4 sm:grid-cols-3">
-        <div class="tb-card p-6">
-          <h3 class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">Lean <span class="ml-1 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">default</span></h3>
-          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-            Bootstrap + payload slots + trailer:{' '}
-            <code class="font-[var(--font-mono)] text-xs">TPKG_FLAG_LEAN</code> set,{' '}
-            <code class="font-[var(--font-mono)] text-xs">runtime_ref</code> filled. The
-            smallest download; the first run resolves the runtime into the shared cache.
-          </p>
-        </div>
-        <div class="tb-card p-6">
-          <h3 class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">Fat</h3>
-          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-            A lean package that also carries the runtime interpreter as a payload slot
-            (<code class="font-[var(--font-mono)] text-xs">format_id 4</code>), pinned by{' '}
-            <code class="font-[var(--font-mono)] text-xs">;sha256=</code> in the runtime_ref.
-            First run verifies and installs it into the cache — no network for the
-            interpreter. In the image era the env <code class="font-[var(--font-mono)] text-xs">.tfs</code>
-            {' '}resolves alongside: usually already cached from any prior tebako run, else one
-            verified fetch (<code class="font-[var(--font-mono)] text-xs">TEBAKO_OFFLINE=1</code> makes
-            a miss the named exit 69, not a surprise).
-          </p>
-        </div>
-        <div class="tb-card p-6">
-          <h3 class="font-[var(--font-display)] text-lg font-medium text-[var(--color-gold)]">Classic — refused</h3>
-          <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-            v1's shape: runtime and app stitched into one monolithic binary — no bootstrap,
-            no trailer, no shared cache. v2 retires it by design, and the CLI says so by
-            name: <code class="font-[var(--font-mono)] text-xs">tebako press --mode=classic</code>
-            {' '}exits with <em>"the 'classic' press mode is a later tebako-rs milestone
-            (use --mode=lean or --mode=fat)"</em>. A refusal, never a silent fallback.
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <!-- ============ THE RUNTIME CACHE ============ -->
-    <div class="mt-16">
-      <div class="mb-3 flex flex-wrap items-center gap-3">
-        <h2>The shared runtime cache.</h2>
-        <StatusPill status="shipped" />
-      </div>
-      <p class="max-w-2xl text-[var(--tb-c-text-2)]">
-        Runtimes are installed once per machine, not once per package. The cache root is{' '}
-        <code class="rounded bg-[var(--tb-c-divider)] px-1.5 py-0.5 font-[var(--font-mono)] text-sm text-[var(--tb-c-accent)]">$TEBAKO_HOME</code>
-        {' '}(default <code class="font-[var(--font-mono)] text-sm">~/.tebako</code>,{' '}
-        <code class="font-[var(--font-mono)] text-sm">%LOCALAPPDATA%\tebako</code> on Windows), with entries of the form{' '}
-        <code class="font-[var(--font-mono)] text-sm">runtimes/&lt;lang&gt;-&lt;lv&gt;-&lt;ver&gt;-&lt;triplet&gt;/</code> —
-        e.g. <code class="font-[var(--font-mono)] text-sm">runtimes/ruby-3.4.2-0.16.9-linux-musl-x86_64/</code>.
-        An entry holds immutable artifacts and their markers only: the interpreter (0755),
-        the env <code class="font-[var(--font-mono)] text-xs">.tfs</code> (read-only, 0444),
-        and <code class="font-[var(--font-mono)] text-xs">.sha256</code>/{' '}
-        <code class="font-[var(--font-mono)] text-xs">.origin</code> markers. Installs are
-        atomic (build in <code class="font-[var(--font-mono)] text-sm">tmp/</code>, then rename)
-        under a per-entry lock, so concurrent first runs are safe and a partial install is
-        invisible. Every tebako package on the machine shares the same cache;{' '}
-        <a href="/docs/architecture/store/" class="tb-link-underline text-[var(--tb-c-accent)]">the store page</a>
-        {' '}has the full layout.
-      </p>
-      <div class="mt-6 rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
-        <p class="text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-          <strong class="text-[var(--tb-c-text-1)]">The marker is the trust anchor.</strong> A{' '}
-          <code class="font-[var(--font-mono)] text-xs">.sha256</code> sidecar means the
-          artifact was verified at install; it is re-verified on re-fetch,{' '}
-          <strong class="text-[var(--tb-c-text-1)]">never per run</strong> — a cached runtime
-          starts at full speed every time. No extracted{' '}
-          <code class="font-[var(--font-mono)] text-xs">layout/</code> tree lives in the cache
-          anymore: when the press side needs the runtime's files it extracts the image
-          in-process, per press, into the build prefix.{' '}
-          <code class="font-[var(--font-mono)] text-xs">TEBAKO_OFFLINE=1</code> makes
-          resolution cache-or-named-error;{' '}
-          <code class="font-[var(--font-mono)] text-xs">TEBAKO_RUNTIME_MIRROR</code> redirects
-          downloads; <code class="font-[var(--font-mono)] text-xs">tebako cache list</code> and{' '}
-          <code class="font-[var(--font-mono)] text-xs">cache prune</code> manage the space.
-        </p>
-      </div>
-    </div>
-
-    <!-- ============ PRESS-TIME VS RUN-TIME ============ -->
-    <div class="mt-16">
-      <h2 class="mb-3">Press-time vs run-time resolution.</h2>
-      <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
-        Two different actors can fetch a runtime, at two different moments, on two different
-        machines. They are kept deliberately distinct — conflating them is a locked-off
-        design error.
-      </p>
-      <div class="grid gap-4 md:grid-cols-2">
-        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
-          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">PRESS-TIME · THE PACKAGER'S MACHINE</p>
-          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-            <code class="font-[var(--font-mono)] text-xs">tebako press</code> resolves the
-            runtime into the shared cache <em>while packaging</em>: bundler runs under the
-            target runtime, native extensions compile against it, and a fat press embeds the
-            interpreter it resolved. Resolution reads the runtime release's{' '}
-            <code class="font-[var(--font-mono)] text-xs">manifest.json</code> (with{' '}
-            <code class="font-[var(--font-mono)] text-xs">SHA256SUMS.txt</code> as fallback);
-            the bootstrap itself comes from local binaries or the product's own release,
-            verified the same way (spec 19 §4).
-          </p>
-        </div>
-        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
-          <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">RUN-TIME · THE USER'S MACHINE</p>
-          <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-            The bootstrap resolves the runtime <em>when the packaged binary is first run</em>:
-            cache hit → exec; fat slot → verify against{' '}
-            <code class="font-[var(--font-mono)] text-xs">;sha256=</code> + install; otherwise
-            download from the runtime release → sha256-verify → atomic install. Contract
-            negotiation is fail-closed <em>before</em> any checksum is accepted — a runtime
-            that speaks an unsupported handoff contract is exit 75, naming both generations
-            and the remedy, never a half-installed cache.
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <!-- ============ THE LAUNCHER ABI ============ -->
-    <div class="mt-16">
-      <div class="mb-3 flex flex-wrap items-center gap-3">
-        <h2>The launcher ABI: handoff by reference.</h2>
-        <StatusPill status="shipped" note="v1" />
-      </div>
-      <p class="mb-6 max-w-2xl text-[var(--tb-c-text-2)]">
-        The bootstrap never mounts anything — it hands the payload slots to the runtime by
-        reference and execs it; a successful handoff never returns. The wire (spec 06, image
-        era per spec 17):
-      </p>
-      <pre class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6 font-[var(--font-mono)] text-sm leading-relaxed text-[var(--tb-c-text-2)]" style="background: var(--tb-c-bg-soft);"><code>&lt;runtime&gt; --tebako-image &lt;self|image-path&gt;:&lt;slot|-&gt;:&lt;mount&gt; … \
-          --tebako-entry &lt;argv0&gt; &lt;user args…&gt;</code></pre>
-      <p class="mt-4 max-w-2xl text-sm text-[var(--tb-c-text-3)]">
-        One <code class="font-[var(--font-mono)] text-xs">--tebako-image</code> triple per
-        payload slot to mount; runtime-role slots are never handed over. Parsers split on the
-        last two colons, so Windows drive letters in paths stay safe, and a malformed triple
-        is a named exit 65. <code class="font-[var(--font-mono)] text-xs">TEBAKO_RUNTIME_IMAGE</code>
-        {' '}names the env image, mounted whole at the runtime root (see{' '}
-        <a href="/docs/architecture/runtime-as-image/" class="tb-link-underline text-[var(--tb-c-accent)]">runtime as image</a>).
-        Two version gates keep the ends honest: the trailer's{' '}
-        <code class="font-[var(--font-mono)] text-xs">launcher_abi</code> field guards the
-        wire format (mismatch → exit 66); the runtime's declared{' '}
-        <code class="font-[var(--font-mono)] text-xs">contract_version</code> guards the
-        semantics (fail-closed negotiation → exit 75).
-      </p>
-    </div>
-
-    <!-- ============ THREE NEIGHBORS ============ -->
-    <div class="mt-16 grid gap-6 md:grid-cols-3">
-      <a href="/docs/architecture/anatomy/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
-        <p class="tb-eyebrow">UP NEXT · ANATOMY</p>
-        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">How a package works</h3>
-        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-          The concepts on this page in motion: boot sequence, mount model, and every named
-          exit code.
-        </p>
-      </a>
-      <a href="/docs/architecture/runtime-as-image/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
-        <p class="tb-eyebrow">UP NEXT · RUNTIME AS IMAGE</p>
-        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">The runtime, as an image</h3>
-        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-          Why part B is two artifacts, and how the env image and your payloads co-mount in
-          one process.
-        </p>
-      </a>
-      <a href="/docs/architecture/store/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
-        <p class="tb-eyebrow">UP NEXT · THE STORE</p>
-        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">Where everything lives</h3>
-        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-          <code class="font-[var(--font-mono)] text-xs">~/.tebako</code> in full — runtimes,
-          payloads, shims, registries, keys, and the house rules.
-        </p>
-      </a>
-    </div>
-</DocsLayout>
+  </section>
+</BaseLayout>
