@@ -1,19 +1,14 @@
 ---
 import DocsLayout from '../../../layouts/DocsLayout.astro'
-import { getCollection } from 'astro:content'
-import { getSection } from '../../../config/docs'
+import { makeDocsPaths } from '../../../lib/docs-route'
 
-export async function getStaticPaths() {
-  const entries = await getCollection('docs-reference')
-  const reference = getSection('reference')
-  return entries.flatMap((entry) => {
-    const reg = reference.entries.find((e) => e.href === `/docs/reference/${entry.id}/`)
-    if (!reg) return []
-    return [{ params: { slug: entry.id }, props: { entry, href: reg.href } }]
-  })
+export const getStaticPaths = () => makeDocsPaths('reference')
+
+interface EntryProps {
+  entry: { data: { title: string; heading?: string; lede?: string; description: string }; rendered?: { html?: string } }
+  href: string
 }
-
-const { entry, href } = Astro.props
+const { entry, href }: EntryProps = Astro.props
 const html = entry.rendered?.html ?? ''
 ---
 

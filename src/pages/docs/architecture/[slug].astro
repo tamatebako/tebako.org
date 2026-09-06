@@ -2,7 +2,7 @@
 import DocsLayout from '../../../layouts/DocsLayout.astro'
 import { makeDocsPaths } from '../../../lib/docs-route'
 
-export const getStaticPaths = () => makeDocsPaths('guides')
+export const getStaticPaths = () => makeDocsPaths('architecture')
 
 interface EntryProps {
   entry: { data: { title: string; heading?: string; lede?: string; description: string }; rendered?: { html?: string } }
@@ -13,7 +13,7 @@ const html = entry.rendered?.html ?? ''
 ---
 
 <DocsLayout
-  section="guides"
+  section="architecture"
   href={href}
   title={entry.data.title}
   heading={entry.data.heading}
