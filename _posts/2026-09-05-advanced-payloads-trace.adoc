@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "Advanced payloads: Trace: see what your payload touches (1 of 5)"
-date:   2026-09-05 00:00:00 +0800
+date:   2026-09-05 04:00:00 +0800
 categories:
   - tebako
   - packaging
