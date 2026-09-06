@@ -1,0 +1,275 @@
+---
+title: The VFS model
+heading: The VFS model.
+lede: >-
+  TFS is tebako's userland virtual filesystem: a per-process mount table over
+  bulk-storage images, with the kernel-VFS shape and none of the kernel. One
+  engine, one small C ABI, pluggable backends — and the Rust tfs crate is the
+  shipping implementation.
+description: >-
+  TFS, tebako's userland virtual filesystem: the Rust tfs crate is the
+  shipping implementation — mount table with longest-prefix dispatch,
+  coverage-vs-presence, COW and ENC transforms, pluggable backends (limnifs,
+  dwarfs-t, squashfs, tar, zip), and one debug contract.
+---
+
+// normative: spec 11, spec 20, spec 24 — facts re-verified against tebako main 2026-08-25 (crates/tfs c_api.rs/mount.rs/backends_*.rs, crates/tebako-log, crates/tpkg format ids, tfs-cli usage)
+
+[NOTE]
+====
+Status: shipped — core, multi-mount, the tar adapter, the COW composite, and
+the ENC transform; the C++
+https://github.com/tamatebako/libtfs[libtfs] survives only as the parity
+oracle.
+====
+
+== One engine, one seam.
+
+The product line is three things: *libtfs*, the engine, spoken through the
+`tebako_fs_*` C ABI; the *tfs CLI*, the human surface (`tfs : libtfs ::
+sqlite3 : libsqlite3`); and *tebako-pkg*, which does tpkg trailer surgery —
+tebako's concept, not TFS's. The ABI is additive-only
+(`tebako_fs_abi_version()` = 1), and exactly `tebako_*` symbols are
+exported — nm-verified, nothing else leaks.
+
+Calls reach the router three ways. The packaged interpreter's patched IO
+calls the ABI in-process — open, pread, stat, opendir, and friends. Native
+executables get the VFS injected through the preload interposition shim
+(`tfs exec`), which is itself a TFS consumer. And a `dlopen` of a
+VFS-resident library materializes the file to the exec cache first
+(`tebako_fs_dlmap2file`) so the OS loader maps a real file. Everything else
+— the working directory, writes outside held trees, mkdir, unlink — goes to
+the host, policy-gated.
+
+== The mount table.
+
+[NOTE]
+====
+Status: shipped.
+====
+
+One process can attach many images at once — the env image at the runtime
+root, the app payload, data payloads. Each mount gets a monotonic handle
+(never reused) and its own backend instance; there is no global mount state,
+which is what makes N concurrent mounts safe. Path resolution is
+*longest-prefix dispatch* on component boundaries: nested mounts shadow
+outer ones, and a duplicate mount point is refused with `EEXIST`. Every fd
+and dir handle records its owning mount, so unmounting one image
+force-closes only its own handles — later use fails `EBADF` — and leaves the
+rest fully usable.
+
+----
+open("/__app__/config/boot.rb", …)
+        │
+        ▼
+┌───────────────────────────────────────────────────────┐
+│  path dispatch — longest mount-point prefix wins      │
+│                                                       │
+│   mount 0   /__runtime__        → limnifs backend     │
+│   mount 1   /__layers__/fonts   → dwarfs backend      │
+│   mount 2   /__app__            → limnifs backend     │
+│   (nested mount points allowed; duplicates → EEXIST)  │
+└───────────────────────────────────────────────────────┘
+        │ path inside a mount              │ path outside every mount
+        ▼                                  ▼
+  tebako_fs_open()                    host open()
+  read-only image, owning mount       cwd, writes, mkdir — policy-gated
+----
+
+++++
+<figure role="img" aria-label="The TFS router: calls enter through the tebako_fs_* C ABI; the Rust TFS router dispatches by longest mount-point prefix onto read-only backends — limnifs, dwarfs-t, squashfs, tar, zip — with Rust COW and ENC transforms stacked above; paths outside every mount pass through to the host filesystem.">
+<img src="/assets/diagrams/tfs-router.svg" alt="The TFS router: calls enter through the tebako_fs_* C ABI; the Rust TFS router dispatches by longest mount-point prefix onto read-only backends — limnifs, dwarfs-t, squashfs, tar, zip — with Rust COW and ENC transforms stacked above; paths outside every mount pass through to the host filesystem." class="w-full min-w-[760px]" loading="lazy" />
+</figure>
+++++
+
+_Figure 1 — The TFS router: longest-prefix dispatch onto read-only backends,
+with the COW and ENC transforms stacked above; everything else passes through
+to the host filesystem._
+
+Symlinks play by router rules too: relative targets resolve inside their own
+mount and never escape it; absolute targets resolve through the mount table,
+so a link in one payload can land in another — cross-mount links work, and
+that is the point of composition. A target outside every mount is
+host-passthrough under the same jail policy as any host path: a symlink can
+never widen a jail.
+
+== Coverage is not presence.
+
+A mount _covers_ everything under its mount point, but its image _holds_ only
+the entries it actually contains. A covered path the image does not hold does
+not surface the backend's `ENOENT` — open, stat, and opendir fall through to
+the host answer, gated by the jail policy. With the app payload mounted at
+`/` — the v2 dispatch shape — this is exactly what keeps the host filesystem
+reachable: held content serves from the image (read-only), everything else
+behaves as if no mount claimed it.
+
+[NOTE]
+====
+*The write gate, stated plainly.* Writes into a *held* tree — a path the
+image holds, or one with an existing in-image ancestor — are refused
+`EROFS`. Zip images have no explicit directory entries, so implied parents
+count; dwarfs always carries them. Covered-but-not-held paths pass to the
+host, policy-gated. There is no write surface behind a read-only mount and
+no way for a payload to corrupt its own image or another package's mount.
+====
+
+== Backends: honest capabilities.
+
+[NOTE]
+====
+Status: shipped — limnifs is the default since v0.2.0.
+====
+
+Backends are pluggable drivers behind one trait; new formats are additive.
+The capability model is honest per format — no uniform read/write pretense.
+Runtime mounts are read-only by default (`TEBAKO_MOUNT_RO`);
+`TEBAKO_MOUNT_COW` stacks the composite transform, and `TEBAKO_MOUNT_RW` is
+`ENOTSUP` — backends never learn to write.
+
+[cols="1,1,1,2,3"]
+|===
+| FORMAT | RUNTIME MOUNTS | IN-PLACE EDITS | CREATION | NOTES
+
+| `limnifs` | read-only | — | in-process writer (limnifs-write) | THE DEFAULT since v0.2.0 — pure Rust (`#![forbid(unsafe_code)]`), content-addressed (BLAKE3), LMFS magic; compiles everywhere Rust compiles
+| `dwarfs-t` | read-only | — | in-process Writer (dwarfs-t-rs) | the only C++ in the stack; FlatBuffers metadata (upstream dwarfs cannot read it)
+| `squashfs` | read-only | — | mksquashfs-class tooling | POSIX-only — Windows builds ship without it; a mount attempt fails ENOTSUP by name
+| `zip` | read-only | add / delete (format layer) | — | pure Rust; no explicit directory entries — implied parents count for the held check
+| `tar family` | read-only | append-only | repack | pure Rust; gz / zst envelopes detected by magic, the tar heuristic always probes last
+|===
+
+Format detection keys on bytes, not on the trailer: strong magic first (zip
+`PK\x03\x04`, dwarfs, squashfs `hsqs`, limnifs `LMFS`), the weak tar
+heuristic always last. The trailer's `format_id` is a hint and answers
+exactly one question — how to read these bytes: 0 auto · 1 dwarfs · 2
+squashfs · 3 zip · 5 limnifs. 4 stays the legacy runtime-role wart — never
+mounted, never reused. Runtime-role and entrypoint semantics live in the
+manifest, never in the format axis. A mount whose detected format has no
+compiled-in backend fails with the named `ENOTSUP` — never a silent
+re-route, never a partial read.
+
+== Transforms: COW and ENC.
+
+[NOTE]
+====
+Status: shipped — the transforms machinery.
+
+Status: planned — the declarative manifest surface.
+====
+
+Transforms are not formats — they stack above a backend, and they exist only
+in the Rust TFS. The stack order is pinned: `COW → ENC → format backend`.
+COW is always outermost; ENC decrypts exactly one image's backend and sits
+underneath.
+
+=== COW — the composite backend.
+
+`CowBackend` stacks a writable overlay over a read-only base: reads fall
+through to the base unless shadowed; writes, deletes, and attribute changes
+land in the overlay; modifying a base file copies it up first — the base
+image stays byte-identical. The overlay is a plain host directory, disposable
+by deleting it, and self-contained: a `.tfs-whiteouts` journal inside it
+records deleted paths (strict v1 text, rewritten atomically; any malformed
+line fails the mount with `EINVAL`). Whiteouts mask base entries only — an
+overlay entry of the same name always wins, overlayfs semantics. Layers
+stack, detach, ship, and re-attach.
+
+=== ENC — the decrypting view.
+
+`EncBackend` wraps one image's backend as a decrypting read view: directory
+structure, names, and symlink targets stay plaintext; only regular-file
+content is ciphertext. A mount requires an opening grant resolved against the
+in-image envelope manifest; a read of a still-sealed path answers `ENOKEY`
+(126) — the named EKEY class, never garbage. Copy-up reads through it, so a
+writable sealed-base mount is `COW(ENC(base))` — and the plaintext lands in
+operator-bound host store, outside the image's confidentiality envelope.
+Stated plainly: protecting scratch at rest is the host's layer (disk
+encryption), never a tebako declaration.
+
+The declarative surface gates where writes may go: a slice declares write
+areas, the operator binds an overlay store, and a write outside every
+declared area stays `EROFS` — journaled as `event=vfs-deny`. Under record
+mode every image mount stacks an ephemeral scratch COW instead, and writes
+are journaled `event=vfs-write` so `tfs needs --from-journal` can draft the
+declarations. Binding failures — an unbound retained store, a non-opening
+key, a malformed `TEBAKO_OVERLAYS` / `TEBAKO_DECRYPT` — fail before exec
+with exit *68* (`EX_TEBAKO_OVERLAY`). Nothing is transformed that was not
+declared.
+
+== Mount sources: every file is a potential filesystem.
+
+[NOTE]
+====
+Status: planned — mount-from-vfs is specified, not yet in the C ABI.
+====
+
+TFS is self-similar: images are files, and any file is mountable. Three
+mount sources are shipped — a host file, a file region (offset + length,
+which is how a package slot mounts without extraction), and memory. The
+fourth, the *VFS-file-region* — mounting an image addressed by a path
+_inside an existing mount_, the new backend reading its bytes through the
+owning mount's pread — is specified as the encapsulation primitive ("an FS
+includes another FS at a directory path") and is not yet surfaced in the C
+ABI. Nested mount _points_ work today; nested mount _sources_ are the
+planned step.
+
+== The access matrix.
+
+Six ways to get at image contents, ordered by transparency. Each is honest
+about what it costs and where it runs.
+
+[cols="1,3,2"]
+|===
+| MECHANISM | WHAT IT IS | STATUS
+
+| `link` | in-process via libtfs — the runtime driver and the preload shim link the tfs crate directly | shipped — fastest and deepest; the packaged-app model
+| `fuse` | `tfs mount --fuse` — a real system-wide mount wherever FUSE exists | planned — the one mechanism with a host dependency
+| `serve` | `tfs mount --serve=nfs\|webdav` — a userland server the OS's own client mounts | planned — no FUSE anywhere
+| `shell` | `tfs ls / tree / cat / stat / find / info` — interactive browsing and one-shots | shipped — the human surface
+| `exec` | `tfs exec image -- cmd` — the VFS injected through the preload interposition shim | shipped — the mainline native-exec mechanism; macOS and linux-gnu first-class, Windows later
+| `extract` | `tfs extract` — materialize the image to disk | shipped — the honest fallback
+|===
+
+[NOTE]
+====
+*Stated plainly.* Without the kernel there is no system-wide transparent
+mount for unmodified arbitrary processes. TFS trades that away deliberately
+— and gets zero privileges, every platform, and in-process speed in return.
+====
+
+== The debug contract.
+
+[NOTE]
+====
+Status: shipped — crates/tebako-log.
+====
+
+One logging facility —
+https://github.com/tamatebako/tebako/tree/main/crates/tebako-log[tebako-log] —
+with every component wired through it; there is no ad-hoc `eprintln!`
+anywhere in the stack. Three environment variables control it:
+
+[cols="1,3"]
+|===
+| VARIABLE | MEANING
+
+| `TEBAKO_DEBUG` | the level: off (default) / error / warn / debug / trace, with per-component overrides — debug,preload=trace,tfs=warn. The legacy boolean TEBAKO_DEBUG_TFS maps to debug.
+| `TEBAKO_DEBUG_FILE` | the sink: stderr by default — stdout belongs to the payload, never to the log. A path opens append-mode with %p → pid expansion (exec'd children don't clobber one file); parents are created; an unopenable path falls back to stderr with one warn line.
+| `TEBAKO_DEBUG_COMPONENTS` | a comma filter of component names (default: all) — preload, tfs, driver, shim, bootstrap, cli, pkg, resolve.
+|===
+
+----
+tebako[84213] debug preload: route path=/x held=true action=erofs
+   │        │      │         │      └─ one parseable line per event: <event> <k=v>…
+   │        │      │         └─ component (a crate name)
+   │        │      └─ level
+   │        └─ pid
+   └─ fixed prefix
+----
+
+The discipline: zero cost when off — the config is read once and the gate
+runs before any formatting. Paths, decisions, and digests are loggable;
+payload contents and key material never are.
+
+See also: link:/docs/architecture/anatomy/[The anatomy of a package] ·
+link:/docs/architecture/exec-tiers/[Running binaries from images] ·
+link:/docs/architecture/store/[Where the images live]

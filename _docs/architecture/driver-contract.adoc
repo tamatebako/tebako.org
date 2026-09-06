@@ -1,0 +1,175 @@
+---
+title: The driver contract
+heading: The driver contract.
+lede: >-
+  The driver is the code inside every runtime executable that mounts the
+  environment image and the payload slices, applies the jail, and rewrites
+  argv to the entrypoint. This page is the wire it speaks —
+  language-agnostic by construction: ruby is the first runtime; python or
+  julia follow the same contract unchanged.
+description: >-
+  The normative wire between the tebako loader and any runtime:
+  --tebako-image triples, --tebako-entry, the handoff environment, mount
+  ordering and modes, and the complete named exit-code table.
+---
+
+// normative: spec 17 (normative contract), spec 18 §7, spec 06 §4 — exit rows verified against crates/tpkg/src/lib.rs:272-291, crates/tebako-bootstrap/src/lib.rs:81-106, crates/tebako-driver/src/lib.rs:55-64, crates/libtfs-preload/src/spec.rs:18 (tebako main, 2026-08-25)
+
+[NOTE]
+====
+Status: shipped — the reference implementation is
+https://github.com/tamatebako/tebako/tree/main/crates/tebako-driver[crates/tebako-driver]
+(Rust, staticlib + rlib); the v1 C++ tebako-main driver is retired.
+====
+
+== The invocation surface.
+
+One grammar, every platform. Everything before the first `--tebako-*` is
+the loader's; everything after `--tebako-entry` is the user's, verbatim. An
+unknown `--tebako-*` flag is a named error, never silently ignored.
+
+----
+<runtime> --tebako-image <self|image-path>:<slot|->:<mount> ...
+          [--tebako-trace <host-path>]
+          --tebako-entry <argv0> <user args...>
+
+<self>        the running executable's own package file; <slot> picks the
+              trailer-described region
+<image-path>  a standalone file — BARE (no trailer): slot 0 ≡ - ≡ whole file;
+              PACKAGED: numeric slot only, "-" is a named error
+<mount>       a POSIX absolute path on EVERY platform — on windows the driver
+              qualifies it onto the runtime root's drive (A:/t/…) before
+              mounting; a declared mount naming a drive is malformed
+----
+
+=== Mount order + failure rule
+
+The env image mounts first (whole-file, from `TEBAKO_RUNTIME_IMAGE`), then
+payload triples in argv order. The table is longest-prefix; nested mounts
+are legal; a duplicate exclusive mount point is `EEXIST`. Any failure
+unmounts everything — *never a partial mount*. A runtime-role slot
+(`format_id = 4`) is never mounted.
+
+=== Mount modes
+
+Every mount is *exclusive* (default) or *union*, declared per slot in the
+package manifest's `mounts:` block — never on the argv wire, so the
+launcher ABI is unchanged and older drivers refuse a union package loudly.
+Union conflicts resolve by declared precedence (`after-env` or
+`after:<slot>`); the union set is journaled at boot. Shim-dispatched
+payloads (no package manifest) are always exclusive.
+
+== The entry, and the argv rewrite.
+
+`--tebako-entry` separates loader args from user args. The entry resolves
+against the *first* `--tebako-image` mount (the app payload) — or the
+runtime root when no image spec is given — and the driver verifies its
+presence against the mounts the boot itself established (named 65 when
+absent). A bare NAME with no `/` (e.g. `ruby`) is the interpreter keyword:
+the boot starts the interpreter itself and drops the keyword. With images
+but no entry at all, the boot mounts and starts the interpreter with its
+own args (the smoke form).
+
+On success the process argv is replaced with
+`[<original argv0>, <entry resolved in the VFS>, <user args…>]` — the
+program name stays at index 0, so the interpreter parses its argv
+conventionally and takes the entry as its script. The jail installs _after_
+the mounts; `--tebako-trace` arms the trace bus _before_ any mount (a
+channel that cannot be opened is a loud stderr note and a disarmed bus —
+observability never gates a boot).
+
+== The mount root is a default, not a constant.
+
+The runtime root is a per-platform baked default owned by the runtime
+factory (ruby: `/__tfs__` on POSIX, `A:/t` on windows) — it flows from the
+source patches through the factory into the exe, and nothing downstream
+re-authors it. `TEBAKO_MOUNT_ROOT` redirects the env-image mount at boot:
+
+[NOTE]
+====
+*The override, stated plainly.* Validated before any mount — absolute, no
+trailing slash, no `..`; a malformed value is *exit 65* naming the
+variable. Then gated post-mount on the env image's layout grant
+(`mount_root_override: true`): an image without the grant predates the
+override era (its rbconfig is pinned to the baked root), so the driver
+refuses with *exit 78* naming both the override and the image — never a
+boot whose load paths point at an unmounted root. Era-2 rbconfig emits
+`ENV["TEBAKO_MOUNT_ROOT"] || <baked>`, so the interpreter follows.
+====
+
+== The handoff environment.
+
+The loader speaks to the driver through a small, fixed set of variables.
+Every one is a single-owner flow — declared by the factory or the manifest,
+consumed verbatim, never re-authored downstream. The exhaustive table
+(every `TEBAKO_*` variable in the system) lives in the reference section;
+these are the contract's own:
+
+[cols="2,4"]
+|===
+| VARIABLE | MEANING
+
+| `TEBAKO_RUNTIME_IMAGE` | absolute path of the runtime's own env .tfs — mounted whole at the runtime root, first, before any payload triple
+| `TEBAKO_TFS_MOUNTS` | image:mount,… — the mount table a spawned child re-establishes through the preload shim (the spawn-hook path)
+| `TEBAKO_JAIL` | the jail policy env form — enforced by the driver, installed after the mounts; malformed is exit 73
+| `TEBAKO_TRACE` / `--tebako-trace` | the trace bus channel (JSONL), armed at boot before any mount; the argument wins when both are set; never policy-gated
+| `TEBAKO_MOUNT_<SLUG>` | per co-mounted payload, its physical mount point (/tools/inkscape → TEBAKO_MOUNT_TOOLS_INKSCAPE); two mounts slugging alike is a named 65; the root mount exports nothing
+| `PATH` | rebuilt by the boot: launcher wrap-bin dir → co-mounted dependency bin dirs (from each image's own manifest, in triple order; the app payload never contributes) → windows alias dirs → the inherited PATH. A corrupt manifest or unmaterializable declared executable is a named 65
+|===
+
+== The named exit codes.
+
+[NOTE]
+====
+Status: shipped — one table, no silent fallbacks.
+====
+
+Loader-side failures keep the loader's named codes; runtime-side failures
+use the interpreter's own codes. There is no catch-all and no code does
+double duty — the shared constants live in
+https://github.com/tamatebako/tebako/tree/main/crates/tpkg[crates/tpkg] and
+every emitter references them.
+
+[cols="1,2,4,2"]
+|===
+| CODE | NAME | RAISED WHEN | EMITTER
+
+| 65 | `EX_TEBAKO_MANIFEST` | corrupt or internally inconsistent tpkg trailer / package manifest; malformed `TEBAKO_MOUNT_ROOT`; the `--tebako-entry` not present in the established mounts; a co-mounted image with a corrupt in-image manifest | bootstrap · driver
+| 66 | `EX_TEBAKO_ABI` | the package declares a launcher ABI this loader does not speak | bootstrap
+| 67 | `EX_TEBAKO_RUNTIME_REF` | the runtime_ref is unparseable (type / version / constraint grammar) | bootstrap
+| 68 | `EX_TEBAKO_OVERLAY` | an overlay/decrypt binding failed — unbound retained store, missing or non-opening key material, unwritable store, orphan binding, malformed `TEBAKO_OVERLAYS` / `TEBAKO_DECRYPT` | resolver · driver mount path
+| 69 | `EX_TEBAKO_UNAVAILABLE` | the runtime cannot be obtained — download failed, or `TEBAKO_OFFLINE=1` without a cache hit | bootstrap
+| 70 | `EX_TEBAKO_SHA` | sha256 mismatch on a downloaded artifact (exe, env image, dll) against the release index | bootstrap
+| 71 | `EX_TEBAKO_SIGNATURE` | a signed package's signature fails verification (strict, always) | bootstrap
+| 72 | `EX_TEBAKO_TRUST` | the signer's key is not in the trust store — or `TEBAKO_REQUIRE_SIGNED=1` meets an unsigned package | bootstrap · install path
+| 73 | `EX_TEBAKO_JAIL` | the jail policy is malformed or unusable — parsed and applied after the mounts, never before them | driver
+| 74 | `EX_TEBAKO_IO` | host I/O failure on cache/install/lock paths | bootstrap · resolve
+| 75 | `EX_TEBAKO_CONTRACT` | the runtime is pre-era (declares no contract set) or speaks a contract the loader refuses — fail-closed before any install or execute | bootstrap
+| 76 | `EX_TEBAKO_INSTALL` | a store install cannot complete (lock timeout, digest anchors disagree, partial state that tmp+rename cannot hide) | resolve · cli
+| 77 | `EX_TEBAKO_CONTRACT_ERA` | package/payload contract-era mismatch in either direction — any trailer or manifest reader | tpkg · pkg · cli
+| 78 | `EX_TEBAKO_LAYOUT` | env-image layout mismatch — a mount_root override the image never granted, a missing preload-shim grant, an interp ABI pair the image does not declare; also the preload shim's `EX_CONFIG` | driver · libtfs-preload
+| 79 | `EX_TEBAKO_CHECK` | a payload check FAILed — the verdict line names the check and the failed expectation (SKIP never fails the aggregate) | tebako check
+|===
+
+Two out-of-band codes complete the picture: the runtime factory uses *132*
+for a pre-era or corrupt source tarball, and `--tebako-extract` (the
+runtime-side option, carried through the user-arg passthrough) dumps
+mounted images to disk and exits 0. The trace subcommands carry their own
+verdict codes (0 clean / 1 finding / 2 error) — see
+link:/docs/architecture/observability/[observability].
+
+== Negotiated, fail-closed.
+
+A runtime whose driver implements this widened grammar — image-path
+triples, bare-file slot tokens, env-image-first multi-mount, direct entry
+execution — declares *contract_version 2* in its release manifest, and the
+compiled-in constant (`tebako_driver_contract_version()`) must agree with
+the manifest. A runtime that declares no contract set is pre-era: the
+loader refuses it by name with exit 75, before any install or execute.
+Runtime provenance is declared in the payload manifest (`provides` —
+engine, version, abi_line, platform — plus `built_from`); the dispatcher's
+compatibility check consumes exactly those fields.
+
+See also: link:/docs/architecture/anatomy/[The anatomy of a package] ·
+link:/docs/architecture/runtime-as-image/[The two-artifact runtime] ·
+link:/docs/architecture/interposition/[How native children inherit the VFS]

@@ -1,0 +1,172 @@
+---
+title: Jails and host proxying
+heading: Jails and host proxying.
+lede: >-
+  Every file access a payload makes already flows through the TFS layer — so
+  that one choke point is where host access is decided. The policy is docker
+  -v semantics: a default, a mount list, and named errors instead of surprises.
+  Enforcement exists because coverage is total by construction.
+description: >-
+  Filesystem-only host-access policy at the one TFS choke point: docker -v
+  semantics, the deny default, the evidence-driven platform floor, symlink
+  re-validation, the audit journal, and the record mode that discovers a
+  payload's needs.
+---
+
+// normative: spec 08 (§1 model, §2 semantics + §2.1 platform floor, §3 choke + shipped semantics, §4 manifest integration, §5 scope, §6 executor trust), spec 23 §8 (record mode), spec 25 §4 (trace run generator)
+
+[NOTE]
+====
+Status: shipped — policy model, the TFS choke, manifest∩user composition,
+press/run/shim surfaces, the platform floor, jail-deny journaling, record mode.
+====
+
+== The policy model.
+
+[source,yaml]
+----
+jail:
+  default: open | deny          # open = cwd + writes pass through
+  mounts:
+  - host: $HOME/sources
+    mount: /work
+    access: ro | rw
+  argument_files: auto-allowed  # the input file you hand the command
+                                # is allowed even under deny
+----
+
+[cols="2,3,4"]
+|===
+|PROFILE |SPEC |MEANING
+
+|full access |`default: open` |host cwd + writes pass through — the historic behavior
+|directory-scoped |`cwd mounted at /work, rw` |the working tree is visible; nothing else is
+|file-scoped tight jail |`default: deny + argument files` |an untrusted payload against one input, nothing else
+|===
+
+Writes to an `ro` mount fail EROFS; paths outside every mount fail EPERM.
+Payload images themselves are always read-only. Symlinks resolve inside the
+granted view: realpath checked at bind time, re-validated on each open — a
+symlink swapped in after install resolves to its target and escapes fail
+EPERM. Precedence is locked: the package's manifest REQUESTS access
+(`capabilities.host`); the user can always TIGHTEN (`tebako run --jail`,
+`--mount src:/work:rw`, `--no-host`). User policy always wins; signed payloads
+may get wider latitude by policy choice, never by bypass. Deny defaults win;
+each side's grants are capped by the other side's allowance at the same prefix
+— ro is sticky.
+
+== The platform floor.
+
+Under the `deny` default, every bound policy gains a fixed per-platform set of
+read-only grants covering the surface a spawned interpreter physically cannot
+boot without. The floor exists because the failure mode for a missing platform
+grant was never a policy verdict — it was a crash in someone else's library.
+Denying the platform surface never produced a working process, so the floor
+grants it always.
+
+[cols="1,3,5"]
+|===
+|PLATFORM |FLOOR ENTRIES (ro) |EVIDENCE
+
+|macOS |`/usr · /System · /Library` |the JVM NULL-derefs in getMacOSXLocale when /usr reads are denied — a SIGSEGV in someone else's library, 2026-08-13
+|windows |`%SystemRoot%\System32 · %SystemRoot%\SysWOW64 · %SystemRoot%\Fonts` |the loader's DLL root; the 32-bit view for 32-bit children; the GDI font tree AWT enumerates
+|other unix |`none today` |an entry joins only with a proven platform-process consumer, cited by run — amended by evidence, never anticipation
+|===
+
+The rules: an authored mount covering a floor path SUPERSEDES it — the floor
+never narrows what the author allowed, and widening a floor path to rw is one
+authored grant away; there is no way to drop a floor path short of not denying.
+Every bound grant implies its strict ancestors are traversable — exact-path
+reads, never a prefix, never a write — so the platform's canonicalization walks
+pass by construction (the JVM reads its cwd and every ancestor at VM init).
+Floor mounts are never serialized into `TEBAKO_JAIL`: the env grammar's
+right-split cannot carry a windows drive-qualified spelling, and it never needs
+to — every consumer re-derives the floor at its own bind, so a spawned child's
+inherited spec plus its bind yields a policy identical to the parent's. And the
+boundary is honest: the floor is SYSTEM surface only — the workload's own tool
+tree and the user's home stay authored grants. The floor's promise is the end
+of the segfault class: every missing grant surfaces as the workload's own named
+error, pinned in the audit journal.
+
+== One choke point.
+
+`tebako_fs_host_policy` installs the policy as PROCESS state (an unmount never
+resets it — fail-closed; a later call replaces it). "Host path" means _any
+path the mounts do not hold_ — outside every mount, or covered by a mount but
+absent from its image. The app payload mounts at `/` and the host stays
+reachable exactly through this rule. A mount's access bit applies even under
+`open`; longest host prefix wins on path-component boundaries; argument files
+are an exact read-only grant, even under deny.
+
+[cols="3,4"]
+|===
+|GATED DECISION |ANSWER
+
+|open (read and write modes) |EPERM denied · EROFS on an ro mount
+|stat · opendir |EPERM denied
+|dlmap2file |EPERM denied — native-library load paths are policy surface
+|extract_all destination |a host write, gated as one
+|the mount family's own image read |policy-gated once a policy is active — install the policy AFTER the mounts
+|===
+
+Because bootstrap, runtime driver, `tebako run`, and `tfs exec` all enforce in
+the same Rust layer, every consumer behaves identically with no per-app work.
+The bootstrap composes package `jail:` ∩ `TEBAKO_JAIL` at handoff and exports
+the effective policy (+ `TEBAKO_JAIL_SOURCE` = `manifest|user|manifest+user`);
+a malformed policy fails closed, exit 73. Every denial appends
+`event=jail-deny path=… op=read|write source=…` to the audit journal —
+best-effort: journaling never fails the operation it audits.
+
+== Record mode: discover the needs you didn't know.
+
+A slice author usually does not KNOW the host surface their executable touches.
+`policy: record` (env form: `TEBAKO_JAIL=record`) is a third policy default
+beside open/deny: every host passthrough check is ALLOWED and journaled as
+`event=jail-allow`. Nothing is denied, so the workload cannot crash from policy
+during discovery; spawned children inherit the spec and append to the same
+journal.
+
+[source,console]
+----
+$ TEBAKO_JAIL=record tebako run pkg -- input.docx
+$ tfs needs --from-journal ~/.tebako/journal.log
+needs:
+host:
+- path: $HOME/.cache/vendor-tool
+  access: rw                    # strongest observed op wins
+  optional: true                # absent at generation time
+  why: "TODO — observed: 14 read, 3 write"   # you replace this
+----
+
+The generator folds `jail-deny` lines in too — a denial is an UNMET need. It
+aggregates on the atom-substituted form, excludes the automatic surface (floor,
+store, exec-cache paths — never declared), re-substitutes symbolic atoms
+longest-prefix-wins, omits relative paths (cwd-relative probes are not
+declarable — declare `$CWD` explicitly), collapses ro ancestors the bind's
+traverse set already covers, and marks absent-at-generation paths
+`optional: true`. Then the human gate: the record shows the OBSERVED MINIMUM —
+the author flips ro↔rw where production differs, deletes noise, fills `why`,
+and merges into D1 or D2. The generator never edits a manifest. Record is a
+development mode: shipping a composition with it in force is a named lint
+warning, and the store's audit journal marks record-mode runs.
+
+== Scope, stated honestly.
+
+Jails are FILESYSTEM-ONLY. `capabilities.network` is advisory metadata, not an
+enforcement promise; OS-level network confinement (seatbelt/seccomp/WFP) is a
+possible later layer, never claimed today. Coverage is every IO route through
+TFS — all interpreted payloads, plus native binaries under the preload
+interposition shim. The shim's coverage is SYMBOL-level (tebako#439): a jail
+holds only for the libc entry points the shim interposes — the named list
+includes the LFS64/fortify/versioned twins (`open64`, `__openat_2`, the
+`__xstat` family), because glibc hands `_FILE_OFFSET_BITS=64` callers DISTINCT
+symbols that never touch the plain names. Known-uncovered at this layer: the
+remaining fortify open family and raw `syscall(2)` IO; statically-linked
+binaries have no interposition point at all. And the trust note: tebako is the
+EXECUTOR of everything it runs — mediating a child's syscalls is the execution
+contract, not hijacking; jails bind the child downward and claim nothing about
+the executor or kernel upward.
+
+See also: link:/docs/architecture/composition/[Declarative composition] ·
+link:/docs/architecture/interposition/[Native interposition] ·
+link:/docs/architecture/observability/[Trace and observability].

@@ -1,117 +1,73 @@
 ---
-import DocsLayout from '../../../layouts/DocsLayout.astro'
-import StatusPill from '../../../components/docs/StatusPill.astro'
-
-const LINKS = {
-  runtimeRepo: 'https://github.com/tamatebako/tebako-runtime-ruby',
-  runtimeReleases: 'https://github.com/tamatebako/tebako-runtime-ruby/releases',
-  rubyRepo: 'https://github.com/tamatebako/ruby',
-  productRepo: 'https://github.com/tamatebako/tebako',
-  bootstrapRepo: 'https://github.com/tamatebako/tebako',
-  dwarfsT: 'https://github.com/tamatebako/dwarfs-t',
-  packagesOrg: 'https://github.com/tebako-packages',
-}
-
-const exitCodes = [
-  { code: '65', name: 'manifest', meaning: 'the trailer or a manifest is missing, corrupt, or names no usable entrypoint' },
-  { code: '66', name: 'launcher ABI', meaning: 'the package speaks a handoff wire format this runtime predates' },
-  { code: '67', name: 'runtime reference', meaning: 'the runtime reference in the trailer cannot be parsed or honored' },
-  { code: '68', name: 'overlay', meaning: 'an overlay/decrypt binding failed — an unbound retained store, missing or non-opening key material, an unwritable store, an orphan binding, or a malformed TEBAKO_OVERLAYS / TEBAKO_DECRYPT' },
-  { code: '69', name: 'unavailable', meaning: 'the runtime cannot be resolved — offline miss, download failure, or a reference to a release that does not exist' },
-  { code: '70', name: 'checksum', meaning: 'a SHA-256 verification failed; nothing was installed' },
-  { code: '71', name: 'signature', meaning: 'a signature is invalid — or the package is unsigned and TEBAKO_REQUIRE_SIGNED=1 was set' },
-  { code: '72', name: 'trust', meaning: 'the signing key is not in the trusted keyring, or key continuity broke' },
-  { code: '73', name: 'jail', meaning: 'the jail policy is malformed; the run fails closed, nothing mounts' },
-  { code: '74', name: 'I/O', meaning: 'a filesystem, lock, or install operation failed' },
-  { code: '75', name: 'contract', meaning: 'the runtime speaks a handoff contract this loader does not — it names both generations and the remedy' },
-  { code: '76', name: 'install', meaning: 'installation was refused — the publisher froze the package, or the verb belongs to the CLI' },
-  { code: '77', name: 'era', meaning: 'the artifact comes from a different tebako generation, in either direction' },
-  { code: '78', name: 'layout', meaning: 'the env image does not match the layout the interpreter was compiled for' },
-  { code: '79', name: 'check', meaning: 'a payload check FAILed — the tebako check aggregate; the verdict line names the check and the failed expectation' },
-]
+title: How a Tebako package works
+heading: How a Tebako package works.
+lede: >-
+  One file, three parts, no installation. This is the whole mechanism — what
+  the file contains, how the parts meet at run time, and what happens when
+  something does not fit.
+description: >-
+  The anatomy of a tebako package: bootstrap, two-artifact runtime, payload
+  slices, the tpkg trailer, co-mounting, the dispatch sequence, the contract
+  model, and named failures.
 ---
-<!-- normative: spec 06 §4 (exit table, rows 68 + 79 per spec 24 §7 and spec 26 §2), spec 07, spec 17, spec 18 — exit rows verified against crates/tpkg/src/lib.rs:275-291 -->
 
-<DocsLayout
-  section="architecture"
-  href="/docs/architecture/anatomy/"
-  title="How a Tebako package works"
-  heading="How a Tebako package works."
-  lede="One file, three parts, no installation. This is the whole mechanism — what the file contains, how the parts meet at run time, and what happens when something does not fit."
-  description="The anatomy of a tebako package: bootstrap, two-artifact runtime, payload slices, the tpkg trailer, co-mounting, the dispatch sequence, the contract model, and named failures."
->
+// normative: spec 06 §4 (exit table, rows 68 + 79 per spec 24 §7 and spec 26 §2), spec 07, spec 17, spec 18 — exit rows verified against crates/tpkg/src/lib.rs:275-291
 
-    <div class="mt-12 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--tb-c-divider)] px-5 py-4" style="background: var(--tb-c-bg-soft);">
-      <StatusPill status="shipped" />
-      <span class="text-sm text-[var(--tb-c-text-2)]">everything on this page is the shipping v2 behavior</span>
-    </div>
+[NOTE]
+====
+Status: shipped — everything on this page is the shipping v2 behavior.
+====
 
-    <!-- ============ THE THREE PARTS ============ -->
-    <div class="mt-16">
-      <h2 class="mb-3">Three parts, glued by a trailer.</h2>
-      <p class="mb-8 max-w-3xl text-[var(--tb-c-text-2)]">
-        A tebako package is a composition of independently distributable parts. Each
-        part has its own release line, its own publisher, and its own trust anchor;
-        the executable you download is where they meet.
-      </p>
-      <div class="space-y-6">
-        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-8" style="background: var(--tb-c-bg-soft);">
-          <h3 class="font-[var(--font-display)] text-xl font-medium text-[var(--tb-c-text-1)]">A · The bootstrap — the loader</h3>
-          <p class="mt-3 max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
-            A small, static Rust binary — under 3&nbsp;MB, a budget enforced in CI on every
-            platform — that is the process entry point of every package. It reads the trailer
-            at the end of its own file, verifies what it finds, resolves the runtime (from the
-            machine-wide cache, or by downloading it once), and hands off. It carries its own
-            HTTP, TLS, and archive handling: nothing shells out to curl, git, or any tool on
-            your machine. The bootstrap is a published artifact —{' '}
-            <strong class="text-[var(--tb-c-text-1)]">we build it, you never do</strong> — and
-            the same bytes are shared by every package pressed for a platform.
-          </p>
-        </div>
-        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-8" style="background: var(--tb-c-bg-soft);">
-          <h3 class="font-[var(--font-display)] text-xl font-medium text-[var(--tb-c-text-1)]">B · The runtime — two artifacts</h3>
-          <p class="mt-3 max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
-            A runtime is the interpreter plus everything its load paths expect, and v2 ships
-            it as <strong class="text-[var(--tb-c-text-1)]">two artifacts</strong>: the
-            interpreter executable itself, and an <em>env image</em> — a single{' '}
-            <code class="font-[var(--font-mono)] text-sm">.tfs</code> file holding the standard
-            library, gems, and support files. (The windows runtime adds a third: the shared
-            ruby DLL the exe imports, installed beside it under its declared PE name.) The
-            set is downloaded once per machine into the
-            shared cache, SHA-256 verified, and <strong class="text-[var(--tb-c-text-1)]">mounted,
-            never extracted</strong>. Every tebako application on the machine reuses the same
-            copy; upgrading the runtime never rebuilds an application. Ruby is the first
-            runtime; the model is language-agnostic.
-          </p>
-        </div>
-        <div class="rounded-2xl border border-[var(--tb-c-divider)] p-8" style="background: var(--tb-c-bg-soft);">
-          <h3 class="font-[var(--font-display)] text-xl font-medium text-[var(--tb-c-text-1)]">C · The payload slices — bare images</h3>
-          <p class="mt-3 max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
-            Your application, your data, your native tools — each a bare{' '}
-            <code class="font-[var(--font-mono)] text-sm">.tfs</code> image, self-describing
-            through a manifest inside the image at{' '}
-            <code class="font-[var(--font-mono)] text-sm">/__tpkg__/manifest.yaml</code>.
-            The manifest declares what the slice is (<em>app</em>, <em>data</em>,{' '}
-            <em>toolkit</em>, <em>runtime</em>), what it provides (commands, libraries, a
-            runtime), and what it requires (a runtime constraint, other slices at mount
-            points). Slices are published, versioned, and verified independently — and they
-            co-mount into one process.
-          </p>
-        </div>
-      </div>
-    </div>
+== Three parts, glued by a trailer.
 
-    <!-- ============ DIAGRAM: THREE-PART COMPOSITION ============ -->
-    <div class="mt-16">
-      <h2 class="mb-3">One executable, laid out.</h2>
-      <p class="mb-8 max-w-3xl text-[var(--tb-c-text-2)]">
-        The package file is the bootstrap followed by payload slots, a slot table, optional
-        extension blocks, and a 166-byte trailer header at the very end — read last, first.
-        A <em>fat</em> package carries its runtime in a slot and never touches the network;
-        a <em>lean</em> package references the runtime and resolves it at run time.
-      </p>
-      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
-        <svg viewBox="0 0 940 430" class="w-full min-w-[760px]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Byte layout of a tebako package: bootstrap, payload slots, slot table, extension blocks, trailer header">
+A tebako package is a composition of independently distributable parts. Each
+part has its own release line, its own publisher, and its own trust anchor;
+the executable you download is where they meet.
+
+=== A — the bootstrap, the loader.
+
+A small, static Rust binary — under 3 MB, a budget enforced in CI on every
+platform — that is the process entry point of every package. It reads the
+trailer at the end of its own file, verifies what it finds, resolves the
+runtime (from the machine-wide cache, or by downloading it once), and hands
+off. It carries its own HTTP, TLS, and archive handling: nothing shells out
+to curl, git, or any tool on your machine. The bootstrap is a published
+artifact — **we build it, you never do** — and the same bytes are shared by
+every package pressed for a platform.
+
+=== B — the runtime, two artifacts.
+
+A runtime is the interpreter plus everything its load paths expect, and v2
+ships it as **two artifacts**: the interpreter executable itself, and an _env
+image_ — a single `.tfs` file holding the standard library, gems, and support
+files. (The windows runtime adds a third: the shared ruby DLL the exe imports,
+installed beside it under its declared PE name.) The set is downloaded once
+per machine into the shared cache, SHA-256 verified, and **mounted, never
+extracted**. Every tebako application on the machine reuses the same copy;
+upgrading the runtime never rebuilds an application. Ruby is the first
+runtime; the model is language-agnostic.
+
+=== C — the payload slices, bare images.
+
+Your application, your data, your native tools — each a bare `.tfs` image,
+self-describing through a manifest inside the image at
+`/__tpkg__/manifest.yaml`. The manifest declares what the slice is (_app_,
+_data_, _toolkit_, _runtime_), what it provides (commands, libraries, a
+runtime), and what it requires (a runtime constraint, other slices at mount
+points). Slices are published, versioned, and verified independently — and
+they co-mount into one process.
+
+== One executable, laid out.
+
+The package file is the bootstrap followed by payload slots, a slot table,
+optional extension blocks, and a 166-byte trailer header at the very end —
+read last, first. A _fat_ package carries its runtime in a slot and never
+touches the network; a _lean_ package references the runtime and resolves it
+at run time.
+
+++++
+<figure role="img" aria-label="Byte layout of a tebako package: bootstrap, payload slots, slot table, extension blocks, trailer header">
+<svg viewBox="0 0 940 430" class="w-full min-w-[760px]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Byte layout of a tebako package: bootstrap, payload slots, slot table, extension blocks, trailer header">
           <!-- byte map bar -->
           <text x="20" y="30" font-family="var(--font-mono), monospace" font-size="10.5" font-weight="600" fill="var(--tb-c-text-3)">OFFSET 0</text>
           <text x="920" y="30" text-anchor="end" font-family="var(--font-mono), monospace" font-size="10.5" font-weight="600" fill="var(--tb-c-text-3)">END OF FILE</text>
@@ -188,21 +144,22 @@ const exitCodes = [
           <text x="470" y="358" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="11" fill="var(--tb-c-text-3)">keep reading newer packages — and refuse, by name, only what they genuinely cannot honor.</text>
           <text x="470" y="392" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10" fill="var(--tb-c-text-3)">inspect any package: tebako inspect &lt;file&gt; — slots, mounts, runtime reference, trust state</text>
         </svg>
-      </div>
-    </div>
+</figure>
+++++
 
-    <!-- ============ WHERE THE RUNTIME COMES FROM ============ -->
-    <div class="mt-16">
-      <h2 class="mb-3">Where the runtime comes from.</h2>
-      <p class="mb-8 max-w-3xl text-[var(--tb-c-text-2)]">
-        Runtimes are factory products, not local builds. An official Ruby release flows
-        through two factories before any user machine sees it, and every boundary is a
-        published, checksummed release — each stage consumes the previous stage's
-        artifacts, never its source tree. The full stage-by-stage table is on{' '}
-        <a href="/docs/architecture/factories/" class="tb-link-underline text-[var(--tb-c-accent)]">the factories page</a>.
-      </p>
-      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
-        <svg viewBox="0 0 940 330" class="w-full min-w-[760px]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Release chain: ruby-lang.org tarball, source factory, runtime factory, product, user machine">
+_Figure 1 — Byte layout of a tebako package: bootstrap, payload slots, slot table, extension blocks, and the trailer header at end of file._
+
+== Where the runtime comes from.
+
+Runtimes are factory products, not local builds. An official Ruby release
+flows through two factories before any user machine sees it, and every
+boundary is a published, checksummed release — each stage consumes the
+previous stage's artifacts, never its source tree. The full stage-by-stage
+table is on link:/docs/architecture/factories/[the factories page].
+
+++++
+<figure role="img" aria-label="Release chain: ruby-lang.org tarball, source factory, runtime factory, product, user machine">
+<svg viewBox="0 0 940 330" class="w-full min-w-[760px]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Release chain: ruby-lang.org tarball, source factory, runtime factory, product, user machine">
           <defs>
             <marker id="rc-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
               <path d="M0 0 L10 5 L0 10 Z" fill="var(--tb-c-accent)" />
@@ -271,23 +228,24 @@ const exitCodes = [
           <text x="470" y="286" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="11" fill="var(--tb-c-text-3)">The musl builds are fully static — the universal Linux artifacts. Pure-language payloads ship once as <tspan font-family="var(--font-mono), monospace">universal</tspan>;</text>
           <text x="470" y="304" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="11" fill="var(--tb-c-text-3)">only payloads with native code multiply across the matrix.</text>
         </svg>
-      </div>
-    </div>
+</figure>
+++++
 
-    <!-- ============ HOW A RUN WORKS ============ -->
-    <div class="mt-16">
-      <h2 class="mb-3">How a run works.</h2>
-      <p class="mb-6 max-w-3xl text-[var(--tb-c-text-2)]">
-        There are two front doors and one mechanism behind them. <strong class="text-[var(--tb-c-text-1)]">Standalone:</strong>
-        you execute a package file directly — the bootstrap inside reads its own trailer and
-        resolves the runtime. <strong class="text-[var(--tb-c-text-1)]">Managed:</strong> you invoke
-        a command name on <code class="font-[var(--font-mono)] text-sm">PATH</code> — a shim link
-        to the dispatcher, which picks the payload version and the runtime per invocation.
-        Either way, the same handoff happens at the end: the runtime executable starts with a
-        list of images to mount and an entrypoint to run.
-      </p>
-      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
-        <svg viewBox="0 0 940 560" class="w-full min-w-[760px]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Dispatch sequence: invocation name, version chain, runtime resolution, exec handoff, driver mounts, entrypoint">
+_Figure 2 — The release chain: ruby-lang.org tarball through the source and runtime factories to the product and the user machine, with the seven platform triplets._
+
+== How a run works.
+
+There are two front doors and one mechanism behind them. **Standalone:** you
+execute a package file directly — the bootstrap inside reads its own trailer
+and resolves the runtime. **Managed:** you invoke a command name on `PATH` —
+a shim link to the dispatcher, which picks the payload version and the
+runtime per invocation. Either way, the same handoff happens at the end: the
+runtime executable starts with a list of images to mount and an entrypoint to
+run.
+
+++++
+<figure role="img" aria-label="Dispatch sequence: invocation name, version chain, runtime resolution, exec handoff, driver mounts, entrypoint">
+<svg viewBox="0 0 940 560" class="w-full min-w-[760px]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Dispatch sequence: invocation name, version chain, runtime resolution, exec handoff, driver mounts, entrypoint">
           <defs>
             <marker id="ds-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
               <path d="M0 0 L10 5 L0 10 Z" fill="var(--tb-c-accent)" />
@@ -379,29 +337,28 @@ const exitCodes = [
           <text x="710" y="500" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10" fill="var(--tb-c-text-3)">preview any dispatch: tebako-shim which &lt;tool&gt;</text>
           <text x="230" y="514" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10" fill="var(--tb-c-text-3)">windows: spawn + wait, child's exit code propagated</text>
         </svg>
-      </div>
-      <p class="mt-6 max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
-        Two consequences worth internalizing. First, <strong class="text-[var(--tb-c-text-1)]">a run is
-        a run</strong>: executing a package never installs its slices — installation is the
-        explicit verb, <code class="font-[var(--font-mono)] text-sm">tebako install</code>.
-        Second, verification happens <strong class="text-[var(--tb-c-text-1)]">at fetch and install,
-        never per run</strong> — a cached, verified artifact starts at full speed every time.
-      </p>
-    </div>
+</figure>
+++++
 
-    <!-- ============ THE MOUNT MODEL ============ -->
-    <div class="mt-16">
-      <h2 class="mb-3">One process, many images: the mount model.</h2>
-      <p class="mb-8 max-w-3xl text-[var(--tb-c-text-2)]">
-        Inside the running process there is one virtual filesystem. The env image mounts
-        whole at the runtime root — the path the interpreter was compiled to live at — and
-        every payload mounts at the path its consumer declared. A path lookup resolves
-        against the <strong class="text-[var(--tb-c-text-1)]">longest matching mount
-        prefix</strong>; mounts may nest; and the host filesystem is visible only where the
-        jail allows it. Payload images are always read-only.
-      </p>
-      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
-        <svg viewBox="0 0 940 470" class="w-full min-w-[760px]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mount model: env image at the runtime root, payloads at declared mounts, longest-prefix dispatch">
+_Figure 3 — The dispatch sequence: invocation name, version chain, runtime resolution, the exec handoff, and the driver mounting images before the entrypoint runs._
+
+Two consequences worth internalizing. First, **a run is a run**: executing a
+package never installs its slices — installation is the explicit verb,
+`tebako install`. Second, verification happens **at fetch and install, never
+per run** — a cached, verified artifact starts at full speed every time.
+
+== One process, many images: the mount model.
+
+Inside the running process there is one virtual filesystem. The env image
+mounts whole at the runtime root — the path the interpreter was compiled to
+live at — and every payload mounts at the path its consumer declared. A path
+lookup resolves against the **longest matching mount prefix**; mounts may
+nest; and the host filesystem is visible only where the jail allows it.
+Payload images are always read-only.
+
+++++
+<figure role="img" aria-label="Mount model: env image at the runtime root, payloads at declared mounts, longest-prefix dispatch">
+<svg viewBox="0 0 940 470" class="w-full min-w-[760px]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mount model: env image at the runtime root, payloads at declared mounts, longest-prefix dispatch">
           <!-- the VFS tree -->
           <rect x="20" y="14" width="560" height="440" rx="14" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
           <text x="300" y="40" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10" font-weight="600" fill="var(--tb-c-text-3)">WHAT THE PROCESS SEES — ONE NAMESPACE</text>
@@ -465,102 +422,110 @@ const exitCodes = [
             </g>
           </g>
         </svg>
-      </div>
-      <p class="mt-6 max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
-        The consumer-declared mount is the dependency mechanism: an application's manifest
-        says <em>I need inkscape, this version range, at <code class="font-[var(--font-mono)] text-sm">/opt/inkscape</code></em> —
-        the slice itself stays location-agnostic, and one installed copy serves every
-        application that mounts it. The worked example on{' '}
-        <a href="/who/" class="tb-link-underline text-[var(--tb-c-accent)]">the audience page</a>
-        {' '}runs this end to end; the manifest grammar is on{' '}
-        <a href="/docs/architecture/overview/" class="tb-link-underline text-[var(--tb-c-accent)]">the feature surface</a>.
-      </p>
-    </div>
+</figure>
+++++
 
-    <!-- ============ THE CONTRACT MODEL ============ -->
-    <div class="mt-16">
-      <h2 class="mb-3">Generations meet fail-closed: the contract model.</h2>
-      <div class="max-w-3xl space-y-4 text-[var(--tb-c-text-2)]">
-        <p>
-          The loader and the runtime are separate artifacts with separate release lines, so
-          they can drift apart. Tebako's answer is a declared <strong class="text-[var(--tb-c-text-1)]">handoff
-          contract</strong>: every runtime release states which handoff semantics it speaks, and the
-          loader checks the declaration <em>before downloading, before mounting, before running
-          anything</em>. A combination that cannot work is refused by name — the error tells you
-          both generations and the remedy — instead of failing later as a corrupted environment
-          or a segfault.
-        </p>
-        <p>
-          The same rule covers packages and payloads: every artifact belongs to a declared
-          generation, and anything that predates declarations is treated as the oldest one and
-          refused by name when it no longer fits. The failure you meet in practice is a sentence
-          like <em>"this package was pressed by a newer tebako — upgrade your CLI"</em> or{' '}
-          <em>"this runtime is too old for this package — pin an older payload or upgrade the
-          runtime"</em>: a named error with an exit code, never a silent fallback and never a
-          half-installed cache.
-        </p>
-      </div>
-    </div>
+_Figure 4 — The mount model: the env image at the runtime root, payloads at consumer-declared mounts, and longest-prefix dispatch._
 
-    <!-- ============ NAMED FAILURES ============ -->
-    <div class="mt-16">
-      <h2 class="mb-3">Every failure has a name.</h2>
-      <p class="mb-8 max-w-3xl text-[var(--tb-c-text-2)]">
-        The loader and the runtime's mount driver share a small, stable set of refusal
-        codes. Scripts can branch on them; humans get a one-line message that says what
-        was refused and why.
-      </p>
-      <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)]">
-        <table class="w-full min-w-[640px] text-left text-sm">
-          <thead>
-            <tr class="border-b border-[var(--tb-c-divider)] text-[var(--tb-c-text-1)]">
-              <th class="px-5 py-3 font-medium">Exit</th>
-              <th class="px-5 py-3 font-medium">Refusal</th>
-              <th class="px-5 py-3 font-medium">What it means</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-[var(--tb-c-divider)] text-[var(--tb-c-text-2)]">
-            {exitCodes.map((e) => (
-              <tr>
-                <td class="px-5 py-2.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-accent)]">{e.code}</td>
-                <td class="px-5 py-2.5 font-medium text-[var(--tb-c-text-1)]">{e.name}</td>
-                <td class="px-5 py-2.5">{e.meaning}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <p class="mt-4 max-w-3xl text-sm text-[var(--tb-c-text-3)]">
-        Once the interpreter is running, its own exit codes are the program's — the loader is
-        out of the picture by then.
-      </p>
-    </div>
+The consumer-declared mount is the dependency mechanism: an application's
+manifest says _I need inkscape, this version range, at `/opt/inkscape`_ — the
+slice itself stays location-agnostic, and one installed copy serves every
+application that mounts it. The worked example on link:/who/[the audience
+page] runs this end to end; the manifest grammar is on
+link:/docs/architecture/overview/[the feature surface].
 
-    <!-- ============ THREE NEIGHBORS ============ -->
-    <div class="mt-16 grid gap-6 md:grid-cols-3">
-      <a href="/docs/architecture/store/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
-        <p class="tb-eyebrow">UP NEXT · THE STORE</p>
-        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">Where everything lives</h3>
-        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-          <code class="font-[var(--font-mono)] text-xs">~/.tebako</code> — content-addressed,
-          SHA-256 anchored, shared machine-wide. Install vs run, locking, offline.
-        </p>
-      </a>
-      <a href="/docs/architecture/chain-of-trust/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
-        <p class="tb-eyebrow">UP NEXT · TRUST</p>
-        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">The chain of trust</h3>
-        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-          Unverified-first with loud warnings, opt-in signing, strict verification of
-          anything signed.
-        </p>
-      </a>
-      <a href="/docs/architecture/exec-tiers/" class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
-        <p class="tb-eyebrow">UP NEXT · EXEC TIERS</p>
-        <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">Running binaries from images</h3>
-        <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-          Preload, wrapped, TFS-native, static — how a toolkit executable runs, and how
-          to choose.
-        </p>
-      </a>
-    </div>
-</DocsLayout>
+== Generations meet fail-closed: the contract model.
+
+The loader and the runtime are separate artifacts with separate release
+lines, so they can drift apart. Tebako's answer is a declared **handoff
+contract**: every runtime release states which handoff semantics it speaks,
+and the loader checks the declaration _before downloading, before mounting,
+before running anything_. A combination that cannot work is refused by name —
+the error tells you both generations and the remedy — instead of failing
+later as a corrupted environment or a segfault.
+
+The same rule covers packages and payloads: every artifact belongs to a
+declared generation, and anything that predates declarations is treated as
+the oldest one and refused by name when it no longer fits. The failure you
+meet in practice is a sentence like _"this package was pressed by a newer
+tebako — upgrade your CLI"_ or _"this runtime is too old for this package —
+pin an older payload or upgrade the runtime"_: a named error with an exit
+code, never a silent fallback and never a half-installed cache.
+
+== Every failure has a name.
+
+The loader and the runtime's mount driver share a small, stable set of
+refusal codes. Scripts can branch on them; humans get a one-line message that
+says what was refused and why.
+
+[%header,cols="1,1,4"]
+|===
+| Exit | Refusal | What it means
+
+| 65
+| manifest
+| the trailer or a manifest is missing, corrupt, or names no usable entrypoint
+
+| 66
+| launcher ABI
+| the package speaks a handoff wire format this runtime predates
+
+| 67
+| runtime reference
+| the runtime reference in the trailer cannot be parsed or honored
+
+| 68
+| overlay
+| an overlay/decrypt binding failed — an unbound retained store, missing or non-opening key material, an unwritable store, an orphan binding, or a malformed TEBAKO_OVERLAYS / TEBAKO_DECRYPT
+
+| 69
+| unavailable
+| the runtime cannot be resolved — offline miss, download failure, or a reference to a release that does not exist
+
+| 70
+| checksum
+| a SHA-256 verification failed; nothing was installed
+
+| 71
+| signature
+| a signature is invalid — or the package is unsigned and TEBAKO_REQUIRE_SIGNED=1 was set
+
+| 72
+| trust
+| the signing key is not in the trusted keyring, or key continuity broke
+
+| 73
+| jail
+| the jail policy is malformed; the run fails closed, nothing mounts
+
+| 74
+| I/O
+| a filesystem, lock, or install operation failed
+
+| 75
+| contract
+| the runtime speaks a handoff contract this loader does not — it names both generations and the remedy
+
+| 76
+| install
+| installation was refused — the publisher froze the package, or the verb belongs to the CLI
+
+| 77
+| era
+| the artifact comes from a different tebako generation, in either direction
+
+| 78
+| layout
+| the env image does not match the layout the interpreter was compiled for
+
+| 79
+| check
+| a payload check FAILed — the tebako check aggregate; the verdict line names the check and the failed expectation
+|===
+
+Once the interpreter is running, its own exit codes are the program's — the
+loader is out of the picture by then.
+
+See also: link:/docs/architecture/store/[Where everything lives] ·
+link:/docs/architecture/chain-of-trust/[The chain of trust] ·
+link:/docs/architecture/exec-tiers/[Running binaries from images].

@@ -1,0 +1,211 @@
+---
+title: Declarative composition
+heading: Declarative composition.
+lede: >-
+  A tebako system fully resolves the needs of its payloads and its running
+  configuration: what runs with what, where it mounts, which host paths it may
+  touch — all declared, all resolvable, jail-safe by default. The docker-compose
+  analogue, with named errors instead of surprises.
+description: >-
+  What runs with what, where, and how visible: the five-document declarative
+  stack (D1–D5), jail-safe-by-default policy, the record mode that discovers a
+  slice's needs, and carried-vs-shared slices — the one pipeline behind every
+  package shape.
+---
+
+// normative: spec 23 (D1–D5, §5 default policy, §6 algorithm, §7 combinations, §8 record, §9 swap), spec 03 §6, spec 05 §3-4; carried/shared terminology per tamatebako/tebako#460 (owner-locked 2026-08-25) — spec 23 amendment arrives with the implementation PR
+
+[NOTE]
+====
+Status: shipped — needs blocks, the deny default, the resolution algorithm,
+image-layer compose.
+
+Status: planned — the record-mode generator and the bootstrap override channels
+are phased.
+====
+
+== Five documents, one owner each.
+
+Every fact lives in exactly one row. A slice's needs are never re-authored into
+the composition — they resolve _from_ the slice's own declaration. The operator
+layers may tighten or add grants; they may not edit a slice's declaration.
+
+[cols="1,3,3,3,3"]
+|===
+|# |DOCUMENT |OWNER |ANSWERS |CONSUMERS
+
+|D1 |`slice manifest needs:` |the slice's feedstock |what host surface do I need, and why |resolver (via the registry mirror) · press (reads the image)
+|D2 |`composition document tebako.yaml` |the composition author |what runs with what, where, how visible |shim dispatch · tebako run · tebako press
+|D3 |`package manifest needs union` |tebako press (baked) |the resolved needs of everything stitched |the bootstrap at run time
+|D4 |`store config ~/.tebako/config.yaml` |the operator |defaults, registries, per-invocation tightening |shim · bootstrap
+|D5 |`CLI flags` |the invoker |a one-shot D2 row |tebako run
+|===
+
+== D1 — a slice declares its needs.
+
+The in-image manifest's `needs:` block is the ONLY spelling of host-surface
+requirements — one key, one grammar, one semantics. Every entry is absolute (or
+a symbolic atom: `$HOME`, `$TMPDIR`, `$CWD`, `$TEBAKO_HOME` — resolved at bind,
+per invocation, never baked), carries `ro|rw`, an optional bind-mount spelling,
+an optional platform filter, an `optional: true` marker for probe artifacts —
+and a MANDATORY `why:`.
+
+[source,yaml]
+----
+needs:
+host:
+- path: /opt/vendor-tool        # absolute, or a symbolic atom
+  access: ro                    # ro | rw
+  mount: /vendor/tool           # OPTIONAL: present it at this VFS point
+  when: [macos]                 # OPTIONAL platform filter
+  optional: true                # absent at bind = skipped (probes only)
+  why: "the tool probes its install root at boot"   # MANDATORY
+----
+
+Fail-closed by construction: a need absent without the optional marker is a
+named error; an ro ancestor may not hide an rw descendant; `rw` on a
+user-surface atom requires the composition's explicit consent — declared write
+access is visible by construction. Deriving a grant derives its strict
+ancestors as traverse reads, so canonicalization walks pass (the JVM's
+realpath-at-boot case).
+
+== D2 — the composition document.
+
+`tebako.yaml` — YAML, versioned JSON Schema, discovered walking up from the
+cwd (or named with `-f`). The CLI flags are this document written inline:
+`tebako run` accepts `--slice name@req`, `--runtime`, `--entrypoint`,
+`--mount host:mount:ro|rw`, `--policy open|deny`, `--need path:ro` — each flag
+maps 1:1 onto a key; flags and `-f` compose, flags win.
+
+[source,yaml]
+----
+version: 1
+runtime:
+  name: ruby
+  requirement: "~> 3.3"
+slices:
+- { name: metanorma, requirement: ">= 2.1" }
+- { name: openjdk,   requirement: "21" }
+entrypoint: mnconvert
+policy: deny                    # the DEFAULT once anything is declared
+mounts:                         # operator bind-mounts (docker -v)
+- { host: ./data, mount: /data, access: ro }
+needs:                          # composition-level additions, D1 grammar
+host:
+  - { path: "$HOME/.fontist", access: rw, why: "fontist cache" }
+----
+
+== Jail-safe by default.
+
+[NOTE]
+====
+Status: shipped.
+====
+
+Any declaration in force — a composition document, a slice with needs, a CLI
+flag — turns the policy default to `deny`; `open` must be asked for by name. A
+run with NO declarations anywhere runs open (`never_denies`) — declarations are
+what turn the jail on. Under deny, the effective world is exactly: the VFS
+images (read-only by construction, not policy-gated at all); the platform
+floor; the system's own surface (`$TEBAKO_HOME` and the exec cache, read-only
+at bind); the union of declared needs; the composition's mounts/needs; and
+argument files auto-granted ro. Everything else: `EPERM/EROFS`, journaled — and
+the journal line names the covering declaration
+(`would-need=slice:openjdk`) or says none exists, so the operator learns the
+exact key to add from the denial itself.
+
+== The resolution algorithm.
+
+One algorithm, three front ends (shim, bootstrap, `tebako run`/`press`), in
+order:
+
+[source,text]
+----
+1. slice set     the entrypoint slice + transitive depends: (at resolved versions) + the runtime
+data slices join the mounts; they declare no needs (a needs block = named error)
+2. needs union   every slice's D1 needs.host, platform-filtered, atoms resolved at bind time
+3. compose       effective = needs-union ∪ mounts ∪ operator-grants, then operator tightening
+(policy, --no-host, explicit denies) intersects — declarations request, the
+operator tightens
+4. needs-check   every declared need verified against the effective policy; an uncovered need is
+a NAMED RESOLUTION FAILURE before exec:
+"slice <name> needs <path> (<access>, why: <why>) — denied by <source>"
+5. export        the authored part serializes to TEBAKO_JAIL (+_SOURCE, +_JOURNAL); the floor and
+the system surface are NOT serialized — every bind re-derives them, so a spawned
+child enforces exactly its parent's policy
+----
+
+[cols="2,3,3,3"]
+|===
+|COMBINATION |RESOLVER |NEEDS SOURCES |POLICY DEFAULT
+
+|`runtime slice (env image)` |— (resolved, never the composer) |its release manifest |n/a
+|`executable payload slice` |— (resolved) |its D1 `needs:` |n/a
+|`data payload slice` |— (resolved) |none permitted (a needs block is a named error) |n/a
+|standalone package |bootstrap |D3 baked union ∪ lean runtime manifest ∪ operator env |deny when D3 declares anything
+|managed dispatch |shim |slice mirrors ∪ runtime manifest ∪ D2/D4/D5 |deny when anything is declared
+|`tebako run` |CLI front end |D2/D5 ∪ slice mirrors |deny when anything is declared
+|spawned child (class E) |inherits TEBAKO_JAIL; the preload re-binds |the PARENT's composition — a child never re-resolves |the parent's
+|===
+
+== Carried vs shared — one pipeline.
+
+[NOTE]
+====
+Status: shipped — carried slots + shared runtime today.
+
+Status: planned — run-time payload resolution + lazy seeding (a planned
+amendment).
+====
+
+Fat and lean are the same architecture (link:https://github.com/tamatebako/tebako/issues/460[the locked model]):
+press always resolves and locks the full closure — every slice's version and
+sha256 recorded in the package manifest — and the only question left is where
+the bytes live. A slice is **carried** (its bytes are carried in a trailer
+slot) or **shared** (resolved at first run into the machine store, verified
+against the locked digest, and shared with every package that needs the same
+slice). A **self-contained** package carries everything — zero network, empty
+cache, one file. A **shared-runtime** package carries its payloads and shares
+the runtime — the shape packed-mn ships. `lean`/`fat` survive as deprecated
+aliases with a named warning.
+
+Carried slices seed the store lazily at first run — best-effort, tmp+rename,
+journaled, never blocking the run — so a self-contained download doubles as a
+cache prime. Shared slices resolve by the locked digests, fail-closed:
+carry/shared changes where bytes come from, never what runs. Platform coverage
+is declared by the slice itself (`platforms: universal` or an explicit triplet
+list); the composition's per-slice `platforms:` key is an assertion that can
+narrow, never extend — a slice that cannot cover the host triplet is a named
+error, never a silent fallback.
+
+== Discovery: the record mode.
+
+A slice author usually does not know the host surface their executable touches.
+`policy: record` (env form: `TEBAKO_JAIL=record`) allows every host check and
+journals it (`event=jail-allow path=… op=…`) — nothing is denied, so the
+workload cannot crash from policy during discovery, and spawned children append
+to the same journal. The generator, `tfs needs --from-journal`, folds the
+journal (denials included — a denial is an unmet need) into a draft `needs:`
+block: atoms re-substituted, floor/store/exec-cache excluded, strongest
+observed op wins, ancestor collapse, `why: "TODO — observed: …"` for the author
+to replace. The human gate is the point: the record shows the observed minimum;
+the author decides what production actually wants. The generator never edits a
+manifest itself, and shipping `record` in force is a named lint warning.
+
+== Swap the composition, not the slice.
+
+Slice images are immutable and content-addressed — a configuration change never
+mutates or rebuilds one. In managed mode the swap IS editing `tebako.yaml`. A
+standalone package's baked composition is the DEFAULT; an external document
+overrides it — first hit wins: `--compose`, then `TEBAKO_COMPOSE`, then a
+sidecar `<package>.tebako.yaml`. The override replaces the baked
+policy/mounts/needs/entrypoint; it can never conjure slice content — a slice
+the trailer does not carry is a named error, and the trust checks apply to
+newly referenced slices exactly as at press. The run's provenance is journaled:
+`event=composition source=external(<path>) sha256=…` or `source=baked`. Today
+`tfs exec --compose` speaks the image-layer subset; the bootstrap/shim override
+channels arrive in Phase-R.
+
+See also: link:/docs/architecture/jails-and-proxying/[Jails and host proxying] ·
+link:/docs/architecture/driver-contract/[The driver contract] ·
+link:/docs/architecture/store/[Where shared slices live].

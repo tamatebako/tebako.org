@@ -41,6 +41,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
       { label: 'Repositories', href: '/docs/architecture/repositories/', status: 'live' },
       { label: 'Comparisons', href: '/docs/architecture/comparisons/', status: 'live' },
       { label: 'Migration (v1→v2)', href: '/docs/architecture/migration/', status: 'live' },
+      { label: 'v1→v2 flag map', href: '/docs/architecture/migrate-v1-v2/', status: 'live' },
       { label: 'Contributors', href: '/docs/architecture/contributors/', status: 'live' },
       { label: 'Driver contract', href: '/docs/architecture/driver-contract/', status: 'live' },
       { label: 'Composition', href: '/docs/architecture/composition/', status: 'live' },

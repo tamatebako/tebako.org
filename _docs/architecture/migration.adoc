@@ -1,0 +1,98 @@
+---
+title: Migrating from Tebako v1
+heading: Migrating from Tebako v1.
+lede: >-
+  Tebako v2 is a re-architecture, not a patch release. The C++/CMake era is
+  archived; the platform is Rust, the runtime is a small artifact set (exe +
+  env image, plus the ruby DLL on windows), and payloads are
+  self-describing slices. This page is the map from there to here.
+description: >-
+  The v1 to v2 migration guide: what changed, what to do, and the mapping
+  from gem-era commands to the Rust platform.
+---
+
+// normative: spec 03, spec 05, spec 06, spec 09, spec 16 — version strings current-era (tebako CLI 0.2.x, ruby runtimes 0.16.x per the release lines)
+
+[NOTE]
+====
+Status: shipped — ships today: the CLI on the 0.2.x line, ruby runtimes on
+the 0.16.x line; the migration path below is live.
+====
+
+== The short version.
+
+*If you run tebako packages:* uninstall the gem-era tooling, install the v2
+CLI, and keep working. Packages pressed with v1 must be re-pressed — v1
+embedded images do not load in v2.
+
+*If you press packages:* your workflow no longer needs CMake, compilers, or
+system libraries on the packager's machine. The packaging tools arrive as
+binaries.
+
+*If you pinned a Ruby version:* the pin becomes a runtime constraint in the
+payload manifest (`runtime_requirement: ruby "~> 3.3.0"`). Runtimes download
+once and are shared by every package on the machine.
+
+== What changed, in one table.
+
+[cols="1,2,2"]
+|===
+| Area | v1 (archived) | v2 (current)
+
+| Implementation | C++ (tebako-main, libtfs) + the tebako gem | Rust end to end (bootstrap, shim, driver, tfs, tpkg, CLI)
+| Runtime | one merged environment+app image, embedded | interpreter exe + separate env image; shared, downloaded once
+| Payloads | opaque embedded images | self-describing slices (`/__tpkg__/manifest.yaml`), co-mounted
+| Packaging tools | compiled on your machine (CMake + system libs) | prebuilt binaries per platform
+| Distribution | one fat binary only | fat/lean binaries _and_ the managed store (registries, shims, version manager)
+| Native tools | not supported | zero-runtime payloads (Inkscape, JRE, hello) as first-class slices
+|===
+
+== The command map.
+
+[cols="2,2,3"]
+|===
+| v1 (gem) | v2 | Notes
+
+| `gem install tebako` | `brew install tamatebako/tap/tebako` | prebuilt per platform; no compilers
+| `tebako press …` (the gem) | `tebako press …` (the Rust CLI) | same verb, prebuilt binary; lean/fat — classic mode is gone
+| — (no install verb) | `tebako add-registry … && tebako install …` | the managed flow: registries, store, shims
+| `RUBY VERSION` pin | `runtime_requirement: ruby "~> 3.3.0"` | in the payload manifest; the dispatcher resolves it
+|===
+
+== The steps, in order.
+
+. *Remove the gem-era install.* `gem uninstall tebako` and drop any v1
+  build trees. The v1 repo is archived at
+  https://github.com/tamatebako/tebako-v1[tamatebako/tebako-v1] — read-only
+  reference, no new development.
+. *Install the v2 CLI.* `brew install tamatebako/tap/tebako` (or the
+  per-platform release asset from
+  https://github.com/tamatebako/tebako/releases[tamatebako/tebako]).
+. *Re-press your payloads.* v1 images do not load in v2. For a Ruby app:
+  declare the runtime constraint in the manifest, press with `tebako press`
+  (lean or fat), and either ship the stitched executable or publish the
+  payload to a registry for the managed flow. Data and toolkit slices are
+  built with `tfs mkimage`.
+. *First run downloads the runtime once.* It lands in
+  `~/.tebako/runtimes/`, SHA-256 verified, shared by every tebako package
+  on the machine. Subsequent runs are silent cache hits;
+  `TEBAKO_OFFLINE=1` makes that explicit.
+
+== Worth knowing.
+
+* *The env image is not your app.* v1 merged them; v2 never does. The
+  runtime's env image is the interpreter's stdlib and gems — your app is a
+  separate payload slice mounted over it.
+* *Native tools are slices now.* If your app shells out to a binary
+  (Inkscape, a JRE, ffmpeg), package it as a toolkit payload and declare it
+  in `requires:` with a mount point. Your users stop installing it by hand.
+* *A run never installs.* Executing a package reads and runs only; `tebako
+  install` is the explicit verb that populates the store and registers
+  shims.
+* *Unsigned is first-class, loud.* Unsigned payloads install with a warning
+  and a journal line; `TEBAKO_REQUIRE_SIGNED=1` fails closed. Signing is
+  opt-in per package.
+
+See also: link:/docs/architecture/migrate-v1-v2/[The deep migration guide] —
+the press flag map, lean versus fat packages, verified CI before/afters,
+and the behavior differences that bite.

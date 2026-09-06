@@ -1,0 +1,358 @@
+---
+title: Runtime as image
+heading: Runtime as image.
+lede: >-
+  A tebako runtime is not one binary. It is two artifacts — an interpreter
+  executable and an env .tfs image — downloaded once, sha256-verified, and
+  mounted — never extracted — into the same process as the payloads it runs.
+description: >-
+  A tebako runtime is two artifacts — the interpreter exe and the env .tfs
+  image — co-mounted with your payloads in one process. TEBAKO_RUNTIME_IMAGE,
+  the single-owner mount root, and the TEBAKO_MOUNT_ROOT override.
+---
+
+// normative: spec 17, spec 06
+
+[NOTE]
+====
+Status: shipped — the Rust driver mounts the env image and payload images in
+one process; contract-2 runtimes ship from the runtime factory.
+
+Status: planned — the windows exec and locking port: the handoff is shipped on
+macOS and Linux, and the windows port is still landing.
+====
+
+== Why the runtime is two artifacts.
+
+The interpreter changes on the ruby release line; the files it runs against —
+stdlib, gems, its own layout declaration — change with it, but they are
+_content_, and content wants different treatment than a process entry point.
+Splitting the pair buys four things:
+
+Share::
+The pair is downloaded once per machine into the shared cache and reused by
+every package that names it — never duplicated into each package's bytes.
+
+Verify::
+The image is a first-class content object with its own sha256 trust anchor,
+verified at install and re-verified only on re-fetch — **never per run**.
+
+Mount, don't extract::
+The cache holds immutable artifacts only — no extracted layout tree. At run
+time the driver mounts the image whole; nothing materializes a mutable copy
+of an immutable artifact.
+
+Release independently::
+The runtime factory publishes the pair per version × platform triplet, with
+its own manifest and checksums. The product consumes the published release —
+it never rebuilds a runtime.
+
+== Two artifacts, one runtime.
+
+[NOTE]
+====
+Status: shipped — dual-published since the image era.
+====
+
+Every image-era release of
+link:https://github.com/tamatebako/tebako-runtime-ruby/releases[tebako-runtime-ruby]
+publishes the pair plus a machine index (`manifest.json`, carrying an `image`
+key and the `contract_version`) and SHA256SUMS:
+
+A · the interpreter — `tebako-runtime-<ver>-<ruby>-<triplet>[.exe]`::
+The process entry point, statically linked against the Rust runtime driver
+(link:https://github.com/tamatebako/tebako/tree/main/crates/tebako-driver[crates/tebako-driver]
+— the v1 C++ `tebako-main.cpp` is retired). At exec it is handed the path of
+its env image and mounts it instead of any embedded image.
+
+B · the env image — `tebako-runtime-<ver>-<ruby>-<triplet>.tfs`::
+The runtime's files — `lib/ruby`, gems, everything the interpreter's load
+paths expect — plus the pair declaration
+`/lib/tebako/layout.yaml`. Installed read-only (0444), mounted whole at the
+runtime root.
+
+== The pair, the handoff, the boot.
+
+The exact wire grammar is the runtime driver contract; the loader's side of
+it is the launcher ABI. From cache entry to running interpreter:
+
+++++
+<figure role="img" aria-label="From cache to boot: the cache entry holds the interpreter and the env image; the loader exports TEBAKO_RUNTIME_IMAGE and execs the interpreter with image triples and an entry; the driver mounts the env image whole at the runtime root, verifies the pair, mounts payloads, installs the jail, rewrites argv">
+<svg viewBox="0 0 940 460" class="w-full min-w-[760px]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="From cache to boot: the cache entry holds the interpreter and the env image; the loader exports TEBAKO_RUNTIME_IMAGE and execs the interpreter with image triples and an entry; the driver mounts the env image whole at the runtime root, verifies the pair, mounts payloads, installs the jail, rewrites argv">
+          <defs>
+            <marker id="ri-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 Z" fill="var(--tb-c-accent)" />
+            </marker>
+          </defs>
+
+          <!-- panel A: the cache entry -->
+          <g transform="translate(20, 20)">
+            <rect width="270" height="340" rx="14" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="135" y="30" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10" font-weight="600" fill="var(--tb-c-text-3)">THE CACHE ENTRY — ~/.tebako</text>
+            <text x="135" y="52" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">runtimes/ruby-3.3.7-0.16.0-macos-arm64/</text>
+
+            <rect x="20" y="70" width="230" height="58" rx="8" fill="var(--color-ink)" stroke="var(--tb-c-accent)" stroke-width="1.5" />
+            <text x="135" y="94" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="11.5" font-weight="600" fill="var(--color-mist-pale)">the interpreter</text>
+            <text x="135" y="112" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-mist)" opacity="0.85">tebako-runtime-…  · 0755</text>
+
+            <rect x="20" y="140" width="230" height="58" rx="8" fill="var(--tb-c-accent)" stroke="var(--tb-c-accent)" stroke-width="1.5" />
+            <text x="135" y="164" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="11.5" font-weight="600" fill="var(--color-paper)">the env image</text>
+            <text x="135" y="182" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-paper)" opacity="0.9">tebako-runtime-….tfs · 0444</text>
+
+            <g font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">
+              <text x="30" y="222">sha256 / origin — exe markers</text>
+              <text x="30" y="242">.tfs.sha256 — the trust anchor:</text>
+              <text x="30" y="258">verified at install, never per run</text>
+              <text x="30" y="278">.tfs.origin — the fetch URL</text>
+            </g>
+            <text x="135" y="316" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="10" fill="var(--tb-c-text-2)">artifacts only — no extracted tree</text>
+          </g>
+
+          <line x1="296" y1="190" x2="322" y2="190" stroke="var(--tb-c-accent)" stroke-width="1.5" marker-end="url(#ri-arrow)" />
+
+          <!-- panel B: the handoff -->
+          <g transform="translate(328, 20)">
+            <rect width="270" height="340" rx="14" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="135" y="30" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10" font-weight="600" fill="var(--tb-c-text-3)">THE HANDOFF — exec</text>
+            <text x="135" y="52" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="10" fill="var(--tb-c-text-2)">bootstrap · the shim · tebako run</text>
+
+            <g font-family="var(--font-mono), monospace" font-size="9.5">
+              <text x="20" y="84" fill="var(--tb-c-text-3)">env</text>
+              <rect x="20" y="94" width="230" height="30" rx="6" fill="none" stroke="var(--tb-c-accent)" stroke-width="1.2" />
+              <text x="135" y="113" text-anchor="middle" fill="var(--tb-c-accent)" font-size="8.5">TEBAKO_RUNTIME_IMAGE=&lt;cached .tfs&gt;</text>
+              <text x="20" y="146" fill="var(--tb-c-text-3)">argv</text>
+              <text x="28" y="168" fill="var(--tb-c-text-2)">--tebako-image</text>
+              <text x="28" y="184" fill="var(--tb-c-text-2)">&#160;&#160;&lt;self|path&gt;:&lt;slot|-&gt;:&lt;mount&gt; …</text>
+              <text x="28" y="206" fill="var(--tb-c-text-2)">--tebako-entry &lt;argv0&gt; &lt;args…&gt;</text>
+              <text x="20" y="240" fill="var(--tb-c-text-3)">policy</text>
+              <text x="28" y="260" fill="var(--tb-c-text-2)">TEBAKO_JAIL / TEBAKO_JAIL_SOURCE</text>
+            </g>
+            <text x="135" y="300" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="10" fill="var(--tb-c-text-2)">never returns on success —</text>
+            <text x="135" y="316" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="10" fill="var(--tb-c-text-2)">the process becomes the runtime</text>
+          </g>
+
+          <line x1="604" y1="190" x2="630" y2="190" stroke="var(--tb-c-accent)" stroke-width="1.5" marker-end="url(#ri-arrow)" />
+
+          <!-- panel C: the boot -->
+          <g transform="translate(636, 20)">
+            <rect width="284" height="340" rx="14" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="142" y="30" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10" font-weight="600" fill="var(--tb-c-text-3)">THE BOOT — ONE PROCESS</text>
+
+            <g font-family="var(--font-sans), sans-serif" font-size="10" fill="var(--tb-c-text-2)">
+              <text x="24" y="62"><tspan font-family="var(--font-mono), monospace" font-weight="600" fill="var(--tb-c-accent)">1</tspan>&#160;&#160;validate TEBAKO_MOUNT_ROOT's form</text>
+              <text x="46" y="78" font-family="var(--font-mono), monospace" font-size="8.5" fill="var(--tb-c-text-3)">malformed → exit 65, naming the variable</text>
+
+              <text x="24" y="108"><tspan font-family="var(--font-mono), monospace" font-weight="600" fill="var(--tb-c-accent)">2</tspan>&#160;&#160;mount the env image WHOLE at the</text>
+              <text x="46" y="124">runtime root — /__tfs__ (A:/t on windows)</text>
+
+              <text x="24" y="154"><tspan font-family="var(--font-mono), monospace" font-weight="600" fill="var(--tb-c-accent)">3</tspan>&#160;&#160;verify the pair: layout.yaml vs the exe</text>
+              <text x="46" y="170" font-family="var(--font-mono), monospace" font-size="8.5" fill="var(--tb-c-text-3)">mismatch → exit 78, before any payload</text>
+
+              <text x="24" y="200"><tspan font-family="var(--font-mono), monospace" font-weight="600" fill="var(--tb-c-accent)">4</tspan>&#160;&#160;mount payload triples in argv order</text>
+              <text x="46" y="216" font-family="var(--font-mono), monospace" font-size="8.5" fill="var(--tb-c-text-3)">exclusive onto occupied → EEXIST, by name</text>
+
+              <text x="24" y="246"><tspan font-family="var(--font-mono), monospace" font-weight="600" fill="var(--tb-c-accent)">5</tspan>&#160;&#160;install the jail — after the mounts</text>
+              <text x="46" y="262" font-family="var(--font-mono), monospace" font-size="8.5" fill="var(--tb-c-text-3)">malformed TEBAKO_JAIL → exit 73</text>
+
+              <text x="24" y="292"><tspan font-family="var(--font-mono), monospace" font-weight="600" fill="var(--tb-c-accent)">6</tspan>&#160;&#160;rewrite argv to the entry; the</text>
+              <text x="46" y="308">interpreter starts</text>
+            </g>
+          </g>
+
+          <text x="470" y="400" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="11" fill="var(--tb-c-text-3)">Any failure along the way unmounts everything — never a partial mount. The env image is mounted, never extracted;</text>
+          <text x="470" y="418" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="11" fill="var(--tb-c-text-3)">the mount table is longest-prefix, nested mounts are legal, and payload images stay read-only (writes fail EROFS).</text>
+          <text x="470" y="444" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10" fill="var(--tb-c-text-3)">the pair check (3) runs post-mount, before any payload or interpreter touch</text>
+        </svg>
+</figure>
+++++
+
+_Figure 1 — From cache to boot: the cache entry, the exec handoff, and the driver's boot sequence in one process._
+
+== The handoff, stated exactly.
+
+Whoever launches the runtime — the bootstrap of a stitched package, the shim
+in managed mode, or `tebako run` — exports
+`TEBAKO_RUNTIME_IMAGE=<absolute path of the cached .tfs>` and execs the
+interpreter. The driver mounts that image **whole at the runtime root as the
+first mount**, then the payload triples in argv order (the image-era env var
+is a bare path mounted whole — the `-` semantics without a triple). On the
+standalone path the trailer's runtime reference carries the bare `;image`
+flag that tells the loader to resolve and verify the image alongside the
+executable.
+
+Generations meet fail-closed. A driver that implements the runtime driver
+contract's grammar declares **contract version 2** — compiled in as
+`TEBAKO_CONTRACT_VERSION` and declared in the release manifest, and the two
+must agree. The loader negotiates _before any checksum acceptance_: an
+unsupported contract is exit `75`, naming both generations and the remedy —
+upgrade tebako, or pin an older runtime — never a silent accept.
+
+== The mount root has one owner.
+
+The runtime root — ruby: `/__tfs__` on POSIX, `A:/t` on windows, short by
+owner decision for MAX_PATH headroom — is a contract value, so it has exactly
+one authoritative source: the patch literals in
+link:https://github.com/tamatebako/ruby[tamatebako/ruby]. Everything
+downstream **flows** it; nothing re-authors it (the SSOT invariant):
+
+++++
+<figure role="img" aria-label="Mount-root flow: tamatebako/ruby patch literals, source tarball tebako-mount-root manifest, runtime factory, interpreter exe and env image layout.yaml pair, driver verification with exit 78 on mismatch">
+<svg viewBox="0 0 940 300" class="w-full min-w-[760px]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mount-root flow: tamatebako/ruby patch literals, source tarball tebako-mount-root manifest, runtime factory, interpreter exe and env image layout.yaml pair, driver verification with exit 78 on mismatch">
+          <defs>
+            <marker id="rf-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 Z" fill="var(--tb-c-accent)" />
+            </marker>
+          </defs>
+
+          <g transform="translate(20, 40)">
+            <rect width="170" height="88" rx="10" fill="var(--color-ink)" stroke="var(--tb-c-accent)" stroke-width="1.5" />
+            <text x="85" y="26" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12" font-weight="600" fill="var(--color-mist-pale)">tamatebako/ruby</text>
+            <text x="85" y="46" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-gold)">patch literals — THE OWNER</text>
+            <text x="85" y="62" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-mist)" opacity="0.85">the only hand-written copy</text>
+          </g>
+          <line x1="196" y1="84" x2="216" y2="84" stroke="var(--tb-c-accent)" stroke-width="1.5" marker-end="url(#rf-arrow)" />
+
+          <g transform="translate(222, 40)">
+            <rect width="170" height="88" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="85" y="26" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12" font-weight="600" fill="var(--tb-c-text-1)">source tarball</text>
+            <text x="85" y="46" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">tebako-mount-root manifest</text>
+            <text x="85" y="62" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">C1 · absent/corrupt → exit 132</text>
+          </g>
+          <line x1="398" y1="84" x2="418" y2="84" stroke="var(--tb-c-accent)" stroke-width="1.5" marker-end="url(#rf-arrow)" />
+
+          <g transform="translate(424, 40)">
+            <rect width="170" height="88" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="85" y="26" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12" font-weight="600" fill="var(--tb-c-text-1)">runtime factory</text>
+            <text x="85" y="46" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">flows it — never re-authors</text>
+            <text x="85" y="62" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">C2 · release card carries it</text>
+          </g>
+          <line x1="600" y1="84" x2="620" y2="84" stroke="var(--tb-c-accent)" stroke-width="1.5" marker-end="url(#rf-arrow)" />
+
+          <g transform="translate(626, 14)">
+            <rect width="140" height="60" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="70" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="11.5" font-weight="600" fill="var(--tb-c-text-1)">the exe</text>
+            <text x="70" y="42" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="8.5" fill="var(--tb-c-text-3)">compiled-in root (entry TU)</text>
+            <rect y="76" width="140" height="60" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="70" y="100" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="11.5" font-weight="600" fill="var(--tb-c-text-1)">the env image</text>
+            <text x="70" y="118" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="8.5" fill="var(--tb-c-text-3)">/lib/tebako/layout.yaml</text>
+            <text x="70" y="164" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="8.5" fill="var(--tb-c-text-3)">C3 · one factory pair</text>
+          </g>
+          <line x1="772" y1="84" x2="792" y2="84" stroke="var(--tb-c-accent)" stroke-width="1.5" marker-end="url(#rf-arrow)" />
+
+          <g transform="translate(798, 40)">
+            <rect width="122" height="88" rx="10" fill="var(--tb-c-accent)" stroke="var(--tb-c-accent)" stroke-width="1.5" />
+            <text x="61" y="26" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="12" font-weight="600" fill="var(--color-paper)">the driver</text>
+            <text x="61" y="46" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="8.5" fill="var(--color-paper)" opacity="0.92">compares post-mount,</text>
+            <text x="61" y="60" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="8.5" fill="var(--color-paper)" opacity="0.92">before ruby init</text>
+            <text x="61" y="78" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="8.5" fill="var(--color-paper)" opacity="0.92">mismatch → exit 78</text>
+          </g>
+
+          <text x="470" y="220" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="11" fill="var(--tb-c-text-3)">A mismatched pair is refused with both values printed — never a ruby LoadError from a half-right mount.</text>
+          <text x="470" y="240" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="11" fill="var(--tb-c-text-3)">On windows the driver qualifies every declared mount onto the root's drive — the wire grammar never carries one.</text>
+          <text x="470" y="272" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10" fill="var(--tb-c-text-3)">the in-image declaration grammar: docs/spec/schemas/layout.yaml — owned there, mirrored by crates/tebako-driver</text>
+        </svg>
+</figure>
+++++
+
+_Figure 2 — The mount-root flow: patch literals in tamatebako/ruby flow through the source tarball and runtime factory into the exe and env image, and the driver verifies the pair at every boot._
+
+The exe's compiled-in root and the image's declared `mount_root` (in
+link:https://github.com/tamatebako/tebako/blob/main/docs/spec/schemas/layout.yaml[/lib/tebako/layout.yaml])
+are two flowings of the same literal, built as one pair. The driver checks
+them against each other on every boot: that is what makes a stale or
+mismatched pairing a named refusal instead of a broken load path.
+
+== Moving the root: TEBAKO_MOUNT_ROOT.
+
+[NOTE]
+====
+Status: shipped — locked 2026-08-08.
+====
+
+The baked root is the per-platform **default, not the only spelling**. Set
+`TEBAKO_MOUNT_ROOT` in the runtime's environment and the driver mounts the
+env image at that root instead — and everything downstream follows: era-2
+rbconfig emits `ENV["TEBAKO_MOUNT_ROOT"] || <baked>`, the io-routing patches
+read the driver-reported root, and declared payload mounts qualify onto the
+override's drive exactly as they do the baked root's.
+
+Two gates keep the override honest, in order:
+
+Gate 1 — form, before any mount::
+The value must be an absolute path (`/…` or drive-qualified `X:/…`) with no
+trailing slash and no `..`. A malformed value is **exit 65, naming the
+variable** — before anything mounts.
+
+Gate 2 — grant, post-mount::
+The image must declare `mount_root_override: true` (layout schema_minor 1).
+An image without the grant predates the override era — its rbconfig is pinned
+to the baked root — so the driver refuses with **exit 78, naming both the
+override and the image**. Never a boot whose load paths point at an unmounted
+root.
+
+== The cache entry.
+
+Under `~/.tebako`, a runtime entry holds immutable artifacts and their
+trusted markers — nothing else:
+
+[source,text]
+----
+runtimes/<lang>-<lv>-<ver>-<triplet>/
+  tebako-runtime-<ver>-<lv>-<triplet>[.exe]   # interpreter (0755)
+  sha256 / origin                             # executable markers
+  tebako-runtime-<ver>-<lv>-<triplet>.tfs     # env image (0444)
+  <image>.sha256                              # trust anchor: "<sha>  <file>\n"
+  <image>.origin                              # the URL it was fetched from
+----
+
+The `.sha256` marker _is_ the trust anchor: its presence means the artifact
+was sha256-verified at install; it is re-verified only when re-fetched,
+**never per run**. Installs are tmp + rename under a per-entry flock — a
+partial install is invisible — and a checksum mismatch on download deletes
+the download and leaves the cache untouched.
+
+The one place extraction still exists is _press time_, and it is not a cache
+shape: when the packager needs the runtime's files as a build environment, it
+extracts the cached image in-process through the TFS ABI into the build
+prefix — rebuilt per press, never stored back. The run side mounts; it never
+extracts.
+
+== Why .tfs and not .dwarfs.
+
+The env image's metadata is serialized with **FlatBuffers** — the dwarfs-t
+writer's default in our builds — which upstream DwarFS cannot read. A format
+upstream can't open doesn't get upstream's extension: `.tfs` marks a TFS
+image (content-detected by the reader regardless of extension), while
+`.dwarfs` stays reserved for upstream-compatible images. The writer binding
+lives in
+link:https://github.com/tamatebako/dwarfs-t-rs[dwarfs-t-rs] — image creation
+is in-process, never a shelled mkdwarfs.
+
+Format is orthogonal to role: the extension and the `format_id` answer
+exactly one question — how to read these bytes. Payloads pressed today
+default to the limnifs format (since CLI v0.2.0); the runtime factory's env
+images are dwarfs-t-native. Both are `.tfs`, and the runtime contract on this
+page doesn't change either way.
+
+== Stated plainly.
+
+[%header,cols="2,3"]
+|===
+| Situation | What actually happens
+
+| boot without TEBAKO_RUNTIME_IMAGE
+| A legal shape — a bare interpreter — but the driver names the absence on stderr (stdout belongs to the payload). In managed mode a missing handoff is a launcher bug, surfaced loudly — not a silent fallback onto an embedded copy.
+
+| exe from one build, image from another
+| Refused by name: the pair check compares the image's declared mount_root against the exe's compiled-in value post-mount, before the interpreter inits — exit 78 with both values printed. Never a ruby LoadError.
+
+| writes into a mounted image
+| EROFS. Payload and env images are read-only forever; write and encryption overlays live only in the Rust TFS layer, and dwarfs-t never learns to write (the transforms law).
+
+| windows today
+| The handoff is shipped on macOS and Linux; the windows exec and locking port is partial (roadmap 02). The contract itself — roots, overrides, exit codes — is platform-uniform by design.
+|===
+
+See also: link:/docs/architecture/factories/[Where the pair is built] ·
+link:/docs/architecture/dispatch/[Who hands the image over] ·
+link:/docs/architecture/store/[House rules for the cache].

@@ -1,0 +1,419 @@
+---
+title: Dispatch
+heading: Dispatch.
+lede: >-
+  Managed mode: you type a command name, and per invocation tebako picks the
+  payload version and the runtime that command runs on. No version manager
+  daemon, no shell eval hook — one dispatcher binary behind every shim,
+  re-resolving from scratch every single time.
+description: >-
+  Managed mode: how tebako-shim turns a command name into a running payload —
+  argv0 selection, the first-hit-wins version chain, cache-first runtime
+  resolution with the honest compatibility model, the exec handoff, and the
+  explicit, cached registry.
+---
+
+// normative: spec 07, spec 04, spec 05, spec 06
+
+[NOTE]
+====
+Status: shipped — the dispatcher, its management verbs, the registry format,
+and the dispatch-time registry cache are live in
+link:https://github.com/tamatebako/tebako[tamatebako/tebako] as
+link:https://github.com/tamatebako/tebako/tree/main/crates/tebako-shim[`crates/tebako-shim`].
+One piece is still planned: a `tebako use` command that would write your
+default version for you — today you author `~/.tebako/config.yaml` directly.
+Every command shown on this page exists.
+====
+
+== Four artifacts, four jobs.
+
+A lean tebako package already is a dispatcher: it resolves its runtime at run
+time. Managed mode splits that trick into four independent artifacts, each
+with its own publisher, its own release line, and its own trust anchor.
+
+Payload::
+A `.tfs` image of the app — versioned, immutable, optionally signed.
+Pure-language payloads are runtime-independent and ship as one _universal_
+image for every platform; native-extension payloads ship per triplet per ABI
+line.
+
+Runtime::
+Two artifacts — the interpreter executable plus its env `.tfs` image —
+published by the
+link:https://github.com/tamatebako/tebako-runtime-ruby/releases[runtime
+factory], downloaded once per machine, SHA-256-verified, mounted (never
+extracted), and shared by every package and payload on the box.
+
+Registry::
+A developer-hosted `tpkg-registry.yaml` on any git host, mirroring only the
+resolution fields: versions, per-platform artifacts with digests, runtime
+requirements, entrypoints, the default. The host's releases are the storage
+— zero central infrastructure.
+
+Dispatcher::
+`tebako-shim` — one small static Rust binary, linked once per command name
+into `~/.tebako/shims/<tool>`. The thing on PATH that picks version and
+runtime per invocation and hands off.
+
+== One invocation, end to end.
+
+Nothing is sticky. Every invocation of a shim walks the whole chain again —
+switch directories and the same command can resolve to a different version on
+a different runtime. That is the mise model: the project file is read at
+dispatch time, so there is nothing to activate and no shell state to stale.
+
+++++
+<figure role="img" aria-label="The dispatch cascade: invocation name, version chain, runtime resolution, exec handoff, the interpreter running">
+<svg viewBox="0 0 940 560" class="w-full min-w-[760px]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The dispatch cascade: invocation name, version chain, runtime resolution, exec handoff, the interpreter running">
+          <defs>
+            <marker id="dp-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 Z" fill="var(--tb-c-accent)" />
+            </marker>
+          </defs>
+
+          <!-- step 1: argv0 -->
+          <g transform="translate(30, 20)">
+            <rect width="590" height="88" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="295" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--tb-c-text-1)">argv0 is the selector</text>
+            <text x="295" y="44" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">$ metanorma doc.adoc — the shell found ~/.tebako/shims/metanorma,</text>
+            <text x="295" y="58" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">a link to the one tebako-shim binary; the link's NAME picks the payload</text>
+            <text x="295" y="76" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">multi-command suites: N entrypoints → N shims, each resolved independently</text>
+          </g>
+          <line x1="325" y1="110" x2="325" y2="130" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#dp-arrow)" />
+
+          <!-- step 2: version chain -->
+          <g transform="translate(30, 136)">
+            <rect width="590" height="118" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="295" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--tb-c-text-1)">payload version — the chain, first hit wins</text>
+            <text x="295" y="44" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">1 · TEBAKO_&lt;TOOL&gt;_VERSION — the environment override, one shell at a time</text>
+            <text x="295" y="59" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">2 · nearest .tebako-tools.yaml walking up from the working directory</text>
+            <text x="295" y="74" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">3 · defaults: in ~/.tebako/config.yaml — your machine-wide pin</text>
+            <text x="295" y="89" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">4 · the registry's default: — the publisher's declared pick</text>
+            <text x="295" y="107" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-accent)">a disabled version is a named refusal, never a fallback to another</text>
+          </g>
+          <line x1="325" y1="256" x2="325" y2="276" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#dp-arrow)" />
+
+          <!-- step 3: runtime resolution -->
+          <g transform="translate(30, 282)">
+            <rect width="590" height="102" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="295" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--tb-c-text-1)">runtime resolution — cache first</text>
+            <text x="295" y="44" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">the entrypoint's runtime_requirement → newest COMPATIBLE runtime already</text>
+            <text x="295" y="58" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">cached (no download) → else download the newest compatible from the</text>
+            <text x="295" y="72" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">factory index, SHA-256-verify, cache, share machine-wide</text>
+            <text x="295" y="90" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">no runtime_requirement at all → zero-runtime dispatch: skip this box entirely</text>
+          </g>
+          <line x1="325" y1="386" x2="325" y2="406" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#dp-arrow)" />
+
+          <!-- step 4: handoff -->
+          <g transform="translate(30, 412)">
+            <rect width="590" height="92" rx="10" fill="var(--color-ink)" stroke="var(--tb-c-accent)" stroke-width="1.5" />
+            <text x="295" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--color-mist-pale)">the handoff — exec</text>
+            <text x="295" y="44" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--color-gold)">tebako-runtime-… --tebako-image payload.tfs:0:/ …</text>
+            <text x="295" y="58" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--color-gold)">                    --tebako-entry /bin/metanorma doc.adoc</text>
+            <text x="295" y="76" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--color-mist)" opacity="0.85">+ TEBAKO_RUNTIME_IMAGE (the env image) + the jail policy in TEBAKO_JAIL*</text>
+          </g>
+          <line x1="325" y1="506" x2="325" y2="524" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#dp-arrow)" />
+
+          <!-- step 5: running -->
+          <g transform="translate(30, 528)">
+            <rect width="590" height="30" rx="8" fill="var(--tb-c-accent)" stroke="var(--tb-c-accent)" stroke-width="1.5" />
+            <text x="295" y="19" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10" fill="var(--color-paper)">the driver mounts the images, installs the jail, rewrites argv — your program runs</text>
+          </g>
+
+          <!-- right rail -->
+          <g transform="translate(660, 20)">
+            <rect width="260" height="538" rx="14" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+            <text x="130" y="34" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10" font-weight="600" fill="var(--tb-c-text-3)">RULES OF THE CHAIN</text>
+            <g font-family="var(--font-sans), sans-serif" font-size="10.5" fill="var(--tb-c-text-2)">
+              <text x="24" y="64">· the whole chain re-runs on</text>
+              <text x="38" y="80">EVERY invocation — nothing is</text>
+              <text x="38" y="96">sticky, nothing caches a choice</text>
+
+              <text x="24" y="128">· the version must be installed;</text>
+              <text x="38" y="144">a pin to a missing version is a</text>
+              <text x="38" y="160">named error, not a surprise fetch</text>
+
+              <text x="24" y="192">· the payload image is never</text>
+              <text x="38" y="208">mutated — swapping runtimes</text>
+              <text x="38" y="224">changes only this dispatch</text>
+
+              <text x="24" y="256">· payloads verify at install;</text>
+              <text x="38" y="272">a run re-verifies nothing</text>
+
+              <text x="24" y="304">· a run installs nothing and</text>
+              <text x="38" y="320">links nothing — install is the</text>
+              <text x="38" y="336">explicit verb (tebako install)</text>
+            </g>
+            <line x1="24" y1="360" x2="236" y2="360" stroke="var(--tb-c-divider-strong)" stroke-width="1" />
+            <text x="130" y="388" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10" font-weight="600" fill="var(--tb-c-text-3)">SEE IT WITHOUT RUNNING IT</text>
+            <text x="130" y="414" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-accent)">tebako-shim which metanorma</text>
+            <text x="130" y="434" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="10.5" fill="var(--tb-c-text-2)">resolved version + its source,</text>
+            <text x="130" y="450" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="10.5" fill="var(--tb-c-text-2)">runtime, mounts, the exact argv</text>
+            <text x="130" y="466" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="10.5" fill="var(--tb-c-text-2)">— and it never downloads</text>
+
+            <text x="130" y="506" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="10.5" fill="var(--tb-c-text-2)">windows: spawn + wait, the</text>
+            <text x="130" y="522" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="10.5" fill="var(--tb-c-text-2)">child's exit code propagated</text>
+          </g>
+        </svg>
+</figure>
+++++
+
+_Figure 1 — The dispatch cascade: invocation name, version chain, runtime resolution, the exec handoff, and the interpreter running._
+
+What the driver does with the handoff — mount order, longest-prefix
+dispatch, the fail-closed rules — is on
+link:/docs/architecture/anatomy/[the anatomy page]; this page is about
+everything that happens before the interpreter starts.
+
+== The version chain, link by link.
+
+Four links, evaluated in order; the first link that names a version wins, and
+later links are not consulted.
+
+. **The environment:** `TEBAKO_<TOOL>_VERSION` — the command name uppercased,
+every non-alphanumeric character becoming an underscore (`metanorma` →
+`TEBAKO_METANORMA_VERSION`). One shell, one pin; nothing is written anywhere.
+
+. **The project pin:** the nearest `.tebako-tools.yaml` walking up from the
+working directory — a flat YAML mapping of command name to version. One
+subtlety, locked: a nearer file that does not pin this command does _not_
+shadow a farther file that does — the walk continues until a file actually
+answers.
+
+. **Your default:** `defaults:` in `~/.tebako/config.yaml`, which you author
+by hand. The dispatcher only ever reads this file — a planned `tebako use`
+command will be the writer when it lands; until then, editing the YAML is the
+mechanism, not a workaround.
+
+. **The registry default:** the `default:` key the publisher declared in
+their `tpkg-registry.yaml`, read through the dispatch cache (below).
+Registered registries are scanned in config order; the first one carrying the
+payload answers.
+
+If no link answers, the error says so — listing every link it tried and the
+versions actually installed (exit 69). A resolved version that is not
+installed, or that you disabled, is likewise a named refusal with the remedy
+in the message. Dispatch never guesses a version.
+
+== Runtime resolution — cache first, then the factory index.
+
+The chosen entrypoint's `runtime_requirement` (an engine plus a version
+constraint) is evaluated against `~/.tebako/runtimes/`: the newest compatible
+runtime already cached wins, with **no download**. Only a cache miss reaches
+the network — the newest compatible interpreter the
+link:https://github.com/tamatebako/tebako-runtime-ruby/releases[runtime factory]
+released for this platform — which is SHA-256-verified against the release
+index before it enters the cache. Because the payload image is immutable,
+swapping runtimes never touches it: only this dispatch-time choice changes.
+
+Pure-language payloads::
+The constraint is a range — `ruby >= 3.3, < 5.0`. Any newer runtime inside
+the range works; older payloads simply run on newer interpreters. One
+universal `.tfs` serves every platform — the per-platform runtime supplies
+the machine code.
+
+Native-extension payloads::
+Locked to the ABI line they were built against — two-dimensional: the
+version line (`ruby ~> 3.3.0`) and the platform line (`abi: arm64-darwin-23`,
+the runtime's own platform string). A newer line needs a new payload build;
+a wrong line on either axis is a **named compatibility error, never a
+segfault**.
+
+Runtimes published before the `abi` key existed carry no platform line, and
+stay eligible — the compat window: a payload's abi check never fails against
+an unknown line. And an entrypoint with no `runtime_requirement` at all — a
+native tool, a self-contained binary — skips this entire section:
+zero-runtime dispatch runs the install-time materialization straight from the
+store, with no runtime mounted and no VFS in the child.
+
+== The handoff.
+
+One exec, one wire format — the same launcher ABI the standalone bootstrap
+speaks. The registry payload is a bare image, so it mounts whole: slot `0`,
+mount point `/`. Dependency slices follow at their consumer-declared mount
+points.
+
+[source,console]
+----
+$ tebako-shim which metanorma
+tool: metanorma
+payload: metanorma 1.2.3
+  version source: project /work/Doc/.tebako-tools.yaml
+  image: ~/.tebako/payloads/metanorma/1.2.3.tfs
+entrypoint: /bin/metanorma
+runtime: ruby "~> 3.3.0" → ruby 3.3.9 (cached)
+  exe: ~/.tebako/runtimes/ruby-3.3.9-0.16.9-aarch64-macos/tebako-runtime-0.16.9-3.3.9-aarch64-macos
+  image: ~/.tebako/runtimes/ruby-3.3.9-0.16.9-aarch64-macos/tebako-runtime-0.16.9-3.3.9-aarch64-macos.tfs
+mounts:
+  ~/.tebako/payloads/metanorma/1.2.3.tfs:0:/
+exec argv:
+  tebako-runtime-0.16.9-3.3.9-aarch64-macos
+  --tebako-image ~/.tebako/payloads/metanorma/1.2.3.tfs:0:/
+  --tebako-entry /bin/metanorma
+  doc.adoc
+----
+
+Environment on top of the inherited one: `TEBAKO_RUNTIME_IMAGE` names the env
+image the driver mounts at the runtime root; when a jail policy applies,
+`TEBAKO_JAIL` carries it, with `TEBAKO_JAIL_SOURCE` and
+`TEBAKO_JAIL_JOURNAL` for the audit trail.
+
+The shim consumes exactly three flags before handing over — `--jail <spec>`,
+`--mount <host:mount:ro|rw>`, `--no-host` (the tightening surface; they can
+only narrow what a payload's manifest requests). Everything else, unknown
+flags included, reaches the payload verbatim; `--` ends flag parsing for the
+arguments that literally are those names. On unix the shim execs — the
+process _becomes_ the runtime, so signals and the exit code are the program's
+own; on Windows it spawns, waits, and exits with the child's code.
+
+== The registry — explicit, cached, never searched.
+
+A registry is any git-host repository carrying a `tpkg-registry.yaml`; the
+host's releases are the artifact storage. The file mirrors only
+resolution-relevant fields — versions, per-triplet artifacts with SHA-256
+digests, `runtime_requirement`, entrypoints, `default:` — so the dispatcher
+resolves without downloading every payload. Platform selection happens in the
+file, declaratively: the dispatcher reads the entry for the host triplet (or
+`universal`) and fetches exactly that artifact. Nothing guesses by filename.
+
+**Explicit-only:** a fresh install of tebako has zero registries. `tebako
+add-registry <ref>` registers one; there is no default registry, no central
+index, and no search chain — each reference form resolves in exactly one
+place (the repo's default-branch root via the contents API, a pinned release
+artifact, a git blob path, or a local `file://`), and an unparseable
+reference is a named error, never a guess.
+
+**The dispatch cache:** remote registries use a per-reference cache under
+`~/.tebako/registries/<sha256-of-ref>.yaml` with a 24-hour TTL, so dispatch
+never blocks on the network twice in a row. `tebako update-registries`
+renews it ahead of time; `tebako add-registry` primes it with the bytes it
+already fetched; `TEBAKO_OFFLINE=1` turns dispatch into
+cache-or-named-error — a stale cache still answers offline, a missing one
+fails by name.
+
+Install is the explicit verb: `tebako install <name[@ver] | ref>` resolves
+the registry, selects the host entry, downloads, verifies (SHA-256 and/or
+the OpenPGP signature), and lands the payload byte-identical in the
+content-addressed cache — then registers the payload's shims. Registry
+installs always link the declared entrypoints; installing a local package
+file links only with the explicit `--shims`; a run, of anything, ever, links
+nothing.
+
+== Managing the shim layer — the real verbs.
+
+Invoked by its own name, the same binary is the management tool. This is the
+whole surface — there is no `tebako use`, no `tebako shim add`, no hidden
+subcommands:
+
+[%header,cols="2,3"]
+|===
+| Command | What it does
+
+| `tebako-shim list`
+| installed payloads, their versions, the resolved default and its source, and every shim link
+
+| `tebako-shim enable <tool>[@<ver>]`
+| re-enable a disabled tool, or one disabled version of it
+
+| `tebako-shim disable <tool>[@<ver>]`
+| refuse dispatch of a tool, or of one version of it — dispatch of a disabled target fails with a named error
+
+| `tebako-shim which <tool>`
+| preview a dispatch without running it: the resolved version and which chain link produced it, the runtime, the mounts, the exact exec argv
+
+| `tebako-shim doctor`
+| diagnose the shim layer: PATH, shim → payload records, trust anchors re-hashed, registry cache freshness, runtime cache entries
+
+| `tebako-shim install-shell [--shell bash\|zsh\|fish\|csh]`
+| prepend ~/.tebako/shims to PATH via a managed block in the shell startup file (Windows: the user PATH in the registry)
+
+| `tebako-shim uninstall-shell [--shell …]`
+| remove exactly the managed block — nothing else in the file is touched
+|===
+
+Disable state lives in `~/.tebako/shims/.disabled.yaml` — shim-managed,
+deliberately separate from your authored `config.yaml`, so `disable` never
+rewrites a hand-maintained file. `doctor` is the diagnostic path the error
+messages point at: it re-hashes payload images against their install-time
+trust anchors and exits 1 when anything is wrong.
+
+== Shell integration — one directory, no eval hook.
+
+One directory on PATH: `~/.tebako/shims`. `tebako-shim install-shell`
+inserts a managed BEGIN/END block into the right startup file for your shell
+(`.bashrc`, `.zshrc`, `~/.config/fish/config.fish`, `.cshrc`) — idempotent,
+and `uninstall-shell` removes exactly its block. On Windows the shim
+directory goes onto the user PATH in the registry instead. The links
+themselves are the platform's own: symlinks on unix; on Windows an NTFS
+hardlink first — no admin, no Developer Mode — with a byte copy as the named
+fallback, never a `.cmd` wrapper. And there is no `eval "$(… init -)"` hook
+for switching versions: the dispatcher reads the project file itself, per
+invocation.
+
+== Two distribution forms, one press.
+
+`tebako press` produces both. For users without tebako: the standalone
+per-platform tpkg executable. For dispatcher users: the registry payload —
+one universal image for a pure-language app, per-triplet variants only when
+native code forces it. The release flow is press → sign → upload the
+artifacts → commit the registry manifest, and `tebako publish` automates it
+for GitHub releases and `file://` mirrors. Building every variant is a
+matrix CI job, not manual work.
+
+== Every refusal has a name.
+
+The dispatcher reuses the loader's named exit set rather than inventing its
+own. The dispatch-specific truth behind the table: a native-extension payload
+on a wrong-ABI-line runtime is exit 69 with both lines named — never a
+segfault.
+
+[%header,cols="1,1,4"]
+|===
+| Exit | Refusal | When the shim raises it
+
+| 64
+| usage
+| malformed management-command argv — the error prints the verb's usage line
+
+| 65
+| manifest
+| a payload record is missing or corrupt, a command is provided by two installed payloads, or a registry does not parse — the message points at tebako-shim doctor
+
+| 69
+| unavailable
+| no compatible runtime cached or downloadable, the resolved version is not installed or is disabled, an offline registry miss — the chain links and the fix are named
+
+| 70
+| checksum
+| a downloaded artifact failed SHA-256 verification against the release index — it was deleted; nothing entered the cache
+
+| 74
+| I/O
+| a filesystem, lock, or install operation failed
+
+| 75
+| contract
+| the runtime release speaks a handoff contract this shim does not — or declares none at all; refused before any download, both sides named
+|===
+
+Once the interpreter is running, exit codes are the program's — the shim is
+out of the picture by then.
+
+== The mnenv retirement, in practice.
+
+[NOTE]
+====
+Status: shipped.
+====
+
+With tebako-shim shipped,
+link:https://github.com/metanorma/mnenv[mnenv] — metanorma's Ruby version
+manager — retires, and metanorma becomes the first dogfood consumer of this
+exact chain: a heavy native-extension app, pressed per (version × ruby
+line), published through its own registry, dispatched by the shim. The whole
+model on this page, eaten by its own cooks.
+
+See also: link:/docs/guides/shims/[Shims and versions] ·
+link:/docs/architecture/store/[Where everything lives] ·
+link:/docs/architecture/runtime-as-image/[The runtime as an image].
