@@ -51,8 +51,8 @@ network:
 ----
 
 Precedence is `HTTPS_PROXY` → `HTTP_PROXY` → `ALL_PROXY` →
-`network.proxy` → direct. HTTPS connections ride CONNECT through the
-proxy and TLS still terminates at the target host — an inspecting proxy
+`network.proxy` → direct. HTTPS connections tunnel through the proxy via
+CONNECT and TLS still terminates at the target host — an inspecting proxy
 re-encrypts, which is exactly what the trust half below is for.
 
 Proxy authentication uses credentials embedded in the URL
@@ -124,7 +124,7 @@ making its own TLS connections (Ruby's net/http, Python's requests, …)
 is a separate surface: it reads the runtime's usual variables, and a
 payload image can ship its own CA bundle that the driver exports as
 `SSL_CERT_FILE` at boot (a mounted `ssl/cert.pem` marked for
-materialization). Your organization's root can ride the payload itself —
+materialization). Your organization's root can travel inside the payload itself —
 no host configuration needed. The runtime's own tooling conventions
 (`REQUESTS_CA_BUNDLE`, `SSL_CERT_FILE`, …) apply unchanged.
 
