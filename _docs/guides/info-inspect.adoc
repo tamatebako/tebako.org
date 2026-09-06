@@ -1,0 +1,169 @@
+---
+title: info & inspect
+heading: info & inspect.
+lede: >-
+  Two read-only families: `tebako info` reports on the store and its
+  contents; `tebako inspect` reads a single artifact. Neither mutates
+  anything; `--remote` is the only flag that reaches the network.
+description: >-
+  Read-only tebako introspection: tebako info topics with --remote and
+  --json, tebako inspect with the contract card, tebako-pkg info, and tfs
+  ls/tree/cat.
+---
+
+== tebako info: six topics.
+
+`system` is the default — tool version, platform, store location, counts
+(representative):
+
+[source,console]
+----
+$ tebako info
+tebako      0.15.9
+platform    macos-arm64
+store       ~/.tebako
+runtimes 1 · payloads 3 · shims 2 · registries 2
+----
+
+The `runtimes` topic lists the cached interpreters:
+
+[source,console]
+----
+$ tebako info runtimes
+ruby-3.3-3.3.7-macos-arm64
+  exe + env image · 142 MB
+  origin: tebako-runtime-ruby releases
+----
+
+The `payloads` topic lists what is installed:
+
+[source,console]
+----
+$ tebako info payloads
+metanorma  1.2.3  tfs:github:tebako-packages/metanorma
+hello      0.1.0  tfs:github:tamatebako/hello
+----
+
+The `shims` topic lists the registered commands:
+
+[source,console]
+----
+$ tebako info shims
+metanorma -> tebako-shim   payload metanorma
+hello     -> tebako-shim   payload hello
+----
+
+The `registries` topic shows freshness at a glance:
+
+[source,console]
+----
+$ tebako info registries
+tfs:github:tebako-packages/metanorma   fetched 3 h ago    fresh
+tfs:github:tamatebako/hello            fetched 26 h ago   stale
+----
+
+The `store` topic shows disk usage by section:
+
+[source,console]
+----
+$ tebako info store
+runtimes     142 MB
+payloads      40 MB
+registries    12 KB
+total        182 MB   ~/.tebako
+----
+
+_All output blocks on this page are representative._
+
+== --remote and --json.
+
+`--remote` affects two topics: `runtimes` adds what the runtime factory
+publishes (the newest five), and `payloads` adds the catalogs of your
+registries. Everything else stays local.
+
+`--json` emits machine-readable documents that carry `"info_schema": 1`
+so scripts can pin the shape:
+
+[source,console]
+----
+$ tebako info runtimes --json | jq -r '.runtimes[].version'
+3.3.7
+----
+
+== tebako inspect: one artifact, auto-detected.
+
+`tebako inspect` auto-detects its target — a package or a bare image:
+
+[source,console]
+----
+$ tebako inspect ./myapp                            # package: trailer present
+$ tebako inspect ./acme-fonts-2.1.0.tfs               # bare image: no trailer
+$ tebako inspect --manifest ./acme-fonts-2.1.0.tfs
+$ tebako inspect --provides --requires ./myapp
+$ tebako inspect --platforms ./myapp
+$ tebako inspect --slot 1 ./myapp
+$ tebako inspect --json ./myapp
+----
+
+`--manifest` prints the in-image manifest; `--provides` and `--requires`
+the capability and dependency declarations; `--platforms` the platform
+matrix; `--slot N` reads one trailer slot of a package. `--verify` and
+`--require-signed` are covered in
+link:/docs/guides/verify/[Verify integrity].
+
+== The contract card.
+
+Ask for the contract card with `--contract`:
+
+[source,console]
+----
+$ tebako inspect --contract ./myapp
+era        v2
+contract   runtime declares 2 · loader accepts 1..2
+mount_root /__tfs__
+abi        ruby-3.3 · macos-arm64
+trust      signed · press-local key 4F2A…9C · trusted
+verdict    OK — this loader can run this package
+----
+
+* `era` — the packaging generation the artifact belongs to.
+* `contract` — the handoff semantics the runtime declares, against what
+  this loader accepts.
+* `mount_root` — where the env image lands inside the process's
+  filesystem view.
+* `abi` — the interpreter ABI line and platform string that
+  native-extension payloads are matched against.
+* `trust` — signature state, and whether the signing key is in your
+  trusted set.
+* `verdict` — the bottom line: runnable, or a named refusal.
+
+== Trailer surgery: tebako-pkg info.
+
+`tebako-pkg info` dumps slots, offsets, and the trailer itself:
+
+[source,console]
+----
+$ tebako-pkg info --full ./myapp
+----
+
+The audience is people building or repairing packages, not running them.
+`--slot N` narrows to one slot, `--depth N` how deep nested payloads are
+recursed, `--json` makes it scriptable.
+
+== Look inside an image — without extracting.
+
+The `tfs` CLI reads an image without extracting it:
+
+[source,console]
+----
+$ tfs tree ./acme-fonts-2.1.0.tfs
+$ tfs ls -l ./acme-fonts-2.1.0.tfs /AcmeSans-Regular.otf
+$ tfs cat ./acme-fonts-2.1.0.tfs /__tpkg__/manifest.yaml
+$ tfs find ./acme-fonts-2.1.0.tfs Bold
+----
+
+`tfs exec` runs a command with the image mounted (Unix only), and `tfs
+extract` copies files out when you truly need them on disk. There is no
+general FUSE mount — `tfs mount` exists only for encrypted images.
+
+See also: link:/docs/guides/debug/[Debug & logging] · link:/docs/guides/verify/[Verify integrity] · link:/docs/architecture/store/[The store, in the architecture docs]

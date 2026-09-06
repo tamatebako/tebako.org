@@ -1,0 +1,93 @@
+---
+title: Run a packaged app
+heading: Run a packaged app.
+lede: >-
+  A tebako package is an executable file. There are three ways to run
+  one, and they differ only in how much machinery you want around the
+  run.
+description: >-
+  Three ways to run a tebako package: the file itself, tebako run with
+  jail and mount overrides, or the managed flow with registries and PATH
+  shims.
+---
+
+== A · Execute the file.
+
+No tebako install, no setup: the package carries its own loader. The
+first run on a machine resolves the runtime — downloaded once, verified,
+cached, and shared by every package that can use it.
+
+[source,console]
+----
+$ chmod +x ./metanorma-1.2.3-macos-arm64
+$ ./metanorma-1.2.3-macos-arm64 compile site.adoc
+resolving runtime: ruby >= 3.3, < 5.0 (macos-arm64)
+downloading tebako-runtime-3.3.7 (exe + env image)
+verifying sha256
+installing (locked)
+installed ruby-3.3.7 — cached at ~/.tebako/runtimes/ruby-3.3-3.3.7-macos-arm64
+----
+
+Every later run on that machine prints one line and starts immediately:
+
+[source,console]
+----
+runtime ruby-3.3.7 (cached)
+----
+
+The runtime is shared infrastructure, not part of the package: a second
+package that accepts the same ruby line reuses the cached copy. The
+output above is abridged.
+
+== B · Drive it with tebako run.
+
+`tebako run` wraps the same execution with per-run controls. Everything
+after `--` (or the first non-flag token) goes to the payload verbatim;
+the flags before it shape this run only.
+
+[source,console]
+----
+$ tebako run ./myapp -- --help
+$ tebako run ./myapp --jail deny -- --help
+$ tebako run ./myapp --mount "$HOME/data:/data:ro" -- process /data
+$ tebako run ./myapp --no-host -- status
+----
+
+`--jail <spec>` tightens the filesystem policy for this run. `--mount
+<host:mount:ro|rw>` adds a one-off host directory grant, read-only or
+read-write; repeat it for each grant. `--no-host` drops every host
+grant the package requested. The full grammar is in the
+link:/docs/guides/jails/[jails guide].
+
+== C · The managed way: registry, install, shim.
+
+When the tool is something you use every day, let tebako manage it: a
+registry to resolve names and versions, an explicit install into the
+store, and a shim on PATH so the payload is an ordinary command.
+
+[source,console]
+----
+$ tebako add-registry tfs:github:tebako-packages/metanorma
+$ tebako install metanorma
+installed metanorma 1.2.3 -> ~/.tebako/payloads/metanorma/1.2.3.tfs
+shim ~/.tebako/shims/metanorma
+$ tebako-shim install-shell    # once per machine
+$ metanorma compile site.adoc
+----
+
+The shim picks the payload version and a compatible runtime per
+invocation — env overrides, project pins, and defaults are covered in
+link:/docs/guides/shims/[Shims & versions]. Output versions shown are
+representative.
+
+== Two rules worth knowing.
+
+* *Offline is a mode.* With `TEBAKO_OFFLINE=1`, a run is a cache hit or
+  a named error (exit 69) — never a surprise fetch.
+* *A run never installs.* Executing a package resolves the shared
+  runtime, but nothing from the package's payload enters the store.
+  Installation is the explicit verb: `tebako install`.
+
+See also: link:/docs/guides/install/[Install tebako] ·
+link:/docs/guides/jails/[Set a jail policy] ·
+link:/docs/architecture/store/[The store, in the architecture docs].

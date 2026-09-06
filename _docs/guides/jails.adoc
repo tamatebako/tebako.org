@@ -1,0 +1,209 @@
+---
+title: Set a jail policy
+heading: Set a jail policy.
+lede: >-
+  A jail is a declarative answer to one question: what of the host filesystem
+  can this run see? The policy is enforced in the virtual filesystem layer and
+  installed after the mounts, before your code runs.
+description: >-
+  Tebako jails: a declarative host-filesystem policy for any run — open, deny,
+  deny:arg, the platform floor, mount grants, record mode and the needs: block,
+  baked policies, precedence, and the audit journal.
+---
+
+// normative: spec 08 (profiles, TEBAKO_JAIL grammar, §2.1 platform floor), spec 23 §2 (needs: block) + §8 (record mode, tfs needs --from-journal) — record mode + generator shipped at the image layer; D1–D5 manifest/shim/press wiring is Phase-R (planned)
+
+== What a jail is not.
+
+* **Not a sandbox for hostile code.** A jail shapes the filesystem view; it is
+  not a security boundary against an adversarial payload.
+* **Filesystem-only.** No network, CPU, or memory metering.
+* **Not for static binaries.** Jails cover interpreted payloads and native
+  binaries running under the preload shim. A statically linked binary sees
+  only the host filesystem — for it there is no VFS, and so no jail.
+
+== The three profiles.
+
+`open`::
+The host filesystem is fully visible. The permissive profile — the tool
+behaves like any installed program.
+
+`deny`::
+The host is invisible; the process sees only its mounted images, plus
+whatever you explicitly grant with mounts.
+
+`deny:arg`::
+The host is invisible _except_ the paths you pass as arguments — those
+stay visible. The everyday profile for tools that edit the files you name.
+
+== The platform floor: what deny still grants.
+
+A `deny` policy is not a blank refusal. Every policy bound under the deny
+default gains a fixed per-platform set of read-only grants — the **floor** —
+covering the surface a spawned interpreter physically cannot boot without.
+The floor exists because a missing platform grant never failed as a policy
+verdict: it crashed the child in someone else's library (a JVM under a
+scratch-only jail segfaulted in its locale init when reads under `/usr`
+were denied). Denying the platform surface never produced a working
+process, so the floor grants it always:
+
+* **macOS** — `/usr`, `/System`, `/Library`.
+* **windows** — `%SystemRoot%\System32`, `%SystemRoot%\SysWOW64`,
+  `%SystemRoot%\Fonts`.
+* **other unix** — none today; an entry joins the list only with a proven
+  platform-process consumer, cited by run. The lists are amended by
+  evidence, never by anticipation.
+
+Two rules keep the floor honest. An authored mount covering a floor path
+_supersedes_ the floor entry — widening one to read-write is one authored
+grant away, and the floor never narrows what you allowed. And every bound
+grant, authored or floor, implies its strict ancestors are traversable by
+exact-path reads, so the platform's canonicalization walks pass by
+construction. The floor is system surface only: your home directory and
+your own tool trees stay authored grants — a `deny` never read-exposes
+them for you.
+
+== Tighten any run at invocation.
+
+Tighten a single run at invocation with `--jail`:
+
+[source,console]
+----
+$ tebako run ./myapp --jail deny -- --help
+$ metanorma --jail deny:arg compile site.adoc
+----
+
+With `tebako run` the flag goes before the `--` that separates payload
+arguments. At a shim, leading `--jail` / `--mount` / `--no-host` tokens are
+consumed by the dispatcher — everything else reaches the payload untouched.
+
+== Grant exactly what a run needs.
+
+The two invocation-time grants are `--mount` and `--no-host`:
+
+[source,console]
+----
+$ tebako run ./myapp --jail deny --mount "$HOME/sources:/work:ro" -- build /work
+$ metanorma --no-host compile site.adoc
+----
+
+`--mount <host:mount:ro|rw>` adds a host directory into the process's
+filesystem view at the given path, read-only or read-write; repeat it per
+grant. `--no-host` goes further than tightening: it drops every host grant
+the package requested.
+
+== Policy files, baked or invoked.
+
+A jail policy is YAML — a default profile plus explicit mounts:
+
+[source,yaml]
+----
+jail:
+  default: deny        # or open
+  mounts:
+    - host: $HOME/sources
+      mount: /work
+      access: ro       # or rw
+----
+
+Publishers bake a policy into the package at press time; users apply one
+per run by passing the file path as the spec:
+
+[source,console]
+----
+$ tebako press -r ./myapp -e bin/myapp --jail ./jail.yaml   # baked in
+$ tebako run ./myapp --jail ./jail.yaml -- build              # per run
+----
+
+The same grammar works from the environment: `TEBAKO_JAIL` takes
+directives separated by semicolons — `open`, `deny`,
+`<host>:<mount>:ro|rw`, or `@<path>` to read directives from a file:
+
+[source,console]
+----
+$ TEBAKO_JAIL='deny' metanorma compile site.adoc
+$ TEBAKO_JAIL="$HOME/sources:/work:ro" ./myapp
+----
+
+== Discover the surface: record mode.
+
+An author rarely knows the host surface their payload touches — the JVM's
+home probe was invisible until the journal named it. Discovery is a
+first-class policy mode, not a guess: `TEBAKO_JAIL=record` allows every
+host access and journals it — `event=jail-allow path=… op=read|write` — so
+the workload cannot crash from policy while you observe it. Spawned
+children inherit the spec and append to the same journal.
+
+Record a run, then feed the journal to the generator:
+
+[source,console]
+----
+$ TEBAKO_JAIL=record tebako run ./myapp -- build
+$ tfs needs --from-journal ~/.tebako/journal.log
+----
+
+The generator reads the record journal — folding in `jail-deny` lines too,
+since a denial is an unmet need — and emits a draft `needs:` block: one
+entry per observed path, symbolic atoms re-substituted
+(`/Users/alice/…` → `$HOME/…`), access set to the strongest observed op,
+floor and store paths excluded (they are automatic), each entry carrying a
+`why: "TODO"` for you to replace with the real reason.
+
+The generator never edits a manifest. The record shows the _observed
+minimum_; you review the draft — flipping ro↔rw where production differs
+from the observation, deleting noise, filling in `why` — and merge it
+yourself. And `record` is a development mode: it journals at full volume
+and installs no enforcement, so shipping a composition with record still
+in force draws a named lint warning.
+
+== Declare it: the needs: block.
+
+A slice declares its host surface in its manifest — `needs:` is the only
+spelling, one key with one grammar:
+
+[source,yaml]
+----
+needs:
+  host:
+    - path: $HOME/.fontist      # absolute, or a symbolic atom
+      access: rw                # ro | rw
+      mount: /cache/fontist     # OPTIONAL: present the host path at this
+                                # VFS point; absent = enforcement-only
+      when: [macos]             # OPTIONAL platform filter
+      optional: true            # OPTIONAL: absent at bind = silently skipped
+      why: "fontist cache"      # MANDATORY
+----
+
+The symbolic atoms resolve at bind, per invocation, per user — never
+baked: `$HOME`, `$TMPDIR`, `$CWD` (the invoking directory),
+`$TEBAKO_HOME`. A need absent at bind without the `optional` marker is a
+named error, never a silent skip.
+
+**Stated plainly:** record mode and the journal generator ship today at
+the image layer — `TEBAKO_JAIL=record`, `tfs needs --from-journal`, and
+`needs:` inside `tfs exec --compose` documents. The wiring of `needs:`
+into slice manifests, shims, and press is Phase-R — specified, not yet
+shipped. When it lands, a declared need is a contract: an effective policy
+that does not cover it fails the run before exec, naming the slice, the
+path, and the `why` — a need never surfaces as a mid-run EPERM.
+
+== Precedence: the user always wins by tightening.
+
+The package manifest _requests_ a policy; the user can only narrow it. The
+effective policy is the intersection — manifest ∩ user — and the user's
+policy wins every conflict. A package may ask for read-write `$HOME`;
+`--jail deny:arg` at invocation still cuts it down, and `--no-host` drops
+the request entirely. Nothing at run time can widen what the publisher
+denied.
+
+== The audit journal, and failures.
+
+Every denial appends one line to the journal — `$TEBAKO_HOME/journal.log`
+by default. When a tool cannot see something you expected it to, that
+file is the first place to read. Under record mode (above) the _allows_
+append too — the same file is what `tfs needs --from-journal` reads.
+
+A malformed policy never runs half-applied: the run fails closed with
+exit 73 and nothing mounts.
+
+See also: link:/docs/guides/run/[Run a packaged app] · link:/docs/guides/package-ruby/[Package a Ruby app] · link:/docs/architecture/exec-tiers/[Exec tiers — where the preload shim ends]

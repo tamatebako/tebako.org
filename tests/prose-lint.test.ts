@@ -23,7 +23,7 @@ function visibleText(raw: string, isAstro: boolean): string {
   } else {
     s = s.replace(/^---[\s\S]*?---/, ' ')
     s = s.replace(/^\/\/.*$/gm, ' ')
-    s = s.replace(/\[source[^\]]*\][\s\S]*?^----$/gm, ' ')
+    s = s.replace(/\[source[^\]]*\]\n----\n[\s\S]*?\n----/g, ' ')
   }
   return s
 }
