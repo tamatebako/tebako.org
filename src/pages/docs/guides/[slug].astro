@@ -6,16 +6,11 @@ import { getSection } from '../../../config/docs'
 export async function getStaticPaths() {
   const entries = await getCollection('docs-guides')
   const guides = getSection('guides')
-  return entries
-    .map((entry) => ({
-      entry,
-      reg: guides.entries.find((e) => e.href === `/docs/guides/${entry.id}/`),
-    }))
-    .filter((x): x is { entry: (typeof entries)[number]; reg: { href: string } } => !!x.reg)
-    .map(({ entry, reg }) => ({
-      params: { slug: entry.id },
-      props: { entry, href: reg.href },
-    }))
+  return entries.flatMap((entry) => {
+    const reg = guides.entries.find((e) => e.href === `/docs/guides/${entry.id}/`)
+    if (!reg) return []
+    return [{ params: { slug: entry.id }, props: { entry, href: reg.href } }]
+  })
 }
 
 const { entry, href } = Astro.props
