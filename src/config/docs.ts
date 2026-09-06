@@ -67,6 +67,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
       { label: 'Create a data payload', href: '/docs/guides/data-payload/', status: 'live' },
       { label: 'Publish to your own registry', href: '/docs/guides/publish/', status: 'live' },
       { label: 'Curate a local library', href: '/docs/guides/library/', status: 'live' },
+      { label: 'Enterprise networks', href: '/docs/guides/enterprise-networks/', status: 'live' },
       { label: 'Shims & versions', href: '/docs/guides/shims/', status: 'live' },
       { label: 'Set a jail policy', href: '/docs/guides/jails/', status: 'live' },
       { label: 'Verify integrity', href: '/docs/guides/verify/', status: 'live' },

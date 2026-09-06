@@ -1,0 +1,148 @@
+---
+title: Enterprise networks
+heading: Enterprise networks.
+lede: >-
+  Corporate proxies with TLS inspection and self-signed roots are a
+  first-class deployment, not a workaround. Tell tebako how to reach the
+  network (the proxy half) and what to trust (the roots half) — both are
+  one environment variable or three lines of config.yaml.
+description: >-
+  Tebako behind a corporate proxy: HTTPS_PROXY/NO_PROXY and the
+  network.proxy config mirror; trusting an enterprise root CA via the
+  platform store (TEBAKO_TLS_PLATFORM_ROOTS) or additively
+  (TEBAKO_EXTRA_CA / network.extra_ca); the journal audit trail; the
+  packaged app's own TLS (SSL_CERT_FILE); fully offline installs.
+---
+
+== The two halves.
+
+Everything tebako downloads — runtimes, payloads, registry indexes —
+rides one in-process HTTPS client. Getting through an enterprise network
+is always the same two questions:
+
+. *Reach the network* — which proxy do connections go through?
+. *Trust the answer* — which root certificates verify the TLS
+  connection, especially when the proxy inspects (re-encrypts) traffic
+  with your organization's own root CA?
+
+Both are answered by environment variables or by the `network:` section
+of `~/.tebako/config.yaml`. Environment always wins, per key. There is
+no "disable verification" setting and there never will be — a wrong
+answer fails closed with a named error, never a silent fallback.
+
+== Reach the network: the proxy.
+
+The standard spellings work, uppercase or lowercase:
+
+[source,console]
+----
+$ export HTTPS_PROXY=http://proxy.corp:3128
+$ export NO_PROXY=localhost,127.0.0.1,.internal.corp   # comma list; * and .suffix work
+$ tebako install metanorma
+----
+
+or the same policy in config:
+
+[source,yaml]
+----
+# ~/.tebako/config.yaml
+network:
+  proxy: http://proxy.corp:3128
+----
+
+Precedence is `HTTPS_PROXY` → `HTTP_PROXY` → `ALL_PROXY` →
+`network.proxy` → direct. HTTPS connections ride CONNECT through the
+proxy and TLS still terminates at the target host — an inspecting proxy
+re-encrypts, which is exactly what the trust half below is for.
+
+Proxy authentication uses credentials embedded in the URL
+(`http://user:pass@proxy.corp:3128`). Credentials never reach the log:
+the audit journal records `proxy=http://***@proxy.corp:3128`. A proxy
+that rejects them answers with the named `ProxyAuthRequired` error
+(HTTP 407). SOCKS proxies are not supported and are refused by name.
+
+== Trust the answer: three spellings.
+
+*1. The default (bundled Mozilla roots).* Nothing to configure. Works
+wherever the proxy passes TLS through untouched.
+
+*2. The platform store* — for roots your IT pushes by GPO/MDM into the
+operating system's own trust store (Windows certificate store, macOS
+keychain, the Linux CA bundle). One env var:
+
+[source,console]
+----
+$ export TEBAKO_TLS_PLATFORM_ROOTS=1
+----
+
+or in config:
+
+[source,yaml]
+----
+network:
+  tls_roots: platform
+----
+
+*3. Additive PEMs* — keep the bundled Mozilla roots AND ALSO trust your
+organization's root, from a PEM file:
+
+[source,console]
+----
+$ export TEBAKO_EXTRA_CA=/etc/pki/corp-root.pem    # os-path-list; several files allowed
+----
+
+[source,yaml]
+----
+network:
+  extra_ca: [/etc/pki/corp-root.pem]
+----
+
+The additive and platform spellings do not combine — the OS verifier
+trusts exactly the OS store, so `tls_roots: platform` together with
+`extra_ca` is a named error that tells you to push the CA into the OS
+store instead. A PEM that is unreadable or does not parse is a named
+error at startup, never a silently skipped file.
+
+== See what was decided.
+
+Every process that fetches writes its network policy to the audit
+journal, `~/.tebako/journal.log`:
+
+[source,console]
+----
+1788670000 event=network-config proxy=http://***@proxy.corp:3128 (/home/u/.tebako/config.yaml)
+1788670000 event=network-config extra_ca=1 file(s) (/home/u/.tebako/config.yaml)
+----
+
+Fleet tooling can scrape the journal to prove which machines run with
+which policy.
+
+== The packaged application's own connections.
+
+The settings above govern *tebako's* downloads. A packaged application
+making its own TLS connections (Ruby's net/http, Python's requests, …)
+is a separate surface: it reads the runtime's usual variables, and a
+payload image can ship its own CA bundle that the driver exports as
+`SSL_CERT_FILE` at boot (a mounted `ssl/cert.pem` marked for
+materialization). Your organization's root can ride the payload itself —
+no host configuration needed. The runtime's own tooling conventions
+(`REQUESTS_CA_BUNDLE`, `SSL_CERT_FILE`, …) apply unchanged.
+
+== Fully offline fleets.
+
+For sites with no outbound access at all, pair this guide with
+link:/docs/guides/library/[Curate a local library]: one team mirrors the
+needed artifacts into a directory registry (`file:///`), and every
+machine installs from it. `TEBAKO_OFFLINE=1` turns any accidental
+network reach into a hard error instead of a leak.
+
+== The one exception you may meet.
+
+The size-gated bootstrap (the first bytes of a standalone packaged
+executable) deliberately ships without the proxy/additive-CA machinery
+to stay under its 3 MiB gate. It always honors
+`TEBAKO_TLS_PLATFORM_ROOTS`; pointed at a proxy or `TEBAKO_EXTRA_CA`, it
+stops with the named `NetworkingCompiledOut` error instead of guessing.
+The fix on such machines is the toolchain path — `tebako install` and
+the shims — which carries the full surface, or the platform-store
+spelling, which works everywhere.
