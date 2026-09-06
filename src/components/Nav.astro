@@ -36,8 +36,8 @@ const isActive = (href: string) =>
 
       <div class="ml-auto flex items-center gap-2">
         <SearchButton client:idle />
-        <DarkToggle client:load />
-        <MobileMenu client:load nav={NAV_ITEMS} class="md:hidden" />
+        <DarkToggle client:idle />
+        <MobileMenu client:media="(max-width: 767px)" nav={NAV_ITEMS} class="md:hidden" />
       </div>
     </nav>
   </div>

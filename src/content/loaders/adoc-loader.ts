@@ -89,7 +89,7 @@ async function listAdocFiles(dir: string): Promise<string[]> {
   }
 }
 
-function extractFrontmatter(content: string): {
+export function extractFrontmatter(content: string): {
   frontmatter: Record<string, unknown>
   body: string
 } {
