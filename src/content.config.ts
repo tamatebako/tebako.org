@@ -1,6 +1,13 @@
 import { defineCollection, z } from 'astro:content'
 import { adocLoader } from './content/loaders/adoc-loader'
 
+const docsSchema = z.object({
+  title: z.string(),
+  heading: z.string().optional(),
+  lede: z.string().optional(),
+  description: z.string(),
+})
+
 const blog = defineCollection({
   loader: adocLoader({
     base: '_posts',
@@ -32,12 +39,7 @@ const docsGuides = defineCollection({
     base: '_docs/guides',
     attributes: { relfileprefix: '/docs/guides/', outfilesuffix: '/' },
   }),
-  schema: z.object({
-    title: z.string(),
-    heading: z.string().optional(),
-    lede: z.string().optional(),
-    description: z.string(),
-  }),
+  schema: docsSchema,
 })
 
 const docsReference = defineCollection({
@@ -45,12 +47,7 @@ const docsReference = defineCollection({
     base: '_docs/reference',
     attributes: { relfileprefix: '/docs/reference/', outfilesuffix: '/' },
   }),
-  schema: z.object({
-    title: z.string(),
-    heading: z.string().optional(),
-    lede: z.string().optional(),
-    description: z.string(),
-  }),
+  schema: docsSchema,
 })
 
 const docsArchitecture = defineCollection({
@@ -58,12 +55,7 @@ const docsArchitecture = defineCollection({
     base: '_docs/architecture',
     attributes: { relfileprefix: '/docs/architecture/', outfilesuffix: '/' },
   }),
-  schema: z.object({
-    title: z.string(),
-    heading: z.string().optional(),
-    lede: z.string().optional(),
-    description: z.string(),
-  }),
+  schema: docsSchema,
 })
 
 export const collections = { blog, 'docs-guides': docsGuides, 'docs-reference': docsReference, 'docs-architecture': docsArchitecture }

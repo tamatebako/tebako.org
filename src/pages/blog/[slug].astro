@@ -19,6 +19,16 @@ const authors = post.data.author
 ---
 
 <BaseLayout title={`${post.data.title} — Tebako`} description={post.data.excerpt}>
+  <script type="application/ld+json" set:html={JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: post.data.title,
+    datePublished: post.data.date.toISOString(),
+    dateModified: post.data.date.toISOString(),
+    description: post.data.excerpt,
+    author: post.data.author.map((a: any) => ({ '@type': 'Person', name: a.name })),
+    url: new URL(Astro.url.pathname, Astro.site).toString(),
+  })} />
   <article class="mx-auto max-w-3xl px-6 pb-24 pt-32">
     <a
       href="/blog/"
