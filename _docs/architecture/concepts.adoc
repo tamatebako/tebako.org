@@ -1,0 +1,496 @@
+---
+title: Concepts
+heading: Concepts.
+lede: >-
+  The pieces every other page in this section builds on: the three-part
+  package, the tpkg trailer that glues it, the two press modes, the
+  machine-wide runtime cache, and the two distinct moments at which a runtime
+  gets resolved.
+description: >-
+  The three-part tebako package, the tpkg trailer wire format, the two press
+  modes, the shared runtime cache, and press-time vs run-time resolution.
+---
+
+// normative: spec 02, spec 03 §6, spec 05, spec 06, spec 17 §1, spec 19 — facts re-verified against crates/tpkg (lib.rs, error.rs, model.rs), tebako-cli/src/lib.rs, tebako-bootstrap/src/lib.rs, tebako-driver/src/handoff.rs @ main 2026-08-25
+// converted from src/pages/docs/architecture/index.astro (the "Concepts" page), 2026-09-07 — 5 data tables (trailerFields, slotFields, flagRows, formatRows, trailerErrors), 1 SVG diagram, 2 source blocks
+
+[NOTE]
+====
+How to read this section.
+
+Status: shipped — released and downloadable today; every claim links its
+artifact.
+
+Status: planned — locked design, not yet shipped.
+====
+
+== The three-part package.
+
+[NOTE]
+====
+Status: shipped.
+====
+
+Every tebako package is a composition of up to three independently
+distributable parts — a bootstrap loader, a language runtime, and one or more
+filesystem images — glued together by a **tpkg trailer** at the end of the
+file. The wire format is normative, and it has exactly one authoritative
+implementation: link:https://github.com/tamatebako/tebako/tree/main/crates/tpkg[crates/tpkg]
+in the product repo — `#![forbid(unsafe_code)]` Rust, pinned byte-exact
+against the C99 reference header by golden vectors.
+
+++++
+<figure role="img" aria-label="Package byte layout: bootstrap, payload slots, optional fat runtime slot, slot table, extension blocks, 166-byte trailer header at end of file">
+<svg viewBox="0 0 940 205" class="w-full min-w-[760px]" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Package byte layout: bootstrap, payload slots, optional fat runtime slot, slot table, extension blocks, 166-byte trailer header at end of file">
+  <text x="10" y="24" font-family="var(--font-mono), monospace" font-size="11" fill="var(--tb-c-text-3)">byte 0 →</text>
+  <text x="930" y="24" text-anchor="end" font-family="var(--font-mono), monospace" font-size="11" fill="var(--tb-c-text-3)">→ EOF</text>
+
+  <g transform="translate(10, 40)">
+    <rect width="145" height="110" rx="10" fill="var(--color-ink)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+    <text x="72" y="28" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--color-mist-pale)">A · Bootstrap</text>
+    <text x="72" y="48" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-mist)" opacity="0.8">the Rust loader</text>
+    <text x="72" y="62" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-mist)" opacity="0.8">&lt; 3 MB, CI size-gated</text>
+    <text x="72" y="88" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--color-gold)">the process entry point</text>
+  </g>
+
+  <g transform="translate(167, 40)">
+    <rect width="145" height="110" rx="10" fill="var(--tb-c-accent)" opacity="0.12" stroke="var(--tb-c-accent)" stroke-width="1.5" />
+    <text x="72" y="28" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--tb-c-accent)">C · Payload slots</text>
+    <text x="72" y="48" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">slot 0: the app image</text>
+    <text x="72" y="62" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">slots 1–7: data, tools</text>
+    <text x="72" y="88" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">mounted at run time</text>
+  </g>
+
+  <g transform="translate(324, 40)">
+    <rect width="145" height="110" rx="10" fill="var(--color-gold)" opacity="0.1" stroke="var(--color-gold)" stroke-width="1" stroke-dasharray="4 3" />
+    <text x="72" y="28" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--color-gold)">B · Runtime slot</text>
+    <text x="72" y="48" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">fat packages only</text>
+    <text x="72" y="62" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">format_id 4 (legacy)</text>
+    <text x="72" y="88" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">installed, never mounted</text>
+  </g>
+
+  <g transform="translate(481, 40)">
+    <rect width="145" height="110" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-width="1.5" />
+    <text x="72" y="28" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--tb-c-text-1)">Slot table</text>
+    <text x="72" y="48" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">n × 280 B records</text>
+    <text x="72" y="62" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">offset · size · format_id</text>
+    <text x="72" y="88" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">· mount point</text>
+  </g>
+
+  <g transform="translate(638, 40)">
+    <rect width="145" height="110" rx="10" fill="var(--tb-c-accent)" opacity="0.06" stroke="var(--tb-c-accent)" stroke-width="1" stroke-dasharray="4 3" />
+    <text x="72" y="28" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--tb-c-accent)">Ext blocks</text>
+    <text x="72" y="48" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">type 2: package manifest</text>
+    <text x="72" y="62" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">type 1: v2 signature</text>
+    <text x="72" y="88" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">optional</text>
+  </g>
+
+  <g transform="translate(795, 40)">
+    <rect width="135" height="110" rx="10" fill="var(--tb-c-card)" stroke="var(--tb-c-accent)" stroke-width="1.5" />
+    <text x="67" y="28" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="13" font-weight="600" fill="var(--tb-c-accent)">Trailer header</text>
+    <text x="67" y="48" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">166 B, always at EOF</text>
+    <text x="67" y="62" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-2)">magic · flags · CRC</text>
+    <text x="67" y="88" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9" fill="var(--tb-c-text-3)">read last, parsed first</text>
+  </g>
+
+  <text x="470" y="186" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="11" fill="var(--tb-c-text-3)">
+    lean = A + C + trailer · fat = A + B + C + trailer · classic — refused by name: v2 has exactly two package shapes
+  </text>
+</svg>
+</figure>
+++++
+
+_Figure 1 — Package byte layout: the bootstrap, payload slots, the optional fat runtime slot, the slot table, extension blocks, and the 166-byte trailer header at end of file._
+
+=== A — the bootstrap.
+
+A small, static Rust binary — under 3 MB, a budget enforced in CI on every
+platform — that parses the trailer of its own executable, resolves the runtime
+into the shared cache (cache → embedded fat slot → verified download), and
+execs it. It carries its own HTTP, TLS, and archive handling: nothing shells
+out. The
+link:https://github.com/tamatebako/tebako/tree/main/crates/tebako-bootstrap[tebako-bootstrap crate]
+is the shipping implementation; the
+link:https://github.com/tamatebako/tebako-bootstrap[C99 repo] survives as the
+behavioral oracle its messages are byte-compared against — it builds nothing
+you can download. It is published per platform triplet with every tebako
+release.
+
+=== B — the language runtime.
+
+Two artifacts, published per (version × platform) by the runtime factory's
+link:https://github.com/tamatebako/tebako-runtime-ruby/releases[releases]: the
+interpreter executable, and an _env image_ — one `.tfs` holding the standard
+library, gems, everything the load paths expect. Downloaded once per machine,
+SHA-256 verified, **mounted, never extracted** — see
+link:/docs/architecture/runtime-as-image/[runtime as image]. Lean packages
+resolve it on first run; fat packages carry the interpreter as a payload slot
+and install it offline.
+
+=== C — the payload slices.
+
+Bare `.tfs` filesystem images — the application tree, data, native tools —
+created in-process (no mkdwarfs, no shell-outs) and self-describing through a
+manifest inside the image at `/__tpkg__/manifest.yaml`. Embedded as
+trailer-described slots, each mounted straight out of the package file at its
+declared mount point: no extraction, no temp copies.
+
+== The tpkg trailer.
+
+[NOTE]
+====
+Status: shipped — format v1.
+====
+
+The trailer is the byte-level contract of the whole stack, and it has exactly
+one owner: link:https://github.com/tamatebako/tebako/tree/main/crates/tpkg[crates/tpkg].
+Everything else — the bootstrap, `tebako-pkg`, the runtime driver — consumes
+the crate; nothing hand-writes a second copy of the layout. The reader checks
+magic and CRC, then walks the slot table backwards from EOF. All header
+integers are little-endian.
+
+=== The header — 166 bytes, always at EOF.
+
+[%header,cols="1,1,2,5"]
+|===
+| Offset | Bytes | Field | Meaning
+
+| 0
+| 10
+| `magic`
+| `"TEBAKOTFS\0"` — the 4-byte `TEBA` prefix is what tells absent apart from corrupt
+
+| 10
+| 4
+| `version`
+| u32, = 1 forever — extensions live in flags, never in version bumps
+
+| 14
+| 4
+| `package_flags`
+| u32 — bit 0 LEAN · bit 1 SIGNED_V2 · bit 2 NO_INSTALL (table below)
+
+| 18
+| 4
+| `slot_count`
+| u32, 1–8 (TPKG_MAX_SLOTS)
+
+| 22
+| 8
+| `slot_table_offset`
+| u64 — absolute file offset of slot record 0
+
+| 30
+| 128
+| `runtime_ref`
+| resolution hint, e.g. `ruby@3.4.2;tebako=0.16.9;image` — fat appends `;sha256=<64 hex>`
+
+| 158
+| 4
+| `launcher_abi`
+| u32 — the bootstrap→runtime wire version the package requires (currently 1)
+
+| 162
+| 4
+| `header_crc32`
+| CRC32 over header bytes [0, 162) — accident integrity, never authenticity
+|===
+
+=== package_flags — three bits, all pass-through.
+
+[%header,cols="1,2,5"]
+|===
+| Bit | Flag | Meaning
+
+| bit 0
+| `TPKG_FLAG_LEAN`
+| the runtime is named by reference (runtime_ref) and resolved at run time; unset means the package carries it as a slot (fat)
+
+| bit 1
+| `TPKG_FLAG_SIGNED_V2`
+| the v2 chain-of-trust extension is carried between the slot table and the header. v1-era readers pass the bit through and run the package — trust enforcement is a reader capability, not a format barrier
+
+| bit 2
+| `TPKG_FLAG_NO_INSTALL`
+| publisher-frozen: the package RUNS standalone, but every install attempt is refused by name (exit 76). Absence means installable-on-request
+|===
+
+The version field stays 1 forever: new capability arrives through flags and
+extension blocks, so v1-era readers never break on v2 packages.
+
+=== Each slot record — 280 bytes.
+
+[%header,cols="1,1,2,5"]
+|===
+| Offset | Bytes | Field | Meaning
+
+| 0
+| 8
+| `offset`
+| u64 — absolute file offset of the image bytes
+
+| 8
+| 8
+| `size`
+| u64 — image length in bytes
+
+| 16
+| 4
+| `format_id`
+| how to read the bytes: 0 auto · 1 dwarfs · 2 squashfs · 3 zip · 5 limnifs — nothing more (see below)
+
+| 20
+| 4
+| `flags`
+| u32, 0 today — the future home of slot role bits
+
+| 24
+| 256
+| `mount_point`
+| UTF-8, NUL-padded — where the driver mounts the image
+|===
+
+=== format_id answers exactly one question.
+
+[%header,cols="1,1,5"]
+|===
+| Id | Format | Meaning
+
+| 0
+| auto
+| detect from the image magic
+
+| 1
+| dwarfs
+| dwarfs-t — the FlatBuffers-metadata format; read-only at runtime, creation-time Writer
+
+| 2
+| squashfs
+| SquashFS images, read as-is
+
+| 3
+| zip
+| zip archives, read as-is
+
+| 4
+| runtime
+| LEGACY ROLE WART — marks the fat runtime slot so v1-era loaders skip handing it over as a mount. Kept for backward compatibility only; never use it for new code
+
+| 5
+| limnifs
+| LimniFS — pure-Rust, content-addressed; the default format for `tfs mkimage` and `tebako press` since v0.2.0
+|===
+
+[NOTE]
+====
+*Stated plainly:* _how do I read these bytes_ is the only thing a format id
+may say. Whether a slot is a runtime, and which payload carries the
+entrypoint, are **roles** — declared by manifests, never encoded in the
+format axis. `format_id 4` is the one historical violation, kept so old
+loaders keep working; ids ≥ 6 are unallocated, and new semantics must never
+again be smuggled into the format field. That is the orthogonality law, and
+it is why a runtime image and an app image can share one container format.
+====
+
+=== Absent vs corrupt — named errors, never partial behavior.
+
+[%header,cols="1,5"]
+|===
+| Error | Meaning
+
+| `NoTrailer`
+| no `TEBA` prefix in the last 166 bytes — absent, not corrupt (a classic-era bundle; callers may fall back to offset auto-detection)
+
+| `Magic`
+| prefix present but the full magic mismatches — the trailer is corrupt
+
+| `Crc`
+| magic valid, header CRC32 bad — the trailer is corrupt
+
+| `Version`
+| version field ≠ 1
+
+| `Slots`
+| slot_count outside 1–8
+
+| `Bounds`
+| slot table outside file bounds
+
+| `Invalid`
+| structural validation failed (overflowing offset+size, unterminated fixed fields, format_id > 5, …)
+|===
+
+The `TpkgError` set is 1:1 with the C reference's `TPKG_ERR_*` codes, and the
+`strerror` strings are byte-identical — the golden parity rule applies to the
+error surface too.
+
+== Extension blocks: where v2 lives.
+
+[NOTE]
+====
+Status: shipped.
+====
+
+Between the slot table and the trailer header sits a chain of typed extension
+blocks — invisible to v1-era readers, which only ever read the header at EOF
+and the slot table at its recorded offset. Blocks walk forward from the end of
+the slot table, self-delimiting by type and length; readers skip unknown types
+and carry them verbatim, while `tebako-pkg validate` rejects them with a named
+error.
+
+.The extension-block chain
+[source,text]
+----
+[bootstrap][payload slots][slot table][ext blocks…][v2 signing ext?][header @EOF]
+
+ext block: [u32be type][u32be length][payload]
+  type 1 — v2 signing extension (when present, LAST before the header)
+  type 2 — package manifest (YAML)
+----
+
+=== Type 1 — the chain-of-trust extension.
+
+Per-slot SHA-256 digests (8 × 32 B), the signer's keyid (the low 64 bits of
+the OpenPGP fingerprint), and a detached OpenPGP signature (≤ 64 KiB). All its
+numerics are **big-endian** — the header stays v1-little-endian. The canonical
+signed bytes are `slot table ‖ digests ‖ keyid ‖ header`. Flagged by
+`TPKG_FLAG_SIGNED_V2`, never by a version bump — see
+link:/docs/architecture/chain-of-trust/[the chain of trust].
+
+=== Type 2 — the package manifest.
+
+A YAML block that owns composition: package identity; `entries[]` mapping each
+command to its slot, entrypoint, and per-entry `runtime_ref` (suites and
+multi-runtime packages, past the trailer's 128-byte single-ref limit);
+package-level `jail:` and `env:`; and `mounts[]` per slot (exclusive by
+default, or union with declared precedence). It references slots; payload
+manifests stay inside the images — no duplicated authority.
+
+== Press modes: lean and fat. Only.
+
+[NOTE]
+====
+Status: shipped.
+====
+
+`tebako press` produces two package shapes. Payload images default to LimniFS
+since v0.2.0 (`--format dwarfs` stays a first-class opt-in); the shape
+question is only about where the runtime lives.
+
+=== Lean — the default.
+
+Bootstrap + payload slots + trailer: `TPKG_FLAG_LEAN` set, `runtime_ref`
+filled. The smallest download; the first run resolves the runtime into the
+shared cache.
+
+=== Fat.
+
+A lean package that also carries the runtime interpreter as a payload slot
+(`format_id 4`), pinned by `;sha256=` in the runtime_ref. First run verifies
+and installs it into the cache — no network for the interpreter. In the image
+era the env `.tfs` resolves alongside: usually already cached from any prior
+tebako run, else one verified fetch (`TEBAKO_OFFLINE=1` makes a miss the named
+exit 69, not a surprise).
+
+=== Classic — refused.
+
+v1's shape: runtime and app stitched into one monolithic binary — no
+bootstrap, no trailer, no shared cache. v2 retires it by design, and the CLI
+says so by name: `tebako press --mode=classic` exits with _"the 'classic'
+press mode is a later tebako-rs milestone (use --mode=lean or --mode=fat)"_.
+A refusal, never a silent fallback.
+
+== The shared runtime cache.
+
+[NOTE]
+====
+Status: shipped.
+====
+
+Runtimes are installed once per machine, not once per package. The cache root
+is `$TEBAKO_HOME` (default `~/.tebako`, `%LOCALAPPDATA%\tebako` on Windows),
+with entries of the form `runtimes/<lang>-<lv>-<ver>-<triplet>/` — e.g.
+`runtimes/ruby-3.4.2-0.16.9-linux-musl-x86_64/`. An entry holds immutable
+artifacts and their markers only: the interpreter (0755), the env `.tfs`
+(read-only, 0444), and `.sha256` / `.origin` markers. Installs are atomic
+(build in `tmp/`, then rename) under a per-entry lock, so concurrent first
+runs are safe and a partial install is invisible. Every tebako package on the
+machine shares the same cache; link:/docs/architecture/store/[the store page]
+has the full layout.
+
+[NOTE]
+====
+**The marker is the trust anchor.** A `.sha256` sidecar means the artifact was
+verified at install; it is re-verified on re-fetch, **never per run** — a
+cached runtime starts at full speed every time. No extracted `layout/` tree
+lives in the cache anymore: when the press side needs the runtime's files it
+extracts the image in-process, per press, into the build prefix.
+`TEBAKO_OFFLINE=1` makes resolution cache-or-named-error;
+`TEBAKO_RUNTIME_MIRROR` redirects downloads; `tebako cache list` and
+`cache prune` manage the space.
+====
+
+== Press-time vs run-time resolution.
+
+Two different actors can fetch a runtime, at two different moments, on two
+different machines. They are kept deliberately distinct — conflating them is
+a locked-off design error.
+
+=== Press-time — the packager's machine.
+
+`tebako press` resolves the runtime into the shared cache _while packaging_:
+bundler runs under the target runtime, native extensions compile against it,
+and a fat press embeds the interpreter it resolved. Resolution reads the
+runtime release's `manifest.json` (with `SHA256SUMS.txt` as fallback); the
+bootstrap itself comes from local binaries or the product's own release,
+verified the same way.
+
+=== Run-time — the user's machine.
+
+The bootstrap resolves the runtime _when the packaged binary is first run_:
+cache hit → exec; fat slot → verify against `;sha256=` + install; otherwise
+download from the runtime release → sha256-verify → atomic install. Contract
+negotiation is fail-closed _before_ any checksum is accepted — a runtime that
+speaks an unsupported handoff contract is exit 75, naming both generations
+and the remedy, never a half-installed cache.
+
+== The launcher ABI: handoff by reference.
+
+[NOTE]
+====
+Status: shipped — v1.
+====
+
+The bootstrap never mounts anything — it hands the payload slots to the
+runtime by reference and execs it; a successful handoff never returns. The
+wire:
+
+.The handoff wire
+[source,text]
+----
+<runtime> --tebako-image <self|image-path>:<slot|->:<mount> … \
+    --tebako-entry <argv0> <user args…>
+----
+
+One `--tebako-image` triple per payload slot to mount; runtime-role slots are
+never handed over. Parsers split on the last two colons, so Windows drive
+letters in paths stay safe, and a malformed triple is a named exit 65.
+`TEBAKO_RUNTIME_IMAGE` names the env image, mounted whole at the runtime root
+(see link:/docs/architecture/runtime-as-image/[runtime as image]). Two version
+gates keep the ends honest: the trailer's `launcher_abi` field guards the wire
+format (mismatch → exit 66); the runtime's declared `contract_version` guards
+the semantics (fail-closed negotiation → exit 75).
+
+== Go deeper.
+
+link:/docs/architecture/anatomy/[How a package works]::
+The concepts on this page in motion: boot sequence, mount model, and every
+named exit code.
+
+link:/docs/architecture/runtime-as-image/[The runtime, as an image]::
+Why part B is two artifacts, and how the env image and your payloads co-mount
+in one process.
+
+link:/docs/architecture/store/[Where everything lives]::
+`~/.tebako` in full — runtimes, payloads, shims, registries, keys, and the
+house rules.

@@ -27,8 +27,9 @@ export const DOCS_SECTIONS: DocsSection[] = [
     eyebrowPrefix: 'ARCHITECTURE',
     titleSuffix: 'Tebako architecture',
     entries: [
+      { label: 'All pages', href: '/docs/architecture/', status: 'live' },
       { label: 'Overview', href: '/docs/architecture/overview/', status: 'live' },
-      { label: 'Concepts', href: '/docs/architecture/', status: 'live' },
+      { label: 'Concepts', href: '/docs/architecture/concepts/', status: 'live' },
       { label: 'Anatomy', href: '/docs/architecture/anatomy/', status: 'live' },
       { label: 'Building blocks', href: '/docs/architecture/blocks/', status: 'live' },
       { label: 'Factories', href: '/docs/architecture/factories/', status: 'live' },
