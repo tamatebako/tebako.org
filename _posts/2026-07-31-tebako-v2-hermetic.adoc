@@ -123,7 +123,7 @@ A tebako package is a composition of independently distributable parts:
   against a published SHA-256, and *mounted — never extracted*.
 . **Payload slices** — bare `.tfs` images: your app, your data, your
   native tools. Each describes itself with a manifest inside the image
-  (`/__tpkg__/manifest.yaml`).
+  (`/+__tpkg__+/manifest.yaml`).
 
 The slices *co-mount* in one process. An application declares what it
 needs — a runtime, a toolkit like Inkscape or a JRE, a data slice —
