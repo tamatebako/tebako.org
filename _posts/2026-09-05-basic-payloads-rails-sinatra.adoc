@@ -13,20 +13,11 @@ author:
     - https://github.com/tamatebako
 excerpt: >-
   The basic payloads series, hands-on: package a rails or sinatra application.
+series: basic-payloads
+series_post: 4
 ---
 
 = Basic payloads: Package a Rails or Sinatra application (4 of 5)
-
-[NOTE]
-====
-Post 4 of 5 in the series *Basic payloads*.
-
-. link:/blog/2026-09-05-basic-payloads-run-first-package/[payloads: Run your first package]
-. link:/blog/2026-09-05-basic-payloads-data-payload/[payloads: Data payloads: make one, read one]
-. link:/blog/2026-09-05-basic-payloads-ruby-application/[payloads: Package a Ruby application]
-. *payloads: Package a Rails or Sinatra application* (this post)
-. link:/blog/2026-09-05-basic-payloads-publish/[payloads: Publish to your users]
-====
 
 A web application is an application whose entrypoint starts a server.
 That is the whole trick: press the app so that running the executable

@@ -22,6 +22,8 @@ const blog = defineCollection({
       .default([]),
     excerpt: z.string().optional(),
     layout: z.string().optional(),
+    series: z.string().optional(),
+    series_post: z.number().optional(),
   }),
 })
 

@@ -13,20 +13,11 @@ author:
     - https://github.com/tamatebako
 excerpt: >-
   The advanced payloads series: the image toolbox.
+series: advanced-payloads
+series_post: 3
 ---
 
 = Advanced payloads: The image toolbox (3 of 5)
-
-[NOTE]
-====
-Post 3 of 5 in the series *Advanced payloads*.
-
-. link:/blog/2026-09-05-advanced-payloads-trace/[payloads: Trace: see what your payload touches]
-. link:/blog/2026-09-05-advanced-payloads-jails-profiles/[payloads: Jails and profiles: decide what it may touch]
-. *payloads: The image toolbox* (this post)
-. link:/blog/2026-09-05-advanced-payloads-runtimes-native/[payloads: Runtimes and native code]
-. link:/blog/2026-09-05-advanced-payloads-packed-mn/[payloads: packed-mn: one download, any document]
-====
 
 Payloads are files, and files have formats. This post's subject is
 the image toolbox: the file formats a payload can take, and the mount

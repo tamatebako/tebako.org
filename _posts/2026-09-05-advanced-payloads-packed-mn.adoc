@@ -13,20 +13,11 @@ author:
     - https://github.com/tamatebako
 excerpt: >-
   The advanced payloads series: packed-mn: one download, any document.
+series: advanced-payloads
+series_post: 5
 ---
 
 = Advanced payloads: packed-mn: one download, any document (5 of 5)
-
-[NOTE]
-====
-Post 5 of 5 in the series *Advanced payloads*.
-
-. link:/blog/2026-09-05-advanced-payloads-trace/[payloads: Trace: see what your payload touches]
-. link:/blog/2026-09-05-advanced-payloads-jails-profiles/[payloads: Jails and profiles: decide what it may touch]
-. link:/blog/2026-09-05-advanced-payloads-image-toolbox/[payloads: The image toolbox]
-. link:/blog/2026-09-05-advanced-payloads-runtimes-native/[payloads: Runtimes and native code]
-. *payloads: packed-mn: one download, any document* (this post)
-====
 
 The last subject in the series is the whole stack at once: packed-mn,
 the single-executable Metanorma distribution — a Ruby application that

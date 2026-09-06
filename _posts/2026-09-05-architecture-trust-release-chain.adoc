@@ -14,20 +14,11 @@ author:
 excerpt: >-
   How tebako v2 works, concept by concept —
   this post: trust and the release chain.
+series: tebako-v2-architecture
+series_post: 5
 ---
 
 = Architecture: Trust and the release chain (5 of 5)
-
-[NOTE]
-====
-Post 5 of 5 in the series *Tebako v2 architecture*.
-
-. link:/blog/2026-09-05-architecture-three-part-package/[Architecture: The three-part package]
-. link:/blog/2026-09-05-architecture-runtime-as-image/[Architecture: The runtime as an image]
-. link:/blog/2026-09-05-architecture-composition/[Architecture: Composition]
-. link:/blog/2026-09-05-architecture-host-boundary/[Architecture: The host boundary]
-. *Architecture: Trust and the release chain* (this post)
-====
 
 The previous four posts covered what a package is and how it runs.
 This last one covers why you can believe the bytes: how artifacts are

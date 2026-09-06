@@ -14,20 +14,11 @@ author:
 excerpt: >-
   How tebako v2 works, concept by concept —
   this post: the host boundary.
+series: tebako-v2-architecture
+series_post: 4
 ---
 
 = Architecture: The host boundary (4 of 5)
-
-[NOTE]
-====
-Post 4 of 5 in the series *Tebako v2 architecture*.
-
-. link:/blog/2026-09-05-architecture-three-part-package/[Architecture: The three-part package]
-. link:/blog/2026-09-05-architecture-runtime-as-image/[Architecture: The runtime as an image]
-. link:/blog/2026-09-05-architecture-composition/[Architecture: Composition]
-. *Architecture: The host boundary* (this post)
-. link:/blog/2026-09-05-architecture-trust-release-chain/[Architecture: Trust and the release chain]
-====
 
 A package that can touch anything on its host machine is a liability.
 This post describes the boundary tebako draws: what a running package
