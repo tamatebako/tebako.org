@@ -39,6 +39,9 @@ jobs:
         with:
           enablement: true
 
+      - name: Test (docs registry invariants)
+        run: npm test
+
       - name: Build with Astro
         run: npm run build
         env:
