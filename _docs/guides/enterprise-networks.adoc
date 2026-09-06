@@ -17,7 +17,7 @@ description: >-
 == The two halves.
 
 Everything tebako downloads — runtimes, payloads, registry indexes —
-rides one in-process HTTPS client. Getting through an enterprise network
+uses one in-process HTTPS client. Getting through an enterprise network
 is always the same two questions:
 
 . *Reach the network* — which proxy do connections go through?
