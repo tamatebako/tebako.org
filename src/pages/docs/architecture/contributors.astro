@@ -42,7 +42,7 @@ const ssotRows = [
     value: 'The tpkg wire format',
     detail: '166 B header · 280 B slot records · ≤ 8 slots · flags + extension blocks',
     owner: 'crates/tpkg (tamatebako/tebako)',
-    flow: 'Every Rust consumer links the crate (#![forbid(unsafe_code)]). The C mini-lib in libtfs is the golden oracle — the format is asserted byte-exact against it. Extensions ride flags and extension blocks, never a version bump, so v1 readers parse v2 packages untouched.',
+    flow: 'Every Rust consumer links the crate (#![forbid(unsafe_code)]). The C mini-lib in libtfs is the golden oracle — the format is asserted byte-exact against it. Extensions live in flags and extension blocks, never in a version bump, so v1 readers parse v2 packages untouched.',
     cite: 'spec 02 · spec 18 C6',
   },
   {

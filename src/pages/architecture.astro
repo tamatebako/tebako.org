@@ -6,7 +6,7 @@ import { SITE } from '../config/site'
 
 const modes = [
   { name: 'Lean', description: 'The default. A small package: bootstrap plus payload slices. The runtime resolves from the shared cache — or downloads once, verified, on first run.' },
-  { name: 'Fat', description: 'The runtime rides inside the package as a slot. One file, nothing to resolve — at the price of carrying the world.' },
+  { name: 'Fat', description: 'The runtime travels inside the package as a slot. One file, nothing to resolve — at the price of carrying the world.' },
 ]
 ---
 
@@ -33,7 +33,7 @@ const modes = [
       <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
         Every package combines a loader, a runtime, and one or more payload slices.
         Each part ships on its own release line; the <strong class="text-[var(--tb-c-text-1)]">tpkg trailer</strong> at
-        the end of the file records which slices ride inside and where they mount.
+        the end of the file records which slices are carried inside and where they mount.
       </p>
 
       <div class="overflow-x-auto rounded-2xl border border-[var(--tb-c-divider)] p-6" style="background: var(--tb-c-bg-soft);">
@@ -216,14 +216,14 @@ const modes = [
             <span class="mt-1 h-3 w-3 flex-shrink-0 rounded-sm" style="background: var(--color-gold); opacity: 0.4;"></span>
             <div>
               <p class="font-medium text-[var(--tb-c-text-1)]">Runtime slot (fat only)</p>
-              <p class="text-sm text-[var(--tb-c-text-2)]">In a fat package the runtime rides inside. In a lean one, the trailer's runtime reference resolves it from the shared cache instead.</p>
+              <p class="text-sm text-[var(--tb-c-text-2)]">In a fat package the runtime travels inside. In a lean one, the trailer's runtime reference resolves it from the shared cache instead.</p>
             </div>
           </div>
           <div class="flex gap-3">
             <span class="mt-1 h-3 w-3 flex-shrink-0 rounded-sm" style="background: var(--color-ink); border: 1px solid var(--tb-c-accent);"></span>
             <div>
               <p class="font-medium text-[var(--tb-c-text-1)]">tpkg trailer</p>
-              <p class="text-sm text-[var(--tb-c-text-2)]">A 166-byte header plus one 280-byte record per slot, at end of file. Format version 1 forever — extensions ride flag bits, never version bumps.</p>
+              <p class="text-sm text-[var(--tb-c-text-2)]">A 166-byte header plus one 280-byte record per slot, at end of file. Format version 1 forever — extensions live in flag bits, never in version bumps.</p>
             </div>
           </div>
         </div>

@@ -38,7 +38,7 @@ const exitCodes = [
 const chainSteps = [
   {
     name: 'Root of trust',
-    body: 'One signature mechanism for the whole project: OpenPGP via rnp-rs over vendored botan (PQC-capable). The tamatebako release keypair\u2019s root fingerprint is published on tebako.org AND embedded in the loader at release time (EMBEDDED_ROOT_FINGERPRINT — empty until the root ceremony fills it; TEBAKO_TRUSTED_ROOT overrides it for development). Rotation rides a signed successor-key statement (TEBAKO-ROOT-SUCCESSOR-V1 — machinery shipped in tebako-signer), so machines forward trust with no out-of-band step. Revocation (TEBAKO-ROOT-REVOCATION-V1) kills a key with no successor: format locked, loader consumption planned. The one-time ceremony that mints the roots has its own runbook — below.',
+    body: 'One signature mechanism for the whole project: OpenPGP via rnp-rs over vendored botan (PQC-capable). The tamatebako release keypair\u2019s root fingerprint is published on tebako.org AND embedded in the loader at release time (EMBEDDED_ROOT_FINGERPRINT — empty until the root ceremony fills it; TEBAKO_TRUSTED_ROOT overrides it for development). Rotation is a signed successor-key statement (TEBAKO-ROOT-SUCCESSOR-V1 — machinery shipped in tebako-signer), so machines forward trust with no out-of-band step. Revocation (TEBAKO-ROOT-REVOCATION-V1) kills a key with no successor: format locked, loader consumption planned. The one-time ceremony that mints the roots has its own runbook — below.',
     status: 'planned',
   },
   {

@@ -93,7 +93,7 @@ An MRI runtime and a JRuby runtime are the same two artifacts — an
 interpreter executable and an environment image — under the same
 constraint grammar. A payload with native extensions pins an ABI line
 (`~> 3.3.0`) so that a runtime from the wrong line is a named error at
-startup, never a segfault at 2 a.m.
+startup, never a runtime crash
 
 == Native code, compiled once
 
@@ -110,7 +110,7 @@ $ tebako press -r ./myapp -e bin/myapp -o dist/myapp \
 
 Each target produces one file with its native gems compiled for that
 triplet. What your users download is a prebuilt, SHA-256-verified
-binary — no compiler, no headers, no luck. For payloads with no native
+binary — no compiler, no headers, no toolchain. For payloads with no native
 code at all, one `universal` file covers every platform.
 
 This is the distribution model in one sentence: *the people who build
@@ -120,5 +120,4 @@ a package compile it; the people who use it never do.*
 
 You can choose a runtime engine declaratively, pin ABI lines for
 native payloads, and ship compiled gems as binaries per platform. The
-last post shows all of it working at once, on the hardest payload we
-ship.
+last post shows all of it working at once, on a payload that exercises all of it at once.

@@ -13,10 +13,10 @@ author:
   social_links:
     - https://github.com/tamatebako
 excerpt: >-
-  Tebako v2 is here. To show what "run anywhere" means in practice, we
-  built a complete standards-document PDF — figures, fonts, Java and
-  all — with an empty PATH, entirely from mounted disk images. No host
-  Java, no host Inkscape, no host anything.
+  Tebako v2 is here. To show what "run anywhere" means in practice, a
+  complete standards document — figures, fonts, and the Java conversion
+  pipeline — builds entirely from mounted disk images, with an empty
+  PATH and nothing on the host but tebako itself.
 ---
 
 = Tebako v2 — the hermetic portable-runtime platform

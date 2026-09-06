@@ -232,7 +232,7 @@ const LINKS = {
       <p class="mb-8 max-w-2xl text-[var(--tb-c-text-2)]">
         A tebako package is a composition of up to three independently distributable parts, glued by
         the <strong class="text-[var(--tb-c-text-1)]">tpkg trailer</strong>: a 166-byte header at end
-        of file plus 280-byte slot records. The format version is 1 forever — extensions ride flags
+        of file plus 280-byte slot records. The format version is 1 forever — extensions live in flags
         (<code class="font-[var(--font-mono)] text-sm">LEAN</code>,{' '}
         <code class="font-[var(--font-mono)] text-sm">SIGNED_V2</code>,{' '}
         <code class="font-[var(--font-mono)] text-sm">NO_INSTALL</code>), never version bumps, so v1
@@ -561,7 +561,7 @@ const LINKS = {
         <div class="tb-card p-6">
           <h3 class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-accent)]">People running packages</h3>
           <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">
-            No compilation machinery, no libraries, nothing to install — download, run, done. With a
+            No compilation machinery, no libraries, nothing to install — download it and run it. With a
             fat package, not even a network. With tebako installed, one shims directory on PATH puts
             every managed tool a command away, with version pinning that just works.
           </p>
