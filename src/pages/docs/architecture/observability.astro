@@ -77,7 +77,7 @@ const signatureRows = [
         TFS already implement emits one structured event per decision. Armed by{' '}
         <code class="font-[var(--font-mono)] text-sm">TEBAKO_TRACE=&lt;host-path&gt;</code> or the
         driver's <code class="font-[var(--font-mono)] text-sm">--tebako-trace</code> argument (the
-        argument wins; it rides the env-scrubbed handoff). The channel opens at driver boot, before
+        argument wins; it travels the env-scrubbed handoff). The channel opens at driver boot, before
         any mount; writes are append-only, process-internal, and never policy-gated. Disarmed, an
         emission point is one <code class="font-[var(--font-mono)] text-sm">Option::is_none()</code>{' '}
         branch — and the bus compiles into the runtime/driver side only, so the bootstrap's size

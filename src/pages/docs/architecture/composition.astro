@@ -26,7 +26,7 @@ const comboRows = [
   { combo: 'spawned child (class E)', resolver: 'inherits TEBAKO_JAIL; the preload re-binds', needs: 'the PARENT\u2019s composition — a child never re-resolves', policy: 'the parent\u2019s' },
 ]
 ---
-<!-- normative: spec 23 (D1–D5, §5 default policy, §6 algorithm, §7 combinations, §8 record, §9 swap), spec 03 §6, spec 05 §3-4; carried/shared terminology per tamatebako/tebako#460 (owner-locked 2026-08-25) — spec 23 amendment rides the implementation PR -->
+<!-- normative: spec 23 (D1–D5, §5 default policy, §6 algorithm, §7 combinations, §8 record, §9 swap), spec 03 §6, spec 05 §3-4; carried/shared terminology per tamatebako/tebako#460 (owner-locked 2026-08-25) — spec 23 amendment arrives with the implementation PR -->
 
 <DocsLayout
   section="architecture"
@@ -217,7 +217,7 @@ needs:                          # composition-level additions, D1 grammar
         Fat and lean are the same architecture (<a href={LINKS.issue460} class="tb-link-underline text-[var(--tb-c-accent)]">the locked model</a>):
         press always resolves and locks the full closure — every slice's version and sha256 recorded
         in the package manifest — and the only question left is where the bytes live. A slice is{' '}
-        <strong>carried</strong> (its bytes ride in a trailer slot) or <strong>shared</strong>
+        <strong>carried</strong> (its bytes are carried in a trailer slot) or <strong>shared</strong>
         (resolved at first run into the machine store, verified against the locked digest, and
         shared with every package that needs the same slice). A{' '}
         <strong>self-contained</strong> package carries everything — zero network, empty cache,
@@ -277,7 +277,7 @@ needs:                          # composition-level additions, D1 grammar
         <code class="font-[var(--font-mono)] text-xs">event=composition source=external(&lt;path&gt;) sha256=…</code>
         {' '}or <code class="font-[var(--font-mono)] text-xs">source=baked</code>. Today{' '}
         <code class="font-[var(--font-mono)] text-sm">tfs exec --compose</code> speaks the
-        image-layer subset; the bootstrap/shim override channels ride Phase-R.
+        image-layer subset; the bootstrap/shim override channels arrive in Phase-R.
       </p>
     </div>
 

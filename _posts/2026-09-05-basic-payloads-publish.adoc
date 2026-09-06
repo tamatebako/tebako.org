@@ -151,4 +151,4 @@ applications — Ruby, Rails, Sinatra — check them, and publish them.
 When you outgrow the basics, the
 link:/blog/2026-09-05-advanced-payloads-trace/[advanced payloads
 series] picks up exactly here: tracing, jails, image formats, native
-code, and the hardest payload we ship.
+code, and the most demanding payload in this series.

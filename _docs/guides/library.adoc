@@ -94,8 +94,7 @@ From there everything is the standard surface: shims dispatch
 
 == The offline discipline.
 
-A file library is what makes `TEBAKO_OFFLINE=1` a pleasant default
-instead of a punishment:
+A file library is what makes `TEBAKO_OFFLINE=1` a pleasant default instead of a restriction:
 
 [source,console]
 ----

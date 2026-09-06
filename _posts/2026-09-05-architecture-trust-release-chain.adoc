@@ -101,4 +101,4 @@ composition grammar, a host boundary, and a verified release chain. The
 link:/blog/2026-09-05-basic-payloads-run-first-package/[basic payloads
 series] puts all five concepts to work hands-on, and the
 link:/blog/2026-09-05-advanced-payloads-packed-mn/[advanced series]
-shows them carrying the hardest workload we know.
+shows them carrying its most demanding workload.

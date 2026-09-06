@@ -406,8 +406,7 @@ exec argv:
           an unparseable reference is a named error, never a guess.
         </p>
         <p class="leading-relaxed">
-          <strong class="text-[var(--tb-c-text-1)]">The dispatch cache:</strong> remote
-          registries ride a per-reference cache under{' '}
+          <strong class="text-[var(--tb-c-text-1)]">The dispatch cache:</strong> remote registries use a per-reference cache under{' '}
           <code class="font-[var(--font-mono)] text-sm">~/.tebako/registries/&lt;sha256-of-ref&gt;.yaml</code>
           {' '}with a 24-hour TTL, so dispatch never blocks on the network twice in a row.{' '}
           <code class="font-[var(--font-mono)] text-sm">tebako update-registries</code>
