@@ -1,4 +1,13 @@
 ---
+import '@fontsource/bricolage-grotesque/400.css'
+import '@fontsource/bricolage-grotesque/500.css'
+import '@fontsource/bricolage-grotesque/600.css'
+import '@fontsource/hanken-grotesk/400.css'
+import '@fontsource/hanken-grotesk/500.css'
+import '@fontsource/hanken-grotesk/600.css'
+import '@fontsource/hanken-grotesk/700.css'
+import '@fontsource/jetbrains-mono/400.css'
+import '@fontsource/jetbrains-mono/500.css'
 import '../styles/global.css'
 import { ClientRouter } from 'astro:transitions'
 import Nav from '../components/Nav.astro'
@@ -65,13 +74,6 @@ const canonical = new URL(Astro.url.pathname, Astro.site).toString()
   <meta name="twitter:title" content={title} />
   <meta name="twitter:description" content={description} />
   <meta name="twitter:image" content={new URL('/web-app-manifest-512x512.png', Astro.site).toString()} />
-
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
-  />
 
   <ClientRouter />
 

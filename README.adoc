@@ -58,19 +58,10 @@ loader (`src/content/loaders/adoc-loader.ts`).
 
 == Adding a documentation page
 
-. Create the page:
-+
---
-* Architecture pages: `src/pages/docs/architecture/<slug>.astro` using
-  `DocsLayout` (pass `section`, the page's `href`, `title`,
-  `description`).
-* Guides: an AsciiDoc entry at `_docs/guides/<slug>.adoc`
-  (frontmatter: `title`, `description`, optional `heading` and `lede`),
-  rendered through `DocsLayout` by the dynamic
-  `src/pages/docs/guides/[slug].astro` route. `verify.adoc` is the
-  reference example; the remaining guides migrate to this model one by
-  one.
---
+. Create an AsciiDoc entry at `_docs/<section>/<slug>.adoc` with
+  frontmatter: `title`, `description`, optional `heading` and `lede`.
+  The dynamic `[slug].astro` route renders it through `DocsLayout`
+  automatically.
 . Add one entry to the matching section in `src/config/docs.ts`.
 
 That is the whole contract. `npm test` fails if the entry and the file
