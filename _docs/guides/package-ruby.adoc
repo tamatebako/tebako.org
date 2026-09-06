@@ -1,0 +1,146 @@
+---
+title: Package a Ruby app
+heading: Package a Ruby app.
+lede: >-
+  tebako press turns a source tree into one executable per platform.
+  You compile only your own code — the runtime and the loader arrive as
+  prebuilt binaries.
+description: >-
+  tebako press turns a Ruby source tree into a single executable per
+  platform: lean vs fat, extra payload slices, baked jail policies, and
+  multi-command suites.
+---
+
+// normative: spec 03 §6 (suites), spec 06, spec 20 §6 (--format: limnifs is the default; dwarfs an explicit opt-in) — flags verified against crates/tebako-cli/src/main.rs USAGE
+
+== Decide: lean or fat.
+
+*Lean — the default.* The package is bootstrap + your payload + a
+trailer. The first run on a machine downloads the shared runtime once;
+every package that accepts the same ruby line reuses it. Smaller file,
+one runtime per machine. Choose lean whenever the machine has a network
+path at first run.
+
+*Fat — `-m fat`.* The runtime travels inside the package as a slot,
+pinned by SHA-256. Bigger file, zero network at run time, nothing
+shared. Choose fat for air-gapped machines, USB hand-offs, and
+strict-offline environments.
+
+== The press command.
+
+Given a tree with an entry script:
+
+[source,console]
+----
+myapp/
+├── bin/
+│   └── myapp      # the entry script
+└── lib/
+    └── myapp.rb
+----
+
+press it into an executable:
+
+[source,console]
+----
+$ tebako press -r ./myapp -e bin/myapp -o myapp
+----
+
+`-r` is the source root, `-e` the entry script inside it, `-o` the
+output file. `-R` picks the ruby version (default 3.3.7). `-c` pins the
+working directory the app starts in; `-p` overrides the in-image prefix
+the root is packed under — both rarely needed. `-l error|warn|debug|trace`
+sets press's own log level. `--format dwarfs|limnifs` picks the image
+format the payload is written in — *limnifs is the default*; `dwarfs`
+stays a first-class opt-in, and existing dwarfs images read everywhere
+they always have.
+
+The v1 modes are gone by design: `-m classic` and `-m runtime` fail with
+a named error, and there is no tebafile — `-t` is rejected.
+
+== Extra slices, baked policies, standalone-only.
+
+[source,console]
+----
+$ tebako press -r ./myapp -e bin/myapp -o myapp \
+    --image acme-fonts-2.1.0.tfs:/usr/share/fonts/acme \
+    --jail ./jail.yaml
+----
+
+* `--image <path>:<mount>` packs an additional payload slice into the
+  package and mounts it at the given path. Repeat it per slice — a fonts
+  image, a dataset, a native toolkit.
+* `--jail <spec>` bakes a filesystem policy into the package — a
+  profile word or a YAML file. Users can tighten it at run time, never
+  loosen it; see link:/docs/guides/jails/[the jails guide].
+* `--no-install` freezes the package to standalone-only: it executes
+  directly, and `tebako install` refuses it with a named error (exit
+  76).
+
+== One package, several commands: suites.
+
+A suite presses one package that carries several entry points; each
+becomes its own shim when installed. Describe it in YAML:
+
+[source,yaml]
+----
+# suite.yaml
+name: acme
+version: 1.4.0
+entries:
+  - name: acme
+    root: ./cli
+    entry: bin/acme
+  - name: acme-index
+    root: ./indexer
+    entry: bin/index
+----
+
+Press the suite:
+
+[source,console]
+----
+$ tebako press --suite suite.yaml
+----
+
+An entry may pin its own runtime with a `runtime_ref` key; entries
+without one share the suite's resolved runtime.
+
+== What press resolves.
+
+Two artifacts come from outside your tree: the ruby runtime
+(interpreter executable plus env image) from the runtime factory's
+release index, and the bootstrap loader from the tebako releases. Both
+are downloaded and SHA-256 verified during press.
+
+`--prefer-local` prefers artifacts already in the store over fetching.
+`--bootstrap <path>` swaps in a specific loader binary (also settable as
+`TEBAKO_BOOTSTRAP`). `--tebako-version <v>` pins the tebako toolchain
+release press fetches its artifacts from. `TEBAKO_RUNTIME_MIRROR`
+redirects runtime downloads to your own mirror (an https or `file://`
+base URL) — the air-gapped partner of `-m fat`.
+
+== Test the result.
+
+[source,console]
+----
+$ ./myapp --help
+$ tebako inspect ./myapp
+$ tebako inspect --contract ./myapp
+----
+
+`inspect` reads the package's trailer and manifest: what it is, which
+handoff contract it speaks, its trust state. The full surface is in
+link:/docs/guides/info-inspect/[info & inspect].
+
+== A note on native extensions.
+
+A payload with compiled gems pins the ruby ABI line it was built against
+— `~> 3.3.0` — plus the platform ABI string. A machine whose cached
+runtimes offer no compatible line fails at resolve time with a named
+error, never a segfault. Pure-ruby payloads declare a range instead —
+`>= 3.3, < 5.0` — and one universal payload serves every platform.
+
+See also: link:/docs/guides/data-payload/[Create a data payload] ·
+link:/docs/guides/publish/[Publish to your own registry] ·
+link:/docs/architecture/anatomy/[Anatomy of a package].

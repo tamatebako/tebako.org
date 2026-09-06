@@ -1,0 +1,107 @@
+---
+title: Publish to your own registry
+heading: Publish to your own registry.
+lede: >-
+  Publishing is refreshingly simple: a registry is one YAML file —
+  tpkg-registry.yaml — that your users add once; the artifacts live on
+  your own releases page, and there is no central server, no submission
+  queue, nothing between you and your users.
+description: >-
+  Publish tebako payloads to your own GitHub releases with tebako
+  publish: per-triplet artifacts, signing, offline rehearsal, and the
+  consumer side.
+---
+
+== The publish command.
+
+You pass one `--payload` per platform triplet, built by your CI, and one
+release ref naming where they go.
+
+[source,console]
+----
+$ tebako publish --name acme-tool --version 1.4.0 \
+    --release tfs:github:acme/acme-tool:v1.4.0 \
+    --payload macos-arm64=dist/acme-tool-1.4.0-macos-arm64.tfs \
+    --payload linux-gnu-x86_64=dist/acme-tool-1.4.0-linux-gnu-x86_64.tfs \
+    --payload linux-musl-x86_64=dist/acme-tool-1.4.0-linux-musl-x86_64.tfs
+----
+
+* `--payload <triplet>=<path>` maps a platform to its built image;
+  repeat per platform. A single plain `--payload <path>` without a
+  triplet publishes one universal artifact.
+* `--standalone <triplet>=<path>` additionally attaches a stitched
+  single-executable build for that triplet — for users who never install
+  tebako.
+* Live upload needs a token: `TEBAKO_GITHUB_TOKEN` (or `GITHUB_TOKEN`)
+  with release write access.
+
+publish uploads the payloads to the release, writes the registry index,
+and prints the result (representative):
+
+[source,console]
+----
+published acme-tool 1.4.0 -> tfs:github:acme/acme-tool (tag v1.4.0)
+sha256 9f2c…a1  acme-tool-1.4.0-macos-arm64.tfs
+sha256 77b1…0e  acme-tool-1.4.0-linux-gnu-x86_64.tfs
+sha256 c04d…63  acme-tool-1.4.0-linux-musl-x86_64.tfs
+registry -> dist/tpkg-registry.yaml
+----
+
+== Sign what you ship.
+
+`--sign` signs every artifact before upload: detached `.asc` signatures
+and a signed `SHA256SUMS` are published on the same release. Plain
+`--sign` uses your press-local key (generated on first use);
+`--sign=<keyid>` picks a specific one. The receiving end of signatures
+is covered in link:/docs/guides/verify/[Verify integrity].
+
+== Rehearse before you upload.
+
+[source,console]
+----
+$ tebako publish --name acme-tool --version 1.4.0 \
+    --release tfs:github:acme/acme-tool:v1.4.0 \
+    --payload macos-arm64=dist/acme-tool-1.4.0-macos-arm64.tfs \
+    --upload-mirror ./mirror \
+    --registry-out ./tpkg-registry.yaml
+----
+
+`--upload-mirror <dir>` writes the release tree to a local directory
+instead of uploading — exactly what would ship, inspectable offline.
+`--registry-out <path>` chooses where the index is written. By default
+publish verifies artifacts before upload; `--skip-verify` turns that
+check off.
+
+== Reach brew users too.
+
+`--tap <org/homebrew-tap>` emits a Homebrew formula for your tool
+alongside the registry entry; `--tap-dir <dir>` writes it into a local
+checkout of the tap. One publish gives your users two install routes.
+
+== The consumer side.
+
+Two commands for your users, then your tool is on their PATH with
+version pins and upgrades:
+
+[source,console]
+----
+$ tebako add-registry tfs:github:acme/acme-tool
+$ tebako install acme-tool@1.4.0
+----
+
+Users who want the index itself pinned by hash add the registry with a
+`sha256` parameter — quote the ref, it contains shell metacharacters:
+
+[source,console]
+----
+$ tebako add-registry 'tfs:github:acme/acme-tool?sha256=9f2c…a1'
+----
+
+Other ref forms work too: `tfs:gitlab:` and `tfs:bb:` for GitLab and
+Bitbucket, `tfs+git://` for self-hosted indexes, `file:///` for local
+ones. Reading from GitLab and Bitbucket works today; publishing _to_
+them is not implemented yet — the write leg fails with a named error.
+
+See also: link:/docs/guides/data-payload/[Create a data payload] ·
+link:/docs/guides/verify/[Verify integrity] ·
+link:/docs/architecture/chain-of-trust/[The chain of trust].

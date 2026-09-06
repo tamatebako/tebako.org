@@ -1,0 +1,129 @@
+---
+title: Install tebako
+heading: Install tebako.
+lede: >-
+  Four binaries, one directory, no daemon. Everything below runs as your
+  user — nothing needs root, and uninstalling means deleting files.
+description: >-
+  Install the tebako CLI with Homebrew, the shell installer, or a direct
+  binary: four static binaries, one store directory, no daemon, no root.
+---
+
+== Pick a route.
+
+All three install the same four binaries. Brew and the installer verify
+SHA-256 checksums before anything lands; if you download by hand, verify
+the sums yourself against the `SHA256SUMS` file on the release.
+
+*Homebrew (macOS, Linux).*
+
+[source,console]
+----
+brew install tamatebako/tap/tebako
+----
+
+The binaries link into your brew prefix, which is already on PATH.
+
+*Shell installer (any Unix).*
+
+[source,console]
+----
+curl -fsSL https://tebako.org/install.sh | sh
+----
+
+The installer detects your platform, downloads the binaries plus
+`SHA256SUMS`, verifies before installing, and never uses sudo.
+
+*Direct binaries.* On the
+link:https://github.com/tamatebako/tebako/releases[releases page], one
+asset per binary per platform, for `macos-arm64`, `macos-x86_64`,
+``linux-gnu-*``, and ``linux-musl-*``:
+
+[source,console]
+----
+tebako-<ver>-macos-arm64
+tebako-pkg-<ver>-macos-arm64
+tfs-<ver>-macos-arm64
+tebako-bootstrap-<ver>-macos-arm64
+----
+
+The installer puts the binaries in `~/.local/bin` (mode 0755) and prints
+the PATH line for your shell. Set `TEBAKO_INSTALL_DEST` to change the
+destination, `TEBAKO_VERSION` to pin a specific release.
+
+== What lands.
+
+Four static binaries: `tebako` (the packager and store CLI),
+`tebako-pkg` (package trailer surgery and signing), `tfs` (image
+inspection and creation), and `tebako-bootstrap` (the loader that
+`tebako press` stitches into every package). Everything they keep on
+your machine lives under `~/.tebako`.
+
+The dispatcher `tebako-shim` is not among the four. Shims are registered
+later, by `tebako install`: each shim is a link to a dispatcher binary —
+by default `tebako-shim` located next to the tebako binary, overridable
+with `TEBAKO_SHIM_BINARY`.
+
+== Check the install.
+
+[source,console]
+----
+$ tebako --version
+Tebako executable packager version 0.15.9
+----
+
+If the shell cannot find `tebako` after the shell installer, the install
+destination is not on PATH — the installer printed the exact line to add
+to your shell startup file.
+
+== Sixty seconds to a first packaged command.
+
+The managed flow in four commands: add a registry, install a payload
+from it, put the shim directory on PATH once, run the tool by name.
+
+[source,console]
+----
+$ tebako add-registry tfs:github:tamatebako/hello
+$ tebako install hello
+installed hello 0.1.0 -> ~/.tebako/payloads/hello/0.1.0.tfs
+shim ~/.tebako/shims/hello
+$ tebako-shim install-shell    # once per machine — puts ~/.tebako/shims on PATH
+$ hello
+----
+
+The first run of `hello` downloads the ruby runtime once, verifies its
+SHA-256, and caches it; every later run starts from the cache. Open a
+new shell after `install-shell` so the PATH change takes effect. _Output
+versions shown are representative._
+
+== Platform notes.
+
+* *musl is the universal Linux artifact.* The ``linux-musl-*`` builds are
+  fully static and run on any distribution. The installer selects them
+  automatically on musl systems such as Alpine.
+* *Windows.* Download the `.exe` assets from the releases page. The
+  store lives at `%LOCALAPPDATA%\tebako`.
+* *Moving the store.* Set `TEBAKO_HOME` to relocate `~/.tebako` — useful
+  for shared caches and CI sandboxes.
+
+== Uninstall.
+
+Delete the binaries and the store; there is nothing else. Remove the
+shim PATH block first if you installed it.
+
+[source,console]
+----
+tebako-shim uninstall-shell   # if you ran install-shell
+brew uninstall tebako           # if you used brew
+rm ~/.local/bin/tebako ~/.local/bin/tebako-pkg ~/.local/bin/tfs ~/.local/bin/tebako-bootstrap
+                                # ^ if you used install.sh
+rm -rf ~/.tebako
+----
+
+Runtimes and payloads re-download on demand, but the store also holds
+your config, your signing keys (`keys/`), and your pinned publisher keys
+(`trust/`) — those do not come back.
+
+See also: link:/docs/guides/run/[Run a packaged app] ·
+link:/docs/guides/shims/[Shims & versions] ·
+link:/docs/architecture/store/[The store, in the architecture docs].

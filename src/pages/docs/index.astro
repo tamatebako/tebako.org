@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
 import StatusPill from '../../components/docs/StatusPill.astro'
+import { DOCS_SECTIONS } from '../../config/docs'
 
 // IA: PROGRESS/15-website-overhaul.md §B — audience-based landing (wave 0 skeleton)
 
@@ -31,29 +32,19 @@ const audiences = [
   },
 ]
 
-const sections = [
-  {
-    eyebrow: 'GUIDES',
-    title: 'How-to guides',
-    href: '/docs/guides/',
-    desc: 'Task-shaped and copy-paste ready: install, run, press, publish, shim, jail, verify, debug, trace, check, inspect.',
-    planned: false,
-  },
-  {
-    eyebrow: 'ARCHITECTURE',
-    title: 'Architecture',
-    href: '/docs/architecture/overview/',
-    desc: 'Concepts and machinery: packages and payloads, the runtime-as-image model, the VFS, factories, stores, and trust.',
-    planned: false,
-  },
-  {
-    eyebrow: 'REFERENCE',
-    title: 'Reference',
-    href: '/docs/reference/',
-    desc: 'The CLI surface command by command, environment variables, exit codes, manifest and registry schemas, the spec index.',
-    planned: true,
-  },
-]
+const SECTION_DESCRIPTIONS: Record<string, string> = {
+  guides: 'Task-shaped and copy-paste ready: install, run, press, publish, shim, jail, verify, debug, trace, check, inspect.',
+  architecture: 'Concepts and machinery: packages and payloads, the runtime-as-image model, the VFS, factories, stores, and trust.',
+  reference: 'The CLI surface command by command, environment variables, exit codes, manifest and registry schemas, the spec index.',
+}
+
+const sections = DOCS_SECTIONS.map((sec) => ({
+  eyebrow: sec.eyebrowPrefix,
+  title: sec.label,
+  href: sec.id === 'architecture' ? '/docs/architecture/overview/' : sec.homeHref,
+  desc: SECTION_DESCRIPTIONS[sec.id],
+  planned: sec.entries.some((e) => e.status === 'planned'),
+}))
 ---
 
 <BaseLayout title="Documentation — Tebako" description="Tebako documentation by audience: run packages, ship data payloads, package applications, or work on tebako itself — plus how-to guides, architecture docs, and reference material.">
