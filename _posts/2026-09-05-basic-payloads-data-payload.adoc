@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "Basic payloads: Data payloads: make one, read one (2 of 5)"
-date:   2026-09-05 00:00:00 +0800
+date:   2026-09-05 08:00:00 +0800
 categories:
   - tebako
   - packaging
