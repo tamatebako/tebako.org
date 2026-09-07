@@ -13,7 +13,10 @@ let debounce: ReturnType<typeof setTimeout> | null = null
 async function loadPagefind() {
   if (pagefind) return pagefind
   try {
-    pagefind = await import(/* @vite-ignore */ '/pagefind/pagefind-entry.js')
+    // Pagefind 1.5.2 emits pagefind.js at the bundle root — there is no
+    // pagefind-entry.js (only pagefind-entry.json). tests/search-entry.test.ts
+    // pins this path so it cannot drift back to a 404.
+    pagefind = await import(/* @vite-ignore */ '/pagefind/pagefind.js')
     await pagefind.init({})
   } catch {
     pagefind = null
@@ -144,7 +147,7 @@ onBeforeUnmount(() => {
             Searching...
           </div>
           <div v-else-if="!available" class="px-4 py-8 text-center text-sm text-[var(--tb-c-text-3)]">
-            Search index builds on deploy. Available in production.
+            The search index could not be loaded. Check your connection and try again.
           </div>
           <div v-else-if="query && results.length === 0" class="px-4 py-8 text-center text-sm text-[var(--tb-c-text-3)]">
             No results for "{{ query }}"

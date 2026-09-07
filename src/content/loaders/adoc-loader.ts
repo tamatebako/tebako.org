@@ -2,7 +2,7 @@ import { createRequire } from 'node:module'
 import { parse as parseYaml } from 'yaml'
 import { readFile, readdir } from 'node:fs/promises'
 import { join, basename, extname } from 'node:path'
-import { seriesBlock } from '../../config/series'
+import { seriesBlock, seriesFooter } from '../../config/series'
 import type { Loader } from 'astro/loaders'
 
 const require = createRequire(import.meta.url)
@@ -32,7 +32,7 @@ export function adocLoader({ base, attributes = {} }: AdocLoaderOptions): Loader
         const seriesId = typeof frontmatter.series === 'string' ? frontmatter.series : undefined
         const seriesPost = typeof frontmatter.series_post === 'number' ? frontmatter.series_post : undefined
         if (seriesId && seriesPost) {
-          renderBody = seriesBlock(seriesId, seriesPost) + '\n\n' + body
+          renderBody = seriesBlock(seriesId, seriesPost) + '\n\n' + body + '\n\n' + seriesFooter(seriesId, seriesPost)
         }
         const html = (await asciidoctor.convert(renderBody, {
           safe: 'safe',

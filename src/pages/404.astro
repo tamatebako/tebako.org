@@ -6,6 +6,7 @@ import { SITE } from '../config/site'
 
 const lifelines = [
   { label: 'Documentation', href: '/docs/', hint: 'Guides, architecture, reference' },
+  { label: 'Install tebako', href: '/docs/guides/install/', hint: 'Brew or shell installer' },
   { label: 'Home', href: '/', hint: 'Return to shore' },
   { label: 'Blog', href: '/blog/', hint: 'Read the journal' },
 ]
@@ -63,6 +64,7 @@ const lifelines = [
 
       <p class="mt-12 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
         or ride the current back: <a href="/" class="tb-link-underline text-[var(--tb-c-accent)]">tebako.org</a>
+        — or press <span class="rounded-full border border-[var(--tb-c-divider)] px-2 py-0.5">⌘K</span> to search every page
       </p>
 
       <HiddenGem id="sea-404" style="position:absolute; top:15%; right:12%;" />

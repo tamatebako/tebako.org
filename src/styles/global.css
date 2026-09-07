@@ -39,7 +39,7 @@
   --tb-c-ink: var(--color-ink);
   --tb-c-text-1: #1a2b34;
   --tb-c-text-2: #4a5b66;
-  --tb-c-text-3: #7a8b94;
+  --tb-c-text-3: #5d6e77; /* 4.84:1 on paper — AA for the wayfinding layer */
   --tb-c-accent: var(--color-vermillion);
   --tb-c-accent-hover: var(--color-vermillion-deep);
   --tb-c-gold: var(--color-gold);
@@ -62,7 +62,7 @@
   --tb-c-ink: #f5edd0;
   --tb-c-text-1: #e8dfc6;
   --tb-c-text-2: #a8b8c0;
-  --tb-c-text-3: #6a8b9a;
+  --tb-c-text-3: #7d9cab; /* 5.17:1 on bg-soft, 5.96:1 on ink-deep */
   --tb-c-accent: var(--color-gold);
   --tb-c-accent-hover: var(--color-amber);
   --tb-c-gold: var(--color-gold);
@@ -371,6 +371,27 @@
     font-size: inherit;
   }
 
+  /* Language chip: Asciidoctor carries the source language on <pre lang>.
+     The chip claims the top-left; the copy button (copy-buttons.ts) keeps
+     the top-right, so the first code line sits below both. */
+  .tb-prose pre[lang] {
+    padding-top: 2.25rem;
+    position: relative;
+  }
+
+  .tb-prose pre[lang]::before {
+    content: attr(lang);
+    position: absolute;
+    top: 0.55rem;
+    left: 1.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--tb-c-text-3);
+    pointer-events: none;
+  }
+
   .tb-prose blockquote,
   .tb-prose .quoteblock {
     margin: 1.5em 0;
@@ -474,7 +495,7 @@
     --tb-c-ink: #06394a;
     --tb-c-text-1: #1a2b34;
     --tb-c-text-2: #4a5b66;
-    --tb-c-text-3: #7a8b94;
+    --tb-c-text-3: #5d6e77;
     --tb-c-accent: #b4473c;
     --tb-c-accent-hover: #b4473c;
     --tb-c-divider: #cccccc;
@@ -514,6 +535,11 @@
     white-space: pre-wrap;
     word-break: break-word;
     border: 1px solid #cccccc;
+    padding-top: 1.25rem;
+  }
+
+  .tb-prose pre[lang]::before {
+    display: none;
   }
 
   .tb-prose table { width: 100%; }

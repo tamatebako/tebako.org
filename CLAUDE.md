@@ -9,9 +9,9 @@ Every docs page and blog post is an **AsciiDoc collection entry** (`.adoc` file)
 ```
 content                          rendering                    gates (CI)
 _docs/architecture/  25 .adoc →  [slug].astro (thin wrapper) → astro check
-_docs/guides/        14 .adoc →  [slug].astro (thin wrapper) → vitest (27 tests)
+_docs/guides/        15 .adoc →  [slug].astro (thin wrapper) → vitest (30 tests)
 _docs/reference/      9 .adoc →  [slug].astro (thin wrapper) → build
-_posts/              24 .adoc →  blog/[slug].astro           → link checker
+_posts/              35 .adoc →  blog/[slug].astro           → link checker
 ```
 
 Three deep modules hold the system:
@@ -62,7 +62,7 @@ Scoped exemptions: pre-2026 posts (frozen history), the 404 page's nautical them
 npm run dev        # http://localhost:4321
 npm run build      # dist/ + Pagefind index
 npm run check      # astro check (types/templates)
-npm test           # vitest (27 tests)
+npm test           # vitest (30 tests)
 npm run preview    # serve the production build
 ```
 
