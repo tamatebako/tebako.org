@@ -3,8 +3,8 @@ title: Check a payload
 heading: Check a payload.
 lede: >-
   A check is the payload's own acceptance test, declared in its in-image
-  manifest and carried inside its image: _"given my declared needs, I do my
-  one real thing."_ Verification proves the bytes are the publisher's; a
+  manifest and carried inside its image: "given my declared needs, I do my
+  one real thing." Verification proves the bytes are the publisher's; a
   check proves the payload works on top of them. One definition, runnable at
   three moments — by the publisher at press time, by the user on their own
   machine, and under the record policy to discover needs.

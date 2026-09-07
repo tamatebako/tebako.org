@@ -12,6 +12,12 @@ description: >-
   consumer side.
 ---
 
+
+[NOTE]
+====
+This guide is part 5 of the link:/blog/2026-09-05-basic-payloads-publish/[Basic payloads] tutorial. The blog chapter publishes a release from scratch.
+====
+
 == The publish command.
 
 You pass one `--payload` per platform triplet, built by your CI, and one

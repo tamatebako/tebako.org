@@ -19,6 +19,12 @@ series_post: 3
 
 = Basic payloads: Package a Ruby application (3 of 5)
 
+
+[NOTE]
+====
+Reference guide: link:/docs/guides/package-ruby/[Package a Ruby app].
+====
+
 A Ruby application, one executable. This post's subject is pressing
 your app — and the choices you make at press time: what the executable
 carries, and which platforms it targets.

@@ -3,19 +3,25 @@ title: Trace a packaged app
 heading: Trace a packaged app.
 lede: >-
   The trace toolkit shows what a packaged application really touches, from
-  three vantage points. _Inside the process_, an interception bus in the
+  three vantage points. Inside the process, an interception bus in the
   virtual-filesystem layer emits one structured JSON event per decision —
   every mount, open, dlopen, exec, materialize, and jail verdict —
-  identically on linux, macOS, and windows. _At the libc boundary_, retrace
-  watches the same process from outside. _At the kernel_, ptrace, eBPF, or
-  ETW/procmon see what no userland hook can. The `tebako trace` commands
-  work across all three layers: `run` for discovery, `explain` for
-  diagnosis, `cover` for coverage.
+  identically on linux, macOS, and windows. At the libc boundary, retrace
+  watches the same process from outside. At the kernel, ptrace, eBPF, or
+  ETW/procmon see what no userland hook can. The tebako trace commands
+  work across all three layers: run for discovery, explain for
+  diagnosis, cover for coverage.
 description: >-
   The tebako trace toolkit: the interception bus, tebako trace run for
   discovery, trace explain for diagnosis, trace cover for escapes coverage,
   and the procmon import path on windows.
 ---
+
+
+[NOTE]
+====
+This guide is part 1 of the link:/blog/2026-09-05-advanced-payloads-trace/[Advanced payloads] tutorial. The blog chapter traces a real packaging failure.
+====
 
 == The three questions.
 

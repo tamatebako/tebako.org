@@ -13,6 +13,12 @@ description: >-
 
 // normative: spec 03 (the in-image manifest), spec 20 §6 (limnifs is the default format for tfs mkimage; dwarfs an explicit opt-in) — tool_version string current-era (0.2.x)
 
+
+[NOTE]
+====
+This guide is part 2 of the link:/blog/2026-09-05-basic-payloads-data-payload/[Basic payloads] tutorial. The blog chapter builds the fonts example step by step.
+====
+
 == Lay out the directory.
 
 // The manifest path below uses [subs="specialchars"] because the vendored

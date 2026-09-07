@@ -19,6 +19,12 @@ series_post: 4
 
 = Basic payloads: Package a Rails or Sinatra application (4 of 5)
 
+
+[NOTE]
+====
+Reference guide: link:/docs/guides/package-ruby/[Package a Ruby app].
+====
+
 A web application is an application whose entrypoint starts a server.
 That is the whole trick: press the app so that running the executable
 serves HTTP. This post's subject is packaging Rails and Sinatra

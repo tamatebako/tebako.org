@@ -19,6 +19,12 @@ series_post: 2
 
 = Advanced payloads: Jails and profiles: decide what it may touch (2 of 5)
 
+
+[NOTE]
+====
+Reference guide: link:/docs/guides/jails/[Set a jail policy].
+====
+
 The observe half of the boundary was the last post. This post is the
 constrain half: profiles and jails — how the policy you drafted becomes
 the policy that runs, and what is enforced where.

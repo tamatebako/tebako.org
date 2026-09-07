@@ -145,4 +145,4 @@ backend.
 
 See also: link:/docs/architecture/vfs/[The virtual filesystem] ·
 link:/docs/architecture/overlays/[Declarative overlays] ·
-link:/docs/architecture/wire-format/[The tpkg wire format].
+link:/docs/architecture/anatomy/[How a Tebako package works].

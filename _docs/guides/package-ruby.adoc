@@ -13,6 +13,12 @@ description: >-
 
 // normative: spec 03 §6 (suites), spec 06, spec 20 §6 (--format: limnifs is the default; dwarfs an explicit opt-in) — flags verified against crates/tebako-cli/src/main.rs USAGE
 
+
+[NOTE]
+====
+This guide pairs with parts 3 and 4 of the link:/blog/2026-09-05-basic-payloads-ruby-application/[Basic payloads] tutorial, which package a single Ruby app and then a Rails app.
+====
+
 == Decide: lean or fat.
 
 *Lean — the default.* The package is bootstrap + your payload + a
