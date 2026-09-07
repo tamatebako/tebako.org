@@ -295,9 +295,12 @@
 <script>
   import { initEasterEggs } from './easter'
   import { installCopyButtons } from '../../src/lib/copy-buttons'
+  import { installHeadingAnchors } from '../../src/lib/heading-anchors'
 
   installCopyButtons()
   document.addEventListener('astro:after-swap', installCopyButtons)
+  installHeadingAnchors()
+  document.addEventListener('astro:after-swap', installHeadingAnchors)
 
   const start = () => initEasterEggs()
   if ('requestIdleCallback' in window) {

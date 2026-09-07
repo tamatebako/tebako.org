@@ -4,12 +4,19 @@ import BlogPostCard from '../../components/BlogPostCard.astro'
 import HiddenGem from '../../components/HiddenGem.astro'
 import WisdomGem from '../../components/WisdomGem.astro'
 import { getCollection } from 'astro:content'
+import { SERIES, SERIES_ORDER, getSeries } from '../../config/series'
 
 const posts = (await getCollection('blog')).sort(
   (a, b) => b.data.date.getTime() - a.data.date.getTime()
 )
 
+const byHref = new Map(posts.map((post) => [`/blog/${post.id}/`, post]))
+const seriesHref = new Set(
+  SERIES_ORDER.flatMap((id) => getSeries(id).entries.map((e) => e.href))
+)
+
 const [latest, ...rest] = posts
+const standalone = rest.filter((post) => !seriesHref.has(`/blog/${post.id}/`))
 ---
 
 <BaseLayout
@@ -58,12 +65,62 @@ const [latest, ...rest] = posts
       </a>
     )}
 
-    {rest.length > 0 && (
-      <div class="mt-8 grid gap-6 md:grid-cols-2">
-        {rest.map((post) => (
-          <BlogPostCard post={post} />
-        ))}
-      </div>
+    {SERIES_ORDER.map((id) => {
+      const series = SERIES[id]
+      return (
+        <section class="mt-16" aria-labelledby={`series-${id}`}>
+          <p class="tb-eyebrow">SERIES · {series.entries.length} PARTS</p>
+          <h2 id={`series-${id}`} class="mt-2">{series.name}</h2>
+          <p class="mt-3 max-w-2xl text-[var(--tb-c-text-2)]">{series.blurb}</p>
+          <ol class="mt-6 divide-y divide-[var(--tb-c-divider)] rounded-2xl border border-[var(--tb-c-divider)]">
+            {series.entries.map((entry, i) => {
+              const post = byHref.get(entry.href)
+              return (
+                <li>
+                  <a
+                    href={entry.href}
+                    class="group grid grid-cols-[auto_1fr] items-baseline gap-4 px-6 py-4 transition-colors hover:bg-[var(--tb-c-bg-soft)]"
+                  >
+                    <span
+                      class="font-[var(--font-mono)] text-sm text-[var(--tb-c-text-3)] group-hover:text-[var(--tb-c-accent)]"
+                      aria-hidden="true"
+                    >
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+                    <span class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+                      <span class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">
+                        {entry.title}
+                        {post?.id === latest.id && (
+                          <span class="ml-3 align-middle font-[var(--font-mono)] text-xs uppercase tracking-wider text-[var(--tb-c-accent)]">latest</span>
+                        )}
+                      </span>
+                      {post && (
+                        <time
+                          datetime={post.data.date.toISOString()}
+                          class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]"
+                        >
+                          {post.data.date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                        </time>
+                      )}
+                    </span>
+                  </a>
+                </li>
+              )
+            })}
+          </ol>
+        </section>
+      )
+    })}
+
+    {standalone.length > 0 && (
+      <section class="mt-16">
+        <h2 class="sr-only">Standalone posts</h2>
+        <div class="grid gap-6 md:grid-cols-2">
+          {standalone.map((post) => (
+            <BlogPostCard post={post} />
+          ))}
+        </div>
+      </section>
     )}
   </section>
 </BaseLayout>
