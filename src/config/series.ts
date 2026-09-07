@@ -64,10 +64,15 @@ export function seriesBlock(id: string, n: number): string {
   if (n < 1 || n > s.entries.length) {
     throw new Error(`series registry: post ${n} is out of range for "${id}" (1..${s.entries.length})`)
   }
+  const dots = s.entries
+    .map((_, i) => (i + 1 === n ? '●' : '○'))
+    .join(' ')
   const lines = [
     '[NOTE]',
     '====',
     `Post ${n} of ${s.entries.length} in the series *${s.name}*.`,
+    '',
+    dots,
     '',
   ]
   s.entries.forEach((e, i) => {

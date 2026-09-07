@@ -1,6 +1,6 @@
 ---
 import DocsLayout from '../../../layouts/DocsLayout.astro'
-import { makeDocsPaths } from '../../../lib/docs-route'
+import { makeDocsPaths, extractToc } from '../../../lib/docs-route'
 
 export const getStaticPaths = () => makeDocsPaths('architecture')
 
@@ -10,6 +10,7 @@ interface EntryProps {
 }
 const { entry, href }: EntryProps = Astro.props
 const html = entry.rendered?.html ?? ''
+const toc = extractToc(html)
 ---
 
 <DocsLayout
@@ -19,6 +20,7 @@ const html = entry.rendered?.html ?? ''
   heading={entry.data.heading}
   lede={entry.data.lede}
   description={entry.data.description}
+  toc={toc}
 >
   <div class="tb-prose mt-16" set:html={html} />
 </DocsLayout>

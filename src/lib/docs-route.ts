@@ -7,6 +7,12 @@ const COLLECTIONS = {
   architecture: 'docs-architecture',
 } as const
 
+export function extractToc(html: string): Array<{ id: string; title: string }> {
+  return [...html.matchAll(/<h2 id="([^"]*)"[^>]*>(.*?)<\/h2>/g)]
+    .map((m) => ({ id: m[1], title: m[2].replace(/<[^>]*>/g, '').trim() }))
+    .filter((h) => h.id && h.title)
+}
+
 export async function makeDocsPaths(section: DocsSectionId) {
   const entries = await getCollection(COLLECTIONS[section])
   const sec = getSection(section)
