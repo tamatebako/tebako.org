@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { createRequire } from 'node:module'
 import { extractFrontmatter } from '../src/content/loaders/adoc-loader'
+import { highlightCode, highlightAdocHtml } from '../src/lib/highlight'
 
 const require = createRequire(import.meta.url)
 const asciidoctor: any = require('@asciidoctor/core')
@@ -108,5 +109,44 @@ describe('doctitle stripping (the loader pre-series-block rule)', () => {
 
   it('leaves bodies that do not start with a heading untouched', () => {
     expect(strip('Plain opening paragraph.')).toBe('Plain opening paragraph.')
+  })
+})
+
+describe('build-time syntax highlighting', () => {
+  it('highlights yaml into token spans', () => {
+    const out = highlightCode('yaml', 'needs:\n  access: ro')
+    expect(out).toContain('hljs-attr')
+    expect(out).toContain('needs:')
+  })
+
+  it('styles the prompt in console transcripts and leaves output plain', () => {
+    const out = highlightCode('console', '$ tebako press\nresolving runtime')
+    expect(out).toContain('<span class="hljs-prompt">$</span>')
+    expect(out).toContain('resolving runtime')
+    expect(out).not.toContain('hljs-attr')
+  })
+
+  it('recognizes the PS&gt; and &gt; prompt forms on their escaped forms', () => {
+    expect(highlightCode('cmd', 'PS&gt; tebako doctor')).toContain('hljs-prompt')
+    expect(highlightCode('console', '&gt; tfs ls')).toContain('hljs-prompt')
+  })
+
+  it('passes unknown languages through untouched', () => {
+    expect(highlightCode('text', 'plain &amp; simple')).toBe('plain &amp; simple')
+  })
+
+  it('keeps HTML entities intact through a grammar round-trip', () => {
+    const out = highlightCode('ruby', 'x = a &amp;&amp; &lt;b&gt;')
+    expect(out).toContain('&amp;&amp;')
+    expect(out).toContain('&lt;b')
+    expect(out).not.toContain('<b>')
+  })
+
+  it('rewrites only pre[lang] blocks in converted html', () => {
+    const html = '<p>keep &lt;this&gt;</p>\n<pre lang="json"><code>{&quot;a&quot;: 1}</code></pre>\n<pre><code>bare</code></pre>'
+    const out = highlightAdocHtml(html)
+    expect(out).toContain('<p>keep &lt;this&gt;</p>')
+    expect(out).toContain('hljs-')
+    expect(out).toContain('<pre><code>bare</code></pre>')
   })
 })

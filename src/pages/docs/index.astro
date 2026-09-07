@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
 import StatusPill from '../../components/docs/StatusPill.astro'
+import { SERIES, SERIES_ORDER } from '../../config/series'
 
 // IA: PROGRESS/15-website-overhaul.md §B — audience-based landing (wave 0 skeleton)
 
@@ -87,6 +88,26 @@ const sections = [
           )}
         </a>
       ))}
+    </div>
+
+    <div class="mt-16">
+      <p class="tb-eyebrow">GUIDED PATHS</p>
+      <p class="mt-3 max-w-2xl text-[var(--tb-c-text-2)]">
+        Prefer to be taught rather than told? The blog carries three tutorial series,
+        each a complete arc from first run to advanced packaging.
+      </p>
+      <div class="mt-6 grid gap-6 md:grid-cols-3">
+        {SERIES_ORDER.map((id) => {
+          const series = SERIES[id]
+          return (
+            <a href={series.entries[0].href} class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
+              <p class="font-[var(--font-mono)] text-xs uppercase tracking-widest text-[var(--tb-c-text-3)]">{series.entries.length} parts</p>
+              <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">{series.name}</h3>
+              <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">{series.blurb}</p>
+            </a>
+          )
+        })}
+      </div>
     </div>
 
     <p class="mt-10 text-sm leading-relaxed text-[var(--tb-c-text-3)]">

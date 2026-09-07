@@ -68,6 +68,14 @@ function close() {
   open.value = false
 }
 
+function originOf(url: string): string {
+  if (url.startsWith('/docs/guides/')) return 'guide'
+  if (url.startsWith('/docs/architecture/')) return 'architecture'
+  if (url.startsWith('/docs/reference/')) return 'reference'
+  if (url.startsWith('/blog/')) return 'blog'
+  return ''
+}
+
 function highlight(result: any): string {
   if (!result?.excerpt) return ''
   return result.excerpt.replace(/<mark>/g, '<span style="color: var(--tb-c-accent); font-weight: 600;">').replace(/<\/mark>/g, '</span>')
@@ -162,7 +170,12 @@ onBeforeUnmount(() => {
             @click="close"
             class="block border-b border-[var(--tb-c-divider)] px-4 py-3 transition-colors last:border-0 hover:bg-[var(--tb-c-divider)]"
           >
-            <p class="font-medium text-[var(--tb-c-text-1)]">{{ result.meta?.title || result.url }}</p>
+            <p class="font-medium text-[var(--tb-c-text-1)]">
+              <span
+                v-if="originOf(result.url)"
+                class="mr-2 rounded-full border border-[var(--tb-c-divider)] px-1.5 py-0.5 align-middle font-[var(--font-mono)] text-[0.65rem] uppercase tracking-wider text-[var(--tb-c-text-3)]"
+              >{{ originOf(result.url) }}</span>{{ result.meta?.title || result.url }}
+            </p>
             <p
               v-if="result.excerpt"
               class="mt-1 text-sm leading-snug text-[var(--tb-c-text-2)]"
