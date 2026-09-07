@@ -3,6 +3,7 @@ import { parse as parseYaml } from 'yaml'
 import { readFile, readdir } from 'node:fs/promises'
 import { join, basename, extname } from 'node:path'
 import { seriesBlock, seriesFooter } from '../../config/series'
+import { highlightAdocHtml } from '../../lib/highlight'
 import type { Loader } from 'astro/loaders'
 
 const require = createRequire(import.meta.url)
@@ -40,7 +41,7 @@ export function adocLoader({ base, attributes = {} }: AdocLoaderOptions): Loader
         if (seriesId && seriesPost) {
           renderBody = seriesBlock(seriesId, seriesPost) + '\n\n' + stripped + '\n\n' + seriesFooter(seriesId, seriesPost)
         }
-        const html = (await asciidoctor.convert(renderBody, {
+        const html = highlightAdocHtml(await asciidoctor.convert(renderBody, {
           safe: 'safe',
           standalone: false,
           attributes: {

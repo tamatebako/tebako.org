@@ -379,6 +379,37 @@
     position: relative;
   }
 
+  /* Syntax tokens (build-time, lowlight) — code blocks always sit on the
+     ink-deep background in both modes, so one dark-oriented palette serves
+     both, derived from the site's gold/amber/mist family. */
+  .tb-prose pre .hljs-prompt { color: var(--tb-c-text-3); }
+
+  .tb-prose pre .hljs-attr,
+  .tb-prose pre .hljs-keyword,
+  .tb-prose pre .hljs-selector-tag,
+  .tb-prose pre .hljs-tag { color: var(--color-gold); }
+
+  .tb-prose pre .hljs-string,
+  .tb-prose pre .hljs-regexp { color: #9ece9e; }
+
+  .tb-prose pre .hljs-comment,
+  .tb-prose pre .hljs-quote { color: var(--tb-c-text-3); font-style: italic; }
+
+  .tb-prose pre .hljs-number,
+  .tb-prose pre .hljs-literal,
+  .tb-prose pre .hljs-symbol { color: #e0b06a; }
+
+  .tb-prose pre .hljs-title,
+  .tb-prose pre .hljs-name,
+  .tb-prose pre .hljs-selector-id,
+  .tb-prose pre .hljs-selector-class { color: #7dcfe8; }
+
+  .tb-prose pre .hljs-built_in,
+  .tb-prose pre .hljs-variable,
+  .tb-prose pre .hljs-params { color: var(--color-amber); }
+
+  .tb-prose pre .hljs-meta { color: var(--tb-c-text-3); }
+
   .tb-prose pre[lang]::before {
     content: attr(lang);
     position: absolute;
