@@ -19,6 +19,12 @@ series_post: 2
 
 = Basic payloads: Data payloads: make one, read one (2 of 5)
 
+
+[NOTE]
+====
+Reference guide: link:/docs/guides/data-payload/[Create a data payload].
+====
+
 The simplest payload there is: a directory of files. Fonts, schemas,
 dictionaries, word lists, datasets — anything versioned that
 applications read. No code, no compilation, one command. This post

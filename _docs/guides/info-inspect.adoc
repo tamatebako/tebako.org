@@ -2,9 +2,9 @@
 title: info & inspect
 heading: info & inspect.
 lede: >-
-  Two read-only families: `tebako info` reports on the store and its
-  contents; `tebako inspect` reads a single artifact. Neither mutates
-  anything; `--remote` is the only flag that reaches the network.
+  Two read-only families: tebako info reports on the store and its
+  contents; tebako inspect reads a single artifact. Neither mutates
+  anything; --remote is the only flag that reaches the network.
 description: >-
   Read-only tebako introspection: tebako info topics with --remote and
   --json, tebako inspect with the contract card, tebako-pkg info, and tfs

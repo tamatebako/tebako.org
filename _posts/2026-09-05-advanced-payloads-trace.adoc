@@ -19,6 +19,12 @@ series_post: 1
 
 = Advanced payloads: Trace: see what your payload touches (1 of 5)
 
+
+[NOTE]
+====
+Reference guide: link:/docs/guides/trace/[Trace a packaged app].
+====
+
 The advanced series picks up where the basics ended. Its first
 subject is the question every packaged application eventually raises:
 *what does my payload actually touch on this machine?* The `tebako

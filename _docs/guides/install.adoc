@@ -9,6 +9,12 @@ description: >-
   binary: four static binaries, one store directory, no daemon, no root.
 ---
 
+
+[NOTE]
+====
+This guide is part 1 of the link:/blog/2026-09-05-basic-payloads-run-first-package/[Basic payloads] tutorial. The blog chapter walks a first run end to end.
+====
+
 == Pick a route.
 
 All three install the same four binaries. Brew and the installer verify

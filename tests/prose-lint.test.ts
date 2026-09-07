@@ -81,4 +81,20 @@ describe('prose lint — the writing rules, enforced', () => {
     }
     expect(violations, '\n' + violations.join('\n')).toEqual([])
   })
+
+  // The lede is rendered as plain text by the docs layouts — any AsciiDoc
+  // markup authored there would show literally on the page.
+  it('frontmatter ledes carry no AsciiDoc markup', () => {
+    const files = walk(join(ROOT, '_docs'), ['.adoc'])
+    const violations: string[] = []
+    for (const f of files) {
+      const raw = readFileSync(f, 'utf-8')
+      const m = /^---\n([\s\S]*?)\n---/.exec(raw)
+      if (!m) continue
+      const lede = /^lede:[\s\S]*?(?=^\w+:|\Z)/m.exec(m[1] + '\n')?.[0] ?? ''
+      const markup = /(?<!\w)_\S[^_]*_(?!\w)|`[^`]+`|\*\S[^*]*\*/.exec(lede)
+      if (markup) violations.push(`${f.slice(ROOT.length + 1)}: ${markup[0]}`)
+    }
+    expect(violations, '\n' + violations.join('\n')).toEqual([])
+  })
 })

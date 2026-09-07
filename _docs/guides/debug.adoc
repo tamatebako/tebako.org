@@ -3,8 +3,8 @@ title: Debug & logging
 heading: Debug & logging.
 lede: >-
   Everything tebako logs goes to stderr, in one format, under one switch:
-  `tebako[<pid>] <level> <component>: <event> <k=v>…`. stdout belongs to the
-  payload — logs never touch it.
+  tebako[<pid>] <level> <component>: <event> <k=v>… — stdout belongs to the
+  payload, and logs never touch it.
 description: >-
   Tebako debugging: TEBAKO_DEBUG levels and per-component overrides, log
   format, tebako-shim doctor, registry freshness, and the exit codes worth

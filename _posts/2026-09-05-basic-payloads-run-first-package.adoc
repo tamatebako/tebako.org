@@ -19,6 +19,12 @@ series_post: 1
 
 = Basic payloads: Run your first package (1 of 5)
 
+
+[NOTE]
+====
+Reference guide: link:/docs/guides/install/[Install tebako] and link:/docs/guides/run/[Run a packaged app].
+====
+
 This series teaches tebako v2 hands-on, one subject per post: run a
 package, make payloads, package applications, publish them. Every step
 is a command you can run right now.

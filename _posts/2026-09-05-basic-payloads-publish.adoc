@@ -19,6 +19,12 @@ series_post: 5
 
 = Basic payloads: Publish to your users (5 of 5)
 
+
+[NOTE]
+====
+Reference guide: link:/docs/guides/publish/[Publish to your own registry] and link:/docs/guides/check/[Check a payload].
+====
+
 The last subject in this series is the hand-off: getting your payload
 from your machine to your users'. Three steps — prove it, publish it,
 let them install it — and every step is a command.

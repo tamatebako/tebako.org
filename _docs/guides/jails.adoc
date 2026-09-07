@@ -13,6 +13,12 @@ description: >-
 
 // normative: spec 08 (profiles, TEBAKO_JAIL grammar, §2.1 platform floor), spec 23 §2 (needs: block) + §8 (record mode, tfs needs --from-journal) — record mode + generator shipped at the image layer; D1–D5 manifest/shim/press wiring is Phase-R (planned)
 
+
+[NOTE]
+====
+This guide is part 2 of the link:/blog/2026-09-05-advanced-payloads-jails-profiles/[Advanced payloads] tutorial. The blog chapter derives a jail from a failing run.
+====
+
 == What a jail is not.
 
 * **Not a sandbox for hostile code.** A jail shapes the filesystem view; it is
