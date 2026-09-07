@@ -94,3 +94,19 @@ describe('asciidoctor conversion (same options as the loader)', () => {
     expect(html).not.toContain('<em>tpkg</em>')
   })
 })
+
+describe('doctitle stripping (the loader pre-series-block rule)', () => {
+  const strip = (body: string) => body.replace(/^\s*= [^\n]*\n/, '')
+
+  it('strips a leading doctitle so the series box cannot orphan it mid-document', () => {
+    expect(strip('\n= My post title\n\n== First section.\n')).toBe('\n== First section.\n')
+  })
+
+  it('never strips a level-1 section opening', () => {
+    expect(strip('\n== Background\n\ntext')).toBe('\n== Background\n\ntext')
+  })
+
+  it('leaves bodies that do not start with a heading untouched', () => {
+    expect(strip('Plain opening paragraph.')).toBe('Plain opening paragraph.')
+  })
+})
