@@ -31,8 +31,14 @@ export function adocLoader({ base, attributes = {} }: AdocLoaderOptions): Loader
 
         const seriesId = typeof frontmatter.series === 'string' ? frontmatter.series : undefined
         const seriesPost = typeof frontmatter.series_post === 'number' ? frontmatter.series_post : undefined
+        // The page template renders the frontmatter title as its own <h1>; strip
+        // the adoc doctitle (`= Title`) before conversion — with the series box
+        // prepended it lands mid-document, where Asciidoctor reads it as a
+        // level-0 section and drops it with an error on every build.
+        const stripped = body.replace(/^\s*= [^\n]*\n/, '')
+        renderBody = stripped
         if (seriesId && seriesPost) {
-          renderBody = seriesBlock(seriesId, seriesPost) + '\n\n' + body + '\n\n' + seriesFooter(seriesId, seriesPost)
+          renderBody = seriesBlock(seriesId, seriesPost) + '\n\n' + stripped + '\n\n' + seriesFooter(seriesId, seriesPost)
         }
         const html = (await asciidoctor.convert(renderBody, {
           safe: 'safe',

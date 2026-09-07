@@ -7,6 +7,7 @@ export interface Series {
   id: string
   name: string
   label: string
+  blurb: string
   entries: SeriesEntry[]
 }
 
