@@ -1,6 +1,12 @@
 ---
 import DocsLayout from '../../../layouts/DocsLayout.astro'
 import StatusPill from '../../../components/docs/StatusPill.astro'
+import { getSection } from '../../../config/docs'
+
+// Pill status comes from the docs registry, not this array — the registry is
+// the SSOT for what is live, so a page flipping live updates the hub too.
+const registryStatus = (href: string) =>
+  getSection('reference').entries.find((e) => e.href === href)?.status ?? 'planned'
 
 // IA: PROGRESS/15-website-overhaul.md §B Reference — wave 0 stub landing.
 // Each planned page has an honest stub at its href (status: planned in
@@ -69,7 +75,7 @@ const pages = [
   href="/docs/reference/"
   title="Reference"
   heading="Everything you need to look up."
-  lede="This section is for looking things up: commands and flags, environment variables, exit codes, and the schemas, each on its own page. It is still being written — the cards below show what is planned, and each page goes live as it is written."
+  lede="This section is for looking things up: commands and flags, environment variables, exit codes, and the schemas, each on its own page. Each page goes live as it is written; the cards below carry their current status."
   description="Tebako reference documentation: the CLI surface command by command, environment variables, exit codes, manifest and registry schemas, and the normative spec index."
 >
   <div class="mt-16 grid gap-6 md:grid-cols-3">
@@ -82,7 +88,7 @@ const pages = [
         <p class="tb-eyebrow">{p.eyebrow}</p>
         <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)]">{p.title}</h3>
         <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">{p.desc}</p>
-        <p class="mt-4"><StatusPill status="planned" /></p>
+        <p class="mt-4"><StatusPill status={registryStatus(p.href)} /></p>
       </a>
     ))}
   </div>

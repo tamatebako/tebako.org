@@ -1,6 +1,6 @@
 ---
 interface Props {
-  status: 'shipped' | 'planned'
+  status: 'live' | 'planned'
   note?: string
 }
 
@@ -9,10 +9,10 @@ const { status, note } = Astro.props
 
 <span
   class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 font-[var(--font-mono)] text-[0.625rem] font-semibold tracking-wider"
-  style={status === 'shipped'
+  style={status === 'live'
     ? 'color: var(--tb-c-accent); border: 1px solid var(--tb-c-accent); background: color-mix(in srgb, var(--tb-c-accent) 8%, transparent);'
     : 'color: var(--color-gold); border: 1px solid var(--color-gold); background: color-mix(in srgb, var(--color-gold) 8%, transparent);'}
 >
-  <span class="h-1.5 w-1.5 rounded-full" style={status === 'shipped' ? 'background: var(--tb-c-accent);' : 'background: var(--color-gold);'}></span>
-  {status === 'shipped' ? 'SHIPPED' : 'PLANNED'}{note ? ` · ${note}` : ''}
+  <span class="h-1.5 w-1.5 rounded-full" style={status === 'live' ? 'background: var(--tb-c-accent);' : 'background: var(--color-gold);'}></span>
+  {status === 'live' ? 'SHIPPED' : 'PLANNED'}{note ? ` · ${note}` : ''}
 </span>

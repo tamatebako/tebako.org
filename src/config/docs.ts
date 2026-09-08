@@ -91,7 +91,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
       { label: 'tfs CLI', href: '/docs/reference/cli-tfs/', status: 'planned' },
       { label: 'tebako-pkg CLI', href: '/docs/reference/cli-tebako-pkg/', status: 'planned' },
       { label: 'tebako-shim CLI', href: '/docs/reference/cli-tebako-shim/', status: 'planned' },
-      { label: 'Environment variables', href: '/docs/reference/environment/', status: 'planned' },
+      { label: 'Environment variables', href: '/docs/reference/environment/', status: 'live' },
       { label: 'Exit codes', href: '/docs/reference/exit-codes/', status: 'planned' },
       { label: 'Manifest reference', href: '/docs/reference/manifest/', status: 'planned' },
       { label: 'Registry schema', href: '/docs/reference/registry-schema/', status: 'planned' },
