@@ -11,7 +11,21 @@ const pathname = Astro.url.pathname
 const isActive = (href: string) => pathname === href
 ---
 
-<nav aria-label={`${sec.label} documentation`} class="mt-10 flex flex-wrap items-center gap-2">
+<!-- Mobile: a collapsed jump menu; 26 wrapped pills cost ~220px of scroll
+     before any content on a phone. Pills return at md. -->
+<select
+  aria-label={`Jump to a page in ${sec.label}`}
+  onchange="var u=this.value; if(u) window.location.assign(u);"
+  class="tb-docs-jump mt-10 w-full rounded-2xl border border-[var(--tb-c-divider)] px-4 py-3 font-[var(--font-mono)] text-sm text-[var(--tb-c-text-2)] md:hidden"
+  style="background: var(--tb-c-bg-soft);"
+>
+  <option value="">Jump to a page…</option>
+  {sec.entries.filter((e) => e.href !== sec.homeHref).map((e) => (
+    <option value={e.href} selected={isActive(e.href)}>{e.label}</option>
+  ))}
+</select>
+
+<nav aria-label={`${sec.label} documentation`} class="mt-10 hidden flex-wrap items-center gap-2 md:flex">
   {sec.entries.map((item, i) => (
     <a
       href={item.href}

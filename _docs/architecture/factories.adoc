@@ -52,7 +52,7 @@ the same shape.
             <text x="150" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="14" font-weight="600" fill="var(--tb-c-text-1)">tamatebako/ruby</text>
             <text x="150" y="42" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">source factory · patches + versions.yml</text>
             <text x="150" y="56" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">→ tfs-ruby-&lt;v&gt;-src[-&lt;scenario&gt;].tar.gz + SHA256SUMS</text>
-            <text x="150" y="74" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" font-weight="600" fill="var(--tb-c-accent)">v0.2.27 · 37 rubies × 4 scenarios · 149 assets</text>
+            <text x="150" y="74" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" font-weight="600" fill="var(--tb-c-accent)">v0.2.34 · 37 rubies × 4 scenarios · 149 assets</text>
           </g>
           <line x1="470" y1="196" x2="470" y2="224" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#pipe-arrow)" />
           <text x="484" y="214" font-family="var(--font-mono), monospace" font-size="10" fill="var(--tb-c-accent)">release-src → pin-bump PR → dispatch</text>
@@ -62,7 +62,7 @@ the same shape.
             <text x="150" y="24" text-anchor="middle" font-family="var(--font-display), sans-serif" font-size="14" font-weight="600" fill="var(--tb-c-text-1)">tebako-runtime-ruby</text>
             <text x="150" y="42" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">runtime factory · builds per version × triplet</text>
             <text x="150" y="56" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" fill="var(--tb-c-text-3)">→ tebako-runtime-&lt;ver&gt;-&lt;lang&gt;-&lt;triplet&gt;[.exe]</text>
-            <text x="150" y="74" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" font-weight="600" fill="var(--tb-c-accent)">v0.16.9 · 22 rubies × 7 triplets · 334 assets</text>
+            <text x="150" y="74" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="9.5" font-weight="600" fill="var(--tb-c-accent)">v0.16.22 · 22 rubies × 7 triplets · 816 assets</text>
           </g>
           <line x1="470" y1="322" x2="470" y2="350" stroke="var(--tb-c-accent)" stroke-width="2" marker-end="url(#pipe-arrow)" />
           <text x="484" y="340" font-family="var(--font-mono), monospace" font-size="10" fill="var(--tb-c-accent)">publishes</text>
