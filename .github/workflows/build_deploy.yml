@@ -6,6 +6,8 @@ on:
     - main
   pull_request:
   repository_dispatch:
+  schedule:
+  - cron: "23 4 * * *"
   workflow_dispatch:
 
 permissions:
@@ -49,6 +51,27 @@ jobs:
         run: npm run build
         env:
           SITE_URL: https://www.tebako.org
+
+      - name: Assemble versions catalog (/versions)
+        # Downloads the latest successful site-dist artifact from
+        # tamatebako/versions and grafts it into dist/versions/. Cross-repo
+        # artifact reads need TEBAKO_PACKAGES_RO_PAT — the same fine-grained
+        # PAT planned for py-factory#5 (contents:read + actions:read on
+        # tamatebako/versions). Until the owner adds that secret, this step
+        # degrades gracefully (continue-on-error) and the site deploys
+        # without /versions.
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.TEBAKO_PACKAGES_RO_PAT || secrets.GITHUB_TOKEN }}
+        run: |
+          RUN_ID=$(gh run list --repo tamatebako/versions --workflow build.yml --branch main --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
+            echo "::warning::no successful site-dist run on tamatebako/versions — deploying without /versions"
+            exit 0
+          fi
+          gh run download "$RUN_ID" --repo tamatebako/versions --name site-dist --dir dl/versions
+          cp -R dl/versions/ dist/versions/
+          test -f dist/index.html && test -f dist/versions/index.html
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
