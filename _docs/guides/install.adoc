@@ -75,7 +75,7 @@ with `TEBAKO_SHIM_BINARY`.
 [source,console]
 ----
 $ tebako --version
-Tebako executable packager version 0.15.9
+Tebako executable packager version 2.1.7
 ----
 
 If the shell cannot find `tebako` after the shell installer, the install

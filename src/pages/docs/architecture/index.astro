@@ -48,7 +48,7 @@ const DESCRIPTIONS: Record<string, string> = {
     <DocsNav section="architecture" />
 
     <div class="mt-16 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {sec.entries.map((entry, i) => (
+      {sec.entries.filter((entry) => entry.href !== sec.homeHref).map((entry, i) => (
         <a
           href={entry.href}
           class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]"

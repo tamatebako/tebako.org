@@ -1,18 +1,108 @@
 ---
 title: Exit codes
+heading: Every exit code, one table.
+lede: >-
+  The complete named-exit table: every loader refusal from 64 through 79,
+  plus the three codes that live outside the loader block. Every loader
+  failure prints a one-line reason before exiting — read that line first.
 description: >-
-  The complete named-exit table — 64–79 plus 126, 132, 138 — with the layer that owns each code.
+  The complete tebako exit-code table: loader codes 64 to 79, the
+  ENOKEY, factory, and press-time codes outside the block, and what each
+  refusal means.
 ---
 
-[NOTE]
-====
-Status: planned — this page lands with the reference wave.
-====
+// normative: verified against crates/tpkg/src/lib.rs (EX_TEBAKO_* 65-79),
+// tebako-cli VERSION_BANNER, spec 06 §4 + spec 18 §7 (exit allocation),
+// spec 24 §5/§7 (126, 68), spec 26 §2 (79 — 79, not 72: 72 is TRUST since
+// spec 09), spec 19 §4 (138). 64 is clap's own usage exit. Moved from the
+// debug guide (2026-09-08) — this is the table's one home.
 
-The complete named-exit table — 64–79 plus 126, 132, 138 — with the layer that owns each code.
+== The loader block, 64 through 79.
 
-This page is not written yet. Until it lands, the
-link:/docs/architecture/[architecture section] covers the same surfaces
-at narrative depth, and the
-https://github.com/tamatebako/tebako[product repository] carries the
-normative specifications.
+The codes exist so scripts can branch.
+
+[cols="1,1,4"]
+|===
+| Exit | Refusal | What it means
+
+| 64
+| usage
+| the command line itself was wrong — a bad flag or a missing argument; the usage line prints
+
+| 65
+| manifest
+| the trailer or a manifest is missing, corrupt, or names no usable entrypoint
+
+| 66
+| launcher ABI
+| the package speaks a handoff wire format this runtime predates
+
+| 67
+| runtime reference
+| the runtime reference in the trailer cannot be parsed or honored
+
+| 68
+| overlay
+| an overlay/decrypt binding failed — an unbound retained store, missing or non-opening key material, an unwritable store, an orphan binding, or a malformed TEBAKO_OVERLAYS / TEBAKO_DECRYPT
+
+| 69
+| unavailable
+| an artifact could not be resolved — offline miss or download failure; check TEBAKO_OFFLINE, the network, the release page
+
+| 70
+| sha256
+| a checksum verification failed; nothing was installed
+
+| 71
+| signature
+| a signature is invalid — or the artifact is unsigned under TEBAKO_REQUIRE_SIGNED=1
+
+| 72
+| trust
+| the signing key is not in the trusted set
+
+| 73
+| jail
+| the jail policy is malformed; the run failed closed, nothing mounted
+
+| 74
+| I/O
+| a filesystem, lock, or install operation failed
+
+| 75
+| contract
+| runtime and loader generations do not meet — the message names both and the remedy
+
+| 76
+| install
+| installation was refused — the publisher froze the package (no-install), or the verb belongs to the CLI
+
+| 77
+| era
+| the artifact comes from a different tebako generation, in either direction
+
+| 78
+| layout
+| the env image does not match the layout the interpreter was compiled for — or a mount-root override the image does not grant
+
+| 79
+| check
+| a payload check FAILed — the tebako check aggregate; the verdict line names the check and the failed expectation
+
+|===
+
+== The three outside the block.
+
+The everyday two: 69 (something could not be fetched — check
+`TEBAKO_OFFLINE` first) and 73 (a malformed jail policy — fail closed,
+nothing mounted).
+
+Three codes live outside the loader block, each owned by its own layer:
+`126` is not a loader exit but the `ENOKEY` errno — a read of a sealed
+(encrypted) path without the key material answers it, and a payload that
+surfaces the errno exits with it; `132` is the runtime factory's refusal
+of a pre-era or corrupt source tarball — you meet it in factory CI, not
+on a user machine; `138` is a press-time miss: `TEBAKO_OFFLINE=1` with
+the bootstrap not yet in the local store.
+
+See also: link:/docs/guides/debug/[Debug & logging] · link:/docs/guides/trace/[Trace a packaged app] · link:/docs/reference/environment/[Environment variables]
