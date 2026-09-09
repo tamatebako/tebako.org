@@ -1,18 +1,69 @@
 ---
 title: tebako-shim CLI
+heading: The dispatcher and its verbs.
+lede: >-
+  tebako-shim is one binary with two roles. Invoked under a payload's
+  own name, it dispatches: argv0 selects the payload, version, and
+  runtime for this invocation. Invoked as itself, it manages: list,
+  enable, disable, which, doctor, and the shell integration verbs.
 description: >-
-  Dispatch flags and the management verbs: list, enable, disable, which, doctor, install-shell, uninstall-shell.
+  The tebako-shim CLI reference: the dispatch role, the management
+  verbs (list, enable, disable, which, doctor, install-shell,
+  uninstall-shell), and how shims land on PATH.
 ---
 
-[NOTE]
-====
-Status: planned — this page lands with the reference wave.
-====
+// normative: verbs verified against crates/tebako-shim/src/main.rs and
+// manage.rs (v2.1.7, 2026-09-09). Dispatch resolution: the version
+// chain (environment, project file, config defaults, registry default)
+// per the dispatch architecture page.
 
-Dispatch flags and the management verbs: list, enable, disable, which, doctor, install-shell, uninstall-shell.
+== Dispatch: argv0.
 
-This page is not written yet. Until it lands, the
-link:/docs/architecture/[architecture section] covers the same surfaces
-at narrative depth, and the
-https://github.com/tamatebako/tebako[product repository] carries the
-normative specifications.
+A shim is a link to the dispatcher binary named after a payload's
+command. Each invocation resolves three things: which payload (argv0),
+which version (the version chain: a per-tool environment pin, then the
+nearest project file walking up from the working directory, then config
+defaults, then the registry default), and which runtime (the
+entrypoint's requirement — newest compatible cached, else download,
+verify, and cache). The walkthrough is the
+link:/docs/guides/shims/[Shims & versions] guide.
+
+== Manage: list, enable, disable, which.
+
+[source,text]
+----
+tebako-shim list
+tebako-shim enable <name>[@<version>]
+tebako-shim disable <name>[@<version>]
+tebako-shim which <tool>
+----
+
+`list` shows the registered shims; enable and disable turn a payload's
+dispatch on and off without removing it; `which` resolves a tool name
+the way a dispatch would and prints the plan — the entrypoint, the
+payload, and the runtime it would use.
+
+== Diagnose: doctor.
+
+[source,text]
+----
+tebako-shim doctor
+----
+
+Checks the dispatch machinery — the store, the registries, the shims —
+and prints each problem with its remedy. The guide pairs it with the
+debug surface: link:/docs/guides/debug/[Debug & logging].
+
+== Shell integration: install-shell, uninstall-shell.
+
+[source,text]
+----
+tebako-shim install-shell
+tebako-shim uninstall-shell
+----
+
+Adds or removes the shim directory from the shell's PATH — the step
+`tebako install` performs for you when it registers a payload's
+commands.
+
+See also: link:/docs/architecture/dispatch/[Dispatch] · link:/docs/reference/cli-tebako/[tebako CLI] · link:/docs/guides/run/[Run a packaged app]
