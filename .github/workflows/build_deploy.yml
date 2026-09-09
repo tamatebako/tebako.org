@@ -77,6 +77,10 @@ jobs:
         uses: actions/upload-pages-artifact@v5
         with:
           path: ./dist
+          # Serve /.well-known/tebako-key.asc — the action's default
+          # drops dot-paths from the archive, 404-ing the trust anchor's
+          # second channel (only .git/.github stay excluded).
+          include-hidden-files: true
 
   deploy:
     environment:
