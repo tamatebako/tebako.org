@@ -1,0 +1,191 @@
+---
+layout: post
+title:  "Tebako runtimes under the bench: MRI vs TruffleRuby vs JRuby, and what the JITs actually buy you"
+date:   2026-09-09 00:00:00 +0800
+categories:
+  - tebako
+  - packaging
+  - benchmarks
+  - ruby
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: >-
+  Five Ruby runtime arms through the real tebako dispatch path — MRI 3.3.12,
+  MRI 4.0.6 with YJIT and ZJIT, TruffleRuby native and JVM, JRuby on
+  OpenJDK 25 — on synthetic kernels and on a real Metanorma document
+  compile. The answer is not "use the fastest engine"; it is "the fastest
+  engine depends on the shape of your process, and the packaging layer is
+  where that choice belongs."
+---
+
+= Tebako runtimes under the bench: MRI vs TruffleRuby vs JRuby, and what the JITs actually buy you
+
+Tebako v2 treats the Ruby interpreter as a *replaceable runtime line*: the
+same payload can resolve against MRI, TruffleRuby (native or JVM flavor), or
+JRuby, and the loader neither knows nor cares which one starts
+(link:/blog/2026-09-03-tebako-v2-cross-runtime-composition/[post 3 of this
+series]). Machinery is only interesting once it is measured. This post is the
+measurement: five runtime arms, two synthetic kernels, one real standards-
+document compile, all through the **real v2 dispatch path** — shim → driver →
+runtime exe + mounted env image, no shortcuts, no host ruby.
+
+All numbers are single-machine (MacBook Pro, Apple M1 Max, macOS 14),
+quiet-window gated, median-of-rounds; the full records with protocols and
+per-cell load guards live in the engineering log. Absolute seconds are
+local; the *ratios* are the content.
+
+== The synthetic ladder: who wins when the code gets hot
+
+Two kernels, warmed 3× then timed 7× inside each process, three interleaved
+rounds per arm: `fib34` (recursive method calls — the JIT's home turf) and
+`alloc2m` (two million object allocations — the GC's).
+
+[cols="1,1,1,1", options="header"]
+|===
+| arm | fib34 (vs MRI 3.3.12) | alloc2m (vs MRI) | peak RSS
+
+| MRI 3.3.12 (plain)
+| 1.00× (0.507 s)
+| 1.00× (0.269 s)
+| 63 MiB
+
+| MRI 4.0.6 (plain)
+| 0.97× (0.495 s)
+| 1.05× (0.282 s)
+| ~same
+
+| MRI 4.0.6 +YJIT
+| **0.16× (0.082 s)**
+| 1.01× (no gain)
+| ~same
+
+| MRI 4.0.6 +ZJIT
+| 0.89× (0.451 s)
+| 1.01× (no gain)
+| ~same
+
+| TruffleRuby 34.0.1 native
+| **0.14× (0.067 s)**
+| **0.30× (0.080 s)**
+| 590 MiB
+
+| JRuby 10.1.1 on OpenJDK 25
+| 0.25× (0.126 s)
+| 0.49× (0.133 s)
+| 828 MiB
+|===
+
+Three readings fall out of this table.
+
+**The version bump is free.** Plain 4.0.6 ≈ plain 3.3.12 (0.97× on the call
+kernel, 1.05× on allocation — noise-class). Moving the interpreter line
+forward is not a performance decision either way; it is a support-window
+decision.
+
+**Hot code converges to the same class, whatever the JIT.** YJIT on 4.0.6,
+TruffleRuby native, and JRuby after tier-up all land between 0.14× and 0.25×
+of plain MRI on `fib34` — a 4–7× speedup that is *the* argument for JITted
+runtimes on long-lived, CPU-bound processes. YJIT holding its own against the
+GraalVM family (0.16× vs 0.14×) is the genuinely notable cell: you no longer
+need a 600-MiB-runtime to get most of the converged-class win.
+
+**ZJIT is real but young.** On 4.0.6 it gains ~9% inside our short-horizon
+protocol — honest, repeatable, and nowhere near YJIT's class yet. This
+matches upstream's own posture exactly: Ruby 4.0 ships ZJIT compiled in but
+**off by default**, YJIT remains the production compiler, and ZJIT is the
+long game. Tebako mirrors that: neither JIT is enabled by default in our
+runtimes; both are one environment variable away
+(`RUBY_YJIT_ENABLE=1` / `RUBY_ZJIT_ENABLE=1`).
+
+== The real-workload finding: the JIT can *cost* you
+
+Synthetic kernels are where JITs shine. A real Metanorma compile — the
+ISO/OIML r060 document to HTML, fonts, Java conversion pipeline and all — is
+where the shine gets priced. Clean cells only (per-cell load guards):
+
+[cols="1,1,1", options="header"]
+|===
+| arm | boot (median) | r060 HTML compile
+
+| MRI 3.3.12
+| 4.2 s
+| **47.0 s — fastest correct arm**
+
+| MRI 3.3.12 +YJIT
+| 4.0 s (neutral)
+| 71.9 s (**1.5× slower**)
+
+| TruffleRuby native
+| 34.7 s (8.2×)
+| ~275–287 s, output complete, then a teardown crash†
+
+| TruffleRuby JVM
+| 41.4 s (9.8×)
+| died deep in-run (SIGILL‡)
+|===
+
+† https://github.com/oracle/truffleruby/issues/4457[oracle/truffleruby#4457]
+— process produces correct output, then dies in thread teardown, 3/3.
+‡ deterministic illegal instruction on this workload —
+https://github.com/tamatebako/truffleruby-feedstock/issues/5[filed].
+
+The headline: **on a ~45-second real compile, YJIT makes MRI slower, not
+faster.** It burns roughly ten CPU-seconds JIT-compiling blocks that the
+process exits before they amortize. Ruby's own default posture — YJIT on for
+long processes, and nobody claims it helps short ones — is vindicated by a
+real workload rather than a microbenchmark. Meanwhile the GraalVM variants
+pay an 8–10× boot tax before they run a line of your code: they are engines
+for *persistent* services, not for *one-shot* compiles.
+
+This is the answer we designed the packaging layer around, and the bench says
+the design is right: **MRI stays the default runtime; variants are an opt-in
+selector; JIT enablement is a packaging-time decision.** With the `interp_env`
+manifest key (spec merged this week, https://github.com/tamatebako/tebako/pull/560[tebako#560]),
+a payload packager whose workload is long and hot — a relaton sync service, a
+render farm worker — can ship `RUBY_YJIT_ENABLE=1` as the payload's declared
+environment, and the user can still override it locally. The packager
+measures; the user controls; the loader stays ignorant.
+
+== The honesty section: what is *not* green yet
+
+Benchmarks that only report wins are marketing. Three caveats travel with
+every number above:
+
+* **TruffleRuby's spawned-subprocess story is broken today.** Every
+  host-binary spawn from a TruffleRuby runtime with a payload mounted fails
+  (`ENOENT` on `posix_spawn /bin/sh`) — Metanorma's PDF stage, which shells
+  out to Java, has never completed on TruffleRuby under tebako. This is
+  https://github.com/tamatebako/tebako/issues/553[tebako#553], the TruffleRuby
+  line's top blocker, and the fix is per-interpreter: the shell-form spawn
+  bridge that cured this class for MRI (runtime 0.16.20+) does not cover
+  TruffleRuby's own process operations.
+* **We got fooled once, and the record says so.** An earlier window reported
+  TruffleRuby PDF cells as "rc 0, did not reproduce" — wrong: Metanorma's
+  worker pool swallowed the exception in a thread and exited 0 with no PDF
+  produced. We corrected the record on the issue, and filed
+  https://github.com/metanorma/metanorma/issues/601[metanorma#601] upstream
+  (a failed output stage must not exit 0). Our bench rule is now artifact-
+  present *and* trace-free, never the exit code alone.
+* **JRuby's convergence is longer than our protocol.** Tier-up was still
+  visibly in progress at rep 7; a longer-horizon JRuby cell is queued, not
+  claimed.
+
+== What is next
+
+* **Python joins the bench.** The Python runtime factory shipped
+  3.11.16/3.12.14/3.13.15/3.14.7 last week, plus CPython **JIT flavor**
+  runtimes (3.13.15-jit, 3.14.7-jit — PEP 836's experimental-in-3.13,
+  production-track-in-3.14 tier-1 JIT; musl legs skip loudly because upstream's
+  own matrix excludes them). The same kernel-and-real-workload protocol runs
+  against those four arms next window.
+* **A longer-horizon ZJIT cell**, and a convergent-workload showcase (a
+  persistent service loop) — the honest shape for GraalVM-family marketing.
+* **TruffleRuby re-verdict** when tebako#553 and the two oracle filings land.
+
+The point of all five arms is not to crown a winner. It is to prove the
+platform's claim with instruments instead of adjectives: any runtime, any
+payload, measured the same way, chosen at packaging time, overridable at run
+time. The runtime is a line; you pick the line.
