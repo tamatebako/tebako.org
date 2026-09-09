@@ -179,8 +179,8 @@ by definition.
 == What is next
 
 * **Python on Windows** — the msys/ucrt64 port of CPython is in flight; when
-  it lands, the python factory joins the Windows signing plane (spec 34) in
-  the same motion.
+  it lands, the python factory joins the Windows signing plane in the same
+  motion.
 * **A 3.14-staged xml2rfc build** — the feedstock matrix item that unlocks
   the real-workload cell on the 3.14 line.
 * **The long-horizon JIT cell** — the honest shape for "when does the JIT
