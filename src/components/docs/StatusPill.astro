@@ -14,5 +14,5 @@ const { status, note } = Astro.props
     : 'color: var(--color-gold); border: 1px solid var(--color-gold); background: color-mix(in srgb, var(--color-gold) 8%, transparent);'}
 >
   <span class="h-1.5 w-1.5 rounded-full" style={status === 'live' ? 'background: var(--tb-c-accent);' : 'background: var(--color-gold);'}></span>
-  {status === 'live' ? 'SHIPPED' : 'PLANNED'}{note ? ` · ${note}` : ''}
+  {status === 'live' ? 'LIVE' : 'PLANNED'}{note ? ` · ${note}` : ''}
 </span>

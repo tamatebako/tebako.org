@@ -1,18 +1,73 @@
 ---
 title: tebako-pkg CLI
+heading: Package surgery, verb by verb.
+lede: >-
+  The tebako-pkg CLI operates on three-part packages at the byte level:
+  read and verify trailers, bundle and unbundle, add and remove image
+  slots, replace bootstraps, and sign artifacts. The press drives it;
+  you drive it when you need the scalpel.
 description: >-
-  Trailer surgery: info, validate, bundle, unbundle, reassemble, insert-image, remove-image, set-runtime, sign, verify.
+  The tebako-pkg CLI reference: info, validate, bundle, unbundle,
+  reassemble, insert-image, remove-image, set-runtime, sign, and verify
+  — usage quoted from the shipped binary.
 ---
 
-[NOTE]
-====
-Status: planned — this page lands with the reference wave.
-====
+// normative: usage transcribed from crates/tebako-pkg/src/main.rs help
+// (v2.1.7, verified 2026-09-09). Source annotations: info spec 15, the
+// L2 package manifest block spec 02 §5b / spec 03 §6, the contract gate
+// spec 18 (exit 77 on pre-era or era mismatch).
 
-Trailer surgery: info, validate, bundle, unbundle, reassemble, insert-image, remove-image, set-runtime, sign, verify.
+== Read and verify: info, validate.
 
-This page is not written yet. Until it lands, the
-link:/docs/architecture/[architecture section] covers the same surfaces
-at narrative depth, and the
-https://github.com/tamatebako/tebako[product repository] carries the
-normative specifications.
+[source,text]
+----
+tebako-pkg info <package> [--full] [--slot N] [--json] [--verify] [--depth 0|1|2]
+tebako-pkg validate <package>
+----
+
+`info` dumps the three-part trailer (or an archive summary); `--full`
+prints the container report, `--slot N` one payload, `--json` the
+machine document. `validate` is the strict check — exit 0 clean, 65
+manifest, 70 sha256, 71 signature, 72 trust, 77 contract era.
+
+== Assemble and decompose: bundle, unbundle, reassemble.
+
+[source,text]
+----
+tebako-pkg bundle <dir> -o <package> [--sign[=<keyid>]] [--package-manifest <file.yaml>]
+tebako-pkg unbundle <package> -o <dir>
+tebako-pkg reassemble <dir> -o <package>
+----
+
+Bundling assembles bootstrap + images + trailer; `--package-manifest`
+embeds the package manifest block, and the contract declaration
+travels with it. Rewrite operations preserve the input's signing state and
+extension blocks.
+
+== Slot surgery: insert-image, remove-image, set-runtime.
+
+[source,text]
+----
+tebako-pkg insert-image <package> <image.tfs> [--mount <point>]
+tebako-pkg remove-image <package> --slot N
+tebako-pkg set-runtime <package> <bootstrap>
+----
+
+These edit a package in place. The default mountpoint for image slot 0
+is the app root; slot N mounts under its declared point.
+
+== Signing: sign, verify.
+
+[source,text]
+----
+tebako-pkg sign <artifact>...
+tebako-pkg verify <artifact>...
+----
+
+Signing is opt-in: packages are unsigned unless you ask. `sign` writes
+a detached .asc per artifact plus a signed SHA256SUMS; `--sign` uses
+the press-local key, generated on first use, and `--sign=<keyid>`
+selects a secret key from the keys directory of the store. Verification
+of signed packages at run time is always strict.
+
+See also: link:/docs/reference/cli-tfs/[tfs CLI] · link:/docs/reference/exit-codes/[Exit codes] · link:/docs/guides/verify/[Verify integrity]

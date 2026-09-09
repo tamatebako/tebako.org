@@ -1,18 +1,91 @@
 ---
 title: tfs CLI
+heading: The image tool, verb by verb.
+lede: >-
+  The tfs CLI works on virtual-filesystem images directly: inspect them,
+  walk them, create them, run commands with the VFS injected, draft jail
+  needs from journals, and manage encrypted images. Package-level
+  operations live in tebako-pkg.
 description: >-
-  Image inspection and surgery: info, ls/tree/cat/stat/extract, mkimage, exec, needs, encrypt/decrypt/mount.
+  The tfs CLI reference: info, ls, tree, cat, stat, extract, find,
+  mkimage, exec, needs, encrypt, decrypt, and mount — usage lines quoted
+  from the shipped binary.
 ---
 
-[NOTE]
-====
-Status: planned — this page lands with the reference wave.
-====
+// normative: usage transcribed from crates/tfs-cli/src/main.rs
+// print_help (v2.1.7, verified 2026-09-09). Source annotations: exec
+// compose spec 23 §9, needs spec 23 §8.
 
-Image inspection and surgery: info, ls/tree/cat/stat/extract, mkimage, exec, needs, encrypt/decrypt/mount.
+== Inspect: info.
 
-This page is not written yet. Until it lands, the
-link:/docs/architecture/[architecture section] covers the same surfaces
-at narrative depth, and the
-https://github.com/tamatebako/tebako[product repository] carries the
-normative specifications.
+[source,text]
+----
+tfs info <image> [--json] [--manifest] [--provides] [--requires] [--platforms]
+               [--backend-json] [--verify]
+----
+
+The info document is the machine form; the section flags print one
+manifest section each; `--verify` validates the image.
+
+== Walk and read: ls, tree, cat, stat, extract, find.
+
+[source,text]
+----
+tfs ls <path>  [-r] [-l]
+tfs tree <path>
+tfs cat <file>
+tfs stat <path>
+tfs extract <image> [-d <dest>]
+tfs find <image> -name <glob>
+----
+
+`ls -r` recurses and `-l` prints the long form; extract defaults the
+destination to the current directory. Nothing is ever extracted by
+merely reading — cat, ls, tree, and stat serve straight from the image.
+
+== Create: mkimage.
+
+[source,text]
+----
+tfs mkimage <dir> -o <image.tfs> [--format dwarfs|limnifs]
+----
+
+Builds a dwarfs or limnifs image from a directory with the in-process
+writer — no external tooling.
+
+== Run: exec.
+
+[source,text]
+----
+tfs exec <image> -- <command> [args...]
+tfs exec --compose <file.yaml> -- <command> [args...]
+----
+
+Runs a dynamic native command with the VFS injected through the preload
+shim; `--compose` takes a whole composition instead of a single image.
+
+== Draft: needs.
+
+[source,text]
+----
+tfs needs <image> --from-journal <journal.log>
+----
+
+Drafts a payload needs: block from a record-mode journal — the
+discovery half of the jail workflow. The task walkthrough is the
+link:/docs/guides/jails/[Set a jail policy] guide.
+
+== Encrypted images: encrypt, decrypt, mount.
+
+[source,text]
+----
+tfs encrypt <image> -o <out> --recipient <keyid> [--subtree <path>] [--rewrap --key <keyid>]
+tfs decrypt <image> -o <out.tar> --key <keyid>
+tfs mount <image> --key <keyid>
+----
+
+Encrypt is per-image opt-in; `--rewrap --key` rotates grants without
+touching the bulk. Decrypt writes a plaintext tar; mount unlocks an
+encrypted image for a run.
+
+See also: link:/docs/reference/cli-tebako-pkg/[tebako-pkg CLI] · link:/docs/reference/environment/[Environment variables] · link:/docs/guides/info-inspect/[info & inspect]
