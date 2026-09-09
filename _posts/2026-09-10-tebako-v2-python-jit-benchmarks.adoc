@@ -1,0 +1,192 @@
+---
+layout: post
+title:  "CPython under the bench: the 3.14 interpreter is the win, and what the JIT (doesn't) buy you"
+date:   2026-09-10 00:00:00 +0800
+categories:
+  - tebako
+  - packaging
+  - benchmarks
+  - python
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: >-
+  The Python runtime line gets the same instruments the Ruby line got:
+  CPython 3.13.15 and 3.14.7, plain and JIT-flavored, on synthetic kernels
+  and on a real xml2rfc standards-document render — all through the real
+  tebako dispatch path. The answer mirrors Ruby's, with one twist: the 3.14
+  JIT flavor defaults ON, and it still doesn't matter at real horizons.
+---
+
+= CPython under the bench: the 3.14 interpreter is the win, and what the JIT (doesn't) buy you
+
+Last week's
+link:/blog/2026-09-09-tebako-v2-runtime-variants-benchmarks/[Ruby variants
+post] ended with a promise: the Python runtime line would get the same
+kernel-and-real-workload treatment. This is that post. The Python factory
+ships CPython 3.11.16 / 3.12.14 / 3.13.15 / 3.14.7 as tebako runtimes, plus
+**JIT flavors** of the two newest (3.13.15-jit, 3.14.7-jit —
+https://peps.python.org/pep-0836/[PEP 836]'s copy-and-patch tier; musl legs
+skip loudly because upstream's own matrix excludes them). We ran eight arms
+through the real dispatch path — driver → runtime exe + mounted env image +
+mounted payload, `TEBAKO_OFFLINE=1`, no host Python anywhere.
+
+Same house rules as the Ruby benches: single machine (MacBook Pro, Apple M1
+Max, macOS 14), quiet-window gated with per-cell load guards, median of three
+interleaved rounds, byte-identical-output correctness gates. The full records
+(protocols, per-cell loads, every rep) live in the engineering log. Absolute
+seconds are local; the *ratios* are the content.
+
+== The kernel ladder
+
+The probe payload is a kernel-for-kernel port of the Ruby one: `fib34`
+(recursive calls) and `alloc2m` (two million string+list allocations), warmed
+3× then timed 7× inside each process.
+
+[cols="1,1,1", options="header"]
+|===
+| arm | fib34 (vs 3.13.15 plain) | alloc2m (vs 3.13.15 plain)
+
+| 3.13.15 plain (control)
+| 1.00× (0.700 s)
+| 1.00× (0.378 s)
+
+| 3.13.15-jit, default env
+| 1.03×
+| 0.95×
+
+| 3.13.15-jit, `PYTHON_JIT=1`
+| 1.03×
+| 0.95×
+
+| 3.13.15-jit, `PYTHON_JIT=0`
+| 1.03×
+| 0.96×
+
+| 3.14.7 plain
+| **0.80× (0.562 s)**
+| 1.04×
+
+| 3.14.7-jit, default env
+| 0.79×
+| 1.02×
+
+| 3.14.7-jit, `PYTHON_JIT=1`
+| 0.80×
+| 1.02×
+
+| 3.14.7-jit, `PYTHON_JIT=0`
+| 0.79×
+| 1.02×
+|===
+
+Two findings fall out of this table.
+
+**The interpreter line is the win.** Plain 3.14.7 runs the call kernel at
+**0.80× of plain 3.13.15** — that is CPython 3.14's new tail-calling
+interpreter doing exactly what upstream says it does. Allocation churn is a
+wash (1.04×). If your payload is call-heavy, moving the runtime line forward
+buys ~20% before anyone says the letters "JIT".
+
+**The JIT is a no-op at this horizon — on both lines.** On 3.13, ON vs OFF is
+0.999× (dead noise; the 3.13 JIT is PEP 744's experimental stencil tier, and
+upstream's own numbers were always "about nothing"). On 3.14, ON vs OFF is
+1.005×. The per-build ±3–5% wobble (the jit *build* is a touch slower on
+`fib34`, a touch faster on `alloc2m`) is build-flag noise, not a JIT effect —
+it moves nothing when you toggle the env.
+
+And one finding falls out of the *probe*, not the timings: **the 3.14 jit
+flavor defaults ON.** Measured, not assumed — under a null environment the
+flavor reports `sys._jit.is_enabled() == True`, and `PYTHON_JIT=0` flips it
+off (honored, recorded). On 3.13 the flavor defaults off and 3.13 carries no
+runtime query API at all (the `sys._jit` namespace is 3.14's). So the
+packaging posture writes itself: the 3.14 flavor is safe default-on; the
+toggle stays one environment variable away, packager-declared, user-overridable
+— the same rule we landed for YJIT/ZJIT.
+
+== The real-workload cell: xml2rfc renders an RFC
+
+Kernels are where JITs are supposed to shine. The pricing happens on real
+code: xml2rfc 3.34.0 (lxml and all — a native-extension payload, ABI-pinned
+to the 3.13 line, which is why this cell runs the 3.13 arms) rendering
+RFC 9000 — the 726 KB QUIC specification — to text, through the mounted
+payload, output written to the host.
+
+[cols="1,1,1,1", options="header"]
+|===
+| arm | wall (median) | user CPU | peak RSS
+
+| 3.13.15 plain
+| 6.69 s
+| 1.52 s
+| 262 MiB
+
+| 3.13.15-jit, default env
+| 6.69 s (1.00×)
+| 1.53 s
+| 275 MiB
+
+| 3.13.15-jit, `PYTHON_JIT=1`
+| 6.71 s (1.00×)
+| 1.55 s
+| 276 MiB
+
+| 3.13.15-jit, `PYTHON_JIT=0`
+| 6.74 s (1.01×)
+| 1.54 s
+| 266 MiB
+|===
+
+Every rendered byte: **identical, nine of nine comparisons** — the JIT never
+changes output. And every timing: identical too. On a real one-shot compile
+the 3.13 JIT does nothing — the same finding class as YJIT on the 45-second
+Metanorma compile, minus the harm (YJIT actively *cost* 1.5× there; the
+CPython JIT at least doesn't hurt).
+
+Worth pausing on the honest row in that table: of the ~6.7-second wall, only
+~1.5 s is user CPU. The rest is process startup — interpreter boot, env-image
+mount, and site-packages loading from the mounted image. That is tebako's
+constant on this host, and it is the same class as the Ruby runtime's ~4.2 s
+boot. For one-shot tools that constant dominates; the answer to it is the
+startup-work queue (warm caches, slimmer images), not the JIT. The JIT's RSS
+price, for the record: ~+13 MiB, 5% — not the GraalVM-class memory tax
+(TruffleRuby native pays 9.4×, JRuby 13× on the same kernels).
+
+== The honesty section
+
+* **3.13 jit enablement is env-asserted.** CPython 3.13 has no runtime API
+  that reports whether the JIT actually engaged (the query namespace is
+  3.14's). Our 3.13 cells prove the flavor changes neither the result nor the
+  wall *either way*; the load-bearing "the JIT ran and did nothing" evidence
+  is the 3.14 arms, where enablement is directly measurable.
+* **The horizon is short by design.** The protocol (warm 3, reps 7, one-shot
+  compiles) is built for comparability with the Ruby windows. CPython's JIT
+  tier-up may simply never fire inside it; a longer-horizon cell — a
+  persistent service loop — is queued, not claimed, exactly like ZJIT's.
+* **One machine, one real workload class.** Ratios are intra-window;
+  absolute times are this host's. The jit flavors ship for linux-gnu and
+  macOS; musl legs skip loudly (upstream excludes them), Windows legs await
+  the msys port.
+
+Fifty cells across the two windows (37 kernel + 13 real-workload), every one
+rc=0, every output byte-identical — JIT × tebako is new territory and nothing
+crashed, so there is nothing to file upstream this time. The rule stands for
+when something does: report it or PR it upstream; local patches are temporary
+by definition.
+
+== What is next
+
+* **Python on Windows** — the msys/ucrt64 port of CPython is in flight; when
+  it lands, the python factory joins the Windows signing plane (spec 34) in
+  the same motion.
+* **A 3.14-staged xml2rfc build** — the feedstock matrix item that unlocks
+  the real-workload cell on the 3.14 line.
+* **The long-horizon JIT cell** — the honest shape for "when does the JIT
+  pay": a persistent process, not a one-shot.
+
+The conclusion travels from Ruby unchanged: there is no fastest engine, there
+is a fastest engine *for the shape of your process* — and the packaging layer
+is where that choice is declared, measured, and overridable. The runtime is a
+line; you pick the line.
