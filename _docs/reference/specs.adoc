@@ -1,18 +1,123 @@
 ---
 title: Spec index
+heading: The normative specifications.
+lede: >-
+  The tebako specifications live in the product repository and are the
+  normative set: code that disagrees with them is wrong, and a spec that
+  disagrees with shipped, tested reality is stale — one of them is fixed
+  in the same change. This index links each specification.
 description: >-
-  The normative specification set with one-line summaries and links to the product repository.
+  The tebako specification index: all normative specs, numbered and
+  linked, from the system overview through the wire format, the runtime
+  driver contract, composition, and trace observability.
 ---
 
-[NOTE]
-====
-Status: planned — this page lands with the reference wave.
-====
+// normative: titles from docs/spec/00-INDEX.md in the product repository
+// (2026-09-09). The specs are public on GitHub; this page links them.
 
-The normative specification set with one-line summaries and links to the product repository.
+Each specification is a Markdown file in the product repository's
+`docs/spec/` directory. The table below links every one of them.
 
-This page is not written yet. Until it lands, the
-link:/docs/architecture/[architecture section] covers the same surfaces
-at narrative depth, and the
-https://github.com/tamatebako/tebako[product repository] carries the
-normative specifications.
+[cols="1,3"]
+|===
+| Spec | Title
+
+| link:https://github.com/tamatebako/tebako/blob/main/docs/spec/01-overview.md[01]
+| System overview
+
+| link:https://github.com/tamatebako/tebako/blob/main/docs/spec/02-tpkg-wire-format.md[02]
+| tpkg wire format
+
+| link:https://github.com/tamatebako/tebako/blob/main/docs/spec/03-payload-manifest.md[03]
+| Payload manifest
+
+| link:https://github.com/tamatebako/tebako/blob/main/docs/spec/04-references-and-registry.md[04]
+| References and registries
+
+| link:https://github.com/tamatebako/tebako/blob/main/docs/spec/05-resolution-and-cache.md[05]
+| Resolution and cache
+
+| link:https://github.com/tamatebako/tebako/blob/main/docs/spec/06-launcher-abi.md[06]
+| Launcher ABI
+
+| link:https://github.com/tamatebako/tebako/blob/main/docs/spec/07-shims-and-dispatch.md[07]
+| Shims and dispatch
+
+| link:https://github.com/tamatebako/tebako/blob/main/docs/spec/08-jails.md[08]
+| Jails
+
+| link:https://github.com/tamatebako/tebako/blob/main/docs/spec/09-trust-and-signing.md[09]
+| Trust and signing
+
+| link:https://github.com/tamatebako/tebako/blob/main/docs/spec/10-encryption.md[10]
+| Encryption
+
+| link:https://github.com/tamatebako/tebako/blob/main/docs/spec/11-tfs-vfs-model.md[11]
+| TFS VFS model
+
+| link:https://github.com/tamatebako/tebako/blob/main/docs/spec/12-comparisons.md[12]
+| Comparisons
+
+| link:https://github.com/tamatebako/tebako/blob/main/docs/spec/13-factories-and-releases.md[13]
+| Factories and releases
+
+| link:https://github.com/tamatebako/tebako/blob/main/docs/spec/14-process.md[14]
+| Process
+
+| link:https://github.com/tamatebako/tebako/blob/main/docs/spec/15-info-command.md[15]
+| Info command
+
+| link:https://github.com/tamatebako/tebako/blob/main/docs/spec/16-distribution-and-installation.md[16]
+| Distribution and installation
+
+| link:https://github.com/tamatebako/tebako/blob/main/docs/spec/17-runtime-driver-contract.md[17]
+| Runtime driver contract
+
+| link:https://github.com/tamatebako/tebako/blob/main/docs/spec/18-contract-set.md[18]
+| Contract set
+
+| link:https://github.com/tamatebako/tebako/blob/main/docs/spec/19-bootstrap-distribution.md[19]
+| Bootstrap distribution
+
+| link:https://github.com/tamatebako/tebako/blob/main/docs/spec/20-limnifs-backend.md[20]
+| Limnifs backend
+
+| link:https://github.com/tamatebako/tebako/blob/main/docs/spec/21-crypto-consolidation.md[21]
+| Crypto consolidation
+
+| link:https://github.com/tamatebako/tebako/blob/main/docs/spec/22-runtime-native-interposition.md[22]
+| Runtime native interposition
+
+| link:https://github.com/tamatebako/tebako/blob/main/docs/spec/23-declarative-composition.md[23]
+| Declarative composition
+
+| link:https://github.com/tamatebako/tebako/blob/main/docs/spec/24-declarative-overlays.md[24]
+| Declarative overlays
+
+| link:https://github.com/tamatebako/tebako/blob/main/docs/spec/25-trace-observability.md[25]
+| Trace observability
+
+| link:https://github.com/tamatebako/tebako/blob/main/docs/spec/26-payload-checks.md[26]
+| Payload checks
+
+| link:https://github.com/tamatebako/tebako/blob/main/docs/spec/27-benchmarks.md[27]
+| Benchmarks
+
+| link:https://github.com/tamatebako/tebako/blob/main/docs/spec/28-runtime-variants.md[28]
+| Runtime variants
+
+| link:https://github.com/tamatebako/tebako/blob/main/docs/spec/29-wrapper-exe-driver.md[29]
+| Wrapper-exe driver
+
+| link:https://github.com/tamatebako/tebako/blob/main/docs/spec/30-runtime-spawned-dependency.md[30]
+| Runtime-spawned dependency
+
+| link:https://github.com/tamatebako/tebako/blob/main/docs/spec/31-macos-signing-notarization.md[31]
+| macOS signing and notarization
+
+|===
+
+The reading order and the layer model live in the
+link:https://github.com/tamatebako/tebako/blob/main/docs/spec/00-INDEX.md[index document].
+
+See also: link:/docs/architecture/overview/[Overview] · link:/docs/reference/manifest/[Manifest reference] · link:/docs/reference/registry-schema/[Registry schema]

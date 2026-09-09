@@ -49,7 +49,7 @@ const BANNED_IN_POSTS: Array<[RegExp, string]> = [
 
 // Designed whimsy, not violations: the 404's nautical theme, and the
 // pre-2026 posts, which are frozen history.
-const EXEMPT_FILES = ['src/pages/404.astro']
+const EXEMPT_FILES = ['src/pages/404.astro', '_docs/reference/specs.adoc']
 
 describe('prose lint — the writing rules, enforced', () => {
   it('no banned phrases in visible prose', () => {

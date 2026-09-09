@@ -1,18 +1,157 @@
 ---
 title: Manifest reference
+heading: The payload manifest, field by field.
+lede: >-
+  Every payload is self-describing: an in-image manifest at
+  /__tpkg__/manifest.yaml declares what the payload is, what it
+  provides, and what it requires. The press writes it, the loaders read
+  it, and a versioned JSON schema pins it. This page is that schema,
+  field by field.
 description: >-
-  The payload manifest: IDENTITY, PROVIDES, DEPENDS, kinds, needs, checks — plus the L2 package manifest block.
+  The tpkg payload manifest reference: identity, per-kind provides,
+  requires, materialize, library aliases, and checks — the in-image
+  /__tpkg__/manifest.yaml model, field by field.
 ---
 
-[NOTE]
-====
-Status: planned — this page lands with the reference wave.
-====
+// normative: transcribed from schema/tpkg-manifest-v1.schema.json in the
+// product repo (v2.1.7, verified 2026-09-09). Spec annotations from the
+// schema itself: L1 model spec 03, materialize spec 22 §4, library
+// aliases spec 22 §2.1, checks spec 26. Kind-discriminated provides
+// arrives via the schema's allOf branches. The schema is the authority;
+// this page mirrors it.
 
-The payload manifest: IDENTITY, PROVIDES, DEPENDS, kinds, needs, checks — plus the L2 package manifest block.
+== The shape.
 
-This page is not written yet. Until it lands, the
-link:/docs/architecture/[architecture section] covers the same surfaces
-at narrative depth, and the
-https://github.com/tamatebako/tebako[product repository] carries the
-normative specifications.
+The manifest carries five top-level sections, with `provides` arriving
+by kind: `identity` and `requires` always; `materialize`,
+`library_aliases`, and `checks` when they apply.
+
+[source,yaml]
+----
+identity:
+  schema_version: 1
+  kind: app            # app | data | toolkit | runtime | language
+  name: my-app
+  version: 1.2.3
+provides:              # shape depends on kind — see below
+requires: []
+----
+
+== identity.
+
+[cols="1,3"]
+|===
+| Field | Meaning
+
+| `schema_version`
+| The manifest schema generation; readers reject what they cannot parse by name rather than guessing.
+
+| `kind`
+| One of app, data, toolkit, runtime, language. The kind selects the `provides` shape.
+
+| `name` / `version`
+| The payload's identity. Versions are free-form — semver and datever payloads both exist.
+
+| `producer`
+| What built the image: the tool and its version.
+
+| `created`
+| Creation timestamp, RFC 3339 rendering.
+
+| `source`
+| Provenance: the source tree digest, the commit, and the builder.
+
+| `digest`
+| The tree hash and the blob digest — integrity anchors for the image.
+
+| `signing`
+| The signing state; unsigned is first-class.
+
+| `encryption`
+| The encryption state; none is the default.
+
+| `annotations`
+| Free-form key-value pairs; unknown keys are preserved on round-trip.
+
+|===
+
+== provides, by kind.
+
+An app provides commands. Each entrypoint names the command (the shim
+registers under it), the in-image absolute path, optional default
+arguments, and an optional runtime requirement; the payload also
+declares its platforms and capabilities:
+
+[source,yaml]
+----
+provides:
+  entrypoints:
+    - {name: myapp, path: /bin/myapp, runtime_requirement: {engine: ruby, constraint: ">= 3.3, < 5.0"}}
+  platforms: ["aarch64-macos", "x86_64-linux-gnu"]
+  capabilities: {exec: true, read: true, host: {default: open}}
+----
+
+A runtime provides an engine: the engine name, its version, the ABI
+line, the platform, and the implementation (which MRI-compatible
+engine this build is). It also carries the environment the interpreter
+expects and the spawn surface — the commands this runtime boots as a
+separate process for a composed payload.
+
+A data payload provides content for consumers: suggested mount
+semantics (the mount decision always belongs to the consumer's
+manifest) and the consumer list.
+
+Capabilities are honest by kind: an app or a runtime may `exec: true`;
+a data payload must declare `exec: false` and `read: true`. The
+optional `host` block is the baked jail policy — a default directive,
+explicit mounts, and argument-file handling.
+
+== requires.
+
+Four requirement forms exist, selected by the `kind` field of the
+requirement:
+
+[cols="1,3"]
+|===
+| Form | Meaning
+
+| engine requirement
+| Names an engine and a constraint — the runtime requirement an entrypoint can also carry inline.
+
+| platform-scoped dependency
+| A kind, name, constraint, an optional triplet list, and a mount point — for toolkit dependencies pinned per platform.
+
+| plain dependency
+| A kind, name, constraint, and mount point.
+
+| engine-implementation requirement
+| An engine plus a required implementation and constraint, with an expose clause.
+
+|===
+
+== materialize and library aliases.
+
+`materialize` lists absolute in-image paths that the loader copies to
+the host before the run — the answer for a native library that reads
+through its own file descriptor, below the interposition layer.
+`library_aliases` declares windows bare-name aliases so the loader's
+closure walk can resolve them.
+
+== checks.
+
+The payload's own acceptance contract. Each check names an entry — an
+in-image executable path, or the reserved spelling `self` for kind
+runtime — with arguments, fixtures, expectations, a timeout, and an
+optional OS-family filter. A check may add host needs for its own run
+and declare composition prerequisites; unmet prerequisites skip the
+check, never fail it. The task walkthrough is the
+link:/docs/guides/check/[Check a payload] guide.
+
+== Where the schemas live.
+
+The versioned JSON schemas ship in the product repository under
+`schema/` — the payload manifest, the package manifest block, the
+compose document, and the bench suite. A manifest that names a schema
+the reader does not know is rejected by name, never guessed.
+
+See also: link:/docs/guides/data-payload/[Create a data payload] · link:/docs/guides/package-ruby/[Package a Ruby app] · link:/docs/reference/registry-schema/[Registry schema]

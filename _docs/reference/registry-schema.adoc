@@ -1,18 +1,79 @@
 ---
 title: Registry schema
+heading: The tpkg-registry.yaml model.
+lede: >-
+  A registry is any git-host repository carrying a tpkg-registry.yaml
+  file — the git host's releases are the storage, with zero central
+  infrastructure. The file mirrors only resolution-relevant fields, so
+  the dispatcher can pick the right artifact for your platform without
+  downloading every payload.
 description: >-
-  tpkg-registry.yaml field by field, and the tfs:github: reference syntax with its query parameters.
+  The tpkg-registry.yaml reference: the payload entries, versions, the
+  platforms axis with per-triplet artifacts and digests, the release
+  reference, and the four registry reference forms.
 ---
 
-[NOTE]
-====
-Status: planned — this page lands with the reference wave.
-====
+// normative: model verified against crates/tebako-resolve/src/registry.rs
+// and a live feedstock registry (tebako-packages/hello, 2026-09-09).
+// Spec annotations from the source: registry spec 04 §2, tier-3 mirror
+// discipline spec 03 §4, reference grammar spec 04.
 
-tpkg-registry.yaml field by field, and the tfs:github: reference syntax with its query parameters.
+== The shape.
 
-This page is not written yet. Until it lands, the
-link:/docs/architecture/[architecture section] covers the same surfaces
-at narrative depth, and the
-https://github.com/tamatebako/tebako[product repository] carries the
-normative specifications.
+[source,yaml]
+----
+schema_version: 1
+payloads:
+  - name: hello
+    kind: toolkit
+    summary: "GNU hello — template prover payload"
+    default: "2.12"
+    versions:
+      - version: "2.12"
+        platforms:
+          aarch64-macos:
+            artifact: hello-2.12-aarch64-macos.tfs
+            sha256: "0f1c7cc0…"
+        release: {ref: tfs:github:tebako-packages/hello:2.12.1}
+----
+
+One entry per payload: the name and kind mirror the payload's own
+manifest identity; `default` names the version a bare `tebako install
+hello` resolves; each version carries a platforms map with the
+per-triplet artifact filename and its SHA-256, plus the release
+reference the artifact is fetched from. A payload that ships one
+image for all platforms declares `universal` instead of the
+per-triplet map.
+
+The file mirrors resolution fields only — the in-image manifest stays
+the authority for everything else, and unknown keys are tolerated for
+forward compatibility. `tebako publish` writes this file; you rarely
+hand-edit it.
+
+== The four reference forms.
+
+A registry reference names exactly one location — there is no fallback
+chain:
+
+[cols="1,3"]
+|===
+| Form | Resolves to
+
+| `tfs:<service>:owner/repo`
+| The tpkg-registry.yaml on the repository's default branch.
+
+| `tfs:<service>:owner/repo:version#tpkg-registry.yaml`
+| The registry file as a release artifact.
+
+| `tfs+git://host/owner/repo.git[@ref]#path`
+| A git blob at the path.
+
+| `file:///abs/path/tpkg-registry.yaml`
+| A local mirror — tests, on-prem, and air-gapped fleets.
+
+|===
+
+The walkthroughs are link:/docs/guides/publish/[Publish to your own
+registry] and link:/docs/guides/library/[Curate a local library].
+
+See also: link:/docs/reference/manifest/[Manifest reference] · link:/docs/architecture/repositories/[Repositories] · link:/docs/reference/cli-tebako/[tebako CLI]
