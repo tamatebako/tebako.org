@@ -147,6 +147,8 @@ runtimes offer no compatible line fails at resolve time with a named
 error, never a segfault. Pure-ruby payloads declare a range instead —
 `>= 3.3, < 5.0` — and one universal payload serves every platform.
 
+The manifest model, field by field, is the link:/docs/reference/manifest/[manifest reference].
+
 See also: link:/docs/guides/data-payload/[Create a data payload] ·
 link:/docs/guides/publish/[Publish to your own registry] ·
 link:/docs/architecture/anatomy/[Anatomy of a package].

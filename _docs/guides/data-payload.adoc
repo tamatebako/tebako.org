@@ -111,6 +111,8 @@ The image is the artifact. Publish it on your own releases with a
 registry index your users can add — the walkthrough is in
 link:/docs/guides/publish/[Publish to your own registry].
 
+The manifest model, field by field, is the link:/docs/reference/manifest/[manifest reference].
+
 See also: link:/docs/guides/publish/[Publish to your own registry] ·
 link:/docs/guides/info-inspect/[info & inspect] ·
 link:/docs/architecture/anatomy/[The mount model, in the architecture docs].

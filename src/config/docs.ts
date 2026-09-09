@@ -92,9 +92,9 @@ export const DOCS_SECTIONS: DocsSection[] = [
       { label: 'tebako-shim CLI', href: '/docs/reference/cli-tebako-shim/', status: 'live' },
       { label: 'Environment variables', href: '/docs/reference/environment/', status: 'live' },
       { label: 'Exit codes', href: '/docs/reference/exit-codes/', status: 'live' },
-      { label: 'Manifest reference', href: '/docs/reference/manifest/', status: 'planned' },
-      { label: 'Registry schema', href: '/docs/reference/registry-schema/', status: 'planned' },
-      { label: 'Spec index', href: '/docs/reference/specs/', status: 'planned' },
+      { label: 'Manifest reference', href: '/docs/reference/manifest/', status: 'live' },
+      { label: 'Registry schema', href: '/docs/reference/registry-schema/', status: 'live' },
+      { label: 'Spec index', href: '/docs/reference/specs/', status: 'live' },
     ],
   },
 ]
