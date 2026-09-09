@@ -3,6 +3,19 @@ import BaseLayout from '../../../layouts/BaseLayout.astro'
 import DocsNav from '../../../components/docs/DocsNav.astro'
 import { getSection } from '../../../config/docs'
 
+// The registry order is grouped: contiguous runs share a theme. The hub
+// renders one grid per group with the theme as its header — numbering,
+// eyebrows, pills, and pagination all derive from the same registry order.
+const GROUPS: Array<{ title: string; first: string }> = [
+  { title: 'The model', first: 'Overview' },
+  { title: 'Runtimes', first: 'Factories' },
+  { title: 'Loading and dispatch', first: 'Dispatch' },
+  { title: 'The host boundary', first: 'Jails & proxying' },
+  { title: 'Trust', first: 'Chain of trust' },
+  { title: 'Observability', first: 'Observability' },
+  { title: 'The project', first: 'Repositories' },
+]
+
 const sec = getSection('architecture')
 const DESCRIPTIONS: Record<string, string> = {
   'Overview': 'What tebako is and what it does — the one-page picture.',
@@ -47,15 +60,24 @@ const DESCRIPTIONS: Record<string, string> = {
 
     <DocsNav section="architecture" />
 
-    <div class="mt-16 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {sec.entries.filter((entry) => entry.href !== sec.homeHref).map((entry, i) => (
+    {GROUPS.map((group) => {
+      const start = sec.entries.findIndex((e) => e.label === group.first)
+      const stop = GROUPS[Math.min(GROUPS.indexOf(group) + 1, GROUPS.length - 1)] === group
+        ? sec.entries.length
+        : sec.entries.findIndex((e) => e.label === GROUPS[GROUPS.indexOf(group) + 1].first)
+      const cards = sec.entries.slice(start, stop).filter((entry) => entry.href !== sec.homeHref)
+      return (
+        <section class="mt-14 first:mt-16" aria-labelledby={`group-${group.title.replace(/\W+/g, '-').toLowerCase()}`}>
+          <h2 id={`group-${group.title.replace(/\W+/g, '-').toLowerCase()}`} class="tb-eyebrow">{group.title}</h2>
+          <div class="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {cards.map((entry) => (
         <a
           href={entry.href}
           class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]"
           style="background: var(--tb-c-bg-soft);"
         >
           <p class="font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
-            {String(i + 1).padStart(2, '0')}
+            {String(sec.entries.indexOf(entry) + 1).padStart(2, '0')}
           </p>
           <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">
             {entry.label}
@@ -64,7 +86,10 @@ const DESCRIPTIONS: Record<string, string> = {
             {DESCRIPTIONS[entry.label] || 'The details.'}
           </p>
         </a>
-      ))}
-    </div>
+            ))}
+          </div>
+        </section>
+      )
+    })}
   </section>
 </BaseLayout>
