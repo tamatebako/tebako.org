@@ -1,0 +1,128 @@
+---
+title: Trust anchor
+heading: The tamatebako root of trust.
+lede: >-
+  Every signed tebako artifact verifies against one OpenPGP root key.
+  This page publishes the root fingerprint and the public key, and shows
+  the commands that verify a downloaded artifact against them.
+description: >-
+  The tamatebako release root of trust: the OpenPGP fingerprint, the
+  armored public key, what carries a signature, and how to verify a
+  downloaded artifact with tebako-pkg verify.
+---
+
+// normative: trust and signing spec 09 in the tebako repository; the key
+// material lives in the offline ceremony store; the verify commands match
+// the shipped tebako-pkg CLI (cmd_verify).
+
+== The root key.
+
+The tamatebako project signs its releases under one OpenPGP root key.
+The fingerprint below is the whole trust decision: any artifact whose
+signature chains to this fingerprint is a tamatebako artifact, and any
+artifact that does not chain to it is not one, whatever its download
+page claims.
+
+[cols="1,3"]
+|===
+| Fingerprint | `9E210CA8E9FDE9E6587740B2EFC3C250F7862A48`
+| Key ID (uid) | `tamatebako root (classical) <root@tebako.org>`
+| Primary key algorithm | Ed25519 (signing and certification)
+| Subkeys | one Ed25519 signing subkey, one X25519 encryption subkey
+| Created | 2026-09-09
+|===
+
+The fingerprint is also embedded in the tebako tools at build time, so
+the tools compare it for you; `TEBAKO_TRUSTED_ROOT` overrides the
+embedded value for development keys.
+
+== The public key.
+
+The armored public key is served at a stable URL:
+link:/.well-known/tebako-key.asc[tebako-key.asc]. Its content is
+reproduced here so you can compare the two copies.
+
+[source]
+----
+-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+mDMEaqEttxYJKwYBBAHaRw8BAQdAQ9aJGss4ei8aArTRLHeUtOgAz1zlnw+JRu8Y
+6HuGRcO0LXRhbWF0ZWJha28gcm9vdCAoY2xhc3NpY2FsKSA8cm9vdEB0ZWJha28u
+b3JnPoivBBMWCgBXFiEEniEMqOn96eZYd0Cy78PCUPeGKkgFAmqhLbcbFIAAAAAA
+BAAObWFudTIsMi41KzEuMTIsMCwzAhsBBQsJCAcCAiICBhUKCQgLAgQWAgMBAh4H
+AheAAAoJEO/DwlD3hipIH1IA/j/VFOmgaiPQMVtioApA2MHywksYwEm+PTwlNGwB
+QbGiAP41hDmHUQXhOKUFshzxjsA03R3eDwu8QoB6qtc71tY1DrgzBGqhLfsWCSsG
+AQQB2kcPAQEHQJnJ/w917M45IsuTicHF8AUuoRlOS1lOG+NoLRZfpVn2iQELBBgW
+CgA8FiEEniEMqOn96eZYd0Cy78PCUPeGKkgFAmqhLfsbFIAAAAAABAAObWFudTIs
+Mi41KzEuMTIsMCwzAhsCAIEJEO/DwlD3hipIdiAEGRYKAB0WIQTkVZIau8Pn2blz
+K/56Q31zgqPPWgUCaqEt+wAKCRB6Q31zgqPPWnXiAQC22wIPOaGgGuBvAytHmEwO
+Phvhel6PktQUND+DYDcapAEA3GqCPkmH2xa9pFiuP9nWb15cmsQh2jFuuWB6OB6G
+hQStsAD/SCuSbO/S9u0J4ubcBBAPZ0irYNHUWYMvBi0I47W0SbwA/RAcmoAyfDzr
+wvm1aEaAkxZRXK4PsQw/u/RLwDPMpLwJuDgEaqEt/RIKKwYBBAGXVQEFAQEHQL+M
+G3+rmdDRuAejNTXPYcHdg+Gk/Gvy0anBmhrjMzo2AwEIB4iUBBgWCgA8FiEEniEM
+qOn96eZYd0Cy78PCUPeGKkgFAmqhLf0bFIAAAAAABAAObWFudTIsMi41KzEuMTIs
+MCwzAhsMAAoJEO/DwlD3hipIW04A/303fBIF0M+48T9tzzTz/hXyqpzPgNxZV1JJ
+6Yv2Bpg5AQC29iNf9hj7wp93ZMzIDOVyUFhtk5NGTwT5G66NxP/UCw==
+=jH00
+-----END PGP PUBLIC KEY BLOCK-----
+----
+
+== What carries a signature.
+
+Releases published from the signing go-live onward carry three kinds of
+detached OpenPGP signatures, all made by the signing subkey of the root
+above:
+
+* one `<artifact>.asc` next to every released part — the tebako tool
+  binaries, the runtime executables, and the payload images;
+* `SHA256SUMS.asc` and `manifest.json.asc` over the release index
+  files, so the digest list itself is authenticated;
+* per-artifact signatures on registry-published payloads, pinned in the
+  registry entry that names the payload.
+
+Releases older than the go-live carry no `.asc` files. The following
+command on such an artifact verifies its integrity instead, through the
+per-asset digest sidecar described in
+link:/docs/guides/verify/[Verify integrity]. Unsigned artifacts stay
+first-class everywhere: they install and run with a warning, while
+verification of anything signed is always strict — a bad signature is
+a refusal, never a warning.
+
+== Verifying a download.
+
+Install the root public key into your trusted set once. The following
+commands store the key under the fingerprint it must have, keyed by
+name so a swapped file cannot silently redirect trust:
+
+[source,console]
+----
+$ mkdir -p ~/.tebako/trust
+$ curl -o ~/.tebako/trust/9E210CA8E9FDE9E6587740B2EFC3C250F7862A48.pub \
+    https://www.tebako.org/.well-known/tebako-key.asc
+----
+
+The following command on a downloaded artifact then verifies it against
+the detached signature sitting next to it:
+
+[source,console]
+----
+$ ls
+tebako-pkg-2.5.0-macos-arm64
+tebako-pkg-2.5.0-macos-arm64.asc
+$ tebako-pkg verify tebako-pkg-2.5.0-macos-arm64
+tebako-pkg-2.5.0-macos-arm64: trusted
+----
+
+A tampered artifact fails closed. The same command prints
+`INVALID SIGNATURE` and exits non-zero, and the installer flows refuse
+the artifact with the signature exit codes (71 for an invalid
+signature, 72 when the signer is not in your trusted set).
+
+== Rotation and revocation.
+
+Root rotation is a signed hand-off, not a re-trust event: a successor
+statement signed by the current root authorizes the next one, and the
+tools forward trust along that chain automatically. A pre-made
+revocation certificate is stored offline with the root; publishing it
+at this URL retires the root, and every consumer that sees it rejects
+the retired fingerprint even for artifacts that once verified.
