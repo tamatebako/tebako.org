@@ -71,7 +71,7 @@ const sections = [
       {audiences.map((a) => (
         <a href={a.href} class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
           <p class="tb-eyebrow">{a.eyebrow}</p>
-          <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">{a.title}</h3>
+          <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-text-accent)]">{a.title}</h3>
           <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">{a.desc}</p>
         </a>
       ))}
@@ -81,7 +81,7 @@ const sections = [
       {sections.map((s) => (
         <a href={s.href} class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
           <p class="tb-eyebrow">{s.eyebrow}</p>
-          <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">{s.title}</h3>
+          <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-text-accent)]">{s.title}</h3>
           <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">{s.desc}</p>
           {s.planned && (
             <p class="mt-4"><StatusPill status="planned" note="section in progress" /></p>
@@ -102,7 +102,7 @@ const sections = [
           return (
             <a href={series.entries[0].href} class="group rounded-2xl border border-[var(--tb-c-divider)] p-6 transition-colors hover:border-[var(--tb-c-accent)]" style="background: var(--tb-c-bg-soft);">
               <p class="font-[var(--font-mono)] text-xs uppercase tracking-widest text-[var(--tb-c-text-3)]">{series.entries.length} parts</p>
-              <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-accent)]">{series.name}</h3>
+              <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)] group-hover:text-[var(--tb-c-text-accent)]">{series.name}</h3>
               <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">{series.blurb}</p>
             </a>
           )
@@ -112,8 +112,8 @@ const sections = [
 
     <p class="mt-10 text-sm leading-relaxed text-[var(--tb-c-text-3)]">
       Coming from the v1 gem? Start with
-      {' '}<a href="/docs/architecture/migration/" class="tb-link-underline font-medium text-[var(--tb-c-accent)]">the migration map</a>,
-      {' '}then the <a href="/docs/architecture/migrate-v1-v2/" class="tb-link-underline font-medium text-[var(--tb-c-accent)]">flag-by-flag guide</a>.
+      {' '}<a href="/docs/architecture/migration/" class="tb-link-underline font-medium text-[var(--tb-c-text-accent)]">the migration map</a>,
+      {' '}then the <a href="/docs/architecture/migrate-v1-v2/" class="tb-link-underline font-medium text-[var(--tb-c-text-accent)]">flag-by-flag guide</a>.
     </p>
   </section>
 </BaseLayout>

@@ -42,6 +42,9 @@
   --tb-c-text-3: #5d6e77; /* 4.84:1 on paper — AA for the wayfinding layer */
   --tb-c-accent: var(--color-vermillion);
   --tb-c-accent-hover: var(--color-vermillion-deep);
+  /* AA-safe accent for TEXT (links, eyebrows): the vivid vermillion is
+     3.72:1 on paper — decoration keeps it, readable text uses this */
+  --tb-c-text-accent: #a84e32;
   --tb-c-gold: var(--color-gold);
   --tb-c-divider: rgba(6, 57, 74, 0.12);
   --tb-c-divider-strong: rgba(6, 57, 74, 0.2);
@@ -65,6 +68,7 @@
   --tb-c-text-3: #7d9cab; /* 5.17:1 on bg-soft, 5.96:1 on ink-deep */
   --tb-c-accent: var(--color-gold);
   --tb-c-accent-hover: var(--color-amber);
+  --tb-c-text-accent: var(--color-gold);
   --tb-c-gold: var(--color-gold);
   --tb-c-divider: rgba(245, 237, 208, 0.12);
   --tb-c-divider-strong: rgba(245, 237, 208, 0.2);
@@ -111,7 +115,7 @@
   h4 { font-size: 1.25rem; font-variation-settings: "opsz" 24; }
 
   a {
-    color: var(--tb-c-accent);
+    color: var(--tb-c-text-accent);
     text-decoration: none;
     transition: color 0.2s var(--ease-out-quint);
   }
@@ -213,7 +217,7 @@
     font-weight: 500;
     letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: var(--tb-c-accent);
+    color: var(--tb-c-text-accent);
   }
 
   .tb-link-underline {
@@ -311,7 +315,7 @@
   }
 
   .tb-prose a {
-    color: var(--tb-c-accent);
+    color: var(--tb-c-text-accent);
     text-decoration: underline;
     text-underline-offset: 2px;
     text-decoration-thickness: 1px;
