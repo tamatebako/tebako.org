@@ -104,7 +104,7 @@ can rely on is one you have watched say *no* to the right thing — we
 have, in production, on day one.
 
 In default mode the same situation is a loud warning plus a journal
-entry, and the install proceeds: unsigned is a first-class citizen.
+entry, and the install proceeds: unsigned stays first-class.
 `TEBAKO_REQUIRE_SIGNED=1` is the strict twin for environments that want
 the refusal.
 
