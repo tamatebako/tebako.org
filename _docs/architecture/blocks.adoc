@@ -25,69 +25,69 @@ description: >-
 
 _Figure 1 — From source code to a running program: press, publish, download, stack, run._
 
-== 01 · The package — the artifact.
+== 01 · The package.
 
 One file that runs. It contains the bootstrap, one or more slices in numbered
 slots, and a table of contents at the end. Nothing to install, nothing to
 extract, nothing running in the background — a file you can email is the
 whole distribution unit.
 
-== 02 · The bootstrap — the loader.
+== 02 · The bootstrap.
 
 A small, static Rust binary (under 3 MB, enforced in CI) that starts every
 package. It reads the table of contents, checks trust, finds or downloads the
 right runtime, mounts the slices, and starts your program. Downloads are built
 in — it never shells out to curl, git, or anything else on the machine.
 
-== 03 · The runtime slice — the interpreter.
+== 03 · The runtime slice.
 
 Ruby today, other languages on the same model tomorrow. Downloaded once per
 machine, verified, and shared by every tebako application. Upgrading the
 runtime never requires rebuilding an application — applications declare a
 version range, and the resolver picks the newest compatible one.
 
-== 04 · The executable slice — the application.
+== 04 · The executable slice.
 
 Your app as one mountable image: code, dependencies, and a manifest that says
 what it provides (commands) and what it requires (a runtime range, other
 slices). Pure-language apps ship one universal image; native extensions ship
 one image per platform.
 
-== 05 · The data slice — the content.
+== 05 · The data slice.
 
 Fonts, schemas, dictionaries, datasets — versioned content with its own
 release line, mounted read-only next to the application. One copy on disk
 serves every consumer; an update to the data touches no application binary.
 
-== 06 · The toolkit slice — the capability.
+== 06 · The toolkit slice.
 
 Optional machinery too heavy for the core — cryptography first. The bootstrap
 stays under 3 MB precisely by not containing it; when verification is
 required, the toolkit downloads once and is used from then on. Capabilities
 are named, never guessed.
 
-== 07 · The shim system — the PATH surface.
+== 07 · The shim system.
 
 One directory on PATH, one dispatcher binary, one link per command. The
 dispatcher reads its invocation name, picks the pinned or newest compatible
 version, and launches it — the busybox/rustup arrangement, without shell
 scripts and their quoting and signal problems.
 
-== 08 · Install & the local register — the store.
+== 08 · Install and the local register.
 
 Everything lives under one home (~/.tebako): precious things (config, trust
 pins, keys) kept apart from re-derivable things (runtimes, slices, the
 register itself). The register is rebuilt from the store on demand — the
 store contents are the authority; the register is a cache rebuilt from them.
 
-== 09 · The remote registry — the finding mechanism.
+== 09 · The remote registry.
 
 No central server, ever. A registry is a YAML index hosted anywhere a file
 can live — GitHub releases, any git host, any HTTPS path. Publishers sign;
 users pin the key on first contact. Deleting a registry costs nothing: the
 slices are the product, the index is a convenience over them.
 
-== Go deeper.
+== Further reading.
 
 Each block has its own page in the repository documentation, with the same
 structure used here — what it is, what it is for, how it works:
