@@ -85,7 +85,7 @@ export function consoleArt() {
     'font-size:32px;font-weight:bold;color:#c36242;line-height:1.4;text-shadow:0 0 8px rgba(248,184,131,0.5);'
   )
   console.log(
-    '%cTebako — the jewel box for Ruby.',
+    '%cTebako — the treasure box for applications.',
     'font-size:14px;color:#06394a;font-weight:600;'
   )
   console.log(

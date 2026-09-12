@@ -274,7 +274,7 @@ onBeforeUnmount(() => {
       ref="frame"
       type="button"
       class="tb-logo-frame"
-      :aria-label="opened ? 'Return the jewel to the box' : 'Open the jewel box'"
+      :aria-label="opened ? 'Return the treasure to the box' : 'Open the treasure box'"
       @click="toggle"
     >
       <img
