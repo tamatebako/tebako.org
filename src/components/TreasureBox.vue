@@ -263,7 +263,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="scene" class="tb-jewel-scene" :class="{ 'is-idle': isIdle }">
+  <div ref="scene" class="tb-treasure-scene" :class="{ 'is-idle': isIdle }">
     <div ref="halo" class="tb-halo" />
 
     <div class="tb-rays">
@@ -311,7 +311,7 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.tb-jewel-scene {
+.tb-treasure-scene {
   position: relative;
   width: 100%;
   max-width: 420px;
@@ -400,7 +400,7 @@ onBeforeUnmount(() => {
   border-radius: 16px;
 }
 
-.tb-jewel-scene.is-idle .tb-logo-frame {
+.tb-treasure-scene.is-idle .tb-logo-frame {
   animation: none;
 }
 
@@ -550,7 +550,7 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 640px) {
-  .tb-jewel-scene {
+  .tb-treasure-scene {
     max-width: 340px;
   }
   .tb-logo-frame {

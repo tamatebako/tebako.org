@@ -1,7 +1,7 @@
 ---
 // normative: spec 01, spec 03, spec 16, spec 19, spec 20
 import BaseLayout from '../layouts/BaseLayout.astro'
-import JewelBox from '../components/JewelBox.vue'
+import TreasureBox from '../components/TreasureBox.vue'
 import HiddenGem from '../components/HiddenGem.astro'
 import WisdomGem from '../components/WisdomGem.astro'
 import { SITE } from '../config/site'
@@ -95,7 +95,7 @@ const stats = [
       </div>
 
       <div class="tb-animate-rise tb-delay-3">
-        <JewelBox client:idle />
+        <TreasureBox client:idle />
       </div>
     </div>
   </section>
