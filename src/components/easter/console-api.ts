@@ -25,7 +25,7 @@ export function installConsoleApi() {
     return [
       '🎁 Tebako Easter Eggs',
       '',
-      '1. Click the jewel box on the homepage — the Ruby flies out',
+      '1. Click the treasure box on the homepage — the Ruby flies out',
       '2. Type "tebako" anywhere — tumbling gem shower',
       '3. Find 8 hidden collector gems (◆) across the site',
       '4. Click wisdom gems for quotes that fly away',

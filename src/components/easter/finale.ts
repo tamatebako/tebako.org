@@ -46,7 +46,7 @@ export function triggerTypeEffect() {
   for (var i = 0; i < 22; i++) {
     setTimeout(sweepGem, i * 40 + Math.random() * 300)
   }
-  showToast('The jewels tumble forth.')
+  showToast('The treasures tumble forth.')
 }
 
 let finaleDone = false
