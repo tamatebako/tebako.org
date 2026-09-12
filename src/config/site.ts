@@ -1,10 +1,10 @@
 export const SITE = {
   name: 'Tebako',
-  title: 'Tebako — The jewel box for runtimes',
+  title: 'Tebako — The jewel box for applications',
   description:
     'Tebako packages applications into self-contained, cross-platform executables. One file, zero dependencies, every platform, any runtime.',
   url: 'https://www.tebako.org',
-  tagline: 'The jewel box for runtimes.',
+  tagline: 'The jewel box for applications.',
   github: 'https://github.com/tamatebako/tebako',
   samplesRepo: 'https://github.com/tamatebako/tebako-samples',
   docs: '/docs/',
