@@ -49,7 +49,7 @@
   --tb-c-divider: rgba(6, 57, 74, 0.12);
   --tb-c-divider-strong: rgba(6, 57, 74, 0.2);
   --tb-c-nav-bg: rgba(250, 245, 220, 0.92);
-  --tb-jewel-frame-bg: transparent;
+  --tb-treasure-frame-bg: transparent;
   --tb-c-card: #ffffff;
   --tb-c-card-border: rgba(6, 57, 74, 0.1);
   --tb-shadow-card: 0 1px 3px rgba(6, 57, 74, 0.08), 0 8px 24px -8px rgba(6, 57, 74, 0.12);
@@ -73,7 +73,7 @@
   --tb-c-divider: rgba(245, 237, 208, 0.12);
   --tb-c-divider-strong: rgba(245, 237, 208, 0.2);
   --tb-c-nav-bg: rgba(3, 29, 40, 0.92);
-  --tb-jewel-frame-bg: radial-gradient(ellipse at 50% 60%, var(--color-ink-soft) 0%, var(--color-ink) 50%, var(--color-ink-deep) 100%);
+  --tb-treasure-frame-bg: radial-gradient(ellipse at 50% 60%, var(--color-ink-soft) 0%, var(--color-ink) 50%, var(--color-ink-deep) 100%);
   --tb-c-card: rgba(10, 74, 94, 0.4);
   --tb-c-card-border: rgba(245, 237, 208, 0.1);
   --tb-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 8px 24px -8px rgba(0, 0, 0, 0.4);
