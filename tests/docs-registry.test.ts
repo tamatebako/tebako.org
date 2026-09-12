@@ -11,7 +11,13 @@ const ROOT = resolve(__dirname, '..')
 // '/docs/architecture/'        -> src/pages/docs/architecture/index.astro
 // '/who/'                      -> src/pages/who.astro or src/pages/who/index.astro
 // '/'                          -> src/pages/index.astro
+// Same-domain paths served by the Pages assembly, not page files in this
+// repo: the versions catalog is built by tamatebako/versions and grafted
+// into the deploy (build_deploy.yml's assemble step).
+const ASSEMBLED_PATHS = new Set(['/versions/'])
+
 function pageExists(href: string): boolean {
+  if (ASSEMBLED_PATHS.has(href)) return true
   if (!href.startsWith('/') || !href.endsWith('/')) return false
   const trimmed = href.slice(1, -1)
   const candidates = trimmed

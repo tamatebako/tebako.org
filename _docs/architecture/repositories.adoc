@@ -25,7 +25,7 @@ description: >-
 | https://github.com/tamatebako/ruby[ruby] | SOURCE FACTORY. Canonical ruby patches + versions.yml; every upstream fetch sha256-verified; a daily monitor onboards new ruby-lang.org releases or files a named drift issue. Publishes tfs-ruby-<ver>-src[-<scenario>].tar.gz + SHA256SUMS. Ruby tooling around vendored upstream C — the patches are the only tebako-specific C consumers. | Factory — active
 | https://github.com/tamatebako/tebako-runtime-ruby[tebako-runtime-ruby] | RUNTIME FACTORY. Builds the patched source per (ruby version × triplet), boot-smokes each built runtime, and publishes the two runtime artifacts — interpreter exe + env .tfs image — with manifest.json + SHA256SUMS. Consumes only the source factory's releases. | Factory — active
 | https://github.com/tamatebako/tebako-runtime-python[tebako-runtime-python] | RUNTIME FACTORY for CPython, including the experimental jit flavor lines. Publishes interpreter exe + env .tfs per (version, flavor, triplet) with signed manifests. | Factory — active
-| https://github.com/tamatebako/tebako-runtime-jruby[tebako-runtime-jruby] | RUNTIME FACTORY for JRuby (spec 33 runtime-on-runtime): one universal env image composed on the OpenJDK owner. | Factory — active
+| https://github.com/tamatebako/tebako-runtime-jruby[tebako-runtime-jruby] | RUNTIME FACTORY for JRuby: one universal env image composed on the OpenJDK owner (a runtime stacked on a runtime). | Factory — active
 | https://github.com/tamatebako/tebako-runtime-truffleruby[tebako-runtime-truffleruby] | RUNTIME FACTORY for TruffleRuby in native and jvm modes. | Factory — active
 | https://github.com/tamatebako/tebako-runtime-openjdk[tebako-runtime-openjdk] | RUNTIME FACTORY for OpenJDK (Temurin JRE and GraalVM editions): the hermetic java the composed runtimes sit on. | Factory — active
 | https://github.com/tamatebako/dwarfs-t[dwarfs-t] | The ONLY tebako-owned C++: the DwarFS-T image format library (FlatBuffers metadata — upstream dwarfs cannot read it) behind the dwarfs_c_* C ABI. Read-only at runtime forever; the Writer exists at creation time only. Never archived — the foundation, not a legacy repo. | Foundation — active
@@ -61,7 +61,7 @@ leg claims, plus a hard dynamic-dependency whitelist audit
 (https://github.com/tamatebako/tebako/blob/main/.github/workflows/release.yml[release.yml]).
 
 Stated plainly: every checksum bundle and manifest ships with a detached
-OpenPGP signature (spec 09's trust chain, live since tebako v2.6.0); a
+OpenPGP signature (the release trust chain, live since tebako v2.6.0); a
 release that is still rolling out platform by platform stays unsigned until
 it is complete, and unsigned releases remain first-class. The brew formula
 tracks the same five binaries.
