@@ -130,7 +130,7 @@ where the shine gets priced. Clean cells only (per-cell load guards):
 † https://github.com/oracle/truffleruby/issues/4457[oracle/truffleruby#4457]
 — process produces correct output, then dies in thread teardown, 3/3.
 ‡ deterministic illegal instruction on this workload —
-https://github.com/tamatebako/truffleruby-feedstock/issues/5[filed].
+https://github.com/tamatebako/tebako-runtime-truffleruby/issues[the TruffleRuby feedstock].
 
 The headline: **on a ~45-second real compile, YJIT makes MRI slower, not
 faster.** It burns roughly ten CPU-seconds JIT-compiling blocks that the
