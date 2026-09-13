@@ -1,0 +1,150 @@
+---
+layout: post
+title:  "tebako v2.8.0: doctor, the corporate-network trust bridge, offline bundles, and per-platform releases"
+date:   2026-09-13 12:00:00 +0800
+categories:
+  - tebako
+  - release
+  - diagnostics
+  - trust
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: >-
+  v2.8.0 is the operability release: a doctor verb that diagnoses the
+  store end to end, payloads that trust your corporate proxy's CA without
+  a rebuild, offline bundles and signed system installers, and a release
+  pipeline where one broken platform no longer blocks the rest.
+---
+
+= tebako v2.8.0: doctor, the corporate-network trust bridge, offline bundles, and per-platform releases
+
+tebako v2.8.0 is out. The theme is operability: most of what shipped is
+about the days after install — diagnosing a machine, living behind a
+corporate proxy, distributing to machines with no network, and (for
+payload publishers) a release pipeline that no longer wedges itself.
+
+== `tebako doctor`: one verb, five sections, named verdicts
+
+The first thing to run when anything misbehaves:
+
+[source,console]
+----
+$ tebako doctor
+store      ok   3 runtimes, 5 payloads, locks healthy
+dispatch   ok   4 shims resolve, PATH contains ~/.tebako/shims
+network    ok   registry endpoints reachable
+trust      note 1 unsigned payload (metanorma 1.16.8) — allowed, journaled
+registries ok   2 registries fresh
+no problems found
+----
+
+Every line is a named verdict — `ok`, `note`, or `problem` — and the
+exit code is 0 for healthy, 1 with a problem count, so it scripts
+cleanly into CI preflight. `tebako doctor --json` prints the same report
+as a machine-readable document. The dispatch section is the shim layer's
+own diagnostics rendered in place; the store, network, and trust planes
+are the CLI's. Read-only end to end: doctor never repairs, it reports.
+
+== The trust bridge: your proxy's CA, honored without a rebuild
+
+The most common enterprise failure used to be a TLS interception wall:
+the corporate proxy re-signs everything, the payload's embedded root
+store doesn't know the proxy's CA, and every fetch inside the payload
+dies with a certificate error. The answer was a custom runtime build —
+until now.
+
+A payload can now declare `network: tls_roots: platform` (or the user
+sets `TEBAKO_TLS_PLATFORM_ROOTS=1`), and the runtime driver merges the
+image's bundled roots with the operating system's own trust store —
+Keychain on macOS, the Windows certificate store, the system bundle on
+Linux — into one verified bundle, exported to the interpreter the way
+its TLS stack expects it. Ruby's openssl honors `SSL_CERT_FILE`; the
+JVM gets the append it understands
+(`-Djavax.net.ssl.trustStoreType=Windows-ROOT` on Windows). The merge
+happens once, at boot, in-process; nothing is fetched, nothing shells
+out, and the default stays the hermetic image roots — this is opt-in
+per payload and per machine.
+
+The full recipe is the
+link:/docs/guides/enterprise-networks/[enterprise networks guide].
+
+== Offline bundles and signed system installers
+
+Two distribution shapes for machines that never touch the network, or
+shouldn't have to:
+
+*`tebako bundle`* assembles a payload's whole dependency closure —
+payloads, runtimes, registry registrations, preferences — into one
+directory, optionally as a tarball. Copy it to the target, install from
+it, run. It draws from the local store and refuses a partial closure by
+name, so an incomplete bundle fails on the packager's desk, not the
+user's:
+
+[source,console]
+----
+$ tebako bundle metanorma --output ./mn-bundle --archive tar.gz
+bundled metanorma 1.16.9 -> ./mn-bundle/metanorma-1.16.9-macos-arm64.tar.gz
+----
+
+*The release page now carries signed system installers* — an MSI on
+Windows and a pkg on macOS — alongside the tarballs and the shell
+installer. The MSI is Azure Trusted Signing-backed, the pkg is
+Developer ID-signed and notarized; both install the same four binaries
+the other channels do.
+
+== Releases ship per platform now
+
+This one is for payload publishers, and for everyone who ever watched a
+release sit unpublished because one architecture's build machine was
+having a bad day.
+
+The old pipeline had a rendezvous: every platform leg finished, then a
+final pass aggregated their artifacts into shared index files and
+re-uploaded them. Two consequences: one broken leg blocked every
+platform, and the aggregation pass had to mutate published assets —
+which is how you get the delete-then-replace wedge, where a re-uploaded
+name trips the forge's immutability rules and the release dies at the
+finish line.
+
+The rendezvous is gone. Each platform leg publishes exactly the assets
+it owns — the payload, its checksum sidecar, a small manifest shard —
+each signed in the same invocation, each written once and never
+mutated. The index consumers need is derived from the release's own
+asset listing plus the shards, not stored as a shared file. A broken
+leg now blocks that leg. The rest of the matrix ships.
+
+The user-visible half is in this release: the shim and bootstrap read
+the per-platform shards first and fall back to the old monolithic
+indexes, so older releases keep working untouched. Publishers also gain
+a loud withdrawal mechanism — a yanked version is marked in the
+registry and refused by name, instead of vanishing silently.
+
+== Also in this release
+
+* Registries are platform-conditioned: a registry row can declare which
+  triplets it serves, and dispatch skips rows that cannot run here. A
+  stale registry cache now serves with a warning instead of failing
+  closed when the refresh can't complete.
+* Variant-suffixed versions (say, a build against a newer interpreter
+  line) sort below their plain sibling — the plain release stays the
+  default; the variant is an explicit choice.
+* `tebako press` consumes the signed runtime factory line by default.
+
+== Get it
+
+[source,console]
+----
+$ brew upgrade tebako        # or the MSI / pkg / shell installer
+$ tebako doctor              # confirm the upgrade took
+----
+
+The full verification story — every release asset is OpenPGP-signed and
+the CLI verifies them with the embedded tamatebako root key — is in the
+link:/blog/2026-09-10-tebako-v2-trust-chain-live/[trust chain post],
+and the reference pages are up to date:
+link:/docs/reference/cli-tebako/[tebako CLI],
+link:/docs/reference/environment/[environment variables],
+link:/docs/guides/debug/[debug & logging].
