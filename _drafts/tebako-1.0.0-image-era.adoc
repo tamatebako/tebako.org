@@ -1,10 +1,8 @@
 // ////////////////////////////////////////////////////////////////////////////
 // HELD — DO NOT MOVE TO _posts/ UNTIL THE v1.0.0 RELEASE IS GREEN AND THE OWNER
-// APPROVES. This is the series-finale draft (blog series P12, plan:
-// PROGRESS/15-website-overhaul.md §F). Absorbed from PR #54 (was "2.0.0" — the
-// major tag is v1.0.0 per the owner decision 2026-08-25). Before publishing:
-// re-verify every claim against the released v1.0.0, add the benchmark numbers
-// (tebako-bench, spec 27) and the packed-mn migration proof, set the real date.
+// APPROVES. Before publishing: re-verify every claim against the released
+// v1.0.0, add the benchmark numbers and the packed-mn migration proof, set the
+// real date.
 // ////////////////////////////////////////////////////////////////////////////
 ---
 layout: post
