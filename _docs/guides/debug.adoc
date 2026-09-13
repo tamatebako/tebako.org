@@ -7,7 +7,7 @@ lede: >-
   payload, and logs never touch it.
 description: >-
   Tebako debugging: TEBAKO_DEBUG levels and per-component overrides, log
-  format, tebako-shim doctor, registry freshness, and the exit codes worth
+  format, tebako doctor, registry freshness, and the exit codes worth
   memorizing.
 ---
 
@@ -56,19 +56,24 @@ output shown is representative._
 
 == doctor: the first thing to run.
 
-The diagnostic verb is `tebako-shim doctor`:
+The diagnostic verb is `tebako doctor`:
 
 [source,console]
 ----
-$ tebako-shim doctor
+$ tebako doctor
 ----
 
-It checks that the shim directory is on PATH, that every shim resolves,
-that payload records and their trust anchors exist, that the config
-parses, that registries are fresh, and that the runtime cache is intact.
-It ends with _no problems found_ (exit 0) or a problem count (exit 1).
-When a shim misbehaves, run this before anything else. Note the binary:
-there is no `tebako doctor` — the verb is `tebako-shim doctor`.
+Five read-only sections — store, dispatch, network, trust, registries —
+every check a named verdict. It verifies the store layout and lock
+health, that the shim directory is on PATH and every shim resolves, that
+payload records and their trust anchors exist, that the config parses,
+that registries are fresh, and that the runtime cache is intact. It ends
+with _no problems found_ (exit 0) or a problem count (exit 1). When
+anything misbehaves, run this before anything else.
+
+`tebako doctor` shipped in v2.8.0. `tebako-shim doctor` still exists and
+reports the shim layer only (missing/corrupt records, routing) — `tebako
+doctor`'s dispatch section is that same report, rendered in place.
 
 == "The version the publisher just shipped isn't there."
 

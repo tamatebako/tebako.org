@@ -8,12 +8,12 @@ lede: >-
   shipped binary's own help text.
 description: >-
   The tebako CLI reference: press, run, the trace family, check, cache,
-  registries, install, uninstall, info, inspect, and publish — usage
-  lines quoted from the shipped binary.
+  registries, install, uninstall, info, inspect, publish, bundle, and
+  doctor — usage lines quoted from the shipped binary.
 ---
 
 // normative: every usage line transcribed from crates/tebako-cli/src/
-// main.rs USAGE (v2.1.7, verified 2026-09-09). Spec annotations from the
+// main.rs USAGE (v2.8.0, verified 2026-09-13). Spec annotations from the
 // source: press/suite spec 03 §6, deprecated lean/fat aliases spec 23
 // §13.2, trace run spec 25 §4, cover §6, import §6.2, explain §5, check
 // spec 26 §2, registries spec 04 §2, inspect spec 15 + the spec 18
@@ -160,5 +160,30 @@ tebako publish --name <app> [--version <v>] --release tfs:github:<owner>/<repo>[
 Your GitHub releases are the storage; the command writes the index your
 users add. The walkthrough is the
 link:/docs/guides/publish/[publish guide].
+
+== Bundle.
+
+[source,text]
+----
+tebako bundle <name[@ver]> --output <dir> [--config <org.yaml>] [--archive tar.gz]
+----
+
+An offline bundle: the payload's whole dependency closure plus the
+runtimes it needs, assembled into one directory (optionally archived)
+that installs and runs with no network. Bundling draws from the local
+store and refuses a partial set by name — cache the closure first.
+
+== Diagnose: doctor.
+
+[source,text]
+----
+tebako doctor [--json]
+----
+
+The read-only diagnostics surface: five sections (store, dispatch,
+network, trust, registries), every check a named verdict, exit 0 when
+healthy and 1 with a problem count. `--json` prints the same report as a
+machine-readable document. The dispatch section is the `tebako-shim
+doctor` report rendered in place.
 
 See also: link:/docs/reference/exit-codes/[Exit codes] · link:/docs/reference/environment/[Environment variables] · link:/docs/guides/install/[Install tebako]
