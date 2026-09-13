@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "tebako v2.8.1: doctor, the corporate-network trust bridge, offline bundles, and per-platform releases"
+title:  "tebako v2.8.2: doctor, the corporate-network trust bridge, offline bundles, and per-platform releases"
 date:   2026-09-13 12:00:00 +0800
 categories:
   - tebako
@@ -13,20 +13,21 @@ author:
   social_links:
     - https://github.com/tamatebako
 excerpt: >-
-  v2.8.1 is the operability release: a doctor verb that diagnoses the
+  v2.8.2 is the operability release: a doctor verb that diagnoses the
   store end to end, payloads that trust your corporate proxy's CA without
   a rebuild, offline bundles and signed system installers, and a release
   pipeline where one broken platform no longer blocks the rest.
 ---
 
-= tebako v2.8.1: doctor, the corporate-network trust bridge, offline bundles, and per-platform releases
+= tebako v2.8.2: doctor, the corporate-network trust bridge, offline bundles, and per-platform releases
 
-tebako v2.8.1 is out. The theme is operability: most of what shipped is
+tebako v2.8.2 is out. The theme is operability: most of what shipped is
 about the days after install — diagnosing a machine, living behind a
 corporate proxy, distributing to machines with no network, and (for
 payload publishers) a release pipeline that no longer wedges itself.
-(v2.8.1 supersedes v2.8.0, whose tag run hit three first-contact bugs in
-the brand-new installer legs; the fixes are part of this release.)
+(v2.8.2 supersedes v2.8.0 and v2.8.1, whose tag runs hit five
+first-contact bugs in the brand-new installer legs — code that only a
+tag had ever exercised; the fixes are part of this release.)
 
 == `tebako doctor`: one verb, five sections, named verdicts
 
