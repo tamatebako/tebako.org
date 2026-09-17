@@ -1,0 +1,294 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import { SITE } from '../config/site'
+
+// The benchmark harness in tamatebako/tebako appends per-release results to
+// the bench-history branch; the latest/ files are this page's data feed,
+// fetched at build time. A missing, unreachable, or malformed feed degrades
+// to an empty state — it never fails the build.
+
+interface BenchRunner {
+  runs_on?: string
+  arch?: string
+  cpus?: number
+  ram_bytes?: number
+}
+
+interface BenchCell {
+  workload: string
+  target: string
+  mode: string | null
+  n: number | null
+  median_wall_s: number | null
+  min_wall_s: number | null
+  median_cpu_s: number | null
+  median_peak_rss_bytes: number | null
+  speedup_vs_v1: number | null
+}
+
+interface BenchMiss {
+  workload: string
+  target: string
+  mode: string | null
+  iteration: number | null
+  status: string
+  error: string | null
+  reason: string | null
+}
+
+interface BenchTriplet {
+  triplet: string
+  runner?: BenchRunner
+  versions?: Record<string, string>
+  cells?: BenchCell[]
+  unavailable?: BenchMiss[]
+  failed?: BenchMiss[]
+}
+
+interface Dashboard {
+  suite?: string
+  baseline?: { target?: string; label?: string }
+  triplets?: BenchTriplet[]
+}
+
+interface Feed {
+  title: string
+  blurb: string
+  url: string
+}
+
+const FEEDS: Feed[] = [
+  {
+    title: 'Metanorma, packed v1 vs tebako v2',
+    blurb:
+      'A real document-compilation workload: the metanorma CLI packaged the v1 way against the same CLI running on the v2 runtime and shim.',
+    url: 'https://raw.githubusercontent.com/tamatebako/tebako/bench-history/latest/dashboard.json',
+  },
+  {
+    title: 'Runtime overhead, host vs tebako',
+    blurb:
+      'The same interpreter running directly on the host against the tebako runtime pair — what mounting the environment image costs.',
+    url: 'https://raw.githubusercontent.com/tamatebako/tebako/bench-history/latest/dashboard-runtime.json',
+  },
+]
+
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v)
+
+async function fetchDashboard(url: string): Promise<Dashboard | null> {
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return null
+    const data: unknown = await res.json()
+    if (!isRecord(data)) return null
+    if (data.triplets !== undefined && !Array.isArray(data.triplets)) return null
+    return data as Dashboard
+  } catch {
+    return null
+  }
+}
+
+// The baseline block is optional; when it is absent the header falls back to
+// the metanorma suite's v1 packing, else a neutral label.
+function baselineLabel(data: Dashboard): string {
+  const label = data.baseline?.label
+  if (typeof label === 'string' && label.length > 0) return `vs ${label}`
+  return data.suite === 'metanorma-v1-vs-v2' ? 'vs v1 packed-mn' : 'vs baseline'
+}
+
+const fmtS = (v: number | null | undefined) => (typeof v === 'number' ? v.toFixed(2) : '—')
+const fmtMB = (v: number | null | undefined) =>
+  typeof v === 'number' ? (v / 1_000_000).toFixed(0) : '—'
+
+function runnerLine(runner: BenchRunner | undefined): string | null {
+  if (!runner) return null
+  const parts = [
+    runner.runs_on,
+    runner.arch,
+    typeof runner.cpus === 'number' ? `${runner.cpus} CPUs` : null,
+    typeof runner.ram_bytes === 'number' ? `${(runner.ram_bytes / 1_000_000_000).toFixed(0)} GB RAM` : null,
+  ].filter((p): p is string => typeof p === 'string' && p.length > 0)
+  return parts.length > 0 ? parts.join(' · ') : null
+}
+
+// Speedup bars scale against the table's own maximum, with 2× as the floor so
+// a sub-1× regression still reads as a short bar rather than a sliver.
+function barPct(cell: BenchCell, triplet: BenchTriplet): number {
+  const peak = Math.max(2, ...(triplet.cells ?? []).map((c) => c.speedup_vs_v1 ?? 0))
+  return Math.max(0, Math.min(100, ((cell.speedup_vs_v1 ?? 0) / peak) * 100))
+}
+
+const misses = (t: BenchTriplet): BenchMiss[] => [...(t.unavailable ?? []), ...(t.failed ?? [])]
+
+interface SuiteView {
+  title: string
+  slug: string | null
+  blurb: string
+  triplets: BenchTriplet[]
+  speedupHeader: string
+}
+
+const suites: SuiteView[] = await Promise.all(
+  FEEDS.map(async (feed) => {
+    const data = await fetchDashboard(feed.url)
+    return {
+      title: feed.title,
+      slug: typeof data?.suite === 'string' ? data.suite : null,
+      blurb: feed.blurb,
+      triplets: data?.triplets ?? [],
+      speedupHeader: data === null ? '' : baselineLabel(data),
+    }
+  }),
+)
+
+const benchBranch = `${SITE.github}/tree/bench-history`
+---
+
+<BaseLayout
+  title="Benchmarks — Tebako"
+  description="Benchmark results for tebako packages: wall-clock time, CPU time, peak memory, and speedup against the baseline, per platform triplet."
+>
+  <section class="mx-auto max-w-6xl px-6 pb-20 pt-32">
+    <p class="tb-eyebrow tb-animate-rise">PERFORMANCE</p>
+    <h1 class="tb-animate-rise tb-delay-1 mt-3">Benchmarks.</h1>
+    <p class="tb-animate-rise tb-delay-2 mt-4 max-w-3xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      Every tebako release runs a benchmark suite on shared CI runners and
+      publishes the full matrix. The headline figure is the median; the
+      minimum is noted alongside as the figure comparable across runs, because
+      shared runners inflate noise and never deflate it. Cells that were
+      unavailable or failed are listed with their reasons — the matrix is
+      published complete, red cells included.
+    </p>
+    <p class="tb-animate-rise tb-delay-2 mt-3 max-w-3xl text-sm leading-relaxed text-[var(--tb-c-text-3)]">
+      Results land on the
+      <a href={benchBranch}>bench-history branch</a>
+      of the tebako repository after each release; this page rebuilds nightly
+      and on every benchmark update.
+    </p>
+
+    {suites.map((suite) => (
+      <section class="mt-16">
+        <h2 class="font-[var(--font-display)] text-2xl font-medium text-[var(--tb-c-text-1)]">
+          {suite.title}
+        </h2>
+        {suite.slug !== null && (
+          <p class="mt-1 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+            suite: {suite.slug}
+          </p>
+        )}
+        <p class="mt-2 max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">{suite.blurb}</p>
+
+        {suite.triplets.length === 0 ? (
+          <div class="tb-card mt-6 p-8 text-center">
+            <p class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)]">
+              No results yet.
+            </p>
+            <p class="mt-2 text-[var(--tb-c-text-2)]">
+              Results for this suite are published with each tebako release; the
+              first run is still pending.
+            </p>
+          </div>
+        ) : (
+          suite.triplets.map((t) => (
+            <div class="mt-10">
+              <h3 class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)]">
+                {t.triplet}
+              </h3>
+              {runnerLine(t.runner) !== null && (
+                <p class="mt-1 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+                  {runnerLine(t.runner)}
+                </p>
+              )}
+              {t.versions !== undefined && Object.keys(t.versions).length > 0 && (
+                <p class="mt-1 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+                  {Object.entries(t.versions).map(([k, v]) => `${k}: ${v}`).join(' · ')}
+                </p>
+              )}
+
+              <div class="tb-prose mt-4 overflow-x-auto">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Workload</th>
+                      <th>Target</th>
+                      <th>Mode</th>
+                      <th>n</th>
+                      <th>Median wall (s)</th>
+                      <th>Min wall (s)</th>
+                      <th>Median CPU (s)</th>
+                      <th>Peak RSS (MB)</th>
+                      <th>{suite.speedupHeader}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(t.cells ?? []).map((c) => (
+                      <tr>
+                        <td class="font-[var(--font-mono)]">{c.workload}</td>
+                        <td class="font-[var(--font-mono)]">{c.target}</td>
+                        <td>{c.mode ?? '—'}</td>
+                        <td>{c.n ?? '—'}</td>
+                        <td class="font-semibold">{fmtS(c.median_wall_s)}</td>
+                        <td>{fmtS(c.min_wall_s)}</td>
+                        <td>{fmtS(c.median_cpu_s)}</td>
+                        <td>{fmtMB(c.median_peak_rss_bytes)}</td>
+                        <td>
+                          {typeof c.speedup_vs_v1 === 'number' ? (
+                            <span class="flex items-center gap-2">
+                              <span>{c.speedup_vs_v1.toFixed(2)}×</span>
+                              <span
+                                class="relative inline-block h-2 w-20 rounded-full"
+                                style="background: var(--tb-c-divider);"
+                                aria-hidden="true"
+                              >
+                                <span
+                                  class="absolute inset-y-0 left-0 rounded-full"
+                                  style={`width: ${barPct(c, t)}%; background: var(--tb-c-accent);`}
+                                />
+                              </span>
+                            </span>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {misses(t).length > 0 && (
+                <div class="tb-prose mt-4 overflow-x-auto">
+                  <p class="font-[var(--font-mono)] text-xs uppercase tracking-wider text-[var(--tb-c-text-3)]" style="margin: 0 0 0.5em;">
+                    Unavailable and failed cells
+                  </p>
+                  <table style="margin-top: 0;">
+                    <thead>
+                      <tr>
+                        <th>Workload</th>
+                        <th>Target</th>
+                        <th>Mode</th>
+                        <th>Status</th>
+                        <th>Detail</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {misses(t).map((m) => (
+                        <tr>
+                          <td class="font-[var(--font-mono)]">{m.workload}</td>
+                          <td class="font-[var(--font-mono)]">{m.target}</td>
+                          <td>{m.mode ?? '—'}</td>
+                          <td>{m.status}</td>
+                          <td>{m.reason ?? m.error ?? '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </section>
+    ))}
+  </section>
+</BaseLayout>

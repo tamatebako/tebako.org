@@ -24,6 +24,7 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { label: 'Features', href: '/features/' },
   { label: 'Architecture', href: '/architecture/' },
+  { label: 'Benchmarks', href: '/benchmarks/' },
   { label: "Who it's for", href: '/who/' },
   { label: 'Docs', href: '/docs/' },
   { label: 'Blog', href: '/blog/' },
@@ -35,6 +36,7 @@ export const FOOTER_LINKS = {
   Project: [
     { label: 'Features', href: '/features/' },
     { label: 'Architecture', href: '/architecture/' },
+    { label: 'Benchmarks', href: '/benchmarks/' },
     { label: "Who it's for", href: '/who/' },
     { label: 'FAQ', href: '/faq/' },
     { label: 'About', href: '/about/' },
