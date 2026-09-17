@@ -5,7 +5,13 @@ import { SITE } from '../config/site'
 // The benchmark harness in tamatebako/tebako appends per-release results to
 // the bench-history branch; the latest/ files are this page's data feed,
 // fetched at build time. A missing, unreachable, or malformed feed degrades
-// to an empty state — it never fails the build.
+// to an empty state (or a skipped section) — it never fails the build.
+//
+// Ratio convention, page-wide: every ratio is tebako median ÷ on-system
+// median. 1.00 is parity, above 1.00 is overhead, below 1.00 means tebako is
+// faster. The feeds' speedup_vs_v1 field is the reciprocal of this (baseline
+// median ÷ this median), so the at-a-glance table derives its ratios from the
+// cell medians directly.
 
 interface BenchRunner {
   runs_on?: string
@@ -51,6 +57,22 @@ interface Dashboard {
   triplets?: BenchTriplet[]
 }
 
+interface TrendCell {
+  release: string
+  date?: string
+  suite?: string
+  triplet: string
+  workload: string
+  target?: string
+  mode?: string | null
+  median_wall_s: number | null
+  ratio_vs_baseline: number | null
+}
+
+interface Trend {
+  cells?: TrendCell[]
+}
+
 interface Feed {
   title: string
   blurb: string
@@ -59,33 +81,50 @@ interface Feed {
 
 const FEEDS: Feed[] = [
   {
-    title: 'Metanorma, packed v1 vs tebako v2',
+    title: 'metanorma: tebako v1 vs v2',
     blurb:
       'A real document-compilation workload: the metanorma CLI packaged the v1 way against the same CLI running on the v2 runtime and shim.',
     url: 'https://raw.githubusercontent.com/tamatebako/tebako/bench-history/latest/dashboard.json',
   },
   {
-    title: 'Runtime overhead, host vs tebako',
+    title: 'runtime overhead: on-system vs tebako',
     blurb:
-      'The same interpreter running directly on the host against the tebako runtime pair — what mounting the environment image costs.',
+      'The same interpreter installed on the system against the tebako runtime pair — what mounting the environment image costs.',
     url: 'https://raw.githubusercontent.com/tamatebako/tebako/bench-history/latest/dashboard-runtime.json',
   },
 ]
 
+const TREND_URL =
+  'https://raw.githubusercontent.com/tamatebako/tebako/bench-history/latest/trend.json'
+
+const RUNTIME_SUITE = 'runtime-on-system-vs-tebako'
+const TREND_RELEASE_CAP = 10
+
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v)
 
-async function fetchDashboard(url: string): Promise<Dashboard | null> {
+async function fetchJson(url: string): Promise<unknown> {
   try {
     const res = await fetch(url)
     if (!res.ok) return null
-    const data: unknown = await res.json()
-    if (!isRecord(data)) return null
-    if (data.triplets !== undefined && !Array.isArray(data.triplets)) return null
-    return data as Dashboard
+    return await res.json()
   } catch {
     return null
   }
+}
+
+async function fetchDashboard(url: string): Promise<Dashboard | null> {
+  const data = await fetchJson(url)
+  if (!isRecord(data)) return null
+  if (data.triplets !== undefined && !Array.isArray(data.triplets)) return null
+  return data as Dashboard
+}
+
+async function fetchTrend(url: string): Promise<Trend | null> {
+  const data = await fetchJson(url)
+  if (!isRecord(data)) return null
+  if (data.cells !== undefined && !Array.isArray(data.cells)) return null
+  return data as Trend
 }
 
 // The baseline block is optional; when it is absent the header falls back to
@@ -99,6 +138,8 @@ function baselineLabel(data: Dashboard): string {
 const fmtS = (v: number | null | undefined) => (typeof v === 'number' ? v.toFixed(2) : '—')
 const fmtMB = (v: number | null | undefined) =>
   typeof v === 'number' ? (v / 1_000_000).toFixed(0) : '—'
+const fmtRatio = (v: number | null | undefined) =>
+  typeof v === 'number' ? `${v.toFixed(2)}×` : '—'
 
 function runnerLine(runner: BenchRunner | undefined): string | null {
   if (!runner) return null
@@ -119,6 +160,103 @@ function barPct(cell: BenchCell, triplet: BenchTriplet): number {
 }
 
 const misses = (t: BenchTriplet): BenchMiss[] => [...(t.unavailable ?? []), ...(t.failed ?? [])]
+
+// --- Overhead at a glance ---------------------------------------------------
+// Warm-mode cells of the runtime suite, grouped by runtime (the workload
+// prefix before the dash): *-boot is the warm boot, *-fib the steady state,
+// *-stdlib the stdlib load. Each ratio is tebako median ÷ on-system median.
+
+type OverheadKind = 'boot' | 'fib' | 'stdlib'
+
+interface OverheadRow {
+  runtime: string
+  triplet: string
+  ratios: Record<OverheadKind, number | null>
+}
+
+const OVERHEAD_KINDS: OverheadKind[] = ['boot', 'fib', 'stdlib']
+
+function kindOf(workload: string): OverheadKind | null {
+  if (workload.endsWith('-boot')) return 'boot'
+  if (workload.endsWith('-fib')) return 'fib'
+  if (workload.endsWith('-stdlib')) return 'stdlib'
+  return null
+}
+
+function overheadRows(triplets: BenchTriplet[]): OverheadRow[] {
+  const rows: OverheadRow[] = []
+  for (const t of triplets) {
+    const byRuntime = new Map<string, OverheadRow>()
+    for (const c of t.cells ?? []) {
+      if (c.mode !== 'warm') continue
+      const kind = kindOf(c.workload)
+      if (kind === null) continue
+      const runtime = c.workload.split('-')[0]
+      if (!runtime) continue
+      const counterpart =
+        (t.cells ?? []).find(
+          (o) =>
+            o.workload === c.workload &&
+            o.mode === 'warm' &&
+            o.target.startsWith(c.target.startsWith('tebako-') ? 'on-system-' : 'tebako-'),
+        )
+      if (counterpart === undefined) continue
+      const tebako = c.target.startsWith('tebako-') ? c : counterpart
+      const onSystem = c.target.startsWith('tebako-') ? counterpart : c
+      if (typeof tebako.median_wall_s !== 'number' || typeof onSystem.median_wall_s !== 'number')
+        continue
+      if (onSystem.median_wall_s === 0) continue
+      let row = byRuntime.get(runtime)
+      if (row === undefined) {
+        row = { runtime, triplet: t.triplet, ratios: { boot: null, fib: null, stdlib: null } }
+        byRuntime.set(runtime, row)
+      }
+      row.ratios[kind] = tebako.median_wall_s / onSystem.median_wall_s
+    }
+    rows.push(...[...byRuntime.values()].sort((a, b) => a.runtime.localeCompare(b.runtime)))
+  }
+  return rows
+}
+
+// --- Release over release ---------------------------------------------------
+// Runtime-suite cells grouped by workload × triplet, newest release first,
+// capped at the most recent releases.
+
+interface TrendGroup {
+  workload: string
+  triplet: string
+  rows: TrendCell[]
+  total: number
+}
+
+function trendGroups(trend: Trend | null): TrendGroup[] {
+  const cells = (trend?.cells ?? []).filter(
+    (c) => c.suite === undefined || c.suite === RUNTIME_SUITE,
+  )
+  const groups = new Map<string, TrendGroup>()
+  for (const c of cells) {
+    const key = `${c.workload} | ${c.triplet}`
+    let g = groups.get(key)
+    if (g === undefined) {
+      g = { workload: c.workload, triplet: c.triplet, rows: [], total: 0 }
+      groups.set(key, g)
+    }
+    g.rows.push(c)
+    g.total += 1
+  }
+  for (const g of groups.values()) {
+    g.rows.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? '') || b.release.localeCompare(a.release))
+    g.rows = g.rows.slice(0, TREND_RELEASE_CAP)
+  }
+  return [...groups.values()].sort(
+    (a, b) => a.workload.localeCompare(b.workload) || a.triplet.localeCompare(b.triplet),
+  )
+}
+
+function ratioBarPct(v: number | null): number {
+  if (typeof v !== 'number') return 0
+  return Math.max(0, Math.min(100, (v / 3) * 100))
+}
 
 interface SuiteView {
   title: string
@@ -141,6 +279,10 @@ const suites: SuiteView[] = await Promise.all(
   }),
 )
 
+const runtimeSuite = suites[1]
+const glance = overheadRows(runtimeSuite.triplets)
+const trends = trendGroups(await fetchTrend(TREND_URL))
+
 const benchBranch = `${SITE.github}/tree/bench-history`
 ---
 
@@ -153,11 +295,8 @@ const benchBranch = `${SITE.github}/tree/bench-history`
     <h1 class="tb-animate-rise tb-delay-1 mt-3">Benchmarks.</h1>
     <p class="tb-animate-rise tb-delay-2 mt-4 max-w-3xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
       Every tebako release runs a benchmark suite on shared CI runners and
-      publishes the full matrix. The headline figure is the median; the
-      minimum is noted alongside as the figure comparable across runs, because
-      shared runners inflate noise and never deflate it. Cells that were
-      unavailable or failed are listed with their reasons — the matrix is
-      published complete, red cells included.
+      publishes the full matrix, red cells included. The method note at the
+      bottom of this page describes how the numbers are measured.
     </p>
     <p class="tb-animate-rise tb-delay-2 mt-3 max-w-3xl text-sm leading-relaxed text-[var(--tb-c-text-3)]">
       Results land on the
@@ -165,6 +304,47 @@ const benchBranch = `${SITE.github}/tree/bench-history`
       of the tebako repository after each release; this page rebuilds nightly
       and on every benchmark update.
     </p>
+
+    {glance.length > 0 && (
+      <section class="mt-16">
+        <h2 class="font-[var(--font-display)] text-2xl font-medium text-[var(--tb-c-text-1)]">
+          Overhead at a glance
+        </h2>
+        <p class="mt-2 max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
+          The latest run of the runtime suite, condensed to three ratios per
+          runtime: a warm boot, a steady-state compute loop, and a standard
+          library load.
+        </p>
+        <div class="tb-prose mt-4 overflow-x-auto">
+          <table>
+            <thead>
+              <tr>
+                <th>Runtime</th>
+                <th>Platform</th>
+                <th>Warm boot</th>
+                <th>Steady state</th>
+                <th>Stdlib load</th>
+              </tr>
+            </thead>
+            <tbody>
+              {glance.map((row) => (
+                <tr>
+                  <td class="font-[var(--font-mono)]">{row.runtime}</td>
+                  <td class="font-[var(--font-mono)]">{row.triplet}</td>
+                  {OVERHEAD_KINDS.map((k) => (
+                    <td>{fmtRatio(row.ratios[k])}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p class="mt-2 text-sm text-[var(--tb-c-text-3)]">
+          Ratio of medians, tebako ÷ on-system: 1.00× is parity, above is
+          overhead, below means tebako is faster.
+        </p>
+      </section>
+    )}
 
     {suites.map((suite) => (
       <section class="mt-16">
@@ -290,5 +470,104 @@ const benchBranch = `${SITE.github}/tree/bench-history`
         )}
       </section>
     ))}
+
+    {trends.length > 0 && (
+      <section class="mt-16">
+        <h2 class="font-[var(--font-display)] text-2xl font-medium text-[var(--tb-c-text-1)]">
+          Release over release
+        </h2>
+        <p class="mt-2 max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
+          The runtime suite's ratio against the on-system baseline across
+          recent tebako releases, newest first.
+        </p>
+
+        {trends.map((g) => (
+          <div class="mt-8">
+            <h3 class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)]">
+              {g.workload}
+            </h3>
+            <p class="mt-1 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+              {g.triplet}
+            </p>
+            <div class="tb-prose mt-3 overflow-x-auto">
+              <table style="margin-top: 0;">
+                <thead>
+                  <tr>
+                    <th>Release</th>
+                    <th>Date</th>
+                    <th>Median wall (s)</th>
+                    <th>vs on-system</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {g.rows.map((r) => (
+                    <tr>
+                      <td class="font-[var(--font-mono)]">{r.release}</td>
+                      <td>{r.date ?? '—'}</td>
+                      <td>{fmtS(r.median_wall_s)}</td>
+                      <td>
+                        {typeof r.ratio_vs_baseline === 'number' ? (
+                          <span class="flex items-center gap-2">
+                            <span>{r.ratio_vs_baseline.toFixed(2)}×</span>
+                            <span
+                              class="relative inline-block h-2 w-20 rounded-full"
+                              style="background: var(--tb-c-divider);"
+                              aria-hidden="true"
+                            >
+                              <span
+                                class="absolute inset-y-0 left-0 rounded-full"
+                                style={`width: ${ratioBarPct(r.ratio_vs_baseline)}%; background: var(--tb-c-accent);`}
+                              />
+                            </span>
+                          </span>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {g.total > TREND_RELEASE_CAP && (
+              <p class="mt-2 text-sm text-[var(--tb-c-text-3)]">
+                Showing the latest {TREND_RELEASE_CAP} of {g.total} releases.
+              </p>
+            )}
+          </div>
+        ))}
+      </section>
+    )}
+
+    <section class="mt-16 border-t border-[var(--tb-c-divider)] pt-8">
+      <h2 class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)]">
+        How these numbers are measured
+      </h2>
+      <div class="mt-3 max-w-3xl space-y-3 text-sm leading-relaxed text-[var(--tb-c-text-3)]">
+        <p>
+          Each figure is the median of repeated runs. The minimum is noted
+          alongside as the figure comparable across runs, because shared CI
+          runners inflate noise and never deflate it.
+        </p>
+        <p>
+          A cold run starts with the tebako store wiped, so it carries the
+          one-time cost of downloading, verifying, installing, and first
+          mounting the runtime. A warm run starts with the store present.
+          On-system arms have no cold cell: package-manager install time is
+          not tebako's comparison.
+        </p>
+        <p>
+          On-system and tebako arms run the same interpreter version — parity
+          is asserted at measure time — and interleave A/B/A/B on the same
+          runner. Ratios on this page are tebako median ÷ on-system median
+          throughout: 1.00× is parity, above 1.00× is overhead, below 1.00×
+          means tebako is faster.
+        </p>
+        <p>
+          Cells that were unavailable or failed are listed with their reasons,
+          never hidden. The matrix is published complete.
+        </p>
+      </div>
+    </section>
   </section>
 </BaseLayout>
