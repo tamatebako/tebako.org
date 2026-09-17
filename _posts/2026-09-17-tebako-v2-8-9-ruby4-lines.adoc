@@ -1,0 +1,105 @@
+---
+layout: post
+title:  "tebako v2.8.9: ruby 4.0 runtime lines, line-pinned extension slices, and the windows materialize tier"
+date:   2026-09-17 12:00:00 +0800
+categories:
+  - tebako
+  - release
+  - ruby
+  - windows
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: >-
+  v2.8.9 pairs with the 0.16.25 runtime factory to make ruby 4.0 a
+  first-class tebako target: one payload version can ship per
+  interpreter line, the user picks the line with one pin, extension
+  slices bind to the exact line they were built against, and windows
+  runtimes whose files the OS loader must see gain the materialize
+  boot tier.
+---
+
+= tebako v2.8.9: ruby 4.0 runtime lines, line-pinned extension slices, and the windows materialize tier
+
+tebako v2.8.9 is out, and the headline is not in the CLI itself but in
+what the packaging model now expresses cleanly: *one application, more
+than one interpreter line.* The ruby runtime factory's 0.16.25 line
+builds ruby 4.0.6 — the newest and fastest interpreter line — for every
+supported platform triplet, alongside the existing 3.1 through 3.4
+lines. v2.8.9 is the tebako release whose manifest grammar lets payloads
+and slices name those lines precisely.
+
+== Runtime lines: one payload version, two interpreters
+
+Ruby 4.0 is not a drop-in for every gem set: native-extension gems pin
+an ABI line, and even pure-ruby closures resolve differently under a new
+major interpreter. So a payload that wants to offer both ruby 3.3 and
+ruby 4.0 ships two builds of the *same payload version*, distinguished
+by a suffix on the version string. metanorma is the first payload to
+exercise this: the registry now carries `1.16.9` (the default, ruby 3.3
+line) and `1.16.9-ruby4.0` (the ruby 4.0 line) — same application, same
+feature set, different interpreter inside.
+
+Resolution keeps the conservative default: an unpinned install picks the
+plain line, and a variant line never silently outranks it. Choosing the
+fast interpreter is one exact pin, through any of the existing version
+surfaces:
+
+[source,console]
+----
+$ tebako install metanorma@1.16.9-ruby4.0      # the ruby 4.0 line
+$ tebako install metanorma@1.16.9              # the ruby 3.3 line
+$ TEBAKO_METANORMA_VERSION=1.16.9-ruby4.0 metanorma version
+----
+
+The same pins work in a project's `.tebako-tools.yaml` and in the
+store's `config.yaml` defaults, so a team fixes the line once per
+project and every dispatch follows it.
+
+== Extension slices pin a line
+
+Extension slices — payload slices that augment a base payload at a
+declared extension point, deduplicated against the base's exact gem
+closure — bind to one precise base inventory by construction. When the
+base ships two lines, the closures genuinely differ, so each line gets
+its own slice release, pinned exactly: a slice built against
+`1.16.9-ruby4.0` attaches to that line and is skipped by name on any
+other. Both lines' slices can sit in one store side by side; dispatch
+attaches the one matching the base you run.
+
+Making that pin writable took a grammar widening in this release:
+version constraints now accept the variant suffix that payload versions
+already carried, so `= 1.16.9-ruby4.0` is a valid exact pin. Older
+tebako releases reject the suffixed spelling with a named error at
+install time — fail-closed by design — so slices pinned to a line ask
+for tebako v2.8.9 or newer.
+
+== The windows materialize tier
+
+Some runtimes ship files the operating system's own loader must read
+from real disk — windows DLLs are the canonical case; an in-memory VFS
+page is invisible to `LoadLibrary`. v2.8.9 adds a boot tier for that:
+a runtime whose env image declares it has its loader-visible surface
+extracted once into tebako's exec cache, digest-verified, and reused on
+every later boot. The store stays the single source of the bytes, and a
+cache entry that fails verification is rebuilt, never trusted.
+
+The python runtime's windows line is the first consumer and ships with
+its next factory release; ruby needs no such tier today. Payload authors
+change nothing — the tier is declared by the runtime factory and applied
+by the driver at boot.
+
+== Compatibility notes
+
+* Unsuffixed constraints behave exactly as before; the widening is
+  purely additive.
+* Line-suffixed installs (`metanorma@1.16.9-ruby4.0`) work on any
+  v2.8.x CLI; line-pinned *slice* manifests require v2.8.9.
+* v2.8.8's mount-boundary repair is part of this line and is what the
+  0.16.25 factory builds against — runtimes older than the 0.16.24 line
+  stay fully supported.
+
+The runtime factory index lists every published line and triplet;
+`tebako info runtimes` shows the lines your store has cached.
