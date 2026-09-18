@@ -134,7 +134,7 @@ load guards):
 † https://github.com/oracle/truffleruby/issues/4457[oracle/truffleruby#4457]
 — the process produces correct output and then dies in thread teardown, in
 three of three runs.
-‡ a deterministic illegal instruction on this workload; see
+‡ the crash is a deterministic illegal instruction on this workload; see
 https://github.com/tamatebako/tebako-runtime-truffleruby/issues[the TruffleRuby feedstock].
 
 The headline finding is that **on a ~45-second real compile, YJIT makes MRI

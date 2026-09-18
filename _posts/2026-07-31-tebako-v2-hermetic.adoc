@@ -150,18 +150,18 @@ Running *binaries that live inside disk images* — a Java Virtual
 Machine (JVM) included — has required some new machinery, all of it in
 Rust:
 
-* **The spawn hook.** Every patched Ruby runtime mediates process
-  spawning: when a program tries to run something that lives in the
+* **The spawn hook:** every patched Ruby runtime mediates process
+  spawning, so when a program tries to run something that lives in the
   mounts, tebako copies it to a host cache and runs it there, passing
   the mounts along to the child.
-* **Dependency-closure extraction.** The system loader (dyld, ld.so)
+* **Dependency-closure extraction:** the system loader (dyld, ld.so)
   looks for shared libraries with raw syscalls that user-space hooks
-  cannot serve. So `dlmap2file` now reads the Mach-O/ELF dependency
+  cannot serve, so `dlmap2file` now reads the Mach-O/ELF dependency
   closure of anything it materializes — rpaths,
   `@executable_path`, `$ORIGIN` — and copies every in-image library
   into place before the exec. The JVM's many dylibs are all in place
   before it starts.
-* **The preload shim.** Spawned children see the same mount table via
+* **The preload shim:** spawned children see the same mount table via
   `DYLD_INSERT_LIBRARIES`/`LD_PRELOAD` — including an `fopen`
   interposition (the JVM reads some configuration files without going
   through libc `open`) and an ABI trampoline for Darwin's stack-passed

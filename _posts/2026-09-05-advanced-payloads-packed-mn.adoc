@@ -84,7 +84,7 @@ run time:
 |===
 |What the user meets |Which tebako part it is |Where it lives
 
-|The executable you download
+|The executable the user downloads
 |The bootstrap, the stitched payload slots, and the trailer
 |One file — that is the whole download
 

@@ -111,20 +111,20 @@ _Figure 1 — Trace cover compares an outside capture with the inside stream, an
 
 Four commands read that stream:
 
-* `tebako trace run <pkg>` — *discovery.* It runs a package with the
-  stream armed and drafts a manifest fragment: the host paths the
-  package touched (as `needs:` grants), the files it read through raw
-  file descriptors (as `materialize:` candidates), and the shared
-  libraries and host executables it loaded. The draft is commented
-  YAML, and tebako never applies it automatically; the operator
-  reviews it, adjusts read and write permissions, and records why each
-  grant exists.
-* `tebako trace explain <capture.jsonl>` — *diagnosis.* It replays a
+* `tebako trace run <pkg>` — *discovery:* it runs a package with the
+  stream armed and drafts a manifest fragment; the fragment records the
+  host paths the package touched (as `needs:` grants), the files it
+  read through raw file descriptors (as `materialize:` candidates), and
+  the shared libraries and host executables it loaded. The draft is
+  commented YAML, and tebako never applies it automatically; the
+  operator reviews it, adjusts read and write permissions, and records
+  why each grant exists.
+* `tebako trace explain <capture.jsonl>` — *diagnosis:* it replays a
   capture through the chain of steps a file access goes through
   (mount → manifest read → resolve → materialize → OS bind) and names
   the first step that failed, with a likely cause. Exit code 0 means
   the chain is green; exit code 1 names the failing step.
-* `tebako trace cover` — *coverage.* It produces the report described
+* `tebako trace cover` — *coverage:* it produces the report described
   below.
 * `tebako trace import procmon <capture.csv>` — the Windows path,
   which is also described below.
