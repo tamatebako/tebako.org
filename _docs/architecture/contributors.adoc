@@ -4,56 +4,60 @@ heading: For contributors.
 lede: >-
   Every interface in the ecosystem has exactly one owner, one declarative
   contract, and one verification point. Contributing starts with knowing
-  which repo owns the value you are touching — and which suite will judge
-  the change.
+  which repository owns the value that a change touches, and which suite
+  will judge the change.
 description: >-
-  Who owns each contract value, which suites execute the contracts, how
-  upstream drift is detected, and the engineering order every change
-  follows.
+  This page covers who owns each contract value, which suites execute the
+  contracts, how upstream drift is detected, and the engineering order that
+  every change follows.
 ---
 
 // normative: spec 14, spec 18 — corroborated by docs/parity.md, spec 06 §6, spec 13, spec 17 §1; code citations in the wave-1 report
 // ssot rows' normative citations, dropped from the visible table: tpkg wire — spec 02 · spec 18 C6; mount root — spec 17 §1 · spec 18 C1/C3; tfs C ABI — spec 18 C4; contract version — spec 06 §6 · spec 18 C2/C5; store layout — spec 18 C13 · spec 05; grammars — spec 03 · spec 04 §1; in-image paths — spec 18 C3 · spec 17 §1; dwarfs_c — spec 18 C20; schema registry — spec 18 §2.1
 
-== The engineering order.
+== The engineering order
 
-The order every change follows is fixed, in every repo. It is not a
-suggestion: a change that skips a step is sent back to it.
+The order every change follows is fixed, in every repository. It is not a
+suggestion: a change that skips a step is sent back to that step.
 
 . **Design, spec-first.** Contract changes land in the spec set (or a linked
-  docs/*.md) and, where applicable, a versioned schema — before code. Wire
+  docs/*.md) and, where applicable, a versioned schema, before code. Wire
   formats get byte diagrams; behaviors get named errors and exit codes up
   front; every new concept is assigned to exactly one layer (L0–L3).
 . **Oracle pin.** If a C++/gem predecessor exists, golden vectors and
-  fixtures are generated from it first. No golden oracle, no parity claim.
-. **Implement.** In the owning crate or module only (MECE). The locked
-  invariants hold; `unsafe` stays inside FFI boundary modules.
-. **Unit + property tests.** In-crate. Proptest discipline: parsers never
-  panic, round-trips are identity.
+  fixtures are generated from it first; without a golden oracle, there is no
+  parity claim.
+. **Implement.** Implementation happens in the owning crate or module only
+  (MECE). The locked invariants hold, and `unsafe` stays inside FFI boundary
+  modules.
+. **Unit + property tests.** Unit and property tests live in-crate. The
+  proptest discipline is that parsers never panic and round-trips are
+  identity.
 . **Contract / parity suite.** The ported C++ corpus runs against the Rust
-  implementation (tests/contract); the parity legs diff byte-for-byte
+  implementation (tests/contract), and the parity legs diff byte-for-byte
   against the oracles.
-. **E2E, tiered.** PR tier: one smoke per OS with a cached runtime, under
-  ten minutes. Nightly: the full matrix. Weekly: adversarial — cold cache,
-  network failure, corrupted downloads, jail enforcement.
-. **Size + hygiene gates.** The bootstrap size table per platform (hard
-  fail at ≥ 3 MB); the exported-symbol audit (only the `tebako_*` surface
-  leaks); `clippy -D warnings` and fmt.
-. **Release + verify.** Tag → per-platform artifacts → SHA256SUMS → the
-  completeness gate (a partial asset set fails the release) → `tebako-pkg
-  verify` on the published assets.
+. **E2E, tiered.** E2E testing is tiered. The PR tier is one smoke per OS
+  with a cached runtime, under ten minutes; the nightly tier is the full
+  matrix; the weekly tier is adversarial, covering cold cache, network
+  failure, corrupted downloads, and jail enforcement.
+. **Size + hygiene gates.** The size and hygiene gates are the bootstrap
+  size table per platform (hard fail at ≥ 3 MB), the exported-symbol audit
+  (only the `tebako_*` surface leaks), `clippy -D warnings`, and fmt.
+. **Release + verify.** Release and verify run as tag, then per-platform
+  artifacts, then SHA256SUMS, then the completeness gate (a partial asset
+  set fails the release), then `tebako-pkg verify` on the published assets.
 . **Doc sync.** The spec set and README status sections update in the same
-  PR. Unshipped behavior is marked PLANNED — never described as done.
+  PR. Unshipped behavior is marked PLANNED and is never described as done.
 
-The per-language rules sit under the order. Ruby tooling is autoload-only —
-no `require_relative`, no `send`, no `instance_variable_get`, no
+The per-language rules sit under the order. Ruby tooling is autoload-only,
+with no `require_relative`, no `send`, no `instance_variable_get`, and no
 `respond_to?`. Rust keeps `unsafe` inside FFI boundary modules, names its
 errors on every trailer/exec/network path, and holds the bootstrap to
-`opt-level="z"`, fat LTO, one codegen unit, `panic="abort"`, stripped.
-Tebako-owned C/C++ exists only in dwarfs-t and the ruby fork's io-routing
-patches — nowhere else.
+`opt-level="z"`, fat LTO, one codegen unit, `panic="abort"`, and stripped
+symbols. Tebako-owned C/C++ exists only in dwarfs-t and the ruby fork's
+io-routing patches, nowhere else.
 
-== One owner per contract value.
+== One owner per contract value
 
 A contract value that crosses a repo boundary has exactly one authoritative
 owner. Every other consumer either _flows_ it — a generated file, a
@@ -135,26 +139,26 @@ reads it and carries no copy._
 |===
 | Contract value | Single owner | How everyone else gets it | Edge
 
-| The tpkg wire format — 166 B header · 280 B slot records · ≤ 8 slots · flags + extension blocks | crates/tpkg (tamatebako/tebako) | Every Rust consumer links the crate (`#![forbid(unsafe_code)]`). The C mini-lib in libtfs is the golden oracle — the format is asserted byte-exact against it. Extensions live in flags and extension blocks, never in a version bump, so v1 readers parse v2 packages untouched. | C6
-| The runtime mount root — /__tfs__ on POSIX · A:/t on windows | tamatebako/ruby — the patch literals | Flows: patch literals → the tarball's tebako-mount-root manifest → the factory's builder.rb (-DFS_MOUNT_POINT) → the exe's compiled-in fs_mount_point → the driver reads it at boot. A tarball without the manifest is refused, exit 132. The driver crate carries no copy — exe and driver cannot drift. | C1/C3
-| The tfs C ABI (stat layout) — the `tebako_fs_*` surface | include/tebako/fs/c_api.h (tamatebako/tebako) | `_Static_assert`s pin the layout (`tebako_stat`: 56 bytes, `st_size` at 24, `st_mtime` at 40) — both sides compiling IS the check. The factory CI adds an nm provenance assert. The Rust tfs crate is the shipping implementation; C++ libtfs stays the parity oracle. | C4
-| The handoff contract version — currently 2 | crates/tebako-driver (tamatebako/tebako) | The factory shim exports `TEBAKO_CONTRACT_VERSION` from the driver's getter — never a factory-side literal. A preflight gate fails the factory build when contract.yml disagrees with the driver; the release manifest declares the same value; the loader refuses a mismatch before any download, exit 75. | C2/C5
-| Store layout + canonical cache roots — `$TEBAKO_HOME` · ~/.tebako · %LOCALAPPDATA%\\tebako | crates/tebako-resolve (tamatebako/tebako) | store.rs owns the layout-version stamp: newer → an upgrade refusal, older → a named migration, never a silent mixed layout. The size-capped bootstrap cannot link the crate, so it mirrors the semantics — and both sides' tests pin the constant identical. When a value cannot flow, parity is asserted, not assumed. | C13
-| Name + reference grammars — payload names · `tfs:github:` · `tfs+git://` · `?sha256=` pins | crates/tpkg (manifest model) · crates/tebako-resolve (reference syntax) | One parser per grammar; every other consumer links it. Unparseable input is a named error — never a guess, never a default service. | —
-| In-image layout paths — /__tpkg__/manifest.yaml · /lib/tebako/layout.yaml | crates/tpkg (L1 model) · tebako-runtime-ruby (layout emission) | The factory emits the env image's layout.yaml; the driver verifies it post-mount, before the interpreter starts. A mismatch against the exe's compiled expectation is exit 78 — never a ruby LoadError. | C3
-| The dwarfs_c ABI — the only C++ surface in the ecosystem | dwarfs-t/include/dwarfs_c.h | The header owns DWARFS_C_ABI_VERSION. The FFI crate (dwarfs-t-sys in tamatebako/dwarfs-t-rs) pins the number and calls `dwarfs_c_abi_version()` at bind — a mismatch is refused with both numbers printed. | C20
-| The schema registry itself — nine versioned schemas | docs/spec/schemas/ (tamatebako/tebako) | One registry for every grammar in the ecosystem. Each schema carries schema_version + schema_minor and its evolution metadata; every producer validates its declarations in its own CI; every consumer validates before use and refuses invalid input with a named error. | —
+| The tpkg wire format — 166 B header · 280 B slot records · ≤ 8 slots · flags + extension blocks | crates/tpkg (tamatebako/tebako) | Every Rust consumer links the crate (`#![forbid(unsafe_code)]`). The C mini-lib in libtfs is the golden oracle, and the format is asserted byte-exact against it. Extensions live in flags and extension blocks, never in a version bump, so v1 readers parse v2 packages untouched. | C6
+| The runtime mount root — /__tfs__ on POSIX · A:/t on windows | tamatebako/ruby — the patch literals | The value flows: patch literals → the tarball's tebako-mount-root manifest → the factory's builder.rb (-DFS_MOUNT_POINT) → the exe's compiled-in fs_mount_point → the driver reads it at boot. A tarball without the manifest is refused with exit 132. The driver crate carries no copy, so exe and driver cannot drift. | C1/C3
+| The tfs C ABI (stat layout) — the `tebako_fs_*` surface | include/tebako/fs/c_api.h (tamatebako/tebako) | `_Static_assert`s pin the layout (`tebako_stat`: 56 bytes, `st_size` at 24, `st_mtime` at 40), and both sides compiling is the check. The factory CI adds an nm provenance assert. The Rust tfs crate is the shipping implementation, and C++ libtfs stays the parity oracle. | C4
+| The handoff contract version — currently 2 | crates/tebako-driver (tamatebako/tebako) | The factory shim exports `TEBAKO_CONTRACT_VERSION` from the driver's getter, never a factory-side literal. A preflight gate fails the factory build when contract.yml disagrees with the driver; the release manifest declares the same value; the loader refuses a mismatch before any download, with exit 75. | C2/C5
+| Store layout + canonical cache roots — `$TEBAKO_HOME` · ~/.tebako · %LOCALAPPDATA%\\tebako | crates/tebako-resolve (tamatebako/tebako) | store.rs owns the layout-version stamp: a newer stamp is an upgrade refusal, and an older one gets a named migration, never a silent mixed layout. The size-capped bootstrap cannot link the crate, so it mirrors the semantics, and both sides' tests pin the constant identical. When a value cannot flow, parity is asserted, not assumed. | C13
+| Name + reference grammars — payload names · `tfs:github:` · `tfs+git://` · `?sha256=` pins | crates/tpkg (manifest model) · crates/tebako-resolve (reference syntax) | There is one parser per grammar, and every other consumer links it. Unparseable input is a named error, never a guess and never a default service. | —
+| In-image layout paths — /__tpkg__/manifest.yaml · /lib/tebako/layout.yaml | crates/tpkg (L1 model) · tebako-runtime-ruby (layout emission) | The factory emits the env image's layout.yaml, and the driver verifies it post-mount, before the interpreter starts. A mismatch against the exe's compiled expectation is exit 78, never a ruby LoadError. | C3
+| The dwarfs_c ABI — the only C++ surface in the ecosystem | dwarfs-t/include/dwarfs_c.h | The header owns DWARFS_C_ABI_VERSION. The FFI crate (dwarfs-t-sys in tamatebako/dwarfs-t-rs) pins the number and calls `dwarfs_c_abi_version()` at bind, and a mismatch is refused with both numbers printed. | C20
+| The schema registry itself — nine versioned schemas | docs/spec/schemas/ (tamatebako/tebako) | One registry holds every grammar in the ecosystem. Each schema carries schema_version + schema_minor and its evolution metadata; every producer validates its declarations in its own CI; every consumer validates before use and refuses invalid input with a named error. | —
 |===
 
-== The contract graph.
+== The contract graph
 
 The
-link:/docs/architecture/contract-model/[contract model] is the complete map:
-every component, every interface between them, the declarative contract on
-each interface — twenty edges, *C1–C20*. Its law: _nothing is
-read until it breaks_. Consumers verify fail-closed before execution; a
-mismatch is a named error naming both sides; anything that predates
-declarations is *era 1* and is refused by name — never assumed, never
+link:/docs/architecture/contract-model/[contract model] is the complete
+map: every component, every interface between them, and the declarative
+contract on each interface, twenty edges, *C1–C20*. Its law is _nothing is
+read until it breaks_. Consumers verify fail-closed before execution, a
+mismatch is a named error naming both sides, and anything that predates
+declarations is *era 1* and is refused by name rather than assumed or
 silently served.
 
 [cols="1,1,3"]
@@ -168,34 +172,35 @@ silently served.
 | Enforcement details | C16 · C17 · C18 | The feedstock's pin of the product release; the jail grammar (malformed → exit 73, unknown directive → a named error, no silent drops); the preload shim's `TEBAKO_TFS_MOUNTS` grammar (unparseable → fail closed, never a half-mounted child).
 |===
 
-=== The era model — how schemas evolve without silent breakage.
+=== The era model: how schemas evolve without silent breakage
 
-Every schema in the ecosystem obeys one evolution law. No exceptions, no
-local dialects:
+Every schema in the ecosystem obeys one evolution law, with no exceptions
+and no local dialects:
 
-* schema_version is a single integer MAJOR; schema_minor an additive
+* schema_version is a single integer MAJOR, and schema_minor is an additive
   counter. MAJOR breaks, MINOR adds.
-* Readers ignore unknown fields within their MAJOR — without inventing
-  semantics for them. A field you do not understand changes nothing you do.
-* An unknown MAJOR is a named refusal: the artifact, its schema and
-  version, the consumer, its maximum spoken version, and the remedy.
-* A missing schema_version means era 1 — a named refusal ("pre-era
+* Readers ignore unknown fields within their MAJOR, without inventing
+  semantics for them. A field the reader does not understand changes nothing
+  the reader does.
+* An unknown MAJOR is a named refusal: the artifact, its schema and version,
+  the consumer, its maximum spoken version, and the remedy.
+* A missing schema_version means era 1, which is a named refusal ("pre-era
   document; regenerate with a current tool"), never a silent default.
-* Type changes are MAJOR. No silent coercion — not string→list, not
+* Type changes are MAJOR. There is no silent coercion, not string→list, not
   kebab→snake, nothing.
 * Renames cross a deprecation window: writers emit both old and new for two
-  consecutive MINORs, readers prefer new and warn on old, then the old
+  consecutive MINORs, readers prefer new and warn on old, and then the old
   field drops.
 * An entry marked critical: true that a reader does not understand is
-  refused with a named error — skipping is for decoration, never for
+  refused with a named error; skipping is for decoration, never for
   semantics.
 
-Every rule answers to the *scenario catalog*: S1–S61, each naming an
-expected behavior — _package era > bootstrap era → refuse, naming both
-eras_; _layout.yaml's mount root ≠ the exe's expectation → exit 78, never a
-LoadError_. The S-numbers are the e2e test ids to implement; building that
-catalog out as the cross-repo e2e suite is tracked work. The refusal exits
-are allocated today:
+Every rule answers to the *scenario catalog*, S1–S61, each number naming an
+expected behavior, for example _package era > bootstrap era → refuse, naming
+both eras_ and _layout.yaml's mount root ≠ the exe's expectation → exit 78,
+never a LoadError_. The S-numbers are the e2e test ids to implement, and
+building that catalog out as the cross-repo e2e suite is tracked work. The
+refusal exits are allocated today:
 
 [cols="1,2,4"]
 |===
@@ -212,16 +217,17 @@ link:/docs/architecture/anatomy/[the anatomy page]; the grammars themselves
 are the normative
 https://github.com/tamatebako/tebako/tree/main/docs/spec[spec set].
 
-== The contract suites, per repo.
+== The contract suites, per repo
 
 Every cross-repo claim in this architecture is backed by an executable
-check. When you touch a boundary, these are the suites that will judge you.
+check. When a change touches a boundary, these are the suites that will
+judge it.
 
 === tamatebako/tebako — the product
 
 [NOTE]
 ====
-Status: shipped.
+This suite is shipped.
 ====
 
 CI runs the workspace on ubuntu-24.04 and macOS against a pinned vcpkg
@@ -229,12 +235,13 @@ baseline. tests/contract drives the ported C-ABI corpus through the
 `tebako_fs_*` symbols — 164 tests at the milestone-3 audit, limnifs backend
 cases since — plus a plain-C harness that proves the ABI from a C consumer.
 Golden legs diff tebako-pkg against the C++ tebakofs, tfs-cli mkimage
-against mkdwarfs, and tebako-cli's press against the reference gem —
-byte-for-byte or a failed build, each leg auto-skipped when its oracle is
-absent. The bootstrap size gate fails at ≥ 3 MB, a --no-default-features
-leg keeps the no-dwarfs configuration honest, clippy runs with -D warnings.
-Releases add the per-platform size table, SHA256SUMS + manifest.json, and a
-completeness gate that fails on a partial asset set.
+against mkdwarfs, and tebako-cli's press against the reference gem,
+byte-for-byte or a failed build, with each leg auto-skipped when its oracle
+is absent. The bootstrap size gate fails at ≥ 3 MB, a
+--no-default-features leg keeps the no-dwarfs configuration honest, and
+clippy runs with -D warnings. Releases add the per-platform size table,
+SHA256SUMS + manifest.json, and a completeness gate that fails on a partial
+asset set.
 
 https://github.com/tamatebako/tebako/tree/main/tests/contract[tests/contract] ·
 https://github.com/tamatebako/tebako/blob/main/docs/parity.md[docs/parity.md] ·
@@ -244,12 +251,12 @@ https://github.com/tamatebako/tebako/blob/main/.github/workflows/ci.yml[ci.yml]
 
 [NOTE]
 ====
-Status: shipped.
+This suite is shipped.
 ====
 
 The lint-patches matrix re-applies every supported version's full patch set
-to its official tarball on every change — a patch that fails git apply
---check aborts the build, loud, never silent. Schema files enforce
+to its official tarball on every change, and a patch that fails git apply
+--check aborts the build, loudly, never silently. Schema files enforce
 versions.yml's shape, and the compile-smoke gate builds the patches before
 they may release (the v0.2.8 lesson). release-src publishes the per-line
 tfs-ruby-<ver>-src tarballs with SHA256SUMS.
@@ -262,7 +269,7 @@ https://github.com/tamatebako/ruby/tree/main/schema[schema/]
 
 [NOTE]
 ====
-Status: shipped.
+This suite is shipped.
 ====
 
 A preflight gate fails before the matrix builds anything when contract.yml
@@ -278,13 +285,13 @@ https://github.com/tamatebako/tebako-runtime-ruby/blob/main/.github/workflows/_b
 
 [NOTE]
 ====
-Status: shipped.
+This suite is shipped.
 ====
 
 The only tebako-owned C++, behind the stable `dwarfs_c_*` ABI: no C++
-headers leak to consumers, read-only at runtime forever, with a
-creation-time Writer. The Rust FFI crate pins DWARFS_C_ABI_VERSION and
-refuses a bind mismatch with both numbers printed.
+headers leak to consumers, the library is read-only at runtime forever, and
+it has a creation-time writer. The Rust FFI crate pins DWARFS_C_ABI_VERSION
+and refuses a bind mismatch with both numbers printed.
 
 https://github.com/tamatebako/dwarfs-t[dwarfs-t] ·
 https://github.com/tamatebako/dwarfs-t-rs[dwarfs-t-rs]
@@ -293,14 +300,15 @@ https://github.com/tamatebako/dwarfs-t-rs[dwarfs-t-rs]
 
 [NOTE]
 ====
-Status: shipped.
+This suite is shipped.
 ====
 
 The 493-test ctest suite is the executable definition of `tebako_fs_*`
 behavior: errno mapping, mount semantics, dir cookies, pread
 position-independence, multi-mount isolation. docs/parity.md audits every
-group — ported to the Rust contract suite, or consciously not ported, with
-the reason recorded. Superseded as the implementation; kept as the judge.
+group, ported to the Rust contract suite or consciously not ported, with the
+reason recorded. The repository is superseded as the implementation and kept
+as the judge.
 
 https://github.com/tamatebako/libtfs/blob/main/tests/test_c_api.cpp[tests/test_c_api.cpp] ·
 https://github.com/tamatebako/tebako/blob/main/docs/parity.md[docs/parity.md]
@@ -309,25 +317,26 @@ https://github.com/tamatebako/tebako/blob/main/docs/parity.md[docs/parity.md]
 
 [NOTE]
 ====
-Status: shipped.
+This suite is shipped.
 ====
 
-Retired from production, kept as the behavioral reference: self-test.sh
-stitches a lean package from a freshly built launcher and a fake runtime,
-then exercises the download, cache-hit, offline, checksum-mismatch, and
-ABI-mismatch paths. The Rust bootstrap's stderr bodies match the C++
-reference 1:1 — golden parity, not recollection.
+The repository is retired from production and kept as the behavioral
+reference: self-test.sh stitches a lean package from a freshly built
+launcher and a fake runtime, then exercises the download, cache-hit,
+offline, checksum-mismatch, and ABI-mismatch paths. The Rust bootstrap's
+stderr bodies match the C++ reference 1:1, golden parity rather than
+recollection.
 
 https://github.com/tamatebako/tebako-bootstrap/blob/main/test/self-test.sh[test/self-test.sh]
 
-== The drift monitor.
+== The drift monitor
 
 [NOTE]
 ====
-Status: shipped.
+The drift monitor is shipped.
 ====
 
-Ruby upstream moves constantly; tebako's patches are pinned to exact
+Ruby upstream moves constantly, and tebako's patches are pinned to exact
 tarballs. The
 https://github.com/tamatebako/ruby/blob/main/.github/workflows/release-monitor.yml[release monitor]
 runs on a daily cron in tamatebako/ruby and closes most of that gap
@@ -345,41 +354,41 @@ daily cron · release-monitor.yml
 ----
 
 The loop closes downstream: a successful source release can dispatch a
-pin-bump PR in the runtime factory (`bot/source-pin-<tag>`; no auto-merge —
-the build matrix runs on the PR). The
+pin-bump PR in the runtime factory (`bot/source-pin-<tag>`; there is no
+auto-merge, because the build matrix runs on the PR). The
 https://github.com/tamatebako/ruby/issues?q=Onboard%20ruby[issue history in
 tamatebako/ruby] is the record: each "Onboard ruby X.Y.Z: patches fail to
 apply" issue named a version whose upstream changes broke a patch, and each
 stayed open until the patch set caught up.
 
-== Where to start.
+== Where to start
 
-Three on-ramps, in increasing order of commitment. All three begin the same
-way: read the spec section that owns the behavior — contract changes land
-there before code, step 01 of the order.
+Three on-ramps exist, in increasing order of commitment. All three begin
+the same way: read the spec section that owns the behavior, because contract
+changes land there before code, which is step 01 of the order.
 
 === Fix a drifted patch
 
 The release monitor's issues name the ruby version and the failing hunks.
 Forking the named patch for that version, re-verifying with git apply
---check, and landing it via PR is the most mechanical — and most welcome —
-first contribution to the ecosystem.
+--check, and landing it via PR is the most mechanical and most welcome first
+contribution to the ecosystem.
 
 https://github.com/tamatebako/ruby/issues?q=Onboard%20ruby[the drift issues]
 
 === Close a parity gap
 
 docs/parity.md lists the C++ test groups consciously not ported, each with
-its reason. Porting one through the C ABI — or demonstrating the reason no
-longer holds — strengthens the contract suite where it is thinnest.
+its reason. Porting one through the C ABI, or demonstrating that the reason
+no longer holds, strengthens the contract suite where it is thinnest.
 
 https://github.com/tamatebako/tebako/blob/main/docs/parity.md[the parity audit]
 
 === Implement a scenario
 
 The scenario catalog (S1–S61) names the expected behavior of every contract
-edge; those S-numbers are the e2e test ids to implement. Pick one, write
-the failing case, make it pass in the owning crate.
+edge, and those S-numbers are the e2e test ids to implement. Pick one, write
+the failing case, and make it pass in the owning crate.
 
 https://github.com/tamatebako/tebako/tree/main/docs/spec[the spec set]
 
