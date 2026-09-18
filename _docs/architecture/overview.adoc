@@ -2,59 +2,61 @@
 title: What is tebako?
 heading: What is tebako?
 lede: >-
-  Tebako is a packaging and loading ecosystem — not a Ruby tool. It stitches a
-  payload into a single transparent executable your users never think about, or
-  ships it as a managed, versioned, signed payload with shared runtimes. Ruby is
-  the first runtime instance; the loader neither knows nor cares what language it
-  starts. Underneath sits TFS, a userland virtual filesystem that lets ordinary
-  binaries mount disk images in-process.
+  Tebako is a packaging and loading ecosystem rather than a Ruby tool. It
+  stitches a payload into a single transparent executable that end users run
+  without thinking about its mechanics, or it ships the payload as a managed,
+  versioned, and signed package with shared runtimes. Ruby is the first
+  runtime instance, and the loader neither knows nor cares which language it
+  starts. Beneath this surface sits TFS, a userland virtual filesystem that
+  allows ordinary binaries to mount disk images in-process.
 description: >-
-  Tebako is a packaging and loading ecosystem: stitch any payload into a single
-  executable, or ship managed, versioned, signed payloads with shared runtimes.
-  Ruby is the first runtime instance; TFS, a userland virtual filesystem, sits
-  underneath.
+  Tebako is a packaging and loading ecosystem: it stitches any payload into a
+  single executable, or it ships managed, versioned, and signed payloads with
+  shared runtimes. Ruby is the first runtime instance, and TFS, a userland
+  virtual filesystem, sits underneath.
 ---
 
 // normative: spec 01, spec 02, spec 05, spec 09 — rewritten 2026-08-25; dispatch chain from spec 07, exit codes from spec 06 §4, limnifs default from spec 20, router facts from spec 11; 33 tebako_fs_* exports counted at crates/tfs/src/c_api.rs; unverified-first rollout at spec 06 §3 + spec 09 preamble
 
 [NOTE]
 ====
-Status: shipped — standalone press: lean and fat executables, released and
+Standalone press is shipped: the lean and fat executables are released and
 downloadable today.
 
-Status: shipped — managed mode: shims, per-invocation dispatch, the shared
-cache.
+Managed mode is shipped: the shims, per-invocation dispatch, and the shared
+cache are released.
 
-Status: planned, in part — OpenPGP verification in the loader follows the
+OpenPGP verification in the loader is planned in part and follows the
 unverified-first rollout; see
 link:/docs/architecture/chain-of-trust/[the chain of trust] for details.
 ====
 
-== Generic by construction.
+== One design, generic across four axes
 
-One design, generic across four axes. Nothing in the loader, the container, or
-the store is Ruby-shaped — Ruby simply happens to be the first runtime the
-factories produce.
+The platform is a single design, and that design is generic across four
+axes. Nothing in the loader, the container, or the store is shaped around
+Ruby; Ruby happens to be the first runtime that the factories produce.
 
 Any runtime::
-A runtime is a payload that _provides_ an interpreter — ruby today; python,
-julia, anything later. The loader hands off to an entrypoint; it never learns a
-language.
+A runtime is a payload that _provides_ an interpreter: ruby today, and
+python, julia, or any other language later. The loader hands off to an
+entrypoint, and it never learns a language.
 
 Any platform::
-Artifacts are built per platform triplet — seven are locked, from
+Artifacts are built per platform triplet; seven triplets are locked, from
 `aarch64-macos` to `x86_64-windows-ucrt`. Pure-language payloads may also be
 `universal`.
 
 Any payload::
-Application code, data, fonts, native tools, runtimes themselves — all `.tfs`
-images of the same kind, differing only in what their manifests declare.
+Application code, data, fonts, native tools, and runtimes themselves are all
+`.tfs` images of the same kind, and they differ only in what their manifests
+declare.
 
 Any composition::
 Payloads stitch onto a single binary, and payloads recursively mount other
 payloads at paths. Composition is a manifest declaration, not a rebuild.
 
-== Six capabilities.
+== The six capabilities
 
 Everything tebako does decomposes into six verbs.
 
@@ -63,32 +65,32 @@ Everything tebako does decomposes into six verbs.
 | Capability | What it does
 
 | Stitch
-| N payload images + the bootstrap into one executable (fat), or a small executable that resolves the parts on demand (lean).
+| The stitch operation combines N payload images and the bootstrap into one executable (fat), or it produces a small executable that resolves the parts on demand (lean).
 
 | Load
-| Mount payloads — recursively — into one VFS, then transfer control to the declared entrypoint.
+| The loader mounts payloads, recursively, into one VFS and then transfers control to the declared entrypoint.
 
 | Share
-| Runtimes and payloads download once into a machine-wide content cache; every package on the machine reuses them.
+| Runtimes and payloads download once into a machine-wide content cache, and every package on the machine reuses them.
 
 | Shim
 | Every executable an installed payload provides becomes a registered command on PATH, dispatched per invocation.
 
 | Jail
-| A declarative host-filesystem policy per run, enforced by the VFS layer — not by the payload's good behavior.
+| The jail applies a declarative host-filesystem policy per run, and the VFS layer enforces the policy rather than the payload's good behavior.
 
 | Trust
-| Opt-in per package: signatures and encryption. Unsigned stays first-class — verified strictly when signed, never silently downgraded.
+| Signing and encryption are opt-in per package. Unsigned packages remain first-class: a signed package is verified strictly, and nothing is ever silently downgraded.
 |===
 
-== The platform, on one map.
+== A map of the platform
 
-Everything orbits one seam: the
+Everything in the platform orbits one seam: the
 link:/docs/architecture/vfs/[tebako_fs_* C ABI], implemented by the Rust tfs
-crate. The factories feed it runtimes; feedstock repos — one per package —
-build payloads on those runtimes and host them on their own releases
-(link:/docs/architecture/factories/[the factories] walk the chain). The trust
-layer sits beneath everything that moves bytes.
+crate. The factories feed runtimes to this seam, and feedstock repositories,
+one per package, build payloads on those runtimes and host them on their own
+releases; link:/docs/architecture/factories/[the factories] walk that chain.
+The trust layer sits beneath everything that moves bytes.
 
 ++++
 <figure role="img" aria-label="Platform map: the TFS core, the factories and the product line around it, the trust layer beneath">
@@ -182,13 +184,13 @@ link:https://github.com/tamatebako/tebako-v1[tamatebako/tebako-v1] and the
 product is the Rust workspace at
 link:https://github.com/tamatebako/tebako[tamatebako/tebako].
 
-== The three parts of every package.
+== The three parts of every package
 
 A tebako package is a composition of up to three independently distributable
 parts, glued by the **tpkg trailer**: a 166-byte header at end of file plus
-280-byte slot records. The format version is 1 forever — extensions live in
-flags (`LEAN`, `SIGNED_V2`, `NO_INSTALL`), never version bumps, so v1 readers
-parse v2 packages untouched. The full byte tables live in
+280-byte slot records. The format version is 1 forever: extensions live in
+flags (`LEAN`, `SIGNED_V2`, `NO_INSTALL`) rather than in version bumps, so
+v1 readers parse v2 packages untouched. The full byte tables live in
 link:/docs/architecture/[concepts].
 
 ++++
@@ -202,27 +204,29 @@ _Figure 2 — Anatomy of a tebako package: bootstrap, optional runtime slot (fat
 **A · the bootstrap** — the
 link:https://github.com/tamatebako/tebako/tree/main/crates/tebako-bootstrap[Rust loader],
 a static binary under 3 MB. It is the process entry point of every stitched
-package: reads its own trailer, resolves the runtime, verifies, hands off.
+package: it reads its own trailer, resolves the runtime, verifies it, and
+hands off.
 
-**B · the runtime** — two artifacts, not one: the interpreter executable and
-the _env image_ (a `.tfs` carrying the runtime's files). They are downloaded
-once into the shared cache, sha256-verified, and
+**B · the runtime** — two artifacts rather than one: the interpreter
+executable and the _env image_ (a `.tfs` carrying the runtime's files). They
+are downloaded once into the shared cache, sha256-verified, and
 link:/docs/architecture/runtime-as-image/[mounted — never extracted]. Fat
-packages carry the runtime as a slot; lean packages carry a reference and fetch
-on first run.
+packages carry the runtime as a slot; lean packages carry a reference and
+fetch on first run.
 
-**C · the payload slices** — bare `.tfs` images, self-describing via an
+**C · the payload slices** — bare `.tfs` images, self-describing through an
 in-image manifest (`/__tpkg__/manifest.yaml`). The container's `format_id`
-answers exactly one question — how to read the bytes (limnifs, dwarfs-t,
-squashfs, zip); whether a slot is a runtime and which payload carries the
-entrypoint are manifest semantics, never encoded in the format axis. LimniFS is
-the default image format since tebako v0.2.0; dwarfs-t stays first-class as a
-read backend.
+answers exactly one question, how to read the bytes (limnifs, dwarfs-t,
+squashfs, zip); whether a slot is a runtime, and which payload carries the
+entrypoint, are manifest semantics that are never encoded in the format
+axis. LimniFS is the default image format as of tebako v0.2.0, and dwarfs-t
+remains a first-class read backend.
 
-== Two ways to run it.
+== The two execution modes
 
-Same engine, two relationships between the developer and the user: hand over
-one file and disappear, or publish versioned payloads that a dispatcher
+The engine is the same, and the two modes differ in the relationship between
+the developer and the user: the developer hands over one file and
+disappears, or the developer publishes versioned payloads that a dispatcher
 assembles per invocation.
 
 ++++
@@ -311,21 +315,22 @@ assembles per invocation.
 
 _Figure 3 — Standalone mode versus managed mode, side by side._
 
-=== 1 · Standalone — ship the app, hide the machinery.
+=== 1 · The standalone mode
 
 [NOTE]
 ====
-Status: shipped.
+This capability is shipped.
 ====
 
-A developer presses their app once per platform with the
-link:https://github.com/tamatebako/tebako/tree/main/crates/tebako-cli[tebako CLI]
-— a single static binary, no host Ruby required — and publishes plain
-executables. Their users download one file and run it: no Ruby, no gem
-environment, no tebako to install, nothing to know. The _lean_ variant keeps
-the download small: the first run fetches the shared runtime once into the
-machine-wide cache, where every tebako package on the machine reuses it. The
-_fat_ variant carries the runtime inside and never touches the network.
+A developer presses the application once per platform with the
+link:https://github.com/tamatebako/tebako/tree/main/crates/tebako-cli[tebako CLI],
+a single static binary that requires no host Ruby, and publishes plain
+executables. The users of those executables download one file and run it:
+no Ruby, no gem environment, no tebako installation, and nothing else to
+know. The _lean_ variant keeps the download small: the first run fetches the
+shared runtime once into the machine-wide cache, where every tebako package
+on the machine reuses it. The _fat_ variant carries the runtime inside and
+never touches the network.
 
 ++++
 <figure role="img" aria-label="Lean versus fat package flows: lean resolves the runtime from the shared machine cache and downloads it once on a cache miss; fat embeds the runtime and never touches the network; both land in the same machine-wide cache">
@@ -335,28 +340,29 @@ _fat_ variant carries the runtime inside and never touches the network.
 
 _Figure 4 — Lean versus fat package flows: lean resolves the runtime from the shared cache on first run; fat embeds the runtime and never touches the network._
 
-`TEBAKO_OFFLINE=1` forces cache-only mode: a hit, or the named error
-`EX_TEBAKO_UNAVAILABLE` (exit 69) — never a surprise download.
+`TEBAKO_OFFLINE=1` forces cache-only mode: the result is a cache hit or the
+named error `EX_TEBAKO_UNAVAILABLE` (exit 69), never a surprise download.
 
-=== 2 · Managed — shims and dispatch.
+=== 2 · The managed mode
 
 [NOTE]
 ====
-Status: shipped.
+This capability is shipped.
 ====
 
-A developer publishes **signed .tfs payloads** to their own GitHub releases —
-the registry is a `tpkg-registry.yaml` manifest on infrastructure they already
-have; there is no central service and no default registry. A user with tebako
-installed puts `~/.tebako/shims` on PATH once and just runs `metanorma`: the
-dispatcher picks the payload version and a compatible _cached_ runtime — no
-download, no per-shell hook. Payloads are immutable; swapping rubies under a
-running tool is a dispatch choice, not a reinstall. Native-extension payloads
-lock to the ABI line they were built against — honestly, with a named
-compatibility error instead of a segfault.
-link:https://github.com/metanorma/mnenv[mnenv] retires to the dispatcher —
-metanorma is the first dogfood. The mechanism:
-link:/docs/architecture/dispatch/[dispatch].
+A developer publishes **signed .tfs payloads** to the developer's own GitHub
+releases; the registry is a `tpkg-registry.yaml` manifest on infrastructure
+the developer already has, and there is no central service and no default
+registry. A user with tebako installed puts `~/.tebako/shims` on PATH once
+and then runs `metanorma` directly: the dispatcher picks the payload version
+and a compatible _cached_ runtime, with no download and no per-shell hook.
+Payloads are immutable, and swapping rubies under a running tool is a
+dispatch choice rather than a reinstall. Native-extension payloads lock to
+the ABI line they were built against, and an incompatible line produces a
+named compatibility error instead of a segfault.
+link:https://github.com/metanorma/mnenv[mnenv] retires in favor of the
+dispatcher, and metanorma is the first consumer of the mechanism. The
+link:/docs/architecture/dispatch/[dispatch] page describes that mechanism.
 
 ++++
 <figure role="img" aria-label="Version resolution: payload version chain, then a compatible runtime from the cache">
@@ -427,16 +433,16 @@ link:/docs/architecture/dispatch/[dispatch].
 
 _Figure 5 — Version resolution: the payload version chain, then a compatible runtime from the cache._
 
-== The engine underneath.
+== TFS, the engine underneath
 
-TFS is a product in its own right: a userland virtual filesystem — mount
-table, longest-prefix dispatch, pluggable read-only backends, copy-on-write and
-encryption transforms above them. The
+TFS is a product in its own right: a userland virtual filesystem with a
+mount table, longest-prefix dispatch, pluggable read-only backends, and
+copy-on-write and encryption transforms above them. The
 link:https://github.com/tamatebako/tebako/tree/main/crates/tfs[Rust tfs crate]
-**is** the shipping implementation of the `tebako_fs_*` C ABI — 33 exports —
-and drives every mount on this page. The C++
+**is** the shipping implementation of the `tebako_fs_*` C ABI (33 exports),
+and it drives every mount on this page. The C++
 link:https://github.com/tamatebako/libtfs[libtfs] survives as the legacy
-parity oracle: the Rust ABI runs its contract suite, byte-for-byte.
+parity oracle, and the Rust ABI runs its contract suite byte-for-byte.
 
 ++++
 <figure role="img" aria-label="The TFS router: calls enter through the tebako_fs_* C ABI; the Rust router dispatches by longest mount-point prefix onto read-only backends — limnifs, dwarfs-t, squashfs, zip, tar — with a copy-on-write overlay above; paths outside every mount pass through to the host filesystem">
@@ -447,23 +453,23 @@ parity oracle: the Rust ABI runs its contract suite, byte-for-byte.
 _Figure 6 — The TFS router: longest-prefix dispatch onto read-only backends, with a copy-on-write overlay above and pass-through to the host outside every mount._
 
 Any project, in any language, can attach images to its binaries through the
-same ABI, or drive images from the shell with the
+same ABI, or it can drive images from the shell with the
 link:https://github.com/tamatebako/tebako/tree/main/crates/tfs-cli[tfs CLI].
-link:https://github.com/tamatebako/dwarfs-t[dwarfs-t] — the only C++ in the
-ecosystem — and
+link:https://github.com/tamatebako/dwarfs-t[dwarfs-t], the only C++ in the
+ecosystem, and
 link:https://github.com/tamatebako/dwarfs-t-rs[dwarfs-t-rs], its standalone
-Rust binding, are consumable without knowing tebako exists. Every backend is
-read-only at runtime forever; writing exists only as the copy-on-write overlay
-plus a creation-time Writer. The full model:
-link:/docs/architecture/vfs/[the VFS model].
+Rust binding, are consumable without any knowledge of tebako. Every backend
+is read-only at runtime forever; writing exists only as the copy-on-write
+overlay plus a creation-time writer. The
+link:/docs/architecture/vfs/[the VFS model] page presents the full model.
 
-== The trust chain.
+== The trust chain
 
-One signature mechanism — OpenPGP via rnp-rs — from the publisher's key to the
-user's run. Signing is per-package opt-in; verification of anything signed is
-always strict. Verification happens at install, never per run; failures are
-named exits, never crashes. Details:
-link:/docs/architecture/chain-of-trust/[the chain of trust].
+One signature mechanism, OpenPGP via rnp-rs, runs from the publisher's key
+to the user's run. Signing is opt-in per package, and verification of
+anything signed is always strict. Verification happens at install and never
+per run; failures are named exits, never crashes. Details appear on the
+link:/docs/architecture/chain-of-trust/[the chain of trust] page.
 
 ++++
 <figure role="img" aria-label="The tebako chain of trust: a root key signs release keys, release keys sign the release manifest, the manifest carries per-artifact SHA256 digests; on the package side the tpkg v2 trailer carries per-slot SHA256 and an OpenPGP signature, verified at install with named failure exits">
@@ -475,43 +481,49 @@ _Figure 7 — The tebako chain of trust: root key, release keys, per-artifact SH
 
 [NOTE]
 ====
-*Stated plainly: the rollout phase.* Today's shipped loader is built
-**without** OpenPGP verification — the unverified-first rollout. Signed
-packages run with a loud `UNVERIFIED` warning plus an audit-journal entry
-while their per-slot sha256 is still enforced as integrity; unsigned packages
-run with the legacy warning. `TEBAKO_REQUIRE_SIGNED=1` fails closed with exit
-71 — a strict-mode request is never silently downgraded. Full signature
-verification in the loader returns with the crypto-toolkit payload. The
-target model — embedded root fingerprint, TOFU key pins under
-`$TEBAKO_HOME/trust/`, exits `70` (sha256 mismatch), `71` (bad signature),
-`72` (untrusted or changed signer key) — is on
+The rollout phase is stated plainly. The loader that ships today is built
+**without** OpenPGP verification, which is the unverified-first rollout.
+Signed packages run with a loud `UNVERIFIED` warning plus an audit-journal
+entry, while their per-slot sha256 is still enforced as an integrity check;
+unsigned packages run with the legacy warning. `TEBAKO_REQUIRE_SIGNED=1`
+fails closed with exit 71, because a strict-mode request is never silently
+downgraded. Full signature verification in the loader returns with the
+crypto-toolkit payload. The target model, which combines an embedded root
+fingerprint, TOFU key pins under `$TEBAKO_HOME/trust/`, and exits `70`
+(sha256 mismatch), `71` (bad signature), and `72` (untrusted or changed
+signer key), is described on the
 link:/docs/architecture/chain-of-trust/[the chain-of-trust page].
 ====
 
-== Who it's for.
+== The four audiences
 
-The audience rule, stated once: prebuilt artifacts flow downward; compilation
-never flows outward. Only people building tebako itself ever compile tebako.
+The audience rule is stated once: prebuilt artifacts flow downward, and
+compilation never flows outward. Only the people building tebako itself ever
+compile tebako.
 
 People running packages::
-No compilation machinery, no libraries, nothing to install — download it and
-run it. With a fat package, not even a network. With tebako installed, one
-shims directory on PATH puts every managed tool a command away, with version
-pinning that just works.
+People running packages need no compilation machinery, no libraries, and
+nothing to install: they download the package and run it. With a fat
+package, the run does not even need a network. With tebako installed, one
+shims directory on PATH places every managed tool a command away, with
+version pinning that requires no attention.
 
 Developers shipping data::
-Data-only payloads need no compilation machinery: `tfs mkimage`, a manifest,
-a release. Fonts, datasets, tool assets — content-addressed, signed if you
-want it, mounted whole.
+Developers shipping data need no compilation machinery: `tfs mkimage`, a
+manifest, and a release suffice. Fonts, datasets, and tool assets become
+content-addressed images, signed when the publisher wants signing, and
+mounted whole.
 
 Developers shipping applications::
-You compile only your own code. Tebako itself arrives as binaries; the
-runtimes are prebuilt downloads. Press once per platform in a matrix CI job —
-no heroics per target — and publish to releases you already own.
+Developers shipping applications compile only their own code. Tebako itself
+arrives as binaries, and the runtimes are prebuilt downloads. A developer
+presses once per platform in a matrix CI job, without special handling per
+target, and publishes to releases the developer already owns.
 
 People hacking on tebako::
-The only audience that needs the tebako toolchain: the factories, the product
-workspace, the contract suites. Start with
+People hacking on tebako are the only audience that needs the tebako
+toolchain: the factories, the product workspace, and the contract suites.
+The entry points are
 link:/docs/architecture/repositories/[the repo map] and
 link:/docs/architecture/contributors/[the contributor page].
 

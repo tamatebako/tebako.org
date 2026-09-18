@@ -20,9 +20,9 @@ series_post: 4
 = Advanced payloads: Runtimes and native code (4 of 5)
 
 The basics treated the runtime as the thing that resolves and mounts.
-This post makes it a choice: which runtime engine, and what happens
-when your payload contains compiled code. The headline is the reason
-tebako exists: *your users never compile a gem.*
+This post treats it as a choice: which runtime engine to declare, and
+what happens when a payload contains compiled code. The second
+question is the reason tebako exists: *users never compile a gem.*
 
 
 ++++
@@ -80,17 +80,18 @@ requires:
     constraint: "~> 3.3.0"
 ----
 
-An MRI runtime and a JRuby runtime are the same two artifacts — an
-interpreter executable and an environment image — under the same
-constraint grammar. A payload with native extensions pins an ABI line
-(`~> 3.3.0`) so that a runtime from the wrong line is a named error at
-startup, never a runtime crash
+An MRI (Matz's Ruby Interpreter) runtime and a JRuby runtime are the
+same two artifacts — an interpreter executable and an environment
+image — under the same constraint grammar. A payload with native
+extensions pins an ABI line (`~> 3.3.0`) so that a runtime from the
+wrong line is a named error at startup, never a runtime crash.
 
 == Native code, compiled once
 
-Gems with C extensions are the classic packaging pain: every user
-needs a compiler toolchain, matching headers, and luck. Tebako moves
-the compilation to press time, on your machine or your CI:
+Gems with C extensions are the classic packaging problem: without
+help, every user needs a compiler toolchain, matching headers, and
+good fortune. Tebako moves the compilation to press time, on the
+packager's machine or CI:
 
 [source,console]
 ----
@@ -100,15 +101,17 @@ $ tebako press -r ./myapp -e bin/myapp -o dist/myapp \
 ----
 
 Each target produces one file with its native gems compiled for that
-triplet. What your users download is a prebuilt, SHA-256-verified
-binary — no compiler, no headers, no toolchain. For payloads with no native
-code at all, one `universal` file covers every platform.
+triplet. What users download is a prebuilt, SHA-256-verified binary
+that needs no compiler, no headers, and no toolchain. For payloads
+with no native code at all, one `universal` file covers every
+platform.
 
 This is the distribution model in one sentence: *the people who build
 a package compile it; the people who use it never do.*
 
 == What you can do now
 
-You can choose a runtime engine declaratively, pin ABI lines for
-native payloads, and ship compiled gems as binaries per platform. The
-last post shows all of it working at once, on a payload that exercises all of it at once.
+This post has chosen a runtime engine declaratively, pinned ABI lines
+for native payloads, and shipped compiled gems as binaries per
+platform. The last post shows all of it working at once, on a payload
+that exercises every part of the model.

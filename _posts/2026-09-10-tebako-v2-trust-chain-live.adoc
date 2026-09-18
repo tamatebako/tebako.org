@@ -13,24 +13,26 @@ author:
   social_links:
     - https://github.com/tamatebako
 excerpt: >-
-  The architecture series ended with trust as a concept. This week it
-  became a feature set: every tebako release asset is OpenPGP-signed, the
-  CLI carries the tamatebako root key, and a signed payload verifies on a
-  fresh machine with zero key registration — demonstrated, not described.
+  The architecture series ended with trust as a concept; this week it
+  became a feature set. Every tebako release asset has been
+  OpenPGP-signed, the CLI carries the tamatebako root key, and a
+  signed payload has verified on a fresh machine with zero key
+  registration — demonstrated, not merely described.
 ---
 
 = The trust chain is live: signed releases, signed payloads, zero-setup verification
 
 The link:/blog/2026-09-05-architecture-trust-release-chain/[architecture
-series] ended with the trust model as a design: verification at install,
-never per run; unsigned first-class; fail-closed as an option. As of
-tebako v2.6.0 that design is a shipped, demonstrated feature set. This
-post is the announcement — with the receipts.
+series] ended with the trust model as a design: verification at install
+and never per run, unsigned as a first-class case, and fail-closed as an
+option. As of tebako v2.6.0, that design has shipped as a demonstrated
+feature set. This post is the announcement, with the evidence.
 
 == The thirty-second demo
 
-A fresh machine. No keys imported, no configuration written, an empty
-`TEBAKO_HOME`. One registry, one install:
+The demonstration used a fresh machine with no keys imported, no
+configuration written, and an empty `TEBAKO_HOME`; it required one
+registry and one install:
 
 [source,console]
 ----
@@ -46,9 +48,9 @@ $ hello
 Hello, world!
 ----
 
-The strictest mode tebako has — refuse anything unverifiable — and the
-whole interaction is three commands. The audit journal records what the
-CLI acted on:
+This is tebako's strictest mode — it refuses anything unverifiable —
+and the whole interaction is three commands. The audit journal records
+what the CLI acted on:
 
 [source]
 ----
@@ -57,11 +59,13 @@ event=payload-installed name=hello version=2.12 sha256=d5223ed5…c861 origin=�
 ----
 
 The `sha256` in the journal is byte-equal to the digest in the signed
-registry entry. What was published is what was installed — provably.
+registry entry, which proves that what was published is what was
+installed.
 
 == What the machine just did
 
-No part of that demo is hand-waving. The mechanics, in order:
+No part of that demonstration is hand-waving; the mechanics are as
+follows, in order:
 
 * *The registry pins the identity, not the instrument.* The hello
   registry entry carries `signature.keyid: efc3c250f7862a48` — the
@@ -86,8 +90,8 @@ No part of that demo is hand-waving. The mechanics, in order:
 
 == Fail-closed, demonstrated by accident
 
-The day the signed hello release went out, the first live-fire attempt
-*failed* — correctly:
+On the day the signed hello release went out, the first live attempt
+*failed*, correctly:
 
 [source,console]
 ----
@@ -98,10 +102,11 @@ TEBAKO_REQUIRE_SIGNED=1 is set — refusing to install [71]
 
 The registry on the feedstock's main branch still pointed at the
 *previous*, unsigned release. The resolver did exactly what it should:
-it refused the unsigned bytes and named why. The fix was at the source
-(land the signed registry on main), not at the gate. A trust system you
-can rely on is one you have watched say *no* to the right thing — we
-have, in production, on day one.
+it refused the unsigned bytes and named the reason. The fix belonged at
+the source (landing the signed registry on main), not at the gate. A
+trust system worthy of reliance is one that has been watched saying
+*no* to the right thing, and this gate said no in production on day
+one.
 
 In default mode the same situation is a loud warning plus a journal
 entry, and the install proceeds: unsigned stays first-class.
@@ -125,7 +130,7 @@ https://www.tebako.org/.well-known/tebako-key.asc[as a well-known
 resource] and on the
 link:/docs/reference/trust-anchor/[trust-anchor reference page].
 
-You can verify tebako itself the same way payloads verify: every release
+Tebako itself verifies the same way payloads verify: every release
 asset from v2.6.0 onward carries an `.asc` sidecar next to its `.sha256`:
 
 [source,console]
@@ -134,9 +139,10 @@ $ tebako-pkg verify --key-file tebako-key.asc tebako-2.6.0-macos-arm64
 tebako-2.6.0-macos-arm64: trusted
 ----
 
-(The `.asc` sidecar is picked up from beside the artifact; a key with no
-certification path to your keyring prints `UNTRUSTED`, a tampered
-artifact prints `INVALID SIGNATURE`, and either fails the command.)
+(The `.asc` sidecar is picked up from beside the artifact; a key with
+no certification path to the local keyring prints `UNTRUSTED`, a
+tampered artifact prints `INVALID SIGNATURE`, and either outcome fails
+the command.)
 
 == Signed everywhere the bytes flow
 
@@ -155,7 +161,7 @@ live run, not a plan:
 
 == The OS trust plane
 
-OpenPGP covers *our* chain; the operating systems have their own.
+OpenPGP covers tebako's own chain; the operating systems have theirs.
 
 * *macOS* — starting with v2.6.0, the shipped binaries are Developer ID
   signed. On the released bytes:
@@ -171,40 +177,42 @@ Authority=Apple Root CA
 * *Windows* — Authenticode signing via Azure Trusted Signing is *merged
   behind a gate* (`WINDOWS_SIGNING_ENABLED`) in the product and runtime
   factory workflows, and is deliberately **not armed yet**. It turns on
-  after the gated legs prove themselves on a real release. When it does,
-  we will say so — this post announces what is live, not what is close.
+  after the gated legs prove themselves on a real release. When that
+  happens, the project will announce it; this post announces what is
+  live, not what is close.
 
 == For payload publishers
 
-If you run a feedstock, signing is one flag at publish time —
-`tebako publish --sign` — plus the registry pin the publisher writes for
-you. The CI pattern is the one hello uses: a repository secret holding
-the signing subkey, the publish workflow signing assets and registry in
-one step. The conventions document walks the whole shape.
+For a feedstock maintainer, signing is one flag at publish time —
+`tebako publish --sign` — plus the registry pin that the command
+writes. The CI pattern is the one hello uses: a repository secret
+holding the signing subkey, with the publish workflow signing the
+assets and the registry in one step. The conventions document describes
+the whole shape.
 
 == The honesty box
 
-What is *not* done, named so nobody has to ask:
+The following is *not* done, and it is named here plainly:
 
 * Windows Authenticode is merged, not armed (above).
-* The root is classical-only. A post-quantum root waits on tooling
-  (our vendored OpenPGP stack has no ML-DSA yet); the successor
-  statement is queued, not written.
+* The root is classical-only. A post-quantum root waits on tooling (the
+  vendored OpenPGP stack has no ML-DSA yet); the successor statement is
+  queued, not written.
 * The CI signing subkey is stored unprotected for workflow use; a
   passphrase-unlock path in the signer is a queued follow-up.
-* The live-fire exposed a real operational gap: a feedstock's registry
-  can lag its release. Publication automation that closes that window is
-  queued — the gap failing *closed* instead of open is exactly why we
-  trust the gate.
+* The live-fire exercise exposed a real operational gap: a feedstock's
+  registry can lag its release. Publication automation that closes that
+  window is queued — the gap failing *closed* instead of open is
+  exactly why the gate earns trust.
 * Anchor distribution today is the well-known URL plus the git
-  organization. Broader channels are a spec-level conversation, not a
+  organization. Broader channels are a design-level conversation, not a
   claim.
 
 == Where to start
 
-Verify your tebako download against the
+Verify the tebako download against the
 link:/docs/reference/trust-anchor/[trust anchor], flip
 `TEBAKO_REQUIRE_SIGNED=1` on, and install something signed. The concept
 posts are in the
 link:/blog/2026-09-05-architecture-trust-release-chain/[architecture
-series]; as of v2.6.0, the concept has teeth.
+series]; as of v2.6.0, the concept is enforced.

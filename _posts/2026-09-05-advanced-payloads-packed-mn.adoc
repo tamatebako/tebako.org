@@ -21,8 +21,9 @@ series_post: 5
 
 The last subject in the series is the whole stack at once: packed-mn,
 the single-executable Metanorma distribution — a Ruby application that
-drives a JVM, mounts Inkscape, and borrows a Python tool. Every concept
-from all three series appears in this one package.
+drives a JVM, mounts Inkscape, and uses a declared Python tool from
+the host. Every concept from all three series appears in this one
+package.
 
 
 ++++
@@ -61,8 +62,8 @@ _Figure 1 — Three routes out of one packaged process: a spawned runtime, a mou
 
 == The compile
 
-The following command on an OIML Recommendation written in Metanorma
-outputs all four kinds of format:
+The following command compiles an OIML Recommendation written in
+Metanorma and outputs all four kinds of format:
 
 [source,console]
 ----
@@ -75,14 +76,15 @@ $ metanorma compile sources/r060/1/document.adoc
 
 == How it maps
 
-The packed-mn executable is one tebako package. Every piece of it, and
-where each piece lives at run time:
+The packed-mn executable is one tebako package; the table maps every
+piece of it to the tebako part it is and to where the piece lives at
+run time:
 
 [cols="2,3,3",options="header"]
 |===
-|What you meet |Which tebako part it is |Where it lives
+|What the user meets |Which tebako part it is |Where it lives
 
-|The executable you download
+|The executable the user downloads
 |The bootstrap, the stitched payload slots, and the trailer
 |One file — that is the whole download
 
@@ -103,8 +105,8 @@ where each piece lives at run time:
 |Mounted at `/opt/inkscape` at run time
 
 |xml2rfc, for the IETF flavors
-|A declared *host tool* — used only if your machine provides it
-|Your machine, stated openly in the manifest
+|A declared *host tool* — used only if the host machine provides it
+|The host machine, stated openly in the manifest
 |===
 
 The manifest that declares it is the `requires:` grammar from the
@@ -113,8 +115,8 @@ Inkscape by the mounted-payload route, exactly as drawn above.
 
 == The numbers
 
-The v2 composition against the one-file executable it replaces, on the
-compile above:
+The v2 composition is compared against the one-file executable it
+replaces, on the compile above:
 
 [cols="<4,>3,>3,>2", options="header"]
 |===
@@ -125,7 +127,7 @@ compile above:
 | `metanorma version` boot | 4.70 s | 4.06 s | 0.86×
 |===
 
-Peak RSS moves the right way on every row: html 1.38 → 1.22 GiB, pdf
+Peak RSS decreases on every row: html 1.38 → 1.22 GiB, pdf
 1.35 → 1.29 GiB, boot 0.99 → 0.76 GiB.
 
 [cols="<4,>3,>3", options="header"]
@@ -137,17 +139,17 @@ Peak RSS moves the right way on every row: html 1.38 → 1.22 GiB, pdf
 | first `metanorma version` | (runtime baked at install) | 57.2 s
 |===
 
-Machine: MacBookPro18,2, Apple M1 Max, 64 GB, macOS 14.1.1, measured
-idle; document: mn-samples-oiml's OIML r060 (`ba74c74`), outputs
-verified regenerated in every cell.
+The measurements used a MacBookPro18,2 (Apple M1 Max, 64 GB, macOS
+14.1.1), measured while idle; the document is mn-samples-oiml's OIML
+r060 (`ba74c74`), and outputs were verified as regenerated in every
+cell.
 
 == Where the three series end
 
-Understand it in the
-link:/blog/2026-09-05-architecture-three-part-package/[architecture
-series], do it in the
-link:/blog/2026-09-05-basic-payloads-run-first-package/[basics], and
-push it this far. If you build a payload this interesting, we would
-love to https://github.com/tamatebako/tebako/issues[hear about it].
-
-**__Press on__** _with Tebako_!
+The link:/blog/2026-09-05-architecture-three-part-package/[architecture
+series] explains the model, the
+link:/blog/2026-09-05-basic-payloads-run-first-package/[basics]
+reproduce it step by step, and this post has pushed the same model
+through its most demanding workload. Builders of equally demanding
+payloads are invited to report the experience in the
+https://github.com/tamatebako/tebako/issues[issue tracker].

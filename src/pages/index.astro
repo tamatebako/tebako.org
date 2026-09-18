@@ -11,19 +11,19 @@ const features = [
     title: 'Any payload',
     kanji: '物',
     description:
-      'Applications, data, fonts, native tools, runtimes themselves — every payload is the same kind of image, differing only in what its manifest declares.',
+      'Applications, data, fonts, native tools, and runtimes themselves are all the same kind of image, differing only in what the manifest declares.',
   },
   {
     title: 'Seven triplets',
     kanji: '界',
     description:
-      'aarch64 and x86_64 macOS, gnu and musl Linux, Windows UCRT. One press per target; pure-language payloads can ship as universal.',
+      'The supported triplets cover aarch64 and x86_64 macOS, gnu and musl Linux, and Windows UCRT. Each target receives one press, and pure-language payloads can ship as universal.',
   },
   {
     title: 'Mounted, never extracted',
     kanji: '圧',
     description:
-      'Payload images mount in-process through the virtual filesystem. The runtime downloads once into a machine-wide cache — every package shares it.',
+      'Payload images mount in-process through the virtual filesystem. The runtime downloads once into a machine-wide cache, and every package on the machine shares it.',
   },
 ]
 
@@ -59,9 +59,10 @@ const stats = [
         <p
           class="tb-animate-rise tb-delay-2 max-w-xl text-lg leading-relaxed text-[var(--tb-c-text-2)] lg:text-xl"
         >
-          Tebako is a packaging and loading ecosystem: any runtime, any platform,
-          any payload — stitched into a single file, mounted at run time, shared
-          across the machine. Ruby is the first runtime instance.
+          Tebako is a packaging and loading ecosystem: it takes any runtime,
+          any platform, and any payload, stitches them into a single file,
+          mounts the parts at run time, and shares them across the machine.
+          Ruby is the first runtime instance.
         </p>
         <div class="tb-animate-rise tb-delay-3 flex flex-wrap gap-4">
           <a href={SITE.docs} class="tb-btn tb-btn-primary">
@@ -108,7 +109,7 @@ const stats = [
         Your software,<br />perfectly <em class="tb-text-gradient not-italic">preserved.</em>
       </h2>
       <p class="mt-4 text-lg text-[var(--tb-c-text-2)]">
-        Like a treasure placed in a fine box — protected, portable, and ready to be shared.
+        The name evokes a treasure placed in a fine box: protected, portable, and ready to be shared.
       </p>
     </div>
 
@@ -133,7 +134,7 @@ const stats = [
   <section class="mx-auto max-w-4xl px-6 py-24">
     <div class="mb-12 text-center">
       <p class="tb-eyebrow mb-3">QUICK START</p>
-      <WisdomGem id="terminal-wisdom" quote="Ship the treasure, not the workshop." style="display:inline-block; margin-left:0.5rem; vertical-align:middle;" />
+      <WisdomGem id="terminal-wisdom" quote="What ships is the treasure, not the workshop." style="display:inline-block; margin-left:0.5rem; vertical-align:middle;" />
       <h2>Open the box<br />in three commands.</h2>
     </div>
 
@@ -157,8 +158,8 @@ const stats = [
     </div>
 
     <p class="mt-6 text-center text-sm text-[var(--tb-c-text-3)]">
-      Ruby 3.1 through 4.0 today; the loader neither knows nor cares what language
-      it starts. Read the{" "}
+      The supported Ruby range is 3.1 through 4.0 today, and the loader neither
+      knows nor cares what language it starts. Read the{" "}
       <a href="/blog/2026-09-05-basic-payloads-run-first-package/" class="tb-link-underline font-medium">
         Basic payloads tutorial
       </a>{" "}
@@ -185,7 +186,7 @@ const stats = [
           Ready to ship<br />without the runtime talk?
         </h2>
         <p class="mx-auto mt-4 max-w-md text-lg text-[var(--color-mist-pale)]">
-          Join the developers whose installs end at downloading one file.
+          For its users, an install ends at the download of one file.
         </p>
         <div class="mt-8 flex flex-wrap justify-center gap-4">
           <a href={SITE.docs} class="tb-btn tb-btn-primary">

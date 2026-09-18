@@ -2,28 +2,28 @@
 title: Exec tiers — running binaries from images
 heading: Running a binary that lives inside an image.
 lede: >-
-  An interpreted application never execs anything — the interpreter runs
-  inside the mounts. But a toolkit payload ships real executables, and an
-  exec target held by a virtual filesystem needs a path to the CPU. Tebako
-  has four, and the payload's manifest declares which one it takes —
-  consumers never care which path a tool took.
+  An interpreted application never execs anything, because the interpreter
+  runs inside the mounts. A toolkit payload, however, ships real
+  executables, and an exec target held by a virtual filesystem needs a path
+  to the CPU. Tebako has four such paths, and the payload's manifest
+  declares which one it takes; consumers never care which path a tool took.
 description: >-
-  How tebako runs executables that live inside disk images: the dynamic
-  preload shim, TFS-native builds, static closure extraction, and the wrapped
-  tier — what each costs and when to choose it.
+  This page covers how tebako runs executables that live inside disk images:
+  the dynamic preload shim, TFS-native builds, static closure extraction,
+  and the wrapped tier, with what each costs and when to choose it.
 ---
 
 [NOTE]
 ====
-Status: shipped — dynamic, tfs-native, and static are shipping.
+The dynamic, tfs-native, and static tiers are shipping.
 
-Status: planned — wrapped is named, not yet specified.
+The wrapped tier is named but not yet specified, and it is planned.
 ====
 
-== Choosing a tier, as a flow.
+== Choosing a tier, as a flow
 
-The payload publisher makes this choice once; the dispatcher honors it
-silently. The questions, in order:
+The payload publisher makes this choice once, and the dispatcher honors it
+silently. The questions follow, in order:
 
 ++++
 <figure role="img" aria-label="Exec tier decision flow: interpreted, source-available dynamic, static, wrapped">
@@ -114,89 +114,92 @@ silently. The questions, in order:
 _Figure 1 — Exec tier decision flow: interpreted, source-available dynamic,
 static, wrapped._
 
-== dynamic — the preload shim.
+== The dynamic tier: the preload shim
 
 [NOTE]
 ====
-Status: shipped.
+This tier is shipped.
 ====
 
-A small interposition library is injected into the process at launch and
-maps the standard file-IO calls onto the mounted images. The binary — and
-every library it dynamically loads — sees the images as ordinary directories.
-Nothing is extracted; jails apply, because the IO flows through the same
+A small interposition library is injected into the process at launch, and it
+maps the standard file-IO calls onto the mounted images. The binary, and
+every library it dynamically loads, sees the images as ordinary directories.
+Nothing is extracted, and jails apply, because the IO flows through the same
 policy choke point.
 
-*Choose it when:* the mainline. Any dynamically linked executable: Inkscape,
-a JVM, ffmpeg, git.
+The choice fits the mainline: any dynamically linked executable, for example
+Inkscape, a JVM, ffmpeg, or git.
 
-*Honest limits:* dynamic binaries only. A raw-syscall caller bypasses
-interposition; macOS system binaries strip the injection variables.
+The honest limits are dynamic binaries only: a raw-syscall caller bypasses
+interposition, and macOS system binaries strip the injection variables.
 
-== tfs-native — built against the VFS.
+== The tfs-native tier: built against the VFS
 
 [NOTE]
 ====
-Status: shipped.
+This tier is shipped.
 ====
 
 The binary is compiled against the tebako filesystem interface and carries
-the VFS inside itself. The patched ruby interpreter is the canonical example:
-it mounts and serves its own stdlib from the env image, no shim involved.
+the VFS inside itself. The patched ruby interpreter is the canonical
+example: it mounts and serves its own standard library from the env image,
+with no shim involved.
 
-*Choose it when:* you build the tool yourself and can link the interface. A
-build-time property — it cannot be imposed on an arbitrary binary.
+The choice fits a tool built in-house, where linking the interface is
+possible. The property is a build-time property, and it cannot be imposed on
+an arbitrary binary.
 
-*Honest limits:* requires source access and the tebako SDK.
+The honest limit is that the tier requires source access and the tebako SDK.
 
-== static — extract the closure.
+== The static tier: closure extraction
 
 [NOTE]
 ====
-Status: shipped.
+This tier is shipped.
 ====
 
 For statically linked tools, interposition has nothing to attach to. The
 executable and its declared closure are materialized once into a
-content-addressed exec cache in the store — verified at install — and run
-from there. On macOS and Windows this is also the fallback for anything the
-shim cannot mediate.
+content-addressed exec cache in the store, verified at install, and run from
+there. On macOS and Windows this is also the fallback for anything the shim
+cannot mediate.
 
-*Choose it when:* statically linked binaries; platforms without a
+The choice fits statically linked binaries and platforms without a
 syscall-mediation surface.
 
-*Honest limits:* such processes see only the host filesystem — no VFS, and
-jails do not reach them. That is a platform-API statement, not a trust
-statement.
+The honest limits are that such processes see only the host filesystem, with
+no VFS, and jails do not reach them; that is a platform-API statement, not a
+trust statement.
 
-== wrapped — link-time interposition.
+== The wrapped tier: link-time interposition
 
 [NOTE]
 ====
-Status: planned.
+This tier is planned.
 ====
 
-The same interposition as the dynamic tier, bound at link time instead of
-launch time — for binaries you build but cannot make fully TFS-native.
+The mechanism is the same interposition as the dynamic tier, bound at link
+time instead of launch time, for binaries built in-house that cannot be made
+fully TFS-native.
 
-*Choose it when:* named in the manifest vocabulary today; the mechanics ship
+The tier is named in the manifest vocabulary today, and the mechanics ship
 in a later milestone.
 
-*Honest limits:* not yet specified.
+The honest limit is that the mechanics are not yet specified.
 
-== The hardest case: an image execs an image.
+== The hardest case: an image execs an image
 
-The metanorma proof runs exactly this: a ruby process, inside its mounts,
-shells out to a JVM and to Inkscape — both of which live inside disk images.
-Three mechanisms make it work. The runtime mediates *process spawning*: an
-exec target held by the mounts is materialized to a host cache and executed
-there. Before exec, the loader walks the binary's *dependency closure* —
-rpaths, `@executable_path`, `$ORIGIN` — and materializes every in-image
-library it needs, because the platform loader probes for shared libraries
-with raw syscalls no userland hook can serve. And the spawned child re-enters
-the namespace through the *preload shim* with the mount table injected into
-its environment, so the grandchild of a packaged app sees the same virtual
-filesystem as its parent.
+The metanorma proof runs exactly this case: a ruby process, inside its
+mounts, shells out to a JVM and to Inkscape, both of which live inside disk
+images. Three mechanisms make it work. The runtime mediates *process
+spawning*: an exec target held by the mounts is materialized to a host cache
+and executed there. Before exec, the loader walks the binary's *dependency
+closure* (rpaths, `@executable_path`, `$ORIGIN`) and materializes every
+in-image library it needs, because the platform loader probes for shared
+libraries with raw syscalls that no userland hook can serve. The spawned
+child re-enters the namespace through the *preload shim* with the mount
+table injected into its environment, so the grandchild of a packaged app
+sees the same virtual filesystem as its parent.
 
 The result is unglamorous and important: `PATH= metanorma compile site.adoc`
 produces a PDF. Nothing on the host participated, so nothing on the host can

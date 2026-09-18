@@ -5,12 +5,12 @@ lede: >-
   A registry is any git-host repository carrying a tpkg-registry.yaml
   file — the git host's releases are the storage, with zero central
   infrastructure. The file mirrors only resolution-relevant fields, so
-  the dispatcher can pick the right artifact for your platform without
-  downloading every payload.
+  the dispatcher can pick the right artifact for the operator's
+  platform without downloading every payload.
 description: >-
-  The tpkg-registry.yaml reference: the payload entries, versions, the
-  platforms axis with per-triplet artifacts and digests, the release
-  reference, and the four registry reference forms.
+  This page is the tpkg-registry.yaml reference: the payload entries,
+  versions, the platforms axis with per-triplet artifacts and digests,
+  the release reference, and the four registry reference forms.
 ---
 
 // normative: model verified against crates/tebako-resolve/src/registry.rs
@@ -37,23 +37,13 @@ payloads:
         release: {ref: tfs:github:tebako-packages/hello:2.12.1}
 ----
 
-One entry per payload: the name and kind mirror the payload's own
-manifest identity; `default` names the version a bare `tebako install
-hello` resolves; each version carries a platforms map with the
-per-triplet artifact filename and its SHA-256, plus the release
-reference the artifact is fetched from. A payload that ships one
-image for all platforms declares `universal` instead of the
-per-triplet map.
+One entry per payload: the name and kind mirror the payload's own manifest identity; `default` names the version a bare `tebako install hello` resolves; each version carries a platforms map with the per-triplet artifact filename and its SHA-256, plus the release reference the artifact is fetched from. A payload that ships one image for all platforms declares `universal` instead of the per-triplet map.
 
-The file mirrors resolution fields only — the in-image manifest stays
-the authority for everything else, and unknown keys are tolerated for
-forward compatibility. `tebako publish` writes this file; you rarely
-hand-edit it.
+The file mirrors resolution fields only — the in-image manifest stays the authority for everything else, and unknown keys are tolerated for forward compatibility. `tebako publish` writes this file, and hand-editing is rare.
 
 == The four reference forms.
 
-A registry reference names exactly one location — there is no fallback
-chain:
+A registry reference names exactly one location — there is no fallback chain:
 
 [cols="1,3"]
 |===
@@ -69,7 +59,7 @@ chain:
 | A git blob at the path.
 
 | `file:///abs/path/tpkg-registry.yaml`
-| A local mirror — tests, on-prem, and air-gapped fleets.
+| A local mirror for tests, on-prem installs, and air-gapped fleets.
 
 |===
 

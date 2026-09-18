@@ -2,68 +2,69 @@
 title: How a Tebako package works
 heading: How a Tebako package works.
 lede: >-
-  One file, three parts, no installation. This is the whole mechanism — what
-  the file contains, how the parts meet at run time, and what happens when
-  something does not fit.
+  The mechanism is one file with three parts and no installation. This page
+  describes the whole mechanism: what the file contains, how the parts meet
+  at run time, and what happens when something does not fit.
 description: >-
-  The anatomy of a tebako package: bootstrap, two-artifact runtime, payload
-  slices, the tpkg trailer, co-mounting, the dispatch sequence, the contract
-  model, and named failures.
+  This page covers the anatomy of a tebako package: the bootstrap, the
+  two-artifact runtime, the payload slices, the tpkg trailer, co-mounting,
+  the dispatch sequence, the contract model, and named failures.
 ---
 
 // normative: spec 06 §4 (exit table, rows 68 + 79 per spec 24 §7 and spec 26 §2), spec 07, spec 17, spec 18 — exit rows verified against crates/tpkg/src/lib.rs:275-291
 
 [NOTE]
 ====
-Status: shipped — everything on this page is the shipping v2 behavior.
+Everything on this page describes shipping v2 behavior.
 ====
 
-== Three parts, glued by a trailer.
+== Three parts, glued by a trailer
 
 A tebako package is a composition of independently distributable parts. Each
 part has its own release line, its own publisher, and its own trust anchor;
 the executable you download is where they meet.
 
-=== A — the bootstrap, the loader.
+=== A — the bootstrap, the loader
 
-A small, static Rust binary — under 3 MB, a budget enforced in CI on every
-platform — that is the process entry point of every package. It reads the
-trailer at the end of its own file, verifies what it finds, resolves the
-runtime (from the machine-wide cache, or by downloading it once), and hands
-off. It carries its own HTTP, TLS, and archive handling: nothing shells out
-to curl, git, or any tool on your machine. The bootstrap is a published
-artifact — **we build it, you never do** — and the same bytes are shared by
-every package pressed for a platform.
+The bootstrap is a small, static Rust binary, under 3 MB with the budget
+enforced in CI on every platform, and it is the process entry point of every
+package. It reads the trailer at the end of its own file, verifies what it
+finds, resolves the runtime (from the machine-wide cache, or by downloading
+it once), and hands off. It carries its own HTTP, TLS, and archive handling,
+and nothing shells out to curl, git, or any tool on the user's machine. The
+bootstrap is a published artifact — **the tebako project builds it, and
+package authors never do** — and the same bytes are shared by every package
+pressed for a platform.
 
-=== B — the runtime, two artifacts.
+=== B — the runtime, two artifacts
 
 A runtime is the interpreter plus everything its load paths expect, and v2
 ships it as **two artifacts**: the interpreter executable itself, and an _env
-image_ — a single `.tfs` file holding the standard library, gems, and support
-files. (The windows runtime adds a third: the shared ruby DLL the exe imports,
-installed beside it under its declared PE name.) The set is downloaded once
-per machine into the shared cache, SHA-256 verified, and **mounted, never
-extracted**. Every tebako application on the machine reuses the same copy;
-upgrading the runtime never rebuilds an application. Ruby is the first
-runtime; the model is language-agnostic.
+image_, a single `.tfs` file holding the standard library, the gems, and the
+support files. The windows runtime adds a third artifact: the shared ruby
+DLL that the exe imports, installed beside it under its declared PE name.
+The set is downloaded once per machine into the shared cache, SHA-256
+verified, and **mounted, never extracted**. Every tebako application on the
+machine reuses the same copy, and upgrading the runtime never rebuilds an
+application. Ruby is the first runtime, and the model is language-agnostic.
 
-=== C — the payload slices, bare images.
+=== C — the payload slices, bare images
 
-Your application, your data, your native tools — each a bare `.tfs` image,
-self-describing through a manifest inside the image at
+The application, the data, and the native tools are each a bare `.tfs`
+image, self-describing through a manifest inside the image at
 `/__tpkg__/manifest.yaml`. The manifest declares what the slice is (_app_,
 _data_, _toolkit_, _runtime_), what it provides (commands, libraries, a
 runtime), and what it requires (a runtime constraint, other slices at mount
-points). Slices are published, versioned, and verified independently — and
+points). Slices are published, versioned, and verified independently, and
 they co-mount into one process.
 
-== One executable, laid out.
+== The byte layout of the package file
 
 The package file is the bootstrap followed by payload slots, a slot table,
-optional extension blocks, and a 166-byte trailer header at the very end —
-read last, first. A _fat_ package carries its runtime in a slot and never
-touches the network; a _lean_ package references the runtime and resolves it
-at run time.
+optional extension blocks, and a 166-byte trailer header at the very end,
+which is read last and parsed first. A _fat_ package carries its runtime in
+a slot and never touches the network; a _lean_ package references the
+runtime and resolves it at run time.
 
 ++++
 <figure role="img" aria-label="Byte layout of a tebako package: bootstrap, payload slots, slot table, extension blocks, trailer header">
@@ -149,13 +150,13 @@ at run time.
 
 _Figure 1 — Byte layout of a tebako package: bootstrap, payload slots, slot table, extension blocks, and the trailer header at end of file._
 
-== Where the runtime comes from.
+== Where the runtime comes from
 
 Runtimes are factory products, not local builds. An official Ruby release
 flows through two factories before any user machine sees it, and every
-boundary is a published, checksummed release — each stage consumes the
+boundary is a published, checksummed release: each stage consumes the
 previous stage's artifacts, never its source tree. The full stage-by-stage
-table is on link:/docs/architecture/factories/[the factories page].
+table is on the link:/docs/architecture/factories/[the factories page].
 
 ++++
 <figure role="img" aria-label="Release chain: ruby-lang.org tarball, source factory, runtime factory, product, user machine">
@@ -233,15 +234,15 @@ table is on link:/docs/architecture/factories/[the factories page].
 
 _Figure 2 — The release chain: ruby-lang.org tarball through the source and runtime factories to the product and the user machine, with the seven platform triplets._
 
-== How a run works.
+== How a run works
 
-There are two front doors and one mechanism behind them. **Standalone:** you
-execute a package file directly — the bootstrap inside reads its own trailer
-and resolves the runtime. **Managed:** you invoke a command name on `PATH` —
-a shim link to the dispatcher, which picks the payload version and the
-runtime per invocation. Either way, the same handoff happens at the end: the
-runtime executable starts with a list of images to mount and an entrypoint to
-run.
+There are two front doors, and one mechanism stands behind them.
+**Standalone:** the user executes a package file directly, and the bootstrap
+inside reads its own trailer and resolves the runtime. **Managed:** the user
+invokes a command name on `PATH`, a shim link to the dispatcher, which picks
+the payload version and the runtime per invocation. Either way, the same
+handoff happens at the end: the runtime executable starts with a list of
+images to mount and an entrypoint to run.
 
 ++++
 <figure role="img" aria-label="Dispatch sequence: invocation name, version chain, runtime resolution, exec handoff, driver mounts, entrypoint">
@@ -342,18 +343,19 @@ run.
 
 _Figure 3 — The dispatch sequence: invocation name, version chain, runtime resolution, the exec handoff, and the driver mounting images before the entrypoint runs._
 
-Two consequences worth internalizing. First, **a run is a run**: executing a
-package never installs its slices — installation is the explicit verb,
-`tebako install`. Second, verification happens **at fetch and install, never
-per run** — a cached, verified artifact starts at full speed every time.
+Two consequences deserve emphasis. First, **a run is a run**: executing a
+package never installs its slices, because installation is the explicit
+verb, `tebako install`. Second, verification happens **at fetch and install,
+never per run**, so a cached, verified artifact starts at full speed every
+time.
 
-== One process, many images: the mount model.
+== One process, many images: the mount model
 
 Inside the running process there is one virtual filesystem. The env image
-mounts whole at the runtime root — the path the interpreter was compiled to
-live at — and every payload mounts at the path its consumer declared. A path
-lookup resolves against the **longest matching mount prefix**; mounts may
-nest; and the host filesystem is visible only where the jail allows it.
+mounts whole at the runtime root, the path the interpreter was compiled to
+live at, and every payload mounts at the path its consumer declared. A path
+lookup resolves against the **longest matching mount prefix**, mounts may
+nest, and the host filesystem is visible only where the jail allows it.
 Payload images are always read-only.
 
 ++++
@@ -428,35 +430,35 @@ Payload images are always read-only.
 _Figure 4 — The mount model: the env image at the runtime root, payloads at consumer-declared mounts, and longest-prefix dispatch._
 
 The consumer-declared mount is the dependency mechanism: an application's
-manifest says _I need inkscape, this version range, at `/opt/inkscape`_ — the
-slice itself stays location-agnostic, and one installed copy serves every
-application that mounts it. The worked example on link:/who/[the audience
-page] runs this end to end; the manifest grammar is on
+manifest states _I need inkscape, this version range, at `/opt/inkscape`_,
+the slice itself stays location-agnostic, and one installed copy serves
+every application that mounts it. The worked example on link:/who/[the
+audience page] runs this end to end, and the manifest grammar is on
 link:/docs/architecture/overview/[the feature surface].
 
-== Generations meet fail-closed: the contract model.
+== How generations meet: the contract model
 
 The loader and the runtime are separate artifacts with separate release
-lines, so they can drift apart. Tebako's answer is a declared **handoff
+lines, so they can drift apart. The tebako answer is a declared **handoff
 contract**: every runtime release states which handoff semantics it speaks,
 and the loader checks the declaration _before downloading, before mounting,
-before running anything_. A combination that cannot work is refused by name —
-the error tells you both generations and the remedy — instead of failing
+before running anything_. A combination that cannot work is refused by name,
+and the error states both generations and the remedy, instead of failing
 later as a corrupted environment or a segfault.
 
 The same rule covers packages and payloads: every artifact belongs to a
 declared generation, and anything that predates declarations is treated as
-the oldest one and refused by name when it no longer fits. The failure you
-meet in practice is a sentence like _"this package was pressed by a newer
-tebako — upgrade your CLI"_ or _"this runtime is too old for this package —
-pin an older payload or upgrade the runtime"_: a named error with an exit
-code, never a silent fallback and never a half-installed cache.
+the oldest generation and refused by name when it no longer fits. The
+failure met in practice is a sentence like _"this package was pressed by a
+newer tebako — upgrade your CLI"_ or _"this runtime is too old for this
+package — pin an older payload or upgrade the runtime"_: a named error with
+an exit code, never a silent fallback and never a half-installed cache.
 
-== Every failure has a name.
+== Every failure has a name
 
 The loader and the runtime's mount driver share a small, stable set of
-refusal codes. Scripts can branch on them; humans get a one-line message that
-says what was refused and why.
+refusal codes. Scripts can branch on them, and humans get a one-line message
+that says what was refused and why.
 
 [%header,cols="1,1,4"]
 |===
@@ -476,7 +478,7 @@ says what was refused and why.
 
 | 68
 | overlay
-| an overlay/decrypt binding failed — an unbound retained store, missing or non-opening key material, an unwritable store, an orphan binding, or a malformed TEBAKO_OVERLAYS / TEBAKO_DECRYPT
+| An overlay/decrypt binding failed: an unbound retained store, missing or non-opening key material, an unwritable store, an orphan binding, or a malformed TEBAKO_OVERLAYS / TEBAKO_DECRYPT.
 
 | 69
 | unavailable
@@ -488,7 +490,7 @@ says what was refused and why.
 
 | 71
 | signature
-| a signature is invalid — or the package is unsigned and TEBAKO_REQUIRE_SIGNED=1 was set
+| A signature is invalid, or the package is unsigned and TEBAKO_REQUIRE_SIGNED=1 was set.
 
 | 72
 | trust
@@ -508,7 +510,7 @@ says what was refused and why.
 
 | 76
 | install
-| installation was refused — the publisher froze the package, or the verb belongs to the CLI
+| Installation was refused: the publisher froze the package, or the verb belongs to the CLI.
 
 | 77
 | era
@@ -520,11 +522,11 @@ says what was refused and why.
 
 | 79
 | check
-| a payload check FAILed — the tebako check aggregate; the verdict line names the check and the failed expectation
+| A payload check FAILed (the tebako check aggregate); the verdict line names the check and the failed expectation.
 |===
 
-Once the interpreter is running, its own exit codes are the program's — the
-loader is out of the picture by then.
+Once the interpreter is running, its own exit codes are the program's,
+because the loader is out of the picture by then.
 
 See also: link:/docs/architecture/store/[Where everything lives] ·
 link:/docs/architecture/chain-of-trust/[The chain of trust] ·

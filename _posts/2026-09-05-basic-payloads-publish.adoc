@@ -25,9 +25,10 @@ series_post: 5
 Reference guide: link:/docs/guides/publish/[Publish to your own registry] and link:/docs/guides/check/[Check a payload].
 ====
 
-The last subject in this series is the hand-off: getting your payload
-from your machine to your users'. Three steps — prove it, publish it,
-let them install it — and every step is a command.
+The last subject in this series is the hand-off: moving a payload from
+the packager's machine to its users. The work has three steps — prove
+the payload, publish it, and let users install it — and every step is
+a command.
 
 
 ++++
@@ -73,7 +74,7 @@ let them install it — and every step is a command.
 </figure>
 ++++
 
-_Figure 1 — The pipeline: you build and check the payload, publish it to your own release, and your users install it from your registry._
+_Figure 1 — The pipeline: the packager builds and checks the payload, publishes it to their own release, and users install it from that registry._
 
 == Prove it: checks
 
@@ -96,13 +97,13 @@ slice myapp: smoke PASS 2s
 ----
 
 A missing prerequisite skips with a reason and never fails; a real
-failure exits with code 79 and names the expectation that failed. Run
-the checks in CI and a broken payload cannot reach your users.
+failure exits with code 79 and names the expectation that failed. When
+the checks run in CI, a broken payload cannot reach users.
 
 == Publish it
 
-Publishing writes a registry — one YAML file — onto your own release,
-with a SHA-256 beside every artifact:
+Publishing writes a registry — one YAML file — onto the publisher's
+own release, with a SHA-256 beside every artifact:
 
 [source,console]
 ----
@@ -113,7 +114,8 @@ published myapp 1.0.0 -> tfs:github:acme/myapp (tag v1.0.0)
 sha256 9f2c…a1  myapp-1.0.0-universal.tfs
 ----
 
-No server, no store to submit to: your releases are the registry.
+No server and no store are involved: the publisher's releases are the
+registry.
 
 == Your users' side
 
@@ -143,9 +145,9 @@ link:/docs/guides/shims/[shims guide] covers the full surface.
 
 == What you can do now
 
-You have the complete arc: run a package, make a data payload, package
-applications — Ruby, Rails, Sinatra — check them, and publish them.
-When you outgrow the basics, the
+The series has covered the complete arc: running a package, making a
+data payload, packaging applications — Ruby, Rails, and Sinatra —
+checking them, and publishing them. The
 link:/blog/2026-09-05-advanced-payloads-trace/[advanced payloads
-series] picks up exactly here: tracing, jails, image formats, native
-code, and the most demanding payload in this series.
+series] picks up exactly where the basics end: tracing, jails, image
+formats, native code, and the most demanding payload in the series.

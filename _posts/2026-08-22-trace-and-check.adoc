@@ -12,19 +12,19 @@ author:
   social_links:
     - https://github.com/tamatebako
 excerpt: >-
-  Two questions come with every packaged application: "what does it
-  actually touch on this machine?" and "does it actually work?" The
-  trace commands answer the first, payload checks answer the second —
-  this post walks both with worked examples.
+  Every packaged application raises two questions: what it actually
+  touches on the machine, and whether it actually works. The trace
+  commands answer the first question, payload checks answer the second,
+  and this post presents both with worked examples.
 ---
 
 = Tracing and checking packaged apps
 
-Every packaged application raises two questions that no amount of
-hand-written, throwaway diagnostics answers well: *what does my payload
-actually touch?* and *does my payload actually work?* Tebako ships a
+Every packaged application raises two questions that hand-written,
+disposable diagnostics answer poorly: what the payload actually touches
+on the machine, and whether the payload actually works. Tebako ships a
 toolkit for each — the trace commands and payload checks — and this
-post walks both with worked examples. Both are also covered as
+post presents both with worked examples. Both are also covered as
 step-by-step walkthroughs in the guides:
 https://tebako.org/docs/guides/trace/[Trace a packaged app] and
 https://tebako.org/docs/guides/check/[Check a payload].
@@ -46,7 +46,7 @@ TEBAKO_TRACE=/tmp/capture.jsonl
 
 Tracing is deliberately safe to leave on: if the capture channel
 fails, tebako prints a warning to stderr and nothing else happens —
-your application's exit code and behavior are never affected.
+the application's exit code and behavior are never affected.
 
 
 ++++
@@ -107,34 +107,36 @@ your application's exit code and behavior are never affected.
 </figure>
 ++++
 
-_Figure 1 — The two tools of this release: trace cover compares an outside capture with the inside stream; a payload check declares its own acceptance test._
+_Figure 1 — Trace cover compares an outside capture with the inside stream, and a payload check declares its own acceptance test; these are the two tools of this release._
 
 Four commands read that stream:
 
-* `tebako trace run <pkg>` — *discovery.* Runs a package with the
-  stream armed and drafts a manifest fragment for you: the host paths
-  it touched (as `needs:` grants), the files it read through raw file
-  descriptors (as `materialize:` candidates), and the shared libraries
-  and host executables it loaded. The draft is commented YAML — tebako
-  never applies it for you. You review it, adjust read/write
-  permissions, and note why each grant exists.
-* `tebako trace explain <capture.jsonl>` — *diagnosis.* Replays a
+* `tebako trace run <pkg>` — *discovery:* it runs a package with the
+  stream armed and drafts a manifest fragment; the fragment records the
+  host paths the package touched (as `needs:` grants), the files it
+  read through raw file descriptors (as `materialize:` candidates), and
+  the shared libraries and host executables it loaded. The draft is
+  commented YAML, and tebako never applies it automatically; the
+  operator reviews it, adjusts read and write permissions, and records
+  why each grant exists.
+* `tebako trace explain <capture.jsonl>` — *diagnosis:* it replays a
   capture through the chain of steps a file access goes through
   (mount → manifest read → resolve → materialize → OS bind) and names
   the first step that failed, with a likely cause. Exit code 0 means
   the chain is green; exit code 1 names the failing step.
-* `tebako trace cover` — *coverage.* The report described below.
+* `tebako trace cover` — *coverage:* it produces the report described
+  below.
 * `tebako trace import procmon <capture.csv>` — the Windows path,
-  also described below.
+  which is also described below.
 
 === A worked example: the escape the jail cannot show you
 
-Suppose you packaged an app and jailed it with a deny policy, and it
-behaves. One question remains: did anything reach the host *below* the
-virtual filesystem entirely — a native library's own `fopen`, or a
-probe made by the system loader? The jail journal cannot say, because
-an access that bypasses the virtual filesystem is invisible from
-inside it by definition.
+Suppose a packaged application has been jailed with a deny policy and
+behaves correctly. One question remains: whether anything reaches the
+host *below* the virtual filesystem entirely — through a native
+library's own `fopen`, or through a probe made by the system loader.
+The jail journal cannot answer it, because an access that bypasses the
+virtual filesystem is invisible from inside it by definition.
 
 The answer is to compare an inside capture with an outside capture of
 the same run:
@@ -156,11 +158,11 @@ the host's files directly. Exit 0 means no escapes; exit 1 lists them,
 so the verdict can gate CI. Stderr adds the coverage percentage per
 surface and which layer produced the capture.
 
-One honest caveat, and the report states it too: an outside capture
-can only certify escapes that go through the layer it watches. A
-capture at the libc boundary (retrace) certifies libc-routed escapes;
-certifying raw syscalls and loader-internal probes takes a
-kernel-layer capture (`--layer kernel`).
+One caveat, which the report also states: an outside capture can only
+certify escapes that go through the layer it watches. A capture at the
+libc boundary (retrace) certifies libc-routed escapes; certifying raw
+syscalls and loader-internal probes takes a kernel-layer capture
+(`--layer kernel`).
 
 === On Windows: import a Procmon capture
 
@@ -179,20 +181,20 @@ escape C:/pkg/scss/_hidden.scss func=CreateFile tid=0 pid=9012 class=probe
 
 That output is a real case: a native Sass importer probing for
 partials with raw Win32 calls, underneath every libc hook — the kind
-of access only a kernel-layer capture can see. The libc-boundary
+of access that only a kernel-layer capture can see. The libc-boundary
 alternative on Windows (retrace's live-injection backends) does not
-work at retrace v2.14.0 — the injector crashes inside the child's
-engine boot. Until that is fixed upstream, the Procmon path carries
-Windows coverage, and a CI check watches for the fix so we notice
-either direction.
+work at retrace v2.14.0, because the injector crashes inside the
+child's engine boot. Until that failure is fixed upstream, the Procmon
+path carries Windows coverage, and a CI check watches for the fix so
+that the project notices when either side changes.
 
 == Payload checks: does it work, written down
 
 A *check* is the payload's own acceptance test, declared in its
-in-image manifest and carried inside its image: "given my declared
-needs, I do my one real thing." Integrity verification proves the
-bytes are the publisher's; a check proves the payload works once the
-bytes are there.
+in-image manifest and carried inside its image; it states that, given
+the declared needs, the payload performs its one real task. Integrity
+verification proves that the bytes are the publisher's; a check proves
+that the payload works once the bytes are present.
 
 Here is the canonical example — the metanorma formula's Homebrew
 test, written as a declaration:
@@ -208,8 +210,8 @@ checks:
     timeout: 180
 ----
 
-`tebako check` runs it against an installed payload on your machine,
-against a just-pressed image in feedstock CI (`--runtime` /
+`tebako check` runs it against an installed payload on the local
+machine, against a just-pressed image in feedstock CI (`--runtime` /
 `--runtime-image`), against a pressed package, or against a
 composition document (which can declare checks for the composition
 itself):
@@ -235,14 +237,15 @@ A few deliberate rules keep checks useful:
   expectation that failed.
 * `--record` runs the checks under the record policy, so the same
   acceptance test doubles as needs discovery; `--keep-scratch`
-  preserves the scratch directory while you debug one.
+  preserves the scratch directory while a failing check is being
+  debugged.
 
 == What's next
 
-Two things remain open, both known. First, the Windows libc-layer
-live capture waits on the upstream retrace fix described above.
-Second, the metanorma feedstock's `html-xml` gate turns on once the
-feedstock re-pins its workflows to this CLI — the check engine
+Two things remain open, and both are known. First, the Windows
+libc-layer live capture waits on the upstream retrace fix described
+above. Second, the metanorma feedstock's `html-xml` gate turns on once
+the feedstock re-pins its workflows to this CLI — the check engine
 shipped with its first release, and feedstocks consume released
 binaries only, because
 releases are the interface between them. Wiring checks into
@@ -255,11 +258,9 @@ releases are the interface between them. Wiring checks into
 brew upgrade tamatebako/tap/tebako
 ----
 
-or download the binaries for your platform from the
+Alternatively, download the binaries for the target platform from the
 https://github.com/tamatebako/tebako/releases[releases page]. Every
 asset is built and tested in CI before it is uploaded.
 
-As always: if something surprises you, we want to hear about it in
-the https://github.com/tamatebako/tebako/issues[issue tracker].
-
-**__Press on__** _with Tebako_!
+The team welcomes reports of surprising behavior in the
+https://github.com/tamatebako/tebako/issues[issue tracker].

@@ -17,13 +17,13 @@ const ecosystem = [
   {
     name: 'tebako',
     url: SITE.github,
-    description: 'The main CLI packager. Turns applications into self-contained executables.',
+    description: 'The main CLI packager turns applications into self-contained executables.',
     category: 'Core',
   },
   {
     name: 'tebako-samples',
     url: SITE.samplesRepo,
-    description: 'Ready-to-use build workflows for common packaging scenarios.',
+    description: 'The repository provides ready-to-use build workflows for common packaging scenarios.',
     category: 'Resources',
   },
 ]
@@ -31,7 +31,7 @@ const ecosystem = [
 
 <BaseLayout
   title="About — Tebako"
-  description="Tebako (手箱) is short for tamatebako (玉手箱), the legendary treasure box. We place your precious application into a portable, protective box."
+  description="Tebako (手箱) is short for tamatebako (玉手箱), the legendary treasure box. The project places a precious application into a portable, protective box."
 >
   <section class="relative overflow-hidden pt-32 pb-16">
     <div class="pointer-events-none absolute inset-0 select-none" aria-hidden="true">
@@ -50,8 +50,8 @@ const ecosystem = [
       </h1>
       <p class="tb-animate-rise tb-delay-2 mt-6 max-w-2xl text-xl leading-relaxed text-[var(--tb-c-text-2)]">
         Tebako is short for <strong class="text-[var(--tb-c-text-1)]">tamatebako</strong> (玉手箱) —
-        the legendary treasure box from Japanese folklore. We give the name new life: a portable
-        fortress that carries your Ruby application safely to any destination.
+        the legendary treasure box from Japanese folklore. The project gives the name new life:
+        a portable fortress that carries a Ruby application safely to any destination.
       </p>
     </div>
   </section>
@@ -88,8 +88,9 @@ const ecosystem = [
         </div>
       </div>
       <p>
-        For our project, the metaphor fits perfectly. Your application is the
-        treasure — precious, crafted, irreplaceable. Tebako is the box that carries it:
+        For this project, the metaphor fits. The application is the
+        treasure — precious, crafted, irreplaceable — and Tebako is the box
+        that carries it:
         <strong class="text-[var(--tb-c-text-1)]">portable, self-contained, and ready to be
         opened anywhere.</strong>
       </p>
@@ -157,19 +158,20 @@ const ecosystem = [
             inside the box until it was opened.
           </p>
           <p>
-            Tebako does for your code what the tamatebako did for Urashima's time. It preserves
-            your application in a state of <strong class="text-[var(--color-paper)]">suspended perfection</strong> —
-            frozen at the exact moment of packaging. No dependency rot. No version drift.
-            No bit decay. The gems, the runtime, the configuration — all held safe inside the box.
+            Tebako does for code what the tamatebako did for Urashima's time. It preserves
+            an application in a state of <strong class="text-[var(--color-paper)]">suspended perfection</strong>,
+            frozen at the exact moment of packaging: no dependency rot, no version drift,
+            and no bit decay affect what the box holds. The gems, the runtime, and the
+            configuration all sit safe inside the box.
           </p>
           <p>
-            When you ship the executable, you hand someone a tamatebako of their own. They
-            open it — and your application springs to life, exactly as you intended, exactly
-            as you built it. No aging. No erosion. No three hundred years of change between
-            your machine and theirs.
+            When the executable ships, its recipient receives a tamatebako of their own.
+            They open it, and the application springs to life exactly as the packager
+            built and intended it. No aging, no erosion, and no three hundred years of
+            change separate the machine that built it from the machine that runs it.
           </p>
           <p class="pt-2 text-lg font-medium text-[var(--color-gold)]">
-            This is what we mean by timelessness: your code, held outside of time, until the moment it runs.
+            This is what the project means by timelessness: code held outside of time, until the moment it runs.
           </p>
         </div>
       </div>
@@ -231,8 +233,8 @@ const ecosystem = [
       <p>
         Ruby is a language built for developer happiness. Tebako extends that promise to
         the end user: the joy of writing Ruby becomes the simplicity of running a single
-        file. No gem installs, no version conflicts, no runtime to configure. Just the box,
-        opened with a double-click, the treasure glowing inside.
+        file, with no gem installs, no version conflicts, and no runtime to configure.
+        The box opens with a double-click, and the treasure glows inside.
       </p>
     </div>
   </section>
@@ -275,31 +277,31 @@ const ecosystem = [
       <p>
         Beneath the poetry is solid engineering. Tebako uses
         <strong class="text-[var(--tb-c-text-1)]">DwarFS</strong> — a fast, high-compression
-        read-only filesystem — to pack your entire application tree into a single mountable
-        image. At runtime, this image is mounted and your application starts as if it were
-        running in its original directory structure.
+        read-only filesystem — to pack an entire application tree into a single
+        mountable image. At run time, the image mounts, and the application starts
+        as if it were running in its original directory structure.
       </p>
       <p>
         The Ruby runtime itself is patched and embedded, so the executable is truly
-        self-contained. Native C extensions, gem dependencies, configuration files —
-        everything travels inside the box.
+        self-contained. Native C extensions, gem dependencies, and configuration
+        files all travel inside the box.
       </p>
     </div>
     <div class="mt-8 grid gap-4 sm:grid-cols-3">
       <div class="tb-card p-6">
         <p class="font-[var(--font-mono)] text-3xl text-[var(--tb-c-accent)]">01</p>
         <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium">Press</h3>
-        <p class="mt-1 text-sm text-[var(--tb-c-text-2)]">A single command packages your app.</p>
+        <p class="mt-1 text-sm text-[var(--tb-c-text-2)]">One command packages the application.</p>
       </div>
       <div class="tb-card p-6">
         <p class="font-[var(--font-mono)] text-3xl text-[var(--tb-c-accent)]">02</p>
         <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium">Mount</h3>
-        <p class="mt-1 text-sm text-[var(--tb-c-text-2)]">At runtime, DwarFS mounts the image.</p>
+        <p class="mt-1 text-sm text-[var(--tb-c-text-2)]">At run time, DwarFS mounts the image.</p>
       </div>
       <div class="tb-card p-6">
         <p class="font-[var(--font-mono)] text-3xl text-[var(--tb-c-accent)]">03</p>
         <h3 class="mt-2 font-[var(--font-display)] text-lg font-medium">Run</h3>
-        <p class="mt-1 text-sm text-[var(--tb-c-text-2)]">Your Ruby app executes — anywhere.</p>
+        <p class="mt-1 text-sm text-[var(--tb-c-text-2)]">The Ruby application executes anywhere.</p>
       </div>
     </div>
   </section>

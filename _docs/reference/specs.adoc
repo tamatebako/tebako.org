@@ -7,9 +7,10 @@ lede: >-
   disagrees with shipped, tested reality is stale — one of them is fixed
   in the same change. This index links each specification.
 description: >-
-  The tebako specification index: all normative specs, numbered and
-  linked, from the system overview through the wire format, the runtime
-  driver contract, composition, and trace observability.
+  This page is the tebako specification index: all normative specs,
+  numbered and linked, from the system overview through the wire
+  format, the runtime driver contract, composition, and trace
+  observability.
 ---
 
 // normative: titles from docs/spec/00-INDEX.md in the product repository

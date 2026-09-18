@@ -2,19 +2,19 @@
 title: info & inspect
 heading: info & inspect.
 lede: >-
-  Two read-only families: tebako info reports on the store and its
-  contents; tebako inspect reads a single artifact. Neither mutates
-  anything; --remote is the only flag that reaches the network.
+  Two read-only command families exist: tebako info reports on the
+  store and its contents, and tebako inspect reads a single artifact.
+  Neither family mutates anything; --remote is the only flag that
+  reaches the network.
 description: >-
-  Read-only tebako introspection: tebako info topics with --remote and
-  --json, tebako inspect with the contract card, tebako-pkg info, and tfs
-  ls/tree/cat.
+  This page describes the read-only tebako introspection surface: the
+  tebako info topics with --remote and --json, tebako inspect with the
+  contract card, tebako-pkg info, and the tfs ls/tree/cat family.
 ---
 
 == tebako info: six topics.
 
-`system` is the default — tool version, platform, store location, counts
-(representative):
+`system` is the default — tool version, platform, store location, counts (representative):
 
 [source,console]
 ----
@@ -77,12 +77,9 @@ _All output blocks on this page are representative._
 
 == --remote and --json.
 
-`--remote` affects two topics: `runtimes` adds what the runtime factory
-publishes (the newest five), and `payloads` adds the catalogs of your
-registries. Everything else stays local.
+`--remote` affects two topics: `runtimes` adds what the runtime factory publishes (the newest five), and `payloads` adds the catalogs of the configured registries. Everything else stays local.
 
-`--json` emits machine-readable documents that carry `"info_schema": 1`
-so scripts can pin the shape:
+`--json` emits machine-readable JavaScript Object Notation (JSON) documents that carry `"info_schema": 1` so scripts can pin the shape:
 
 [source,console]
 ----
@@ -105,15 +102,11 @@ $ tebako inspect --slot 1 ./myapp
 $ tebako inspect --json ./myapp
 ----
 
-`--manifest` prints the in-image manifest; `--provides` and `--requires`
-the capability and dependency declarations; `--platforms` the platform
-matrix; `--slot N` reads one trailer slot of a package. `--verify` and
-`--require-signed` are covered in
-link:/docs/guides/verify/[Verify integrity].
+`--manifest` prints the in-image manifest; `--provides` and `--requires` print the capability and dependency declarations; `--platforms` prints the platform matrix; `--slot N` reads one trailer slot of a package. `--verify` and `--require-signed` are covered in link:/docs/guides/verify/[Verify integrity].
 
 == The contract card.
 
-Ask for the contract card with `--contract`:
+The contract card is requested with `--contract`:
 
 [source,console]
 ----
@@ -126,16 +119,12 @@ trust      signed · press-local key 4F2A…9C · trusted
 verdict    OK — this loader can run this package
 ----
 
-* `era` — the packaging generation the artifact belongs to.
-* `contract` — the handoff semantics the runtime declares, against what
-  this loader accepts.
-* `mount_root` — where the env image lands inside the process's
-  filesystem view.
-* `abi` — the interpreter ABI line and platform string that
-  native-extension payloads are matched against.
-* `trust` — signature state, and whether the signing key is in your
-  trusted set.
-* `verdict` — the bottom line: runnable, or a named refusal.
+* `era` names the packaging generation the artifact belongs to.
+* `contract` states the handoff semantics the runtime declares, against what this loader accepts.
+* `mount_root` shows where the env image lands inside the process's filesystem view.
+* `abi` gives the interpreter ABI line and platform string that native-extension payloads are matched against.
+* `trust` reports the signature state and whether the signing key is in the operator's trusted set.
+* `verdict` is the bottom line: runnable, or a named refusal.
 
 == Trailer surgery: tebako-pkg info.
 
@@ -146,13 +135,11 @@ verdict    OK — this loader can run this package
 $ tebako-pkg info --full ./myapp
 ----
 
-The audience is people building or repairing packages, not running them.
-`--slot N` narrows to one slot, `--depth N` how deep nested payloads are
-recursed, `--json` makes it scriptable.
+The audience is the people building or repairing packages, not the people running them. `--slot N` narrows the output to one slot, `--depth N` bounds how deep nested payloads are recursed, and `--json` makes the output scriptable.
 
-== Look inside an image — without extracting.
+== Looking inside an image — without extracting.
 
-The `tfs` CLI reads an image without extracting it:
+The `tfs` command-line interface (CLI) reads an image without extracting it:
 
 [source,console]
 ----
@@ -162,8 +149,6 @@ $ tfs cat ./acme-fonts-2.1.0.tfs /__tpkg__/manifest.yaml
 $ tfs find ./acme-fonts-2.1.0.tfs Bold
 ----
 
-`tfs exec` runs a command with the image mounted (Unix only), and `tfs
-extract` copies files out when you truly need them on disk. There is no
-general FUSE mount — `tfs mount` exists only for encrypted images.
+`tfs exec` runs a command with the image mounted (Unix only), and `tfs extract` copies files out when they are genuinely needed on disk. There is no general Filesystem in Userspace (FUSE) mount — `tfs mount` exists only for encrypted images.
 
 See also: link:/docs/guides/debug/[Debug & logging] · link:/docs/guides/verify/[Verify integrity] · link:/docs/architecture/store/[The store, in the architecture docs]

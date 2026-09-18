@@ -2,18 +2,19 @@
 title: Compared, honestly
 heading: How tebako compares.
 lede: >-
-  "Package once, run anywhere" is a big promise, and most tools attach
+  "Package once, run anywhere" is a large promise, and most tools attach
   conditions to it: a compatible JVM already installed, an engine already
-  running, a machine that looks like the build machine. This page shows
-  where tebako fits among the tools you already know — and names the cases
-  where another tool is the better choice: a virtual machine when you need
-  the strongest isolation, your system package manager when you administer
-  the whole machine, and Docker where an engine is already running.
+  running, or a machine that looks like the build machine. This page shows
+  where tebako fits among the tools a developer already knows, and it names
+  the cases where another tool is the better choice: a virtual machine when
+  the strongest isolation is needed, the system package manager when the
+  whole machine is administered, and Docker where an engine is already
+  running.
 description: >-
-  An honest comparison: tebako versus version managers, system package
-  managers, containers, snap/flatpak/AppImage, the language packagers, the
-  OS trust gates, and virtual machines — what each is for, and where each
-  wins.
+  This page is an honest comparison of tebako against version managers,
+  system package managers, containers, snap/flatpak/AppImage, the language
+  packagers, the OS trust gates, and virtual machines: what each is for, and
+  where each wins.
 ---
 
 // normative: spec 01, spec 12
@@ -21,19 +22,20 @@ description: >-
 
 [NOTE]
 ====
-*Stated plainly.* Tebako is not a replacement for your toolchain. You still
-develop against your own ruby, your own gems, your own OS packages. Tebako
-enters at the distribution seam: the moment a resolved, working app has to
-run on a machine you don't control. Everything this page attributes to
-tebako — the jails, the dispatcher, the shared cache, the signing — is
-shipped behavior; the one forward-looking claim (non-ruby runtimes) is
-badged where it appears.
+The position is stated plainly. Tebako is not a replacement for the
+developer's toolchain: development still happens against the developer's own
+ruby, the developer's own gems, and the developer's own OS packages. Tebako
+enters at the distribution seam, the moment a resolved, working application
+has to run on a machine that the developer does not control. Everything this
+page attributes to tebako, the jails, the dispatcher, the shared cache, and
+the signing, is shipped behavior; the one forward-looking claim, non-ruby
+runtimes, is badged where it appears.
 ====
 
-== What a process sees, in each world.
+== What a process sees, in each world
 
-Strip away the packaging formats and the difference is one question: when
-your program calls `open()`, what answers?
+Once the packaging formats are stripped away, the difference is one
+question: when the program calls `open()`, what answers?
 
 ++++
 <figure role="img" aria-label="What a process sees in each world: tebako VFS, Docker namespaces, Homebrew system paths, rbenv shims, a VM">
@@ -119,229 +121,235 @@ your program calls `open()`, what answers?
 _Figure 1 — What a process sees in each world: the tebako VFS, Docker
 namespaces, Homebrew system paths, rbenv shims, and a virtual machine._
 
-== The eight axes.
+== The eight axes
 
-. **Install footprint** — what lands on the machine to make the app run —
-  megabytes, trees, daemons, hypervisors.
-. **Runtime sharing** — whether N apps on one machine carry N copies of
-  their runtime, or one.
-. **Startup cost** — what happens between the user pressing enter and the
-  app running — per run.
-. **Isolation** — what the app can see and touch beyond itself, and who
-  enforces that.
-. **Integrity model** — how you know the bytes are the bytes the publisher
-  shipped — checksums, signatures, chains of trust.
-. **Offline behavior** — what works with the network cable pulled — first
-  run and steady state.
-. **Cross-platform reach** — which operating systems and libcs the same
+. **The install footprint** is what lands on the machine to make the app
+  run: megabytes, trees, daemons, or hypervisors.
+. **Runtime sharing** is the question of whether N apps on one machine carry
+  N copies of their runtime or one copy.
+. **The startup cost** is what happens between the user pressing enter and
+  the app running, paid per run.
+. **Isolation** is what the app can see and touch beyond itself, and who
+  enforces that boundary.
+. **The integrity model** is how the user knows the bytes are the bytes the
+  publisher shipped: checksums, signatures, or chains of trust.
+. **The offline behavior** is what works with the network cable pulled, at
+  first run and in steady state.
+. **The cross-platform reach** is which operating systems and libcs the same
   story covers, and at what cost per target.
-. **Transparency** — what the end user has to know, install, or run before
-  the app — ideally: nothing.
+. **Transparency** is what the end user has to know, install, or run before
+  the app, where the ideal is nothing.
 
 "Runtime sharing" deserves its own sentence, because it is tebako's
 structural difference: a tebako runtime — the interpreter executable plus
 its link:/docs/architecture/runtime-as-image/[environment image] — is
 downloaded *once per machine* and reused by *every tebako application on
-it*. Not once per app, not once per project: once. The cache is
+it*, not once per app and not once per project but once. The cache is
 content-verified, installed read-only, and shared by design.
 
-== The matrix.
+== The comparison matrix
 
-Eight axes, eleven answers, one line each. No row is all green, including
-ours — read the columns you care about.
+The matrix has eight axes, eleven answers, and one line per tool. No row is
+all green, including tebako's own row, so the reader should weigh the
+columns that matter for the case at hand.
 
 [cols="1,2,2,2,2,2,2,2,2"]
 |===
 | TOOL | INSTALL FOOTPRINT | RUNTIME SHARING | STARTUP COST | ISOLATION | INTEGRITY MODEL | OFFLINE BEHAVIOR | CROSS-PLATFORM REACH | TRANSPARENCY
 
-| tebako | one file; the runtime lands in the shared cache once | yes — one verified runtime for every tebako app on the machine | exec + in-process mount; no extraction, no per-run re-hashing | declarative ro/rw jails per run — userland, no daemon, no root | opt-in OpenPGP + per-slot sha256, fail closed with named exits | fat: always; lean: full after the first fetch (TEBAKO_OFFLINE=1) | linux gnu/musl · macOS · Windows; pure-language payloads are universal | total — the user need not know tebako exists
-| rbenv / rvm | git clone + a build toolchain + per-machine ruby builds | rubies shared across projects | a shim re-exec hop, then native | none | source tarball checksums at build; gems over TLS | yes, once rubies are built | POSIX only — no Windows | developers only
-| homebrew | a host-wide /opt tree plus dependency kegs | kegs shared host-wide | native exec — nothing between | none — install scripts run as you, services higher | sha256-pinned formulae, signed bottles, attestations | no — network to install or update | macOS + Linux; no Windows | the user installs brew first
-| rubygems / bundler | gems per interpreter, per machine, per deploy | duplicated per ruby version on the box | gem activation at every process start | none | TLS to the gem server; X.509 gem signing is rare | vendor/cache makes deploys offline-capable | anywhere ruby runs — genuinely universal | developers and servers, not end users
-| .dmg / .msi | a per-app bundle with the runtime embedded | none — every app re-carries its world | native exec | only what the OS sandbox gives an opted-in app | Gatekeeper notarization / Authenticode — OS-checked PKI | yes — the installer itself is the offline artifact | one OS (and arch) per artifact | total — drag, click, run
-| dnf / apt | a root-owned system tree | system libraries shared across every app on the box | native exec | none — packages own system paths, scripts run as root | signed repo metadata (InRelease / repomd), always on | local mirrors and offline media are first-class | per-distro, per-release; linux only | invisible after install — for admins
-| snap | the snapd daemon plus per-app squashfs packages | base and content snaps shared between apps | cold start: squashfs mount + confinement setup | AppArmor/seccomp — full strength on Ubuntu, varies by host kernel | store-signed assertions, verified by snapd at install | installs need the store; installed apps run offline | linux only — best on Ubuntu | the user needs snapd and the store
-| flatpak | the flatpak daemon, an ostree repo, and portals | runtimes shared; ostree dedups content between apps | near-native once installed | bubblewrap + portals — a real sandbox, host-dependent | ostree GPG signatures; Flathub builds from manifests | needs a remote to install; runs offline after | desktop linux only | the user installs flatpak plus a remote
-| AppImage | one file per app — the whole world bundled inside | none — every app re-carries its runtime | exec plus a FUSE mount of the embedded image | none in the format (firejail is a separate add-on) | no standard signatures, no chain of trust | yes — the file is the whole app | linux only | total on linux — chmod +x and run
-| docker / OCI | an engine plus a GB-scale content store | layer dedup across images sharing a base | container create + start through the daemon | namespaces + cgroups — real, shipped boundaries | content digests; cosign / notary signing opt-in | yes, after the first pull — but the engine must run | linux ABI; a hidden VM on macOS/Windows | the user installs docker
-| VMs | gigabytes per guest, plus a hypervisor | nothing shared between guests | a guest OS boot — seconds to minutes | a hardware boundary — the strongest on this page | whatever the guest's own stack does | yes, once provisioned | any guest OS on any host | ops teams, never end users
+| tebako | The install is one file, and the runtime lands in the shared cache once. | Yes: one verified runtime serves every tebako application on the machine. | Startup is an exec plus an in-process mount, with no extraction and no per-run re-hashing. | Declarative ro/rw jails apply per run, in userland, with no daemon and no root. | The integrity model is opt-in OpenPGP plus per-slot sha256, and it fails closed with named exits. | A fat package always works offline; a lean package works fully after the first fetch (TEBAKO_OFFLINE=1). | The reach covers linux gnu/musl, macOS, and Windows, and pure-language payloads are universal. | Transparency is total: the user need not know that tebako exists.
+| rbenv / rvm | The install is a git clone, a build toolchain, and per-machine ruby builds. | Rubies are shared across projects. | Startup is a shim re-exec hop and then native execution. | There is none. | Source tarballs are checksummed at build, and gems travel over TLS. | Yes, once the rubies are built. | It covers POSIX only, with no Windows. | It serves developers only.
+| homebrew | The install is a host-wide /opt tree plus dependency kegs. | Kegs are shared host-wide. | Startup is native exec with nothing in between. | There is none: install scripts run as the invoking user, and services run higher. | Formulae are sha256-pinned, bottles are signed, and attestations exist. | No: installing or updating needs the network. | It covers macOS and Linux, with no Windows. | The user installs brew first.
+| rubygems / bundler | Gems install per interpreter, per machine, and per deploy. | Gems are duplicated per ruby version on the box. | Startup pays gem activation at every process start. | There is none. | TLS protects the gem server, and X.509 gem signing is rare. | vendor/cache makes deploys offline-capable. | It runs anywhere ruby runs, which is genuinely universal. | It serves developers and servers, not end users.
+| .dmg / .msi | The install is a per-app bundle with the runtime embedded. | There is none: every app re-carries its world. | Startup is native exec. | Isolation is only what the OS sandbox gives an opted-in app. | Integrity rests on Gatekeeper notarization or Authenticode, an OS-checked PKI. | Yes: the installer itself is the offline artifact. | Each artifact covers one OS and architecture. | Transparency is total: the user drags, clicks, and runs.
+| dnf / apt | The install is a root-owned system tree. | System libraries are shared across every app on the box. | Startup is native exec. | There is none: packages own system paths, and scripts run as root. | Repo metadata (InRelease / repomd) is signed and always on. | Local mirrors and offline media are first-class. | Coverage is per distro and per release, and linux only. | It is invisible after install, and it serves admins.
+| snap | The install is the snapd daemon plus per-app squashfs packages. | Base and content snaps are shared between apps. | A cold start pays a squashfs mount plus confinement setup. | Isolation is AppArmor/seccomp, at full strength on Ubuntu and varying by host kernel. | Assertions are store-signed and verified by snapd at install. | Installs need the store, and installed apps run offline. | It covers linux only and works best on Ubuntu. | The user needs snapd and the store.
+| flatpak | The install is the flatpak daemon, an ostree repository, and portals. | Runtimes are shared, and ostree dedups content between apps. | Startup is near-native once installed. | Isolation is bubblewrap plus portals, a real sandbox that depends on the host. | Ostree carries GPG signatures, and Flathub builds from manifests. | It needs a remote to install, and it runs offline afterwards. | It covers desktop linux only. | The user installs flatpak plus a remote.
+| AppImage | The install is one file per app, with the whole world bundled inside. | There is none: every app re-carries its runtime. | Startup is exec plus a FUSE mount of the embedded image. | The format has none, and firejail is a separate add-on. | There are no standard signatures and no chain of trust. | Yes: the file is the whole app. | It covers linux only. | On linux it is total: the user marks the file executable and runs it.
+| docker / OCI | The install is an engine plus a GB-scale content store. | Layer dedup works across images sharing a base. | Startup is container create plus start through the daemon. | Isolation is namespaces plus cgroups, real and shipped boundaries. | Integrity rests on content digests, with cosign / notary signing as opt-in. | Yes, after the first pull, but the engine must run. | The reach is the linux ABI, with a hidden VM on macOS/Windows. | The user installs docker.
+| VMs | The install is gigabytes per guest plus a hypervisor. | Nothing is shared between guests. | Startup is a guest OS boot, from seconds to minutes. | Isolation is a hardware boundary, the strongest on this page. | Integrity is whatever the guest's own stack does. | Yes, once provisioned. | Any guest OS runs on any host. | It serves ops teams, never end users.
 |===
 
-== The language packagers — a different category.
+== The language packagers: a different category
 
 Everything above distributes software to machines generically. A second
-family of tools answers a narrower question: freeze _this_ language's app
-into a file. Python has PyInstaller, PyOxidizer, and PEX; ruby has ocra and
-traveling-ruby. They are the tools tebako is most often confused with — and
-the difference is the approach, not the feature list.
+family of tools answers a narrower question: freeze _this_ language's
+application into a file. Python has PyInstaller, PyOxidizer, and PEX; ruby
+has ocra and traveling-ruby. These are the tools tebako is most often
+confused with, and the difference is the approach rather than the feature
+list.
 
 [cols="1,1,3,3"]
 |===
 | Tool | Language | What it builds | The trade-off
 
-| PyInstaller | python | a one-file or one-dir bundle with CPython embedded, per target OS | nothing extra — but one-file mode unpacks to a temp dir at every start, and each OS needs its own build
-| PyOxidizer | python | a single binary with an embedded CPython, imports served from memory | nothing extra — but upstream development stalled in 2024; its future is uncertain
-| PEX | python | a .pex zipapp of your code and dependencies | a compatible python interpreter on the machine (or one fetched at first run via scies)
-| ocra | ruby | a Windows self-extracting exe from the ruby installed on the build machine | nothing extra — but Windows only, and it unpacks to a temp dir at every start
-| traveling-ruby | ruby | a tar.gz/zip bundling a prebuilt portable ruby plus your gems, one per platform | nothing extra — the app carries its own ruby copy for each platform
+| PyInstaller | python | It builds a one-file or one-dir bundle with CPython embedded, per target OS. | It asks for nothing extra, but one-file mode unpacks to a temp dir at every start, and each OS needs its own build.
+| PyOxidizer | python | It builds a single binary with an embedded CPython, with imports served from memory. | It asks for nothing extra, but upstream development stalled in 2024 and its future is uncertain.
+| PEX | python | It builds a .pex zipapp of the code and its dependencies. | It needs a compatible python interpreter on the machine, or one fetched at first run via scies.
+| ocra | ruby | It builds a Windows self-extracting exe from the ruby installed on the build machine. | It asks for nothing extra, but it is Windows only, and it unpacks to a temp dir at every start.
+| traveling-ruby | ruby | It builds a tar.gz/zip bundling a prebuilt portable ruby plus the gems, one per platform. | It asks for nothing extra, and the app carries its own ruby copy for each platform.
 |===
 
-=== The difference in approach.
+=== The difference in approach
 
 * *They bind a language; tebako binds none.* A language packager is a
-  per-language answer — PyInstaller will never package a ruby app. Tebako's
-  loader neither knows nor cares what language it starts: a runtime is just
-  a payload that _provides_ an interpreter, plugged into the same
+  per-language answer, and PyInstaller will never package a ruby app.
+  Tebako's loader neither knows nor cares what language it starts: a runtime
+  is just a payload that _provides_ an interpreter, plugged into the same
   provides/requires graph as every other payload. Ruby is the first
   instance; python and julia factories follow the same shape.
 * *They embed the interpreter per app; tebako shares it per machine.* Ten
-  PyInstaller apps carry ten CPython copies. Ten tebako apps share one
-  digest-pinned runtime from the machine-wide cache — downloaded once,
-  verified once, mounted — never extracted — by all of them.
+  PyInstaller apps carry ten CPython copies. Ten tebako applications share
+  one digest-pinned runtime from the machine-wide cache, downloaded once and
+  verified once, and mounted, never extracted, by all of them.
 * *They produce per-OS artifacts; tebako's pure-language payload is
   universal.* PyInstaller must build on each target OS; traveling-ruby ships
   one tarball per platform. A pure-language tebako payload is one image that
   runs identically on every platform triplet, over per-triplet static
   loaders.
-* *They end at the file; tebako starts there.* Per-invocation version
-  dispatch, per-run declarative jails, opt-in signatures, recursive payload
-  composition — the ecosystem around the artifact is the product, not an
-  afterthought.
+* *They end at the file; tebako starts there.* The ecosystem around the
+  artifact is per-invocation version dispatch, per-run declarative jails,
+  opt-in signatures, and recursive payload composition, and that ecosystem
+  is the product rather than an afterthought.
 
 [NOTE]
 ====
-Status: planned — non-ruby runtimes.
+Non-ruby runtimes are planned.
 
-*Honest limit.* Today, tebako's published runtimes are ruby-only. If you
-ship a python app this quarter, PyInstaller or PEX is the working answer —
-mature tooling that knows the language's quirks, with no ecosystem to buy
-into. Tebako's claim here is architectural: the per-language packagers
-solve _packaging_ once per language; tebako solves packaging _and loading_
-once, for any runtime — and ruby is the proof of existence, not the
-boundary.
+The honest limit is the following: today, tebako's published runtimes are
+ruby-only. When a python application ships this quarter, PyInstaller or PEX
+is the working answer, mature tooling that knows the language's quirks and
+asks for no ecosystem buy-in. The tebako claim here is architectural: the
+per-language packagers solve _packaging_ once per language, while tebako
+solves packaging _and loading_ once for any runtime, and ruby is the proof
+of existence rather than the boundary.
 ====
 
-== Gatekeeper and Authenticode: the OS trust gates.
+== Gatekeeper and Authenticode: the OS trust gates
 
 Gatekeeper (macOS) and Authenticode (Windows) are the two OS-level trust
-systems users actually rely on. They answer one question — _"may this
-binary run?"_ — and tebako answers a different one — _"is every part of
-what runs what it claims to be?"_ The systems are complementary layers, not
-competitors.
+systems that users actually rely on. Gatekeeper and Authenticode answer one
+question, _"may this binary run?"_, and tebako answers a different one,
+_"is every part of what runs what it claims to be?"_ The systems are
+complementary layers, not competitors.
 
 [cols="1,2,2,2"]
 |===
 | | Gatekeeper (macOS) | Authenticode (Windows) | Tebako
 
-| object verified | the app bundle / binary | the binary / driver | every slice + every manifest + every runtime + registry items + the sums manifest — and partial re-stacking stays verifiable (per-slot digests)
-| when verified | at every execution, by the OS | at install/UAC + SmartScreen heuristics | at fetch, at install, at mount (per-slot digest before attach), at publish (author side)
-| anchor of trust | Apple-issued Developer ID cert (vendor CA) | CA-issued cert (EV for reputation) | embedded tamatebako root key (self-sovereign) + user trust store + successor-chain rotation
-| unsigned path | block or warn (policy) | warn via SmartScreen reputation | unverified-first with a loud warning + audit journal; TEBAKO_REQUIRE_SIGNED=1 fails closed
-| revocation | CRL/OCSP (online, coarse) | CRL/OCSP (online, coarse) | signed successor statements — offline, forward-verifiable — plus per-key registration/removal
-| offline / air-gap | verifies offline; notarizing needs online at build time | mostly offline; timestamping needs online at sign time | full offline first-class: embedded root + pinned keys + signed sums + air-gap bundles
-| scope beyond executables | none (binaries only) | none (binaries only) | runtimes, data slices, toolkits, suites, registries, manifests, indexes — the whole object graph
-| cross-platform | macOS only | Windows only | one model across linux gnu/musl, macOS, and Windows
-| key rotation | cert renewal via the CA | cert renewal via the CA | self-describing: the old root signs its successor; clients forward-verify offline
-| enforcement level | OS syscall gate — the app cannot bypass it | OS gate + kernel driver signing | loader-level — honestly: a patched loader is beyond any loader, which is exactly where the OS gates protect us
-| ubiquity | every Mac, nothing to install | every Windows box, nothing to install | anywhere a single binary lands — zero host prerequisites
-| provenance | developer identity only | publisher identity only | identity + builder + source ref + payload tree hash + contract_version
+| object verified | The verified object is the app bundle or binary. | The verified object is the binary or driver. | The verified objects are every slice, every manifest, every runtime, registry items, and the sums manifest, and partial re-stacking stays verifiable through per-slot digests.
+| when verified | Verification happens at every execution, by the OS. | Verification happens at install/UAC and through SmartScreen heuristics. | Verification happens at fetch, at install, at mount (the per-slot digest before attach), and at publish on the author side.
+| anchor of trust | The anchor is an Apple-issued Developer ID certificate from a vendor CA. | The anchor is a CA-issued certificate, EV for reputation. | The anchor is the embedded tamatebako root key (self-sovereign) plus the user trust store plus successor-chain rotation.
+| unsigned path | The OS blocks or warns, by policy. | The OS warns through SmartScreen reputation. | The path is unverified-first with a loud warning and an audit journal, and TEBAKO_REQUIRE_SIGNED=1 fails closed.
+| revocation | Revocation is CRL/OCSP, online and coarse. | Revocation is CRL/OCSP, online and coarse. | Revocation uses signed successor statements, offline and forward-verifiable, plus per-key registration and removal.
+| offline / air-gap | It verifies offline; notarizing needs the network at build time. | It is mostly offline; timestamping needs the network at sign time. | Full offline operation is first-class: embedded root, pinned keys, signed sums, and air-gap bundles.
+| scope beyond executables | There is none; binaries only. | There is none; binaries only. | The scope covers runtimes, data slices, toolkits, suites, registries, manifests, and indexes, the whole object graph.
+| cross-platform | It covers macOS only. | It covers Windows only. | One model covers linux gnu/musl, macOS, and Windows.
+| key rotation | Rotation is certificate renewal via the CA. | Rotation is certificate renewal via the CA. | Rotation is self-describing: the old root signs its successor, and clients forward-verify offline.
+| enforcement level | Enforcement is an OS syscall gate that the app cannot bypass. | Enforcement is an OS gate plus kernel driver signing. | Enforcement is loader-level, and the honest statement is that a patched loader is beyond any loader, which is exactly where the OS gates provide protection.
+| ubiquity | It is on every Mac, with nothing to install. | It is on every Windows box, with nothing to install. | It applies anywhere a single binary lands, with zero host prerequisites.
+| provenance | Provenance is developer identity only. | Provenance is publisher identity only. | Provenance covers identity, builder, source ref, payload tree hash, and contract_version.
 |===
 
-*Where tebako defers — and integrates.* Continuous execution-time
-enforcement. Gatekeeper's syscall-level gate and SmartScreen's reputation
+*Tebako defers, and integrates, in one area: continuous execution-time
+enforcement.* Gatekeeper's syscall-level gate and SmartScreen's reputation
 network cannot be replicated by an application-level loader, and a patched
 loader is outside any loader's reach. Tebako's answer is to sign
 tebako-produced binaries for both gates, so the OS protects the root anchor
-continuously: their enforcement guards our bootstrap, our verification
-guards everything below it. Apple and Microsoft are also already on the
-machine, and notarization includes actual scanning — tebako does not
-imitate this; it slots into it.
+continuously: their enforcement guards the tebako bootstrap, and tebako's
+verification guards everything below it. Apple and Microsoft are also
+already on the machine, and notarization includes actual scanning; tebako
+does not imitate this but slots into it.
 
-*Where tebako goes further.* Granularity: they see a binary; tebako sees
-every slice inside it — swap one slice and only its slot needs re-verifying.
-Scope: runtimes, data slices, toolkits, suites, registries, and indexes all
-use the same signed-image machinery. Sovereignty: no corporate CA in the
-loop — root rotation is a self-describing signed chain, verifiable offline.
-Provenance: builder, source ref, payload tree hash, and contract version —
-compared to "Developer ID: Company X".
+*Tebako goes further in four respects.* Granularity: the OS sees a binary,
+while tebako sees every slice inside it, so swapping one slice means only
+that slice's slot needs re-verifying. Scope: runtimes, data slices,
+toolkits, suites, registries, and indexes all use the same signed-image
+machinery. Sovereignty: no corporate CA sits in the loop, and root rotation
+is a self-describing signed chain that is verifiable offline. Provenance:
+builder, source ref, payload tree hash, and contract version, compared with
+"Developer ID: Company X".
 
-== Where each alternative genuinely wins.
+== Where each alternative genuinely wins
 
-Tebako is a distribution format for applications, not a bid to replace your
-package manager, your container engine, your language tooling, or your
-hypervisor.
+Tebako is a distribution format for applications, not a bid to replace the
+reader's package manager, container engine, language tooling, or hypervisor.
 
 [cols="1,3"]
 |===
 | Tool | Where it genuinely wins
 
-| RubyGems | sharing code between developers. Tebako packages applications; gems remain how developers share libraries.
-| rbenv / rvm | hacking on ruby itself. If your job is building interpreters, you want a version manager, not a package.
-| Homebrew / apt / dnf | OS-integrated components with a security-update channel. Tebako deliberately never manages the OS.
-| Installers (.dmg/.msi) | deep OS integration: drivers, system extensions, things that must be on the host — plus enterprise deployment and notarization review.
-| snap / flatpak | store discoverability and daemon-managed automatic updates — a real distribution channel, paid for with the daemon and platform coverage.
-| AppImage | zero-machinery single-file desktop linux, with mature tooling and a large catalog. The closest neighbor of a fat tebako package.
-| Language packagers | a single-language app, today, in that language: PyInstaller/PyOxidizer/PEX know python's quirks, ocra/traveling-ruby know ruby's, and none of them ask you to buy into an ecosystem.
-| Docker / OCI | server-side multi-process orchestration and its ecosystem. Tebako distributes tools to people; Docker runs services on fleets.
-| Virtual machines | hard boundaries for hostile native code. Jails are filesystem policy, not a hardware security boundary.
+| RubyGems | It wins for sharing code between developers. Tebako packages applications; gems remain how developers share libraries.
+| rbenv / rvm | It wins for hacking on ruby itself. When the job is building interpreters, a version manager is the right tool, not a package.
+| Homebrew / apt / dnf | These win for OS-integrated components with a security-update channel. Tebako deliberately never manages the OS.
+| Installers (.dmg/.msi) | They win for deep OS integration: drivers, system extensions, and things that must be on the host, plus enterprise deployment and notarization review.
+| snap / flatpak | They win for store discoverability and daemon-managed automatic updates, a real distribution channel paid for with the daemon and platform coverage.
+| AppImage | It wins for zero-machinery single-file desktop linux, with mature tooling and a large catalog, and it is the closest neighbor of a fat tebako package.
+| Language packagers | They win for a single-language app, today, in that language: PyInstaller/PyOxidizer/PEX know python's quirks, ocra/traveling-ruby know ruby's, and none of them ask the developer to buy into an ecosystem.
+| Docker / OCI | It wins for server-side multi-process orchestration and its ecosystem. Tebako distributes tools to people; Docker runs services on fleets.
+| Virtual machines | They win for hard boundaries around hostile native code. Jails are filesystem policy, not a hardware security boundary.
 |===
 
-== What exists nowhere else.
+== What exists nowhere else
 
 * *A single file that is simultaneously the app, its verifier, and its
-  runtime resolver* — self-authenticating, offline, over any transport
-  including a USB stick.
-* *Universal payloads over digest-pinned shared runtimes* — a pure-language
+  runtime resolver.* It is self-authenticating, works offline, and travels
+  over any transport, including a USB stick.
+* *Universal payloads over digest-pinned shared runtimes.* A pure-language
   app ships one image for every platform, and the runtime underneath it
-  downloads once per machine. Electron's fidelity with a shared runtime's
-  footprint, and neither's lock-in.
-* *Per-entrypoint runtime pins inside one package* — suites: multiple
+  downloads once per machine; the result is Electron's fidelity with a
+  shared runtime's footprint, and the lock-in of neither.
+* *Per-entrypoint runtime pins inside one package.* Suites place multiple
   commands in one artifact, each with its own runtime requirement.
-* *Recursive payload composition* — an app declares toolkits and data at
+* *Recursive payload composition.* An app declares toolkits and data at
   mount points, each independently published and versioned, resolved from a
   provides/requires graph.
-* *Per-run declarative jails for the end user* — no daemon, no root, no
-  kernel module; tighten any command's filesystem view at invocation time.
-* *Object-level encryption with per-subtree audiences* — hierarchical keys,
-  crypto-shredding revocation, in-memory-only plaintext — in an application
-  distribution format.
-* *One signed-image algebra at every level* — sources, runtimes, payloads,
-  packages, registries — verified the same way, with verification that
-  survives redistribution through untrusted mirrors.
+* *Per-run declarative jails for the end user.* There is no daemon, no
+  root, and no kernel module, and any command's filesystem view can be
+  tightened at invocation time.
+* *Object-level encryption with per-subtree audiences* in an application
+  distribution format. It offers hierarchical keys, crypto-shredding
+  revocation, and in-memory-only plaintext.
+* *One signed-image algebra at every level*, covering sources, runtimes,
+  payloads, packages, and registries. All of them are verified the same
+  way, with verification that survives redistribution through untrusted
+  mirrors.
 
-== Where tebako loses, stated plainly.
+== Where tebako loses
 
 * *It is ruby-shaped today.* The contracts are language-neutral; the
-  published artifacts are not — yet. Until the python and julia factories
+  published artifacts are not yet. Until the python and julia factories
   follow the ruby one, the language packagers keep their home field.
 * *No orchestration, no dev loop, no store.* There is no compose, no
-  kubernetes, no browsable catalog. Registries are plain YAML files on the
-  developer's own git host — the reference syntax (`tfs:github:` /
-  `tfs:gitlab:` / `tfs+https://` / `file://`, `?sha256=` pins) deliberately
-  has _no default service_. And tebako doesn't develop with you: it presses
-  a finished, resolved app; it is not where you hack.
-* *Per-platform artifacts for native code.* A standalone package is native —
-  one artifact per platform triplet, built in a matrix. Only pure-language
-  payloads collapse to one universal image; native extensions stay
-  per-triplet, and a wrong ABI line is a named error, never a segfault.
+  kubernetes, and no browsable catalog. Registries are plain YAML files on
+  the developer's own git host, and the reference syntax (`tfs:github:` /
+  `tfs:gitlab:` / `tfs+https://` / `file://`, with `?sha256=` pins)
+  deliberately has _no default service_. Tebako also does not develop
+  alongside the programmer: it presses a finished, resolved app, and it is
+  not where hacking happens.
+* *Per-platform artifacts for native code.* A standalone package is native,
+  with one artifact per platform triplet built in a matrix. Only
+  pure-language payloads collapse to one universal image; native extensions
+  stay per-triplet, and a wrong ABI line is a named error, never a segfault.
 * *Jails are VFS policy, not a security boundary.* The declarative ro/rw
-  jail controls what the process can see and touch through the filesystem —
-  it does not contain hostile native code. That is what VMs are for, and
-  this page won't pretend otherwise.
+  jail controls what the process can see and touch through the filesystem,
+  and it does not contain hostile native code. That is what VMs are for, and
+  this page does not pretend otherwise.
 * *The integrity story is opt-in.* Signing and encryption are the
-  publisher's choice; an unsigned package runs with a loud warning,
+  publisher's choice, and an unsigned package runs with a loud warning,
   recorded in the audit journal. The distro channel's always-on signed
-  metadata is the stronger default — tebako's answer is that verification,
-  when a signature exists, is strict and fails closed with named exit
-  codes, and `TEBAKO_REQUIRE_SIGNED=1` makes it mandatory where the
-  environment demands it.
+  metadata is the stronger default; the tebako answer is that verification,
+  when a signature exists, is strict and fails closed with named exit codes,
+  and `TEBAKO_REQUIRE_SIGNED=1` makes it mandatory where the environment
+  demands it.
 
-== Keep reading.
+== Further reading
 
-Then the platform story: link:/docs/architecture/overview/[the overview]
-for what tebako is · link:/docs/architecture/runtime-as-image/[runtime as
-image] for the shared cache · link:/docs/architecture/dispatch/[dispatch]
-for per-invocation version management ·
+The platform story continues on link:/docs/architecture/overview/[the
+overview] for what tebako is, on
+link:/docs/architecture/runtime-as-image/[runtime as image] for the shared
+cache, on link:/docs/architecture/dispatch/[dispatch] for per-invocation
+version management, on
 link:/docs/architecture/chain-of-trust/[the chain of trust] for the
-integrity machinery · link:/docs/architecture/store/[the store] for where
-everything lives.
+integrity machinery, and on link:/docs/architecture/store/[the store] for
+where everything lives.

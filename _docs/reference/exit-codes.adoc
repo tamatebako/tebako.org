@@ -2,13 +2,14 @@
 title: Exit codes
 heading: Every exit code, one table.
 lede: >-
-  The complete named-exit table: every loader refusal from 64 through 79,
-  plus the three codes that live outside the loader block. Every loader
-  failure prints a one-line reason before exiting — read that line first.
+  This page carries the complete named-exit table: every loader
+  refusal from 64 through 79, plus the three codes that live outside
+  the loader block. Every loader failure prints a one-line reason
+  before exiting, and that line is the first thing to read.
 description: >-
-  The complete tebako exit-code table: loader codes 64 to 79, the
-  ENOKEY, factory, and press-time codes outside the block, and what each
-  refusal means.
+  This page is the complete tebako exit-code table: loader codes 64 to
+  79, the ENOKEY, factory, and press-time codes outside the block, and
+  the meaning of each refusal.
 ---
 
 // normative: verified against crates/tpkg/src/lib.rs (EX_TEBAKO_* 65-79),
@@ -27,7 +28,7 @@ The codes exist so scripts can branch.
 
 | 64
 | usage
-| the command line itself was wrong — a bad flag or a missing argument; the usage line prints
+| the command line itself was wrong — a bad flag or a missing argument — and the usage line prints
 
 | 65
 | manifest
@@ -47,7 +48,7 @@ The codes exist so scripts can branch.
 
 | 69
 | unavailable
-| an artifact could not be resolved — offline miss or download failure; check TEBAKO_OFFLINE, the network, the release page
+| an artifact could not be resolved — an offline miss or a download failure; TEBAKO_OFFLINE, the network, and the release page are the first places to look
 
 | 70
 | sha256
@@ -93,16 +94,8 @@ The codes exist so scripts can branch.
 
 == The three outside the block.
 
-The everyday two: 69 (something could not be fetched — check
-`TEBAKO_OFFLINE` first) and 73 (a malformed jail policy — fail closed,
-nothing mounted).
+The two everyday codes are 69 (something could not be fetched — `TEBAKO_OFFLINE` is checked first) and 73 (a malformed jail policy — the run fails closed and nothing mounts).
 
-Three codes live outside the loader block, each owned by its own layer:
-`126` is not a loader exit but the `ENOKEY` errno — a read of a sealed
-(encrypted) path without the key material answers it, and a payload that
-surfaces the errno exits with it; `132` is the runtime factory's refusal
-of a pre-era or corrupt source tarball — you meet it in factory CI, not
-on a user machine; `138` is a press-time miss: `TEBAKO_OFFLINE=1` with
-the bootstrap not yet in the local store.
+Three codes live outside the loader block, each owned by its own layer: `126` is not a loader exit but the `ENOKEY` errno — a read of a sealed (encrypted) path without the key material answers it, and a payload that surfaces the errno exits with it; `132` is the runtime factory's refusal of a pre-era or corrupt source tarball — it appears in factory continuous integration (CI), not on a user machine; `138` is a press-time miss: `TEBAKO_OFFLINE=1` with the bootstrap not yet in the local store.
 
 See also: link:/docs/guides/debug/[Debug & logging] · link:/docs/guides/trace/[Trace a packaged app] · link:/docs/reference/environment/[Environment variables]

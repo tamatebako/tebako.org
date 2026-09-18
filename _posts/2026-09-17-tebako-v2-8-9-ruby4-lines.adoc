@@ -13,8 +13,8 @@ author:
   social_links:
     - https://github.com/tamatebako
 excerpt: >-
-  v2.8.9 pairs with the 0.16.25 runtime factory to make ruby 4.0 a
-  first-class tebako target: one payload version can ship per
+  v2.8.9 has paired with the 0.16.25 runtime factory to make ruby 4.0
+  a first-class tebako target: one payload version can ship per
   interpreter line, the user picks the line with one pin, extension
   slices bind to the exact line they were built against, and windows
   runtimes whose files the OS loader must see gain the materialize
@@ -23,7 +23,7 @@ excerpt: >-
 
 = tebako v2.8.9: ruby 4.0 runtime lines, line-pinned extension slices, and the windows materialize tier
 
-tebako v2.8.9 is out, and the headline is not in the CLI itself but in
+tebako v2.8.9 has shipped, and the headline is not in the CLI itself but in
 what the packaging model now expresses cleanly: *one application, more
 than one interpreter line.* The ruby runtime factory's 0.16.25 line
 builds ruby 4.0.6 — the newest and fastest interpreter line — for every
@@ -66,8 +66,8 @@ closure — bind to one precise base inventory by construction. When the
 base ships two lines, the closures genuinely differ, so each line gets
 its own slice release, pinned exactly: a slice built against
 `1.16.9-ruby4.0` attaches to that line and is skipped by name on any
-other. Both lines' slices can sit in one store side by side; dispatch
-attaches the one matching the base you run.
+other. Both lines' slices can sit in one store side by side; dispatch attaches
+the one matching the base that runs.
 
 Making that pin writable took a grammar widening in this release:
 version constraints now accept the variant suffix that payload versions
@@ -79,12 +79,13 @@ for tebako v2.8.9 or newer.
 == The windows materialize tier
 
 Some runtimes ship files the operating system's own loader must read
-from real disk — windows DLLs are the canonical case; an in-memory VFS
-page is invisible to `LoadLibrary`. v2.8.9 adds a boot tier for that:
-a runtime whose env image declares it has its loader-visible surface
-extracted once into tebako's exec cache, digest-verified, and reused on
-every later boot. The store stays the single source of the bytes, and a
-cache entry that fails verification is rebuilt, never trusted.
+from real disk — windows DLLs are the canonical case; an in-memory
+virtual filesystem (VFS) page is invisible to `LoadLibrary`. v2.8.9
+adds a boot tier for that: a runtime whose env image declares it has
+its loader-visible surface extracted once into tebako's exec cache,
+digest-verified, and reused on every later boot. The store stays the
+single source of the bytes, and a cache entry that fails verification
+is rebuilt, never trusted.
 
 The python runtime's windows line is the first consumer and ships with
 its next factory release; ruby needs no such tier today. Payload authors
@@ -102,4 +103,4 @@ by the driver at boot.
   stay fully supported.
 
 The runtime factory index lists every published line and triplet;
-`tebako info runtimes` shows the lines your store has cached.
+`tebako info runtimes` shows the lines in the local store's cache.

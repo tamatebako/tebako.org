@@ -30,9 +30,9 @@ The chain is short and every hop is verified:
   feedstocks build per platform and publish release artifacts with
   SHA-256 sums.
 * *A registry points, it does not serve.* A registry is one YAML file
-  hosted anywhere a file can live — your own releases, any git host.
-  It mirrors only what resolution needs; the artifact stays with the
-  publisher.
+  hosted anywhere a file can live — the publisher's own releases, any
+  git host. It mirrors only what resolution needs; the artifact stays
+  with the publisher.
 * *The store verifies at entry.* When an artifact enters `~/.tebako`,
   it is checked against the published SHA-256 and then kept
   read-only. Runs never re-verify — the question was answered at
@@ -82,8 +82,8 @@ of signed artifacts is always strict.
 == Byte-identical, always
 
 The store never re-wraps, re-stitches, or patches a downloaded
-artifact. What your users run is byte-identical with what you
-published; the digest beside it is the proof.
+artifact. What users run is byte-identical with what the publisher
+released; the digest beside it is the proof.
 
 == The series, and what comes next
 

@@ -2,79 +2,81 @@
 title: Runtime as image
 heading: Runtime as image.
 lede: >-
-  A tebako runtime is not one binary. It is two artifacts — an interpreter
-  executable and an env .tfs image — downloaded once, sha256-verified, and
-  mounted — never extracted — into the same process as the payloads it runs.
+  A tebako runtime is not one binary. It is two artifacts, an interpreter
+  executable and an env .tfs image, downloaded once, sha256-verified, and
+  mounted, never extracted, into the same process as the payloads it runs.
 description: >-
-  A tebako runtime is two artifacts — the interpreter exe and the env .tfs
-  image — co-mounted with your payloads in one process. TEBAKO_RUNTIME_IMAGE,
-  the single-owner mount root, and the TEBAKO_MOUNT_ROOT override.
+  A tebako runtime is two artifacts, the interpreter exe and the env .tfs
+  image, co-mounted with the payloads in one process. This page covers
+  TEBAKO_RUNTIME_IMAGE, the single-owner mount root, and the
+  TEBAKO_MOUNT_ROOT override.
 ---
 
 // normative: spec 17, spec 06
 
 [NOTE]
 ====
-Status: shipped — the Rust driver mounts the env image and payload images in
-one process; contract-2 runtimes ship from the runtime factory.
+The Rust driver mounts the env image and payload images in one process, and
+contract-2 runtimes ship from the runtime factory.
 
-Status: planned — the windows exec and locking port: the handoff is shipped on
+The windows exec and locking port is planned: the handoff is shipped on
 macOS and Linux, and the windows port is still landing.
 ====
 
-== Why the runtime is two artifacts.
+== Why the runtime is two artifacts
 
-The interpreter changes on the ruby release line; the files it runs against —
-stdlib, gems, its own layout declaration — change with it, but they are
-_content_, and content wants different treatment than a process entry point.
-Splitting the pair buys four things:
+The interpreter changes on the ruby release line, and the files it runs
+against (stdlib, gems, and its own layout declaration) change with it, but
+they are _content_, and content wants different treatment than a process
+entry point. Splitting the pair buys four things:
 
 Share::
 The pair is downloaded once per machine into the shared cache and reused by
-every package that names it — never duplicated into each package's bytes.
+every package that names it, never duplicated into each package's bytes.
 
 Verify::
 The image is a first-class content object with its own sha256 trust anchor,
-verified at install and re-verified only on re-fetch — **never per run**.
+verified at install and re-verified only on re-fetch, **never per run**.
 
-Mount, don't extract::
-The cache holds immutable artifacts only — no extracted layout tree. At run
-time the driver mounts the image whole; nothing materializes a mutable copy
-of an immutable artifact.
+Mounting, not extraction::
+The cache holds immutable artifacts only, with no extracted layout tree. At
+run time the driver mounts the image whole; nothing materializes a mutable
+copy of an immutable artifact.
 
 Release independently::
 The runtime factory publishes the pair per version × platform triplet, with
-its own manifest and checksums. The product consumes the published release —
-it never rebuilds a runtime.
+its own manifest and checksums. The product consumes the published release,
+and it never rebuilds a runtime.
 
-== Two artifacts, one runtime.
+== Two artifacts, one runtime
 
 [NOTE]
 ====
-Status: shipped — dual-published since the image era.
+The pair is dual-published as of the image era.
 ====
 
 Every image-era release of
 link:https://github.com/tamatebako/tebako-runtime-ruby/releases[tebako-runtime-ruby]
-publishes the pair plus a machine index (`manifest.json`, carrying an `image`
-key and the `contract_version`) and SHA256SUMS:
+publishes the pair plus a machine index (`manifest.json`, carrying an
+`image` key and the `contract_version`) and SHA256SUMS:
 
 A · the interpreter — `tebako-runtime-<ver>-<ruby>-<triplet>[.exe]`::
-The process entry point, statically linked against the Rust runtime driver
-(link:https://github.com/tamatebako/tebako/tree/main/crates/tebako-driver[crates/tebako-driver]
-— the v1 C++ `tebako-main.cpp` is retired). At exec it is handed the path of
+The interpreter is the process entry point, statically linked against the
+Rust runtime driver
+(link:https://github.com/tamatebako/tebako/tree/main/crates/tebako-driver[crates/tebako-driver];
+the v1 C++ `tebako-main.cpp` is retired). At exec it is handed the path of
 its env image and mounts it instead of any embedded image.
 
 B · the env image — `tebako-runtime-<ver>-<ruby>-<triplet>.tfs`::
-The runtime's files — `lib/ruby`, gems, everything the interpreter's load
-paths expect — plus the pair declaration
-`/lib/tebako/layout.yaml`. Installed read-only (0444), mounted whole at the
-runtime root.
+The image holds the runtime's files (`lib/ruby`, gems, and everything the
+interpreter's load paths expect) plus the pair declaration
+`/lib/tebako/layout.yaml`. It is installed read-only (0444) and mounted
+whole at the runtime root.
 
-== The pair, the handoff, the boot.
+== The pair, the handoff, the boot
 
-The exact wire grammar is the runtime driver contract; the loader's side of
-it is the launcher ABI. From cache entry to running interpreter:
+The exact wire grammar is the runtime driver contract, and the loader's side
+of it is the launcher ABI. From cache entry to running interpreter:
 
 ++++
 <figure role="img" aria-label="From cache to boot: the cache entry holds the interpreter and the env image; the loader exports TEBAKO_RUNTIME_IMAGE and execs the interpreter with image triples and an entry; the driver mounts the env image whole at the runtime root, verifies the pair, mounts payloads, installs the jail, rewrites argv">
@@ -168,32 +170,32 @@ it is the launcher ABI. From cache entry to running interpreter:
 
 _Figure 1 — From cache to boot: the cache entry, the exec handoff, and the driver's boot sequence in one process._
 
-== The handoff, stated exactly.
+== The handoff, stated exactly
 
-Whoever launches the runtime — the bootstrap of a stitched package, the shim
-in managed mode, or `tebako run` — exports
+Whoever launches the runtime (the bootstrap of a stitched package, the shim
+in managed mode, or `tebako run`) exports
 `TEBAKO_RUNTIME_IMAGE=<absolute path of the cached .tfs>` and execs the
 interpreter. The driver mounts that image **whole at the runtime root as the
-first mount**, then the payload triples in argv order (the image-era env var
-is a bare path mounted whole — the `-` semantics without a triple). On the
+first mount**, then the payload triples in argv order; the image-era env var
+is a bare path mounted whole, the `-` semantics without a triple. On the
 standalone path the trailer's runtime reference carries the bare `;image`
 flag that tells the loader to resolve and verify the image alongside the
 executable.
 
-Generations meet fail-closed. A driver that implements the runtime driver
-contract's grammar declares **contract version 2** — compiled in as
+Generations meet and fail closed. A driver that implements the runtime
+driver contract's grammar declares **contract version 2**, compiled in as
 `TEBAKO_CONTRACT_VERSION` and declared in the release manifest, and the two
 must agree. The loader negotiates _before any checksum acceptance_: an
-unsupported contract is exit `75`, naming both generations and the remedy —
-upgrade tebako, or pin an older runtime — never a silent accept.
+unsupported contract is exit `75`, naming both generations and the remedy,
+to upgrade tebako or pin an older runtime, and it is never a silent accept.
 
-== The mount root has one owner.
+== The mount root has one owner
 
-The runtime root — ruby: `/__tfs__` on POSIX, `A:/t` on windows, short by
-owner decision for MAX_PATH headroom — is a contract value, so it has exactly
-one authoritative source: the patch literals in
+The runtime root (ruby: `/__tfs__` on POSIX and `A:/t` on windows, kept
+short by owner decision for MAX_PATH headroom) is a contract value, so it
+has exactly one authoritative source: the patch literals in
 link:https://github.com/tamatebako/ruby[tamatebako/ruby]. Everything
-downstream **flows** it; nothing re-authors it (the SSOT invariant):
+downstream **flows** it, and nothing re-authors it (the SSOT invariant):
 
 ++++
 <figure role="img" aria-label="Mount-root flow: tamatebako/ruby patch literals, source tarball tebako-mount-root manifest, runtime factory, interpreter exe and env image layout.yaml pair, driver verification with exit 78 on mismatch">
@@ -262,38 +264,38 @@ are two flowings of the same literal, built as one pair. The driver checks
 them against each other on every boot: that is what makes a stale or
 mismatched pairing a named refusal instead of a broken load path.
 
-== Moving the root: TEBAKO_MOUNT_ROOT.
+== Moving the root: TEBAKO_MOUNT_ROOT
 
 [NOTE]
 ====
-Status: shipped — locked 2026-08-08.
+The override is shipped, locked 2026-08-08.
 ====
 
-The baked root is the per-platform **default, not the only spelling**. Set
-`TEBAKO_MOUNT_ROOT` in the runtime's environment and the driver mounts the
-env image at that root instead — and everything downstream follows: era-2
-rbconfig emits `ENV["TEBAKO_MOUNT_ROOT"] || <baked>`, the io-routing patches
-read the driver-reported root, and declared payload mounts qualify onto the
-override's drive exactly as they do the baked root's.
+The baked root is the per-platform **default, not the only spelling**. When
+`TEBAKO_MOUNT_ROOT` is set in the runtime's environment, the driver mounts
+the env image at that root instead, and everything downstream follows:
+era-2 rbconfig emits `ENV["TEBAKO_MOUNT_ROOT"] || <baked>`, the io-routing
+patches read the driver-reported root, and declared payload mounts qualify
+onto the override's drive exactly as they do the baked root's.
 
 Two gates keep the override honest, in order:
 
 Gate 1 — form, before any mount::
 The value must be an absolute path (`/…` or drive-qualified `X:/…`) with no
 trailing slash and no `..`. A malformed value is **exit 65, naming the
-variable** — before anything mounts.
+variable**, before anything mounts.
 
 Gate 2 — grant, post-mount::
 The image must declare `mount_root_override: true` (layout schema_minor 1).
-An image without the grant predates the override era — its rbconfig is pinned
-to the baked root — so the driver refuses with **exit 78, naming both the
-override and the image**. Never a boot whose load paths point at an unmounted
-root.
+An image without the grant predates the override era, because its rbconfig
+is pinned to the baked root, so the driver refuses with **exit 78, naming
+both the override and the image**. There is never a boot whose load paths
+point at an unmounted root.
 
-== The cache entry.
+== The cache entry
 
 Under `~/.tebako`, a runtime entry holds immutable artifacts and their
-trusted markers — nothing else:
+trusted markers, nothing else:
 
 [source,text]
 ----
@@ -306,51 +308,51 @@ runtimes/<lang>-<lv>-<ver>-<triplet>/
 ----
 
 The `.sha256` marker _is_ the trust anchor: its presence means the artifact
-was sha256-verified at install; it is re-verified only when re-fetched,
-**never per run**. Installs are tmp + rename under a per-entry flock — a
-partial install is invisible — and a checksum mismatch on download deletes
+was sha256-verified at install, and it is re-verified only when re-fetched,
+**never per run**. Installs are tmp + rename under a per-entry flock, so a
+partial install is invisible, and a checksum mismatch on download deletes
 the download and leaves the cache untouched.
 
 The one place extraction still exists is _press time_, and it is not a cache
-shape: when the packager needs the runtime's files as a build environment, it
-extracts the cached image in-process through the TFS ABI into the build
-prefix — rebuilt per press, never stored back. The run side mounts; it never
-extracts.
+shape: when the packager needs the runtime's files as a build environment,
+it extracts the cached image in-process through the TFS ABI into the build
+prefix, rebuilt per press and never stored back. The run side mounts, and it
+never extracts.
 
-== Why .tfs and not .dwarfs.
+== Why .tfs and not .dwarfs
 
-The env image's metadata is serialized with **FlatBuffers** — the dwarfs-t
-writer's default in our builds — which upstream DwarFS cannot read. A format
-upstream can't open doesn't get upstream's extension: `.tfs` marks a TFS
-image (content-detected by the reader regardless of extension), while
-`.dwarfs` stays reserved for upstream-compatible images. The writer binding
-lives in
-link:https://github.com/tamatebako/dwarfs-t-rs[dwarfs-t-rs] — image creation
-is in-process, never a shelled mkdwarfs.
+The env image's metadata is serialized with **FlatBuffers**, the dwarfs-t
+writer's default in these builds, which upstream DwarFS cannot read. A
+format that upstream cannot open does not get upstream's extension: `.tfs`
+marks a TFS image (content-detected by the reader regardless of extension),
+while `.dwarfs` stays reserved for upstream-compatible images. The writer
+binding lives in
+link:https://github.com/tamatebako/dwarfs-t-rs[dwarfs-t-rs], and image
+creation is in-process, never a shelled mkdwarfs.
 
 Format is orthogonal to role: the extension and the `format_id` answer
-exactly one question — how to read these bytes. Payloads pressed today
-default to the limnifs format (since CLI v0.2.0); the runtime factory's env
-images are dwarfs-t-native. Both are `.tfs`, and the runtime contract on this
-page doesn't change either way.
+exactly one question, how to read these bytes. Payloads pressed today
+default to the limnifs format (since CLI v0.2.0), and the runtime factory's
+env images are dwarfs-t-native. Both are `.tfs`, and the runtime contract on
+this page does not change either way.
 
-== Stated plainly.
+== Edge cases
 
 [%header,cols="2,3"]
 |===
 | Situation | What actually happens
 
 | boot without TEBAKO_RUNTIME_IMAGE
-| A legal shape — a bare interpreter — but the driver names the absence on stderr (stdout belongs to the payload). In managed mode a missing handoff is a launcher bug, surfaced loudly — not a silent fallback onto an embedded copy.
+| The shape is legal, a bare interpreter, but the driver names the absence on stderr (stdout belongs to the payload). In managed mode a missing handoff is a launcher bug, surfaced loudly, and there is no silent fallback onto an embedded copy.
 
 | exe from one build, image from another
-| Refused by name: the pair check compares the image's declared mount_root against the exe's compiled-in value post-mount, before the interpreter inits — exit 78 with both values printed. Never a ruby LoadError.
+| The boot is refused by name: the pair check compares the image's declared mount_root against the exe's compiled-in value post-mount, before the interpreter inits, giving exit 78 with both values printed and never a ruby LoadError.
 
 | writes into a mounted image
-| EROFS. Payload and env images are read-only forever; write and encryption overlays live only in the Rust TFS layer, and dwarfs-t never learns to write (the transforms law).
+| The write fails with EROFS. Payload and env images are read-only forever; write and encryption overlays live only in the Rust TFS layer, and dwarfs-t never learns to write (the transforms law).
 
 | windows today
-| The handoff is shipped on macOS and Linux; the windows exec and locking port is partial (roadmap 02). The contract itself — roots, overrides, exit codes — is platform-uniform by design.
+| The handoff is shipped on macOS and Linux, and the windows exec and locking port is partial (roadmap 02). The contract itself (roots, overrides, and exit codes) is platform-uniform by design.
 |===
 
 See also: link:/docs/architecture/factories/[Where the pair is built] ·
