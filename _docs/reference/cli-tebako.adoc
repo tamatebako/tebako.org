@@ -2,14 +2,14 @@
 title: tebako CLI
 heading: The tebako command, verb by verb.
 lede: >-
-  The tebako CLI is the packager and the store front end: it presses
-  packages, runs them, traces them, checks them, manages the store and
-  the registries, and publishes payloads. Every usage line below is the
-  shipped binary's own help text.
+  The tebako command-line interface (CLI) is the packager and the store
+  front end: it presses packages, runs them, traces them, checks them,
+  manages the store and the registries, and publishes payloads. Every
+  usage line below is the shipped binary's own help text.
 description: >-
-  The tebako CLI reference: press, run, the trace family, check, cache,
-  registries, install, uninstall, info, inspect, publish, bundle, and
-  doctor — usage lines quoted from the shipped binary.
+  This page is the tebako CLI reference: press, run, the trace family,
+  check, cache, registries, install, uninstall, info, inspect, publish,
+  bundle, and doctor — usage lines quoted from the shipped binary.
 ---
 
 // normative: every usage line transcribed from crates/tebako-cli/src/
@@ -32,19 +32,14 @@ tebako press -r <root> -e <entry> [-o <output>] [-p <prefix>] [-c <cwd>]
              [--carry all|none|<name,...>] [--share <name,...>]
 ----
 
-The `lean` and `fat` mode names stay accepted as deprecated aliases of
-`shared-runtime` and `self-contained`. A suite presses one package with
-N commands:
+The `lean` and `fat` mode names stay accepted as deprecated aliases of `shared-runtime` and `self-contained`. A suite presses one package with N commands:
 
 [source,text]
 ----
 tebako press --suite <suite.yaml> [-o <output>] [-p <prefix>] [-R <ruby>]
 ----
 
-Signing at press resolves through the settings registry — the CLI flag
-wins, then the environment, then the compose document. Only the CLI may
-name a key. The task-oriented walkthrough is the
-link:/docs/guides/package-ruby/[Package a Ruby app] guide.
+Signing at press resolves through the settings registry — the CLI flag wins, then the environment, then the compose document. Only the CLI may name a key. The task-oriented walkthrough is the link:/docs/guides/package-ruby/[Package a Ruby app] guide.
 
 == Run: run.
 
@@ -54,26 +49,20 @@ tebako run <pkg> [--jail <spec>] [--mount <host:mount:ro|rw>]... [--no-host]
             [--] [<args>...]
 ----
 
-Everything after `--` reaches the payload verbatim; the flags before it
-shape this run only. The guide is
-link:/docs/guides/run/[Run a packaged app].
+Everything after `--` reaches the payload verbatim; the flags before it shape this run only. The guide is link:/docs/guides/run/[Run a packaged app].
 
 == Trace: run, cover, import, explain.
 
-The interception-bus toolkit. The task-oriented walkthrough is the
-link:/docs/guides/trace/[Trace a packaged app] guide.
+The trace verbs form the interception-bus toolkit; the task-oriented walkthrough is the link:/docs/guides/trace/[Trace a packaged app] guide.
 
-`tebako trace run` runs a package under the record policy with the trace
-bus armed and synthesizes a suggested manifest — commented YAML on
-stdout, never applied:
+`tebako trace run` runs a package under the record policy with the trace bus armed and synthesizes a suggested manifest — commented YAML on stdout, never applied:
 
 [source,text]
 ----
 tebako trace run <pkg> [--capture <path>] [--out <path>] [--] [<args>...]
 ----
 
-`tebako trace cover` subtracts the inside stream from an outside capture
-and reports the escapes (exit 0 clean, 1 escapes, 2 error):
+`tebako trace cover` subtracts the inside stream from an outside capture and reports the escapes (exit 0 clean, 1 escapes, 2 error):
 
 [source,text]
 ----
@@ -81,17 +70,14 @@ tebako trace cover --inside <tfs.json> --outside <retrace.json> --prefix <path>
                    [--pid N] [--window SECS] [--exclude-probes] [--json] [--layer libc|kernel]
 ----
 
-`tebako trace import procmon` converts a procmon CSV export into the
-retrace-shaped JSON that cover consumes (exit 0 converted, 1 zero
-entries, 2 error):
+`tebako trace import procmon` converts a procmon CSV export into the retrace-shaped JSON that cover consumes (exit 0 converted, 1 zero entries, 2 error):
 
 [source,text]
 ----
 tebako trace import procmon <capture.csv>
 ----
 
-`tebako trace explain` replays a capture into the hop chain and names
-the first red hop (exit 0 clean, 1 red hop, 2 error):
+`tebako trace explain` replays a capture into the hop chain and names the first red hop (exit 0 clean, 1 red hop, 2 error):
 
 [source,text]
 ----
@@ -100,8 +86,7 @@ tebako trace explain <capture.jsonl>
 
 == Check.
 
-The payload's in-image acceptance checks, runnable against a name, an
-image, a package, or a compose document:
+The verb runs the payload's in-image acceptance checks against a name, an image, a package, or a compose document:
 
 [source,text]
 ----
@@ -124,13 +109,7 @@ tebako info [topic] [--remote] [--json]
 tebako inspect <artifact> [flags]
 ----
 
-`tebako install` installs a payload and registers its shims;
-`tebako uninstall` removes the shims and the cache entry. `tebako info`
-reports on the store and its contents — the topics are system,
-runtimes, payloads, shims, registries, and store. `tebako inspect`
-reads a single artifact; `--contract` prints the contract card: the
-era, the contract versions, mount_root, the ABI, and the trust verdict.
-The guide is link:/docs/guides/info-inspect/[info & inspect].
+`tebako install` installs a payload and registers its shims; `tebako uninstall` removes the shims and the cache entry. `tebako info` reports on the store and its contents — the topics are system, runtimes, payloads, shims, registries, and store. `tebako inspect` reads a single artifact; `--contract` prints the contract card: the era, the contract versions, mount_root, the ABI, and the trust verdict. The guide is link:/docs/guides/info-inspect/[info & inspect].
 
 == Registries: add, list, update.
 
@@ -141,10 +120,7 @@ tebako list-registries
 tebako update-registries
 ----
 
-`tebako add-registry` registers a tpkg-registry.yaml; `tebako
-update-registries` refreshes the dispatch-time registry cache. The
-guides are link:/docs/guides/publish/[Publish to your own registry] and
-link:/docs/guides/library/[Curate a local library].
+`tebako add-registry` registers a tpkg-registry.yaml; `tebako update-registries` refreshes the dispatch-time registry cache. The guides are link:/docs/guides/publish/[Publish to your own registry] and link:/docs/guides/library/[Curate a local library].
 
 == Publish.
 
@@ -157,9 +133,7 @@ tebako publish --name <app> [--version <v>] --release tfs:github:<owner>/<repo>[
                [--registry-out <path>] [--skip-verify]
 ----
 
-Your GitHub releases are the storage; the command writes the index your
-users add. The walkthrough is the
-link:/docs/guides/publish/[publish guide].
+The publisher's GitHub releases are the storage; the command writes the index consumers add. The walkthrough is the link:/docs/guides/publish/[publish guide].
 
 == Bundle.
 
@@ -168,10 +142,7 @@ link:/docs/guides/publish/[publish guide].
 tebako bundle <name[@ver]> --output <dir> [--config <org.yaml>] [--archive tar.gz]
 ----
 
-An offline bundle: the payload's whole dependency closure plus the
-runtimes it needs, assembled into one directory (optionally archived)
-that installs and runs with no network. Bundling draws from the local
-store and refuses a partial set by name — cache the closure first.
+The verb assembles an offline bundle: the payload's whole dependency closure plus the runtimes it needs, gathered into one directory (optionally archived) that installs and runs with no network. Bundling draws from the local store and refuses a partial set by name — the closure is cached first.
 
 == Diagnose: doctor.
 
@@ -180,10 +151,6 @@ store and refuses a partial set by name — cache the closure first.
 tebako doctor [--json]
 ----
 
-The read-only diagnostics surface: five sections (store, dispatch,
-network, trust, registries), every check a named verdict, exit 0 when
-healthy and 1 with a problem count. `--json` prints the same report as a
-machine-readable document. The dispatch section is the `tebako-shim
-doctor` report rendered in place.
+The verb is the read-only diagnostics surface: five sections (store, dispatch, network, trust, registries) carry a named verdict on every check, with exit 0 when healthy and 1 with a problem count. `--json` prints the same report as a machine-readable document. The dispatch section is the `tebako-shim doctor` report rendered in place.
 
 See also: link:/docs/reference/exit-codes/[Exit codes] · link:/docs/reference/environment/[Environment variables] · link:/docs/guides/install/[Install tebako]

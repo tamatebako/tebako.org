@@ -2,12 +2,13 @@
 title: Environment variables
 heading: Every variable, one table.
 lede: >-
-  The whole TEBAKO_* surface: what each variable does, who reads it, and
-  what a bad value costs. A value that cannot be parsed is never silently
-  ignored.
+  This page is the whole TEBAKO_* surface: what each variable does, who
+  reads it, and what a bad value costs. A value that cannot be parsed
+  is never silently ignored.
 description: >-
-  Every TEBAKO_* environment variable: who reads it, its grammar, its
-  default, what it does, and the named error when it is malformed.
+  This page lists every TEBAKO_* environment variable: who reads it,
+  its grammar, its default, what it does, and the named error when it
+  is malformed.
 ---
 
 // normative: every row verified against the product code 2026-09-08
@@ -21,23 +22,17 @@ description: >-
 
 == Three roles.
 
-Inputs:: You set these: the store root, mirrors, offline and signing modes,
-the jail policy, version pins, diagnostics. They shape resolution and the
-run.
+Inputs:: The operator sets these: the store root, mirrors, offline and signing modes, the jail policy, version pins, and diagnostics. They shape resolution and the run.
 
-Channels:: The loader or the driver sets these for the runtime process —
-the env image, the mount table, the exec cache. Payload code may read the
-discovery ones; setting a channel yourself is overwritten or stripped.
+Channels:: The loader or the driver sets these for the runtime process — the env image, the mount table, the exec cache. Payload code may read the discovery ones; a channel the operator sets is overwritten or stripped.
 
-Sentinels:: Internal handshakes between a process and its own re-exec.
-Never set one: a sentinel you write can only lie about work that never
-happened.
+Sentinels:: These are internal handshakes between a process and its own re-exec. Setting one can only lie about work that never happened.
 
 == The consolidated table.
 
 === The store and the fetch
 
-Operator inputs. You set these; they shape where artifacts live and where they come from.
+Operator inputs: the operator sets these, and they shape where artifacts live and where they come from.
 
 [cols="1,2,1,2,3,2"]
 |===
@@ -47,63 +42,63 @@ Operator inputs. You set these; they shape where artifacts live and where they c
 | bootstrap · shim · CLI · signer · tfs journal
 | directory path
 | $HOME/.tebako on POSIX · %LOCALAPPDATA%\tebako on windows · fallbacks reach %USERPROFILE%
-| The machine store: runtimes, payloads, shims, registries, keys, trust, the audit journal.
+| The variable names the machine store, which holds the runtimes, payloads, shims, registries, keys, trust material, and the audit journal.
 | The value is used verbatim. When no home resolves at all, the bootstrap fails closed naming TEBAKO_HOME (exit 74, EX_TEBAKO_IO).
 
 | `TEBAKO_OFFLINE`
 | bootstrap · shim · tebako-resolve
 | flag (truthiness differs by reader — see below)
 | unset (online)
-| Cache hit or a named error (exit 69, EX_TEBAKO_UNAVAILABLE) — never a fetch.
-| Not parsed — see the truthiness note below.
+| The run is a cache hit or a named error (exit 69, EX_TEBAKO_UNAVAILABLE) — never a fetch.
+| The value is not parsed — see the truthiness note below.
 
 | `TEBAKO_RUNTIME_MIRROR`
 | bootstrap · CLI (press)
 | base URL — https or file://
 | https://github.com/tamatebako/tebako-runtime-ruby/releases/download
-| Where runtime artifacts (exe + env image + index) are fetched from.
+| The variable names where runtime artifacts (exe + env image + index) are fetched from.
 | No named error at read time; an unreachable mirror surfaces as exit 69.
 
 | `TEBAKO_TLS_PLATFORM_ROOTS`
 | tebako-http (every downloading surface)
 | presence flag — set at all, any value
 | unset (bundled webpki-roots)
-| Opt into the OS trust store instead of the bundled roots (corporate MITM proxies).
+| The variable opts the fetch into the OS trust store instead of the bundled roots (corporate machine-in-the-middle (MITM) proxies).
 | n/a — presence, not value.
 
 | `TEBAKO_REQUIRE_SIGNED`
 | bootstrap
 | flag — set, non-empty, ≠ 0
 | unset (unsigned runs with a loud warning + audit journal entry)
-| Fail closed on unsigned packages, and on signed ones when verification is unavailable.
-| An unsigned or unverifiable package: exit 71 (EX_TEBAKO_SIGNATURE).
+| The loader fails closed on unsigned packages, and on signed ones when verification is unavailable.
+| The cost is exit 71 (EX_TEBAKO_SIGNATURE) for an unsigned or unverifiable package.
 
 | `TEBAKO_TRUSTED_ROOT`
 | bootstrap (builds with OpenPGP verification)
 | a root fingerprint, or a path to an armored public key
 | the embedded root fingerprint (EMBEDDED_ROOT_FINGERPRINT)
-| Developer override for the root of trust. A fingerprint alone never suffices — the public key must still reach the trusted keyring; the trailer signature is always cryptographically verified.
+| The variable is the developer override for the root of trust. A fingerprint alone never suffices — the public key must still reach the trusted keyring; the trailer signature is always cryptographically verified.
 | No named error — a value that is not a file is treated as a fingerprint.
 
 | `TEBAKO_NO_PROGRESS`
 | every surface (tebako-term)
 | flag — set, non-empty, ≠ 0
 | unset
-| Force plain progress output: the start + done single lines, no bar, no escape sequences.
+| The variable forces plain progress output: the start + done single lines, no bar, and no escape sequences.
 | n/a.
 
 | `TEBAKO_GITHUB_TOKEN`
 | CLI (publish)
 | a GitHub token string
 | falls back to GITHUB_TOKEN
-| Authenticates the release upload.
-| Both unset → a named packaging error from publish.
+| The variable authenticates the release upload.
+| With both unset, publish answers a named packaging error.
 
 |===
 
 === Policy and dispatch
 
-Operator inputs. You set these; they shape what the run may touch and which version answers. Press-time settings resolve through the settings registry — the CLI wins, then the environment, then the compose document, then the default.
+Operator inputs: the operator sets these, and they shape what the run may touch and which version answers. Press-time settings resolve through the settings registry — the CLI wins, then the environment, then the compose document, then the default.
 
 [cols="1,2,1,2,3,2"]
 |===
@@ -113,49 +108,49 @@ Operator inputs. You set these; they shape what the run may touch and which vers
 | bootstrap (parses, composes manifest ∩ user, re-exports) · driver + preload shim (enforce)
 | open \| deny \| record, then ;host:mount:ro\|rw grants and ;@file argument files — grammar below
 | unset (no policy — the host is fully visible)
-| The run’s host-access policy. record allows everything and journals each access (event=jail-allow) — the discovery mode. Spawned children inherit and re-bind it.
-| Exit 73 (EX_TEBAKO_JAIL) at the bootstrap and the driver; exit 78 (EX_CONFIG) at preload-shim init — always fail-closed.
+| The variable is the run's host-access policy. record allows everything and journals each access (event=jail-allow) — the discovery mode. Spawned children inherit and re-bind it.
+| The cost is exit 73 (EX_TEBAKO_JAIL) at the bootstrap and the driver, and exit 78 (EX_CONFIG) at preload-shim init — always fail-closed.
 
 | `TEBAKO_JAIL_SOURCE`
 | driver (reads) · bootstrap, shim (set)
-| audit label: manifest \| user \| manifest+user, or the exporting surface’s name
-| “TEBAKO_JAIL” when unset
-| The provenance of the bound policy, journaled with every denial.
+| audit label: manifest \| user \| manifest+user, or the exporting surface's name
+| "TEBAKO_JAIL" when unset
+| The variable records the provenance of the bound policy, journaled with every denial.
 | n/a.
 
 | `TEBAKO_JAIL_JOURNAL`
 | tfs journal (reads) · bootstrap, shim (set)
 | file path
 | $TEBAKO_HOME/journal.log
-| Where jail denials (and record-mode allows) append. Best-effort by design.
-| Unopenable → journaling stays silent; the jail’s answers are unaffected.
+| The variable names where jail denials (and record-mode allows) append; the journal is best-effort by design.
+| With an unopenable file, journaling stays silent; the jail's answers are unaffected.
 
 | `TEBAKO_<TOOL>_VERSION`
 | tebako-shim
 | an installed payload version; the var name is the uppercased command name, non-alphanumerics → _
 | unset — the chain falls through to .tebako-tools.yaml, then config defaults, then the registry default
-| Per-invocation version pin — the first link of the dispatch chain.
-| A pin naming a version that is not installed: exit 65, naming the source and the installed set.
+| The variable pins the version per invocation — the first link of the dispatch chain.
+| A pin naming a version that is not installed costs exit 65, which names the source and the installed set.
 
 | `TEBAKO_OVERLAYS`
 | tfs owns the grammar; driver consumption is planned
 | <mount>=<store> pairs, ;-separated, split on the FIRST =; mounts VFS-absolute, stores host-absolute
 | unset
-| Binds COW overlay stores to mounts; spawned children inherit and re-bind identically.
-| Exit 68 (EX_TEBAKO_OVERLAY), quoting the offending entry.
+| The variable binds copy-on-write (COW) overlay stores to mounts; spawned children inherit and re-bind identically.
+| The cost is exit 68 (EX_TEBAKO_OVERLAY), quoting the offending entry.
 
 | `TEBAKO_DECRYPT`
 | tfs owns the grammar; driver consumption is planned
 | <mount>=pgp:<keyid> pairs, ;-separated; the keyid is 16 lowercase hex
 | unset
-| Binds decrypt recipients to mounts. A reference, never key material — resolved against $TEBAKO_HOME/keys/ at the driver’s mount.
-| Exit 68 (EX_TEBAKO_OVERLAY), quoting the offending entry.
+| The variable binds decrypt recipients to mounts; the value is a reference, never key material, resolved against $TEBAKO_HOME/keys/ at the driver's mount.
+| The cost is exit 68 (EX_TEBAKO_OVERLAY), quoting the offending entry.
 
 |===
 
 === The handoff
 
-Channels. The loader (bootstrap/shim) or the driver sets these for the runtime process; the runtime and payload code read them. Setting a channel yourself on a managed run is overwritten or stripped.
+Channels: the loader (bootstrap/shim) or the driver sets these for the runtime process, and the runtime and payload code read them. A channel the operator sets on a managed run is overwritten or stripped.
 
 [cols="1,2,1,2,3,2"]
 |===
@@ -163,72 +158,72 @@ Channels. The loader (bootstrap/shim) or the driver sets these for the runtime p
 
 | `TEBAKO_RUNTIME_IMAGE`
 | driver (reads) · bootstrap, shim (set)
-| absolute path of the runtime’s env .tfs
+| absolute path of the runtime's env .tfs
 | none
-| The env image, mounted whole at the runtime root — stdlib, gems, everything the load paths expect.
-| Unset → a loud stderr note and a bare boot with an empty runtime root (a handoff bug unless deliberate).
+| The variable carries the env image, mounted whole at the runtime root — stdlib, gems, everything the load paths expect.
+| When unset, the cost is a loud stderr note and a bare boot with an empty runtime root (a handoff bug unless deliberate).
 
 | `TEBAKO_MOUNT_ROOT`
 | driver
 | absolute path — /… or drive-qualified X:/…; no trailing slash, no ..
-| the runtime’s baked root (ruby: /__tfs__, A:/t on windows)
-| Redirects the env-image mount; the io-routing patches and era-2 rbconfig follow.
-| Malformed value → exit 65 naming the variable; an env image without the mount_root_override grant → exit 78 (EX_TEBAKO_LAYOUT).
+| the runtime's baked root (ruby: /__tfs__, A:/t on windows)
+| The variable redirects the env-image mount; the io-routing patches and era-2 rbconfig follow.
+| A malformed value costs exit 65 naming the variable; an env image without the mount_root_override grant costs exit 78 (EX_TEBAKO_LAYOUT).
 
 | `TEBAKO_TFS_MOUNTS`
 | preload shim at init (reads) · driver, the spawn hook (set)
 | image:mount,… — one parser (tfs::mount_spec) shared with tfs exec
 | unset (no mounts)
-| Seeds the mount table of a preload-interposed process. The shim strips an inherited value before a managed dispatch, and a spawned runtime child never sees it — the child rebuilds the namespace from its own boot.
-| Exit 78 (EX_TEBAKO_LAYOUT), naming the variable and the offending token.
+| The variable seeds the mount table of a preload-interposed process. The shim strips an inherited value before a managed dispatch, and a spawned runtime child never sees it — the child rebuilds the namespace from its own boot.
+| The cost is exit 78 (EX_TEBAKO_LAYOUT), naming the variable and the offending token.
 
 | `TEBAKO_EXEC_CACHE`
 | interpreter + payloads (read-only) · driver (sets at boot)
 | directory path, driver-owned
 | <temp>/tebako-exec-<key> — the key derives from the env image
-| Where materialized binaries and libraries live. Per-process, reaped at exit on POSIX; leave-in-place and content-keyed on windows (a loaded DLL is OS-locked).
+| The variable names where materialized binaries and libraries live. The cache is per-process and reaped at exit on POSIX; it stays in place, content-keyed, on windows (a loaded DLL is OS-locked).
 | n/a — driver-set.
 
 | `TEBAKO_RUNTIME_DLL`
 | tfs PE closure walk (windows; POSIX never reads it) · driver (sets)
 | PE module basename, e.g. x64-ucrt-ruby340.dll
 | unset when the env image declares no runtime_dll layout key
-| The runtime’s own DLL name; a bare import name matching it (case-insensitive) is excluded from closure materialization.
+| The variable carries the runtime's own DLL name; a bare import name matching it (case-insensitive) is excluded from closure materialization.
 | n/a — driver-set from the factory record.
 
 | `TEBAKO_PRELOAD_SHIM`
-| the interpreter’s spawn hook (reads) · driver (sets)
-| the preload shim’s in-VFS path
+| the interpreter's spawn hook (reads) · driver (sets)
+| the preload shim's in-VFS path
 | unset when the env image grants no preload_shim layout key
-| Where the preload shim lives. The driver additionally arms LD_PRELOAD (ELF) / DYLD_INSERT_LIBRARIES (macOS) with the materialized host copy.
-| Declared-but-absent shim → exit 78 — the image lying about its contents.
+| The variable names where the preload shim lives. The driver additionally arms LD_PRELOAD (ELF) / DYLD_INSERT_LIBRARIES (macOS) with the materialized host copy.
+| A declared-but-absent shim costs exit 78 — the image is lying about its contents.
 
 | `TEBAKO_MOUNT_<SLUG>`
 | payload code (reads) · driver (sets, one per co-mounted payload)
 | physical mount point, drive-qualified on windows; SLUG rules below
 | —
-| The discovery surface: a dependency mount’s physical point, re-rooting-proof.
-| Two different mounts slugging alike → exit 65 (an authoring ambiguity, never a silent winner).
+| The variable is the discovery surface: it carries a dependency mount's physical point, re-rooting-proof.
+| Two different mounts slugging alike cost exit 65 (an authoring ambiguity, never a silent winner).
 
 | `TEBAKO_TRACE`
 | driver (reads at boot)
-| host file path — the trace bus’s JSONL channel
+| host file path — the trace bus's JSONL channel
 | unset (bus disarmed)
-| Arms the interception trace bus before any mount; appended for the process’s life; children re-derive it from the inherited env. --tebako-trace wins when both are set.
-| An unopenable channel → a loud stderr note and a disarmed bus — never a boot failure (observability never gates).
+| The variable arms the interception trace bus before any mount; the channel is appended to for the process's life, and children re-derive it from the inherited env. --tebako-trace wins when both are set.
+| An unopenable channel costs a loud stderr note and a disarmed bus — never a boot failure (observability never gates).
 
 | `TEBAKO_CONTRACT_VERSION`
-| the runtime’s children (read) · driver (sets, always overwrites)
+| the runtime's children (read) · driver (sets, always overwrites)
 | unsigned integer
-| the runtime’s compiled-in contract version
-| The machine-readable handoff version the runtime speaks; the runtime is authoritative, so an inherited value never survives boot.
+| the runtime's compiled-in contract version
+| The variable carries the machine-readable handoff version the runtime speaks; the runtime is authoritative, so an inherited value never survives boot.
 | n/a — driver-set.
 
 |===
 
 === Packaging time
 
-Inputs to press, publish, install, and deploy. They never reach a running payload.
+These are inputs to press, publish, install, and deploy; they never reach a running payload.
 
 [cols="1,2,1,2,3,2"]
 |===
@@ -238,77 +233,77 @@ Inputs to press, publish, install, and deploy. They never reach a running payloa
 | CLI (press)
 | path to a local tebako-bootstrap binary
 | resolution order: --bootstrap flag → this var → the binary next to tebako → the release store
-| Which bootstrap gets stitched onto the package.
-| An era-1 or mismatched bootstrap → the press refuses (the contract-card check).
+| The variable chooses which bootstrap gets stitched onto the package.
+| An era-1 or mismatched bootstrap makes the press refuse (the contract-card check).
 
 | `TEBAKO_BOOTSTRAP_MIRROR`
 | CLI (press)
 | base URL — https or file://
 | the tebako release store
-| Where per-triplet bootstrap assets are fetched from.
+| The variable names where per-triplet bootstrap assets are fetched from.
 | No named error at read time.
 
 | `TEBAKO_PREFIX`
 | CLI (press)
 | directory path
 | none — consulted only when --prefix is not given
-| The application prefix (announced on stdout when used).
+| The variable carries the application prefix (announced on stdout when used).
 | No named error.
 
 | `TEBAKO_SDK_SRC_RELEASE`
 | CLI (press — the native-extension deploy SDK)
 | a ruby-source release tag
-| the CLI’s pinned default
-| Which patched-source release the runtime SDK resolves from.
+| the CLI's pinned default
+| The variable chooses which patched-source release the runtime software development kit (SDK) resolves from.
 | No named error at read time.
 
 | `TEBAKO_SDK_SRC_MIRROR`
 | CLI (press — the native-extension deploy SDK)
 | base URL
-| the CLI’s pinned default mirror
-| Where the SDK source tarball is fetched from.
+| the CLI's pinned default mirror
+| The variable names where the SDK source tarball is fetched from.
 | No named error at read time.
 
 | `TEBAKO_SHIM_BINARY`
 | CLI (install)
 | path to a tebako-shim binary
 | the shim resolved beside the CLI
-| Which binary tebako install --shims links the shims to.
+| The variable chooses which binary tebako install --shims links the shims to.
 | No named error at read time.
 
 | `TEBAKO_TFS_PRELOAD`
 | tfs exec (unix)
 | path to a preload-shim binary
 | the shim resolved beside tfs
-| Which preload shim gets injected into the exec’d child.
+| The variable chooses which preload shim gets injected into the exec'd child.
 | A non-file value falls through to the default resolution.
 
 | `TEBAKO_DEPLOY_BINDIR`
 | press deploy internals (POSIX): set by the generated ruby shim, read by the deployed rbconfig
 | directory path
 | the deploy wrapper sets it to its own directory
-| Points the packaging environment’s bindir at the deploy dir during native-extension deploys. Internal — never set it yourself.
+| The variable points the packaging environment's bindir at the deploy dir during native-extension deploys. It is internal — the operator never sets it.
 | n/a.
 
 | `TEBAKO_SIGN`
 | CLI (press)
 | flag — set, non-empty, ≠ 0
 | unset (the unsigned v1 trailer — byte-identical with pre-signing output)
-| Signs the package trailer at press: the SIGNED_V2 flag plus the v2 chain-of-trust extension.
+| The variable signs the package trailer at press: the SIGNED_V2 flag plus the v2 chain-of-trust extension.
 | An opt-out that drops a lower channel sign declaration is loud: a stderr warning plus an audit-journal event.
 
 | `TEBAKO_QUIET_NOTICES`
 | CLI (press)
 | flag — set, non-empty, ≠ 0
 | unset (notices shown)
-| Suppresses the unsigned-legacy-trailer warning and the progress lines for every run of the package; the choice is baked into the trailer as a package flag.
+| The variable suppresses the unsigned-legacy-trailer warning and the progress lines for every run of the package; the choice is baked into the trailer as a package flag.
 | An unparseable value is a named error — never a silent default.
 
 |===
 
 === Diagnostics
 
-Operator inputs. Observability never gates: a broken debug or trace setting degrades loudly and the run proceeds.
+Operator inputs: observability never gates — a broken debug or trace setting degrades loudly and the run proceeds.
 
 [cols="1,2,1,2,3,2"]
 |===
@@ -318,59 +313,59 @@ Operator inputs. Observability never gates: a broken debug or trace setting degr
 | every component (tebako-log)
 | off \| error \| warn \| debug \| trace, plus per-component overrides (debug,preload=trace,tfs=warn)
 | off — zero cost: the config reads once, the gate runs before any formatting
-| Stack-wide debug logging, one facility for every crate.
+| The variable enables stack-wide debug logging, one facility for every crate.
 | No named error — unrecognized levels are ignored.
 
 | `TEBAKO_DEBUG_TFS`
 | tebako-log
 | legacy boolean — any non-empty value
 | unset
-| Maps to debug, for back-compat with the pre-tebako-log knob.
+| The variable maps to debug, for back-compat with the pre-tebako-log knob.
 | n/a.
 
 | `TEBAKO_DEBUG_FILE`
 | tebako-log
 | file path; %p expands to the pid
 | stderr (stdout belongs to the payload, never to the log)
-| The log sink — append-mode, parent directories created, per-pid files for exec’d children.
-| Unopenable → stderr with one warn line naming the failure.
+| The variable names the log sink — append-mode, parent directories created, per-pid files for exec'd children.
+| An unopenable sink falls back to stderr with one warn line naming the failure.
 
 | `TEBAKO_DEBUG_COMPONENTS`
 | tebako-log
 | comma filter of component names (preload, tfs, driver, shim, bootstrap, cli, pkg, resolve)
 | all components
-| Narrows the log to the named crates.
+| The variable narrows the log to the named crates.
 | No named error.
 
 |===
 
 === Internal — never set these
 
-Handshakes between a process and its own re-exec. Setting one can only lie.
+These are handshakes between a process and its own re-exec; setting one can only lie.
 
 [cols="1,2,1,2,3,2"]
 |===
 | Variable | Readers | Grammar | Default | What it does | A malformed value costs
 
 | `TEBAKO_LOADER_INTERPOSED`
-| driver (sets it, and the re-exec’d child sees and scrubs it)
+| driver (sets it, and the re-exec'd child sees and scrubs it)
 | 1
 | unset
-| macOS only: the once-per-process sentinel for the driver’s self-inserted interpose dylib. The re-exec precedes all mounting, fires exactly once, and leaves no launcher-ABI change.
+| The variable is macOS only: the once-per-process sentinel for the driver's self-inserted interpose dylib. The re-exec precedes all mounting, fires exactly once, and leaves no launcher-ABI change.
 | n/a — internal.
 
 | `TEBAKO_SPAWN_LOCK`
 | the dispatcher sets it; the driver reads it at spawn time
 | engine=lang_version:tebako_version, joined with semicolons in manifest order
 | a payload without runtime edges exports nothing
-| Pins the driver spawn-time runtime pick for the payload spawned-runtime edges, which resolve at dispatch time.
+| The variable pins the driver spawn-time runtime pick for the payload spawned-runtime edges, which resolve at dispatch time.
 | n/a — internal.
 
 |===
 
 == The jail grammar.
 
-One grammar, two parsers that must agree: the authored model in tpkg (compose and serialize) and the engine's jail spec, which the driver and the preload shim consume. The record token is the discovery mode — allow everything, journal every access, and let a journal draft the policy afterwards.
+One grammar, two parsers that must agree: the authored model in tpkg (compose and serialize) and the engine's jail spec, which the driver and the preload shim consume. The record token is the discovery mode: it allows everything, journals every access, and lets a journal draft the policy afterwards.
 
 [source,text]
 ----
@@ -389,11 +384,11 @@ TEBAKO_MOUNT_ROOT redirects where the env image mounts. It is validated before a
 
 == The mount discovery surface.
 
-Per co-mounted payload the driver exports TEBAKO_MOUNT_<SLUG> holding the physical mount point. The slug is mechanical: drop the drive qualifier, uppercase every ASCII alphanumeric, map every other character to _, trim leading and trailing underscores — /tools/inkscape becomes TEBAKO_MOUNT_TOOLS_INKSCAPE. Interior separators are not collapsed (/a//b becomes TEBAKO_MOUNT_A__B). The root mount exports nothing — the name TEBAKO_MOUNT_ROOT is reserved for the override — and two different mounts slugging alike are an authoring ambiguity: exit 65, never a silent winner.
+Per co-mounted payload the driver exports TEBAKO_MOUNT_<SLUG> holding the physical mount point. The slug is mechanical: the drive qualifier is dropped, every ASCII alphanumeric is uppercased, every other character maps to _, and leading and trailing underscores are trimmed — /tools/inkscape becomes TEBAKO_MOUNT_TOOLS_INKSCAPE. Interior separators are not collapsed (/a//b becomes TEBAKO_MOUNT_A__B). The root mount exports nothing — the name TEBAKO_MOUNT_ROOT is reserved for the override — and two different mounts slugging alike are an authoring ambiguity: exit 65, never a silent winner.
 
 == Overlay and decrypt bindings.
 
-The serialized form of a run's bound overlay stores and decrypt recipients, handed to the runtime beside TEBAKO_JAIL and inherited by spawned children. No key material ever crosses the channel — the decrypt value is a key reference resolved against $TEBAKO_HOME/keys/ at the driver's mount.
+This section carries the serialized form of a run's bound overlay stores and decrypt recipients, handed to the runtime beside TEBAKO_JAIL and inherited by spawned children. No key material ever crosses the channel — the decrypt value is a key reference resolved against $TEBAKO_HOME/keys/ at the driver's mount.
 
 [source,text]
 ----
@@ -403,7 +398,7 @@ TEBAKO_DECRYPT=<mount>=pgp:<keyid>;<mount>=pgp:<keyid>;…
 
 == Truthy is not one rule.
 
-Stated plainly: the flag variables do not share one predicate. Read the row for the surface you are setting the variable on — the predicates below are the shipped code.
+Stated plainly: the flag variables do not share one predicate. The row for the surface being set is the authority — the predicates below are the shipped code.
 
 [cols="2,2,3"]
 |===
@@ -427,7 +422,7 @@ Stated plainly: the flag variables do not share one predicate. Read the row for 
 
 |===
 
-The practical consequence: TEBAKO_OFFLINE=yes is honored everywhere, but TEBAKO_OFFLINE=2 is true for the bootstrap and the shim and false for tebako-resolve. Set 1 and every reader agrees.
+The practical consequence: TEBAKO_OFFLINE=yes is honored everywhere, but TEBAKO_OFFLINE=2 is true for the bootstrap and the shim and false for tebako-resolve. The value 1 is the spelling every reader agrees on.
 
 == The debug surface.
 
@@ -442,7 +437,7 @@ Off costs nothing — the config reads once and the gate runs before any formatt
 
 == The trace channel.
 
-TEBAKO_TRACE (or the driver's --tebako-trace argument, which wins when both are set) arms the interception trace bus at boot, before any mount — one JSONL event per interception decision, appended for the process's life. A spawned child re-derives the channel from the inherited env and appends to the same file. A channel that cannot be opened is a loud stderr note and a disarmed bus, never a boot failure: observability never gates.
+TEBAKO_TRACE (or the driver's --tebako-trace argument, which wins when both are set) arms the interception trace bus at boot, before any mount — one JSON Lines (JSONL) event per interception decision, appended for the process's life. A spawned child re-derives the channel from the inherited env and appends to the same file. A channel that cannot be opened is a loud stderr note and a disarmed bus, never a boot failure: observability never gates.
 
 == Read or written, but not TEBAKO_*.
 
@@ -453,7 +448,7 @@ The stack also touches a handful of shared variables. They are listed here so th
 | Variable | Role
 
 | `SSL_CERT_FILE`
-| The driver exports the materialized host path of a declared ssl/cert.pem at boot; an unset/empty value is set, a stale in-VFS spelling is rewritten, a real host path always wins. The press also probes the host’s OpenSSL default when assembling the packaging env.
+| The driver exports the materialized host path of a declared ssl/cert.pem at boot; an unset/empty value is set, a stale in-VFS spelling is rewritten, a real host path always wins. The press also probes the host's OpenSSL default when assembling the packaging env.
 
 | `SSL_CERT_DIR`
 | The press-side half of that cert probe (tebako-cli/src/packager.rs).
@@ -462,7 +457,7 @@ The stack also touches a handful of shared variables. They are listed here so th
 | The driver re-leads it: launcher dir, then dependency bin dirs, then windows library-alias dirs, then the inherited PATH.
 
 | `LD_PRELOAD / DYLD_INSERT_LIBRARIES`
-| Armed by the driver with the materialized preload shim. On macOS the spawn hook drops an inherited DYLD_INSERT_LIBRARIES for Apple-restricted targets — the SIP boundary.
+| The driver arms them with the materialized preload shim. On macOS the spawn hook drops an inherited DYLD_INSERT_LIBRARIES for Apple-restricted targets — the SIP boundary.
 
 | `NO_COLOR`
 | Present at all → plain progress output.
@@ -474,13 +469,13 @@ The stack also touches a handful of shared variables. They are listed here so th
 | The home-resolution chain behind the default store root: %LOCALAPPDATA%\tebako on windows, else $HOME/.tebako (then %USERPROFILE%).
 
 | `VERBOSE`
-| yes or true turns on the CLI’s subprocess echo — a development knob (tebako-cli/src/runner.rs).
+| yes or true turns on the CLI's subprocess echo — a development knob (tebako-cli/src/runner.rs).
 
 |===
 
 == Not environment variables.
 
-These names surface in the same greps and read like variables. None of them is one — this is what each actually is.
+These names surface in the same greps and read like variables. None of them is one; the following states what each actually is.
 
 [cols="1,2"]
 |===
