@@ -14,14 +14,15 @@ author:
     - https://github.com/tamatebako
 excerpt: >-
   v2.8.2 is the operability release: a doctor verb that diagnoses the
-  store end to end, payloads that trust your corporate proxy's CA without
-  a rebuild, offline bundles and signed system installers, and a release
-  pipeline where one broken platform no longer blocks the rest.
+  store end to end, payloads that trust the corporate proxy's CA
+  without a rebuild, offline bundles and signed system installers, and
+  a release pipeline in which one broken platform no longer blocks the
+  rest.
 ---
 
 = tebako v2.8.2: doctor, the corporate-network trust bridge, offline bundles, and per-platform releases
 
-tebako v2.8.2 is out. The theme is operability: most of what shipped is
+tebako v2.8.2 has shipped. The theme is operability: most of what shipped is
 about the days after install — diagnosing a machine, living behind a
 corporate proxy, distributing to machines with no network, and (for
 payload publishers) a release pipeline that no longer wedges itself.
@@ -31,7 +32,7 @@ tag had ever exercised; the fixes are part of this release.)
 
 == `tebako doctor`: one verb, five sections, named verdicts
 
-The first thing to run when anything misbehaves:
+The doctor verb is the first command to run when anything misbehaves:
 
 [source,console]
 ----
@@ -49,15 +50,16 @@ exit code is 0 for healthy, 1 with a problem count, so it scripts
 cleanly into CI preflight. `tebako doctor --json` prints the same report
 as a machine-readable document. The dispatch section is the shim layer's
 own diagnostics rendered in place; the store, network, and trust planes
-are the CLI's. Read-only end to end: doctor never repairs, it reports.
+are the CLI's. The verb is read-only end to end: doctor never repairs;
+it reports.
 
 == The trust bridge: your proxy's CA, honored without a rebuild
 
 The most common enterprise failure used to be a TLS interception wall:
 the corporate proxy re-signs everything, the payload's embedded root
-store doesn't know the proxy's CA, and every fetch inside the payload
-dies with a certificate error. The answer was a custom runtime build —
-until now.
+store does not know the proxy's CA, and every fetch inside the payload
+dies with a certificate error. The answer used to be a custom runtime
+build; it no longer is.
 
 A payload can now declare `network: tls_roots: platform` (or the user
 sets `TEBAKO_TLS_PLATFORM_ROOTS=1`), and the runtime driver merges the
@@ -76,8 +78,8 @@ link:/docs/guides/enterprise-networks/[enterprise networks guide].
 
 == Offline bundles and signed system installers
 
-Two distribution shapes for machines that never touch the network, or
-shouldn't have to:
+Two distribution shapes serve machines that never touch the network,
+or that should not have to:
 
 *`tebako bundle`* assembles a payload's whole dependency closure —
 payloads, runtimes, registry registrations, preferences — into one
@@ -100,17 +102,16 @@ the other channels do.
 
 == Releases ship per platform now
 
-This one is for payload publishers, and for everyone who ever watched a
-release sit unpublished because one architecture's build machine was
-having a bad day.
+This change is for payload publishers, and for everyone who has watched
+a release sit unpublished because one architecture's build machine
+failed.
 
 The old pipeline had a rendezvous: every platform leg finished, then a
 final pass aggregated their artifacts into shared index files and
-re-uploaded them. Two consequences: one broken leg blocked every
+re-uploaded them. Two consequences followed: one broken leg blocked every
 platform, and the aggregation pass had to mutate published assets —
-which is how you get the delete-then-replace wedge, where a re-uploaded
-name trips the forge's immutability rules and the release dies at the
-finish line.
+hence the delete-then-replace wedge, in which a re-uploaded name trips
+the forge's immutability rules and the release dies at the finish line.
 
 The rendezvous is gone. Each platform leg publishes exactly the assets
 it owns — the payload, its checksum sidecar, a small manifest shard —
@@ -128,9 +129,9 @@ registry and refused by name, instead of vanishing silently.
 == Also in this release
 
 * Registries are platform-conditioned: a registry row can declare which
-  triplets it serves, and dispatch skips rows that cannot run here. A
-  stale registry cache now serves with a warning instead of failing
-  closed when the refresh can't complete.
+  triplets it serves, and dispatch skips rows that cannot run on the
+  local platform. A stale registry cache now serves with a warning
+  instead of failing closed when the refresh cannot complete.
 * Variant-suffixed versions (say, a build against a newer interpreter
   line) sort below their plain sibling — the plain release stays the
   default; the variant is an explicit choice.
