@@ -25,10 +25,10 @@ series_post: 1
 Reference guide: link:/docs/guides/trace/[Trace a packaged app].
 ====
 
-The advanced series picks up where the basics ended. Its first
-subject is the question every packaged application eventually raises:
-*what does my payload actually touch on this machine?* The `tebako
-trace` commands answer it with evidence, not guesses.
+The advanced series picks up where the basics ended. Its first subject
+is the question every packaged application eventually raises: what the
+payload actually touches on the machine. The `tebako trace` commands
+answer it with evidence rather than guesses.
 
 
 ++++
@@ -89,7 +89,7 @@ trace` commands answer it with evidence, not guesses.
 </figure>
 ++++
 
-_Figure 1 — trace cover compares an outside capture with the inside stream; a payload check declares its own acceptance test (the publish post of the basics series)._
+_Figure 1 — Trace cover compares an outside capture with the inside stream, and a payload check declares its own acceptance test (covered in the publish post of the basics series)._
 
 == Arm the stream
 
@@ -102,14 +102,14 @@ identically on Linux, macOS, and Windows:
 $ TEBAKO_TRACE=/tmp/capture.jsonl ./myapp build
 ----
 
-Tracing can never change how your application runs: if the capture
+Tracing can never change how an application runs: if the capture
 channel fails, tebako prints a warning and nothing else happens.
 
 == Draft a policy from a real run
 
-`tebako trace run` records a run and drafts the manifest fragment for
-you — the host paths touched, the files read through raw descriptors,
-the libraries loaded:
+`tebako trace run` records a run and drafts the manifest fragment —
+the host paths touched, the files read through raw descriptors, the
+libraries loaded:
 
 [source,console]
 ----
@@ -122,8 +122,9 @@ needs:
       why: ""
 ----
 
-The draft is commented YAML. You review it, adjust read and write, and
-fill in every `why` — exactly the grant grammar the next post binds.
+The draft is commented YAML. The operator reviews it, adjusts read and
+write access, and fills in every `why` — exactly the grant grammar
+that the next post binds.
 
 == Name the failing step
 
@@ -134,6 +135,6 @@ failed. Exit 0 is a clean chain; exit 1 names the step.
 
 == What you can do now
 
-You can see what a payload touches, draft its policy from a real run,
-and diagnose a failure to a named step. The next post binds that
-policy.
+This post has shown what a payload touches, drafted its policy from a
+real run, and diagnosed a failure to a named step. The next post binds
+that policy.

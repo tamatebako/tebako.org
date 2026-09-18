@@ -26,8 +26,8 @@ Reference guide: link:/docs/guides/jails/[Set a jail policy].
 ====
 
 The observe half of the boundary was the last post. This post is the
-constrain half: profiles and jails — how the policy you drafted becomes
-the policy that runs, and what is enforced where.
+constrain half: profiles and jails — how the policy drafted in the
+previous post becomes the policy that runs, and what is enforced where.
 
 
 ++++
@@ -92,8 +92,8 @@ mandatory: a declaration that cannot explain itself does not parse.
 The same policy binds from an environment variable, a command flag, or
 the manifest itself — `TEBAKO_JAIL=deny`, `--jail deny:arg`, or a
 baked `jail.yaml` — with a fixed precedence. Per-invocation flags win,
-so an operator can tighten any payload for one run without touching
-it:
+so an operator can tighten any payload for one run without modifying
+the payload:
 
 [source,console]
 ----
@@ -121,6 +121,6 @@ the same policy computed from the same declarations.
 
 == What you can do now
 
-You can take any payload and decide, precisely and reviewably, what it
-may touch — on every platform tebako ships. The next post opens the
-images themselves.
+This post has decided, precisely and reviewably, what a payload may
+touch — on every platform tebako ships. The next post opens the images
+themselves.

@@ -68,17 +68,17 @@ _Figure 1 — Formats choose how the bytes are stored; multi-mount brings severa
 
 == The formats
 
-* *LimniFS* — the default write format. Balanced density and mount
-  speed, the format `tfs mkimage` writes unless you say otherwise.
-* *DwarFS* — the high-density read format. Best for large, rarely
+* *LimniFS* — the default write format. It balances density and mount
+  speed, and `tfs mkimage` writes it unless another format is named.
+* *DwarFS* — the high-density read format. It suits large, rarely
   changing payloads where size matters most.
-* *Zip* — the ubiquitous one. Slightly larger, mounts anywhere, and
-  opens with ordinary tools when tebako is not around.
+* *Zip* — the widely supported format. It is slightly larger, mounts
+  anywhere, and opens with ordinary tools when tebako is not present.
 
 A payload names its format in its manifest, and readers detect it from
-the file's magic bytes — you never configure a reader. What a payload
-*is* never depends on the format: format answers exactly one question,
-how to read these bytes.
+the file's magic bytes, so no reader configuration is ever needed.
+What a payload *is* never depends on the format: the format answers
+exactly one question, namely how to read these bytes.
 
 == Multi-mount
 
@@ -98,13 +98,13 @@ ever mutating the base bytes.
 
 == The verbs
 
-Everything is inspectable with the `tfs` commands you met in the
+Everything is inspectable with the `tfs` commands introduced in the
 basics: `info`, `ls`, `cat`, `extract` — plus `mkimage` to create,
 `exec` to run a program inside an image, `needs` to draft policy from
 a journal, and `mount` to mount an image by hand.
 
 == What you can do now
 
-You can choose a format for what it is good at, bring many images into
-one process, and put writable work on a declared seal. The next post
-is about what runs inside: runtimes and native code.
+This post has chosen formats for what each does well, brought many
+images into one process, and placed writable work on a declared seal.
+The next post is about what runs inside: runtimes and native code.
