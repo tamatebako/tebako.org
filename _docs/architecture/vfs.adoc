@@ -232,10 +232,10 @@ is honest about what it costs and where it runs.
 
 [NOTE]
 ====
-*Stated plainly.* Without the kernel there is no system-wide transparent
-mount for unmodified arbitrary processes. TFS trades that away deliberately,
-and it gets zero privileges, every platform, and in-process speed in
-return.
+The trade is stated plainly: without the kernel there is no system-wide
+transparent mount for unmodified arbitrary processes. TFS trades that away
+deliberately, and it gets zero privileges, every platform, and in-process
+speed in return.
 ====
 
 == The debug contract
