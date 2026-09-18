@@ -2,19 +2,20 @@
 title: Trace a packaged app
 heading: Trace a packaged app.
 lede: >-
-  The trace toolkit shows what a packaged application really touches, from
-  three vantage points. Inside the process, an interception bus in the
-  virtual-filesystem layer emits one structured JSON event per decision —
-  every mount, open, dlopen, exec, materialize, and jail verdict —
-  identically on linux, macOS, and windows. At the libc boundary, retrace
-  watches the same process from outside. At the kernel, ptrace, eBPF, or
-  ETW/procmon see what no userland hook can. The tebako trace commands
-  work across all three layers: run for discovery, explain for
-  diagnosis, cover for coverage.
+  The trace toolkit shows what a packaged application really touches,
+  from three vantage points. Inside the process, an interception bus in
+  the virtual-filesystem layer emits one structured JSON event per
+  decision — every mount, open, dlopen, exec, materialize, and jail
+  verdict — identically on linux, macOS, and windows. At the libc
+  boundary, retrace watches the same process from outside. At the
+  kernel, ptrace, eBPF, or ETW/procmon see what no userland hook can.
+  The tebako trace commands work across all three layers: trace run
+  serves discovery, trace explain serves diagnosis, and trace cover
+  measures coverage.
 description: >-
-  The tebako trace toolkit: the interception bus, tebako trace run for
-  discovery, trace explain for diagnosis, trace cover for escapes coverage,
-  and the procmon import path on windows.
+  This guide describes the tebako trace toolkit: the interception bus,
+  tebako trace run for discovery, trace explain for diagnosis, trace
+  cover for escapes coverage, and the procmon import path on windows.
 ---
 
 
@@ -25,47 +26,26 @@ This guide is part 1 of the link:/blog/2026-09-05-advanced-payloads-trace/[Advan
 
 == The three questions.
 
-* **Discovery** — what does my application touch, so what must I declare?
-  `tebako trace run` collects a run's events and drafts a suggested
-  manifest.
-* **Diagnosis** — my packaged application fails; which hop failed?
-  `tebako trace explain` replays a capture into the hop chain — mount →
-  manifest read → resolve → materialize → OS bind — and names the first
-  red hop.
-* **Coverage** — is anything my application does _not_ virtualized?
-  `tebako trace cover` subtracts the inside stream from an outside capture
-  and reports the escapes.
+* **Discovery** states what an application touches and therefore what its manifest must declare. `tebako trace run` collects a run's events and drafts a suggested manifest.
+* **Diagnosis** answers which hop failed when a packaged application fails. `tebako trace explain` replays a capture into the hop chain — mount → manifest read → resolve → materialize → OS bind — and names the first red hop.
+* **Coverage** answers whether anything the application does remains _not_ virtualized. `tebako trace cover` subtracts the inside stream from an outside capture and reports the escapes.
 
-== The bus, and how to arm it.
+== The interception bus.
 
-Every interception point the driver and the preload shim already implement
-emits one event per decision onto the bus — a JSON-lines stream, one
-object per line, robust to a crashed tail. Events name OS-level facts
-(paths, verdicts, errnos), never language-runtime facts, so every runtime
-is covered equally. Arm it with one environment variable:
+Every interception point the driver and the preload shim already implement emits one event per decision onto the bus — a stream of JavaScript Object Notation (JSON) lines, one object per line, robust to a crashed tail. Events name OS-level facts (paths, verdicts, errnos), never language-runtime facts, so every runtime is covered equally. One environment variable arms it:
 
 [source,console]
 ----
 $ TEBAKO_TRACE=/tmp/capture.jsonl metanorma compile site.adoc
 ----
 
-* The driver opens the channel before any mount; the preload shim arms the
-  same contract in its constructor, so spawned children re-arm from the
-  inherited environment and append to the same capture. Every event
-  carries `pid`/`tid` so the front-ends can regroup interleaved writers.
-* **Observability never gates.** A trace-channel failure degrades to a
-  loud stderr note; the payload run proceeds and its exit code is
-  unaffected. Disarmed, an emission point is one branch — the bus costs
-  nothing when off.
-* `TEBAKO_DEBUG_TFS` remains as the human-readable degraded view over the
-  same emission points; the bus is the structured one.
+* The driver opens the channel before any mount; the preload shim arms the same contract in its constructor, so spawned children re-arm from the inherited environment and append to the same capture. Every event carries `pid`/`tid` so the front-ends can regroup interleaved writers.
+* **Observability never gates.** A trace-channel failure degrades to a loud stderr note; the payload run proceeds and its exit code is unaffected. Disarmed, an emission point is one branch — the bus costs nothing when off.
+* `TEBAKO_DEBUG_TFS` remains as the human-readable degraded view over the same emission points; the bus is the structured one.
 
 == Discovery: tebako trace run.
 
-Run a package under the record policy with the bus armed; when it exits,
-the capture is synthesized into a _suggested manifest fragment_ —
-commented YAML on stdout (or `--out`), never applied. The process exits
-with the payload's own exit code.
+The verb runs a package under the record policy with the bus armed; when the package exits, the capture is synthesized into a _suggested manifest fragment_ — commented YAML on stdout (or `--out`), never applied. The process exits with the payload's own exit code.
 
 [source,console]
 ----
@@ -97,25 +77,11 @@ materialize:
 # NOTE: host executable observed: "/usr/bin/git" — an entrypoint/runtime-dep candidate (observed: 1 events, first at 2026-08-22T09:14:11.502377Z)
 ----
 
-The draft extends the jail journal's needs discovery to the axes a journal
-cannot see: host reads and writes become `needs:` grants
-(strongest-observed-op wins); an in-image file read through a raw host fd
-becomes a `materialize:` candidate; an in-image `dlopen` whose dependency
-closure resolved entirely in-image earns a _closure-covered — nothing to
-declare_ note; a spawned host executable earns an
-entrypoint/runtime-dep note. Floor, store, and exec-cache paths are
-excluded. Then the human gate: you review, flip ro↔rw, delete noise, fill
-every `why` — a generated suggestion never edits a manifest by itself.
-_Output representative; paths abbreviated._
+The draft extends the jail journal's needs discovery to the axes a journal cannot see: host reads and writes become `needs:` grants (strongest-observed-op wins); an in-image file read through a raw host fd becomes a `materialize:` candidate; an in-image `dlopen` whose dependency closure resolved entirely in-image earns a _closure-covered — nothing to declare_ note; a spawned host executable earns an entrypoint/runtime-dep note. Floor, store, and exec-cache paths are excluded. Then the human gate: the author reviews the draft, flips ro↔rw where production differs from the observation, deletes noise, and fills every `why` — a generated suggestion never edits a manifest by itself. _Output representative; paths abbreviated._
 
 == Diagnosis: tebako trace explain.
 
-Replay a capture — a finished file or a live run's growing one — into the
-hop chain. The first hop whose verdict is red prints with its evidence;
-the signature table that maps stream shapes to hops lives in data, seeded
-from the incident corpus (a lost handoff env, the OS loader refusing a
-resolved closure, a jail denial, an exec-cache write failure) and extended
-as incidents teach new shapes.
+The verb replays a capture — a finished file or a live run's growing one — into the hop chain. The first hop whose verdict is red prints with its evidence; the signature table that maps stream shapes to hops lives in data, seeded from the incident corpus (a lost handoff env, the OS loader refusing a resolved closure, a jail denial, an exec-cache write failure) and extended as incidents teach new shapes.
 
 [source,console]
 ----
@@ -141,10 +107,7 @@ _Output representative._
 
 == Coverage: tebako trace cover.
 
-The inside stream can never prove its own completeness — an escape is
-invisible from inside by definition. "What isn't tebako intercepting" is
-answerable only by subtracting the inside stream from an _outside_ capture
-of the same run. Capture the run once per side, then correlate:
+The inside stream can never prove its own completeness — an escape is invisible from inside by definition. The question of what tebako is _not_ intercepting is answerable only by subtracting the inside stream from an _outside_ capture of the same run. Capture the run once per side, then correlate:
 
 [source,console]
 ----
@@ -157,14 +120,7 @@ $ echo $?
 1
 ----
 
-`--prefix` names the virtualized root as the outside capture spells it; an
-under-prefix touch the inside stream never saw is an escape. stdout is a
-machine contract — one `escape <path> func=… tid=… pid=… class=…` line per
-escape, or a JSON array with `--json` — byte-identical with retrace's
-`retrace-correlate` on the shared golden fixtures (the parity is asserted
-in CI; the format is retrace's, tebako never authors a competing one).
-The summary, the per-surface-class coverage percentages, and the producing
-layer go to stderr:
+`--prefix` names the virtualized root as the outside capture spells it; an under-prefix touch the inside stream never saw is an escape. stdout is a machine contract — one `escape <path> func=… tid=… pid=… class=…` line per escape, or a JSON array with `--json` — byte-identical with retrace's `retrace-correlate` on the shared golden fixtures (the parity is asserted in continuous integration (CI); the format is retrace's, tebako never authors a competing one). The summary, the per-surface-class coverage percentages, and the producing layer go to stderr:
 
 [source,console]
 ----
@@ -174,20 +130,11 @@ tebako: trace cover: coverage by surface class (under-prefix outside touches):
 tebako: trace cover:   fs: 41/43 covered (95.3%), 2 escapes
 ----
 
-The remaining flags scope the correlation: `--pid N` considers only one
-process's outside entries, `--window SECS` requires timestamps within the
-window for coverage (0, the default, is pure set-difference), and
-`--exclude-probes` drops probe-class escapes (an existence probe on an
-under-prefix path counts as an escape by default — a name-not-found
-answer is still information the VFS never served). _The escape lines
-above are the toolkit's golden fixture, verbatim._
+The remaining flags scope the correlation: `--pid N` considers only one process's outside entries, `--window SECS` requires timestamps within the window for coverage (0, the default, is pure set-difference), and `--exclude-probes` drops probe-class escapes (an existence probe on an under-prefix path counts as an escape by default — a name-not-found answer is still information the VFS never served). _The escape lines above are the toolkit's golden fixture, verbatim._
 
 == The windows path: import a procmon capture.
 
-On windows the outside capture that works today is Procmon's CSV export —
-the kernel layer, normalized into the retrace JSON shape by an offline
-converter in the CLI (in-process, byte-parity with upstream's
-procmon2retrace):
+On windows the outside capture that works today is Procmon's comma-separated values (CSV) export — the kernel layer, normalized into the retrace JSON shape by an offline converter in the CLI (in-process, byte-parity with upstream's procmon2retrace):
 
 [source,console]
 ----
@@ -198,15 +145,7 @@ escape C:/pkg/scss/_a.scss func=QueryOpen tid=0 pid=9012 class=probe
 escape C:/pkg/scss/_hidden.scss func=CreateFile tid=0 pid=9012 class=read
 ----
 
-That verdict is the golden libsass-importer fixture, reproduced from the
-CSV end: a native importer probing partials with raw Win32 calls, below
-every libc hook — exactly the escape class only a kernel-layer capture can
-certify. One honest limitation: the libc-boundary alternative on windows
-(retrace's inline-hook backends with live injection) is a documented
-_absent prerequisite_ at retrace v2.14.0 — the win-run injector crashes
-inside the child's engine boot — so the procmon chain carries windows
-coverage certification until that lands upstream. A probe leg in tebako's
-CI pins the broken signature and fails on drift in either direction.
+That verdict is the golden libsass-importer fixture, reproduced from the CSV end: a native importer probing partials with raw Win32 calls, below every libc hook — exactly the escape class only a kernel-layer capture can certify. One honest limitation: the libc-boundary alternative on windows (retrace's inline-hook backends with live injection) is a documented _absent prerequisite_ at retrace v2.14.0 — the win-run injector crashes inside the child's engine boot — so the procmon chain carries windows coverage certification until that lands upstream. A probe leg in tebako's CI pins the broken signature and fails on drift in either direction.
 
 == When to use which layer.
 
@@ -216,23 +155,19 @@ CI pins the broken signature and fails on drift in either direction.
 
 | Inside the VFS
 | the tfs interception bus
-| every decision tebako itself made — mounts, dispatches, dlopen closures, jail verdicts. Always available, on every platform, with no setup beyond one environment variable.
+| every decision tebako itself made — mounts, dispatches, dlopen closures, jail verdicts. The layer is always available, on every platform, with no setup beyond one environment variable.
 
 | The libc boundary
 | retrace (preload on POSIX; inline hooks on windows)
-| libc-routed escapes — a payload calling open(2) or CreateFileW directly, below tebako's interposition but through libc.
+| The layer sees libc-routed escapes: a payload calling open(2) or CreateFileW directly, below tebako's interposition but through libc.
 
 | The kernel
 | retrace ptrace, an eBPF bridge, ETW / procmon (via the converter)
-| sub-libc escapes — raw syscalls and loader-internal probes that no libc hook can observe.
+| The layer sees sub-libc escapes: raw syscalls and loader-internal probes that no libc hook can observe.
 
 |===
 
-A coverage report is only as strong as its outside capture's layer: a
-libc-boundary capture certifies libc-routed escapes only; certifying
-sub-libc escapes takes a kernel-layer capture. The report names the
-producing layer — pass `--layer kernel` when the outside capture is
-ptrace, eBPF, or procmon.
+A coverage report is only as strong as its outside capture's layer: a libc-boundary capture certifies libc-routed escapes only, and certifying sub-libc escapes takes a kernel-layer capture. The report names the producing layer — pass `--layer kernel` when the outside capture is ptrace, eBPF, or procmon.
 
 == Exit codes.
 
@@ -246,23 +181,22 @@ ptrace, eBPF, or procmon.
 | —
 
 | `tebako trace explain`
-| no red hop — every hop's verdict is clean
-| a red hop named
-| usage or I/O error
+| no red hop appears; every hop's verdict is clean
+| a red hop is named
+| a usage or I/O error occurred
 
 | `tebako trace cover`
-| no escapes
-| escapes found
-| usage or I/O error
+| no escapes are found
+| escapes are found
+| a usage or I/O error occurred
 
 | `tebako trace import procmon`
-| entries emitted
+| entries are emitted
 | the conversion produced zero entries
-| usage or I/O error
+| a usage or I/O error occurred
 
 |===
 
-The 0/1 split for explain and cover exists so the verdicts are
-CI-gateable.
+The 0/1 split for explain and cover exists so the verdicts are CI-gateable.
 
 See also: link:/docs/guides/check/[Check a payload] · link:/docs/guides/jails/[Set a jail policy] · link:/docs/guides/debug/[Debug & logging]
