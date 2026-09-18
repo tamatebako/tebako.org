@@ -2,13 +2,14 @@
 title: Create a data payload
 heading: Create a data payload.
 lede: >-
-  A data payload is a directory of files — fonts, datasets, word lists —
-  pressed into a .tfs image with a manifest. No toolchain: imaging runs
-  in-process inside the tfs CLI.
+  A data payload is a directory of files — fonts, datasets, word lists
+  — pressed into a .tfs image together with a manifest. No toolchain is
+  required, because imaging runs in-process inside the tfs
+  command-line interface (CLI).
 description: >-
-  Turn a directory of files into a versioned, mountable .tfs data
-  payload: the in-image manifest, tfs mkimage, and the consumer-declared
-  mount rule.
+  This guide describes how a directory of files becomes a versioned,
+  mountable .tfs data payload: the in-image manifest, tfs mkimage, and
+  the consumer-declared mount rule.
 ---
 
 // normative: spec 03 (the in-image manifest), spec 20 §6 (limnifs is the default format for tfs mkimage; dwarfs an explicit opt-in) — tool_version string current-era (0.2.x)
@@ -19,15 +20,14 @@ description: >-
 This guide is part 2 of the link:/blog/2026-09-05-basic-payloads-data-payload/[Basic payloads] tutorial. The blog chapter builds the fonts example step by step.
 ====
 
-== Lay out the directory.
+== The directory layout.
 
 // The manifest path below uses [subs="specialchars"] because the vendored
 // Asciidoctor pairs the double underscores of __tpkg__ into emphasis inside
 // inline literals; the attribute disables quote substitution for the paragraph.
 
 [subs="specialchars"]
-The files as you want them mounted, plus one extra: the manifest, at
-__tpkg__/manifest.yaml inside the image.
+The directory holds the files exactly as they should be mounted, plus one addition: the manifest, at __tpkg__/manifest.yaml inside the image.
 
 [source,console]
 ----
@@ -39,7 +39,7 @@ acme-fonts/
 └── LICENSE
 ----
 
-== Write the manifest.
+== The manifest.
 
 [source,yaml]
 ----
@@ -57,30 +57,21 @@ capabilities: {exec: false, read: true}
 platforms: universal
 ----
 
-* `kind: data` declares that nothing here executes;
-  `capabilities.exec: false` makes that a fact the loader enforces, not
-  a courtesy.
-* `platforms: universal` — one image serves every OS. Platform-split
-  payloads name their triplets instead.
-* `mount_semantics.suggested` is a hint, not a rule — the consumer
-  decides the mount point (see the mount rule below).
-* `mkimage` fills in the digests; `signing` stays `unsigned` until you
-  sign — see link:/docs/guides/verify/[the verify guide].
+* `kind: data` declares that nothing here executes, and `capabilities.exec: false` makes that a fact the loader enforces rather than a courtesy.
+* The value `universal` for `platforms` means one image serves every operating system (OS); platform-split payloads name their triplets instead.
+* `mount_semantics.suggested` is a hint, not a rule — the consumer decides the mount point (see the mount rule below).
+* `mkimage` fills in the digests, and `signing` stays `unsigned` until the artifact is signed — see link:/docs/guides/verify/[the verify guide].
 
-== Image it.
+== Creating the image.
 
 [source,console]
 ----
 $ tfs mkimage acme-fonts/ -o acme-fonts-2.1.0.tfs
 ----
 
-The default image format is *limnifs* — a pure-Rust, content-addressed
-format; nothing to compile, no external tool to install, imaging happens
-in-process. `--format dwarfs` opts into the dwarfs writer explicitly;
-dwarfs stays a first-class read backend, so existing dwarfs images mount
-everywhere they always have.
+The default image format is *limnifs*, a pure-Rust, content-addressed format: nothing requires compilation, no external tool is installed, and imaging happens in-process. `--format dwarfs` opts into the dwarfs writer explicitly; dwarfs stays a first-class read backend, so existing dwarfs images mount everywhere they always have.
 
-== Check the image.
+== Checking the image.
 
 [source,console]
 ----
@@ -89,27 +80,17 @@ $ tfs ls acme-fonts-2.1.0.tfs
 $ tfs ls -r -l acme-fonts-2.1.0.tfs
 ----
 
-`tfs info --manifest` prints the manifest back as parsed — the fastest
-way to catch a YAML mistake. `tfs ls` lists the tree without extracting
-anything.
+`tfs info --manifest` prints the manifest back as parsed, which catches a YAML mistake quickly. `tfs ls` lists the tree without extracting anything.
 
 == The mount rule.
 
-A slice never decides where it lives. The _consumer's_ manifest declares
-the dependency in its `requires` — the payload, a version range, and the
-mount point — so one installed copy of `acme-fonts` can serve every
-application that mounts it, each at its own path.
+A slice never decides where it lives. The _consumer's_ manifest declares the dependency in its `requires` — the payload, a version range, and the mount point — so one installed copy of `acme-fonts` can serve every application that mounts it, each at its own path.
 
-Consumers attach your payload in two ways: their manifest's `requires`
-(resolved from the store, shared machine-wide), or
-`tebako press --image <path>:<mount>` (carried inside their package).
-Either way, your image ships location-agnostic.
+Consumers attach the payload in two ways: through their manifest's `requires` (resolved from the store, shared machine-wide), or through `tebako press --image <path>:<mount>` (carried inside their package). Either way, the image ships location-agnostic.
 
-== Ship it.
+== Publishing the payload.
 
-The image is the artifact. Publish it on your own releases with a
-registry index your users can add — the walkthrough is in
-link:/docs/guides/publish/[Publish to your own registry].
+The image is the artifact. The publisher releases it on its own releases page with a registry index consumers can add; the walkthrough is in link:/docs/guides/publish/[Publish to your own registry].
 
 The manifest model, field by field, is the link:/docs/reference/manifest/[manifest reference].
 

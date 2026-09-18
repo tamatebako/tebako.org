@@ -2,14 +2,14 @@
 title: Publish to your own registry
 heading: Publish to your own registry.
 lede: >-
-  Publishing is refreshingly simple: a registry is one YAML file —
-  tpkg-registry.yaml — that your users add once; the artifacts live on
-  your own releases page, and there is no central server, no submission
-  queue, nothing between you and your users.
+  A tebako registry is a single YAML file, tpkg-registry.yaml, which
+  consumers add once. The artifacts live on the publisher's own release
+  pages, and no central server, no submission queue, and no other
+  intermediary stand between the publisher and its users.
 description: >-
-  Publish tebako payloads to your own GitHub releases with tebako
-  publish: per-triplet artifacts, signing, offline rehearsal, and the
-  consumer side.
+  This guide describes publishing tebako payloads to a publisher's own
+  GitHub releases with tebako publish: per-triplet artifacts, signing,
+  offline rehearsal, and the consumer side.
 ---
 
 
@@ -20,8 +20,7 @@ This guide is part 5 of the link:/blog/2026-09-05-basic-payloads-publish/[Basic 
 
 == The publish command.
 
-You pass one `--payload` per platform triplet, built by your CI, and one
-release ref naming where they go.
+The command takes one `--payload` option per platform triplet, each naming an image built by the publisher's continuous integration (CI), and one release reference naming the destination.
 
 [source,console]
 ----
@@ -32,17 +31,11 @@ $ tebako publish --name acme-tool --version 1.4.0 \
     --payload linux-musl-x86_64=dist/acme-tool-1.4.0-linux-musl-x86_64.tfs
 ----
 
-* `--payload <triplet>=<path>` maps a platform to its built image;
-  repeat per platform. A single plain `--payload <path>` without a
-  triplet publishes one universal artifact.
-* `--standalone <triplet>=<path>` additionally attaches a stitched
-  single-executable build for that triplet — for users who never install
-  tebako.
-* Live upload needs a token: `TEBAKO_GITHUB_TOKEN` (or `GITHUB_TOKEN`)
-  with release write access.
+* `--payload <triplet>=<path>` maps a platform to its built image, and the option is repeated once per platform. A single plain `--payload <path>` without a triplet publishes one universal artifact.
+* `--standalone <triplet>=<path>` additionally attaches a stitched single-executable build for that triplet — for users who never install tebako.
+* A live upload needs a token: `TEBAKO_GITHUB_TOKEN` (or `GITHUB_TOKEN`) with release write access.
 
-publish uploads the payloads to the release, writes the registry index,
-and prints the result (representative):
+publish uploads the payloads to the release, writes the registry index, and prints the result (representative):
 
 [source,console]
 ----
@@ -53,15 +46,11 @@ sha256 c04d…63  acme-tool-1.4.0-linux-musl-x86_64.tfs
 registry -> dist/tpkg-registry.yaml
 ----
 
-== Sign what you ship.
+== Signing the artifacts.
 
-`--sign` signs every artifact before upload: detached `.asc` signatures
-and a signed `SHA256SUMS` are published on the same release. Plain
-`--sign` uses your press-local key (generated on first use);
-`--sign=<keyid>` picks a specific one. The receiving end of signatures
-is covered in link:/docs/guides/verify/[Verify integrity].
+`--sign` signs every artifact before upload: detached `.asc` signatures and a signed `SHA256SUMS` are published on the same release. Plain `--sign` uses the publisher's press-local key (generated on first use), and `--sign=<keyid>` picks a specific key. The receiving end of signatures is covered in link:/docs/guides/verify/[Verify integrity].
 
-== Rehearse before you upload.
+== Rehearsal before upload.
 
 [source,console]
 ----
@@ -72,22 +61,15 @@ $ tebako publish --name acme-tool --version 1.4.0 \
     --registry-out ./tpkg-registry.yaml
 ----
 
-`--upload-mirror <dir>` writes the release tree to a local directory
-instead of uploading — exactly what would ship, inspectable offline.
-`--registry-out <path>` chooses where the index is written. By default
-publish verifies artifacts before upload; `--skip-verify` turns that
-check off.
+`--upload-mirror <dir>` writes the release tree to a local directory instead of uploading — exactly what would ship, inspectable offline. `--registry-out <path>` chooses where the index is written. By default publish verifies artifacts before upload, and `--skip-verify` turns that check off.
 
-== Reach brew users too.
+== The Homebrew tap.
 
-`--tap <org/homebrew-tap>` emits a Homebrew formula for your tool
-alongside the registry entry; `--tap-dir <dir>` writes it into a local
-checkout of the tap. One publish gives your users two install routes.
+`--tap <org/homebrew-tap>` emits a Homebrew formula for the tool alongside the registry entry, and `--tap-dir <dir>` writes it into a local checkout of the tap. One publish run gives consumers two install routes.
 
 == The consumer side.
 
-Two commands for your users, then your tool is on their PATH with
-version pins and upgrades:
+Two commands put the tool on a consumer's PATH with version pins and upgrades:
 
 [source,console]
 ----
@@ -95,18 +77,14 @@ $ tebako add-registry tfs:github:acme/acme-tool
 $ tebako install acme-tool@1.4.0
 ----
 
-Users who want the index itself pinned by hash add the registry with a
-`sha256` parameter — quote the ref, it contains shell metacharacters:
+Consumers who want the index itself pinned by hash add the registry with a `sha256` parameter; the reference is quoted because it contains shell metacharacters:
 
 [source,console]
 ----
 $ tebako add-registry 'tfs:github:acme/acme-tool?sha256=9f2c…a1'
 ----
 
-Other ref forms work too: `tfs:gitlab:` and `tfs:bb:` for GitLab and
-Bitbucket, `tfs+git://` for self-hosted indexes, `file:///` for local
-ones. Reading from GitLab and Bitbucket works today; publishing _to_
-them is not implemented yet — the write leg fails with a named error.
+Other reference forms work as well: `tfs:gitlab:` and `tfs:bb:` for GitLab and Bitbucket, `tfs+git://` for self-hosted indexes, and `file:///` for local ones. Reading from GitLab and Bitbucket works today; publishing _to_ them is not implemented yet, and the write leg fails with a named error.
 
 See also: link:/docs/guides/data-payload/[Create a data payload] ·
 link:/docs/guides/verify/[Verify integrity] ·

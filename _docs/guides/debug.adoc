@@ -2,20 +2,20 @@
 title: Debug & logging
 heading: Debug & logging.
 lede: >-
-  Everything tebako logs goes to stderr, in one format, under one switch:
-  tebako[<pid>] <level> <component>: <event> <k=v>… — stdout belongs to the
-  payload, and logs never touch it.
+  Tebako logs everything to standard error (stderr), in one format,
+  under one switch; standard output (stdout) belongs to the payload,
+  and log output never touches it.
 description: >-
-  Tebako debugging: TEBAKO_DEBUG levels and per-component overrides, log
-  format, tebako doctor, registry freshness, and the exit codes worth
-  memorizing.
+  This guide describes tebako debugging: the TEBAKO_DEBUG levels and
+  per-component overrides, the log format, tebako doctor, registry
+  freshness, and the exit codes.
 ---
 
 // normative: spec 06 §4 + spec 18 §7 (exit allocation), spec 24 §5/§7 (126, 68), spec 26 §2 (79), spec 19 §4 (138), spec 11 §11 (debug logging) — table verified against crates/tpkg/src/lib.rs:275-291, tebako-bootstrap/src/lib.rs:81-106, tebako-shim/src/lib.rs:63-73
 
-== The switch.
+== The TEBAKO_DEBUG switch.
 
-Turn logging on with `TEBAKO_DEBUG`:
+Logging is turned on with `TEBAKO_DEBUG`:
 
 [source,console]
 ----
@@ -23,18 +23,10 @@ $ TEBAKO_DEBUG=debug tebako install metanorma
 $ TEBAKO_DEBUG=warn,resolve=trace tebako install metanorma
 ----
 
-* Levels: `off` (default), `error`, `warn`, `debug`, `trace`. A comma list
-  sets a base level plus per-component exceptions. `1`/`true`/`yes` mean
-  debug; `0`/`false`/`no` mean off.
-* The components: `preload, tfs, driver, shim, bootstrap, cli, pkg,
-  resolve`. `TEBAKO_DEBUG_COMPONENTS=resolve,cli` filters output to a
-  subset.
-* `TEBAKO_DEBUG_FILE=<path>` appends to a file instead of stderr; `%p` in
-  the path expands to the pid, so parallel runs do not interleave.
-* Legacy: any non-empty `TEBAKO_DEBUG_TFS` means `tfs=debug`. Payload
-  contents and key material are never logged. For a structured capture —
-  one JSON event per interception decision, machine-consumable — arm the
-  trace bus instead: see link:/docs/guides/trace/[Trace a packaged app].
+* The level names are `off` (the default), `error`, `warn`, `debug`, and `trace`. A comma-separated list sets a base level plus per-component exceptions. The values `1`/`true`/`yes` mean debug, and `0`/`false`/`no` mean off.
+* The component names are `preload, tfs, driver, shim, bootstrap, cli, pkg, resolve`, and `TEBAKO_DEBUG_COMPONENTS=resolve,cli` filters output to a subset.
+* `TEBAKO_DEBUG_FILE=<path>` appends to a file instead of stderr; `%p` in the path expands to the process identifier (pid), so parallel runs do not interleave.
+* The legacy spelling remains valid: any non-empty `TEBAKO_DEBUG_TFS` means `tfs=debug`. Payload contents and key material are never logged. For a structured capture — one machine-consumable JSON (JavaScript Object Notation) event per interception decision — the trace bus is armed instead; link:/docs/guides/trace/[Trace a packaged app] describes the workflow.
 
 == A worked session: a failing install.
 
@@ -49,12 +41,9 @@ tebako[81234] debug resolve: select metanorma version=1.2.3 artifact=metanorma-1
 tebako[81234] error resolve: download failed status=404 url=https://github.com/…/releases/download/…
 ----
 
-Read a line left to right: pid, level, component, event, then key=value
-detail. This trace says the registry index named an artifact the release
-page does not have — a publisher-side break, not your machine. _Log
-output shown is representative._
+Each line reads left to right as the pid, the level, the component, the event, and then key=value detail. This trace says that the registry index named an artifact the release page does not have; the break is on the publisher's side, not on the local machine. _Log output shown is representative._
 
-== doctor: the first thing to run.
+== The doctor diagnostic.
 
 The diagnostic verb is `tebako doctor`:
 
@@ -63,23 +52,13 @@ The diagnostic verb is `tebako doctor`:
 $ tebako doctor
 ----
 
-Five read-only sections — store, dispatch, network, trust, registries —
-every check a named verdict. It verifies the store layout and lock
-health, that the shim directory is on PATH and every shim resolves, that
-payload records and their trust anchors exist, that the config parses,
-that registries are fresh, and that the runtime cache is intact. It ends
-with _no problems found_ (exit 0) or a problem count (exit 1). When
-anything misbehaves, run this before anything else.
+The command runs five read-only sections — store, dispatch, network, trust, and registries — and prints a named verdict for every check. It verifies the store layout and lock health, the presence of the shim directory on PATH and of every shim, the existence of payload records and their trust anchors, the parseability of the config, the freshness of the registries, and the integrity of the runtime cache. It ends with _no problems found_ (exit 0) or a problem count (exit 1). When anything misbehaves, this command is the first one to run.
 
-`tebako doctor` shipped in v2.8.0. `tebako-shim doctor` still exists and
-reports the shim layer only (missing/corrupt records, routing) — `tebako
-doctor`'s dispatch section is that same report, rendered in place.
+`tebako doctor` shipped in v2.8.0. `tebako-shim doctor` still exists and reports the shim layer only (missing/corrupt records, routing); the dispatch section of `tebako doctor` is that same report, rendered in place.
 
-== "The version the publisher just shipped isn't there."
+== The version the publisher just shipped is missing.
 
-Registry indexes are cached for dispatch with a 24-hour TTL. A stale cache
-is the most common cause of a missing new version — check the state, then
-refresh:
+Registry indexes are cached for dispatch with a 24-hour time-to-live (TTL). A stale cache is the most common cause of a missing new version, so the freshness state is checked first and the cache is refreshed next:
 
 [source,console]
 ----
@@ -93,16 +72,10 @@ _Output representative._
 
 == Exit codes.
 
-Every loader failure prints a one-line reason before exiting — read that
-line first. The everyday two: 69 (something could not be fetched — check
-`TEBAKO_OFFLINE` first) and 73 (a malformed jail policy — fail closed,
-nothing mounted). The complete table — all loader codes 64 through 79,
-plus the three outside the block — lives in the reference:
-link:/docs/reference/exit-codes/[Exit codes].
+Every loader failure prints a one-line reason before exiting, and that line is the first thing to read. The two everyday codes are 69 (something could not be fetched — the `TEBAKO_OFFLINE` setting is checked first) and 73 (a malformed jail policy — the run fails closed and nothing mounts). The complete table — all loader codes 64 through 79, plus the three outside the block — lives in the reference: link:/docs/reference/exit-codes/[Exit codes].
 
 == CI logs.
 
-`TEBAKO_NO_PROGRESS=1` — or `NO_COLOR`, or `TERM=dumb` — switches progress
-rendering to plain lines that read cleanly in a build log.
+In a continuous integration (CI) log, `TEBAKO_NO_PROGRESS=1` — or `NO_COLOR`, or `TERM=dumb` — switches progress rendering to plain lines that read cleanly.
 
 See also: link:/docs/guides/trace/[Trace a packaged app] · link:/docs/guides/shims/[Shims & versions] · link:/docs/guides/info-inspect/[info & inspect] · link:/docs/guides/verify/[Verify integrity]
