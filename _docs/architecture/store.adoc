@@ -4,7 +4,7 @@ heading: >-
   The store: one directory, nothing hidden.
 lede: >-
   Everything tebako keeps on a machine lives under one directory,
-  `~/.tebako`. Runtimes download once and are shared by every application;
+  ~/.tebako. Runtimes download once and are shared by every application;
   payloads stay byte-identical with what the publisher released;
   uninstalling means deleting files. There is no daemon, no database, and no
   state anywhere else.

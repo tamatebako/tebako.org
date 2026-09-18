@@ -3,7 +3,7 @@ title: Runtime as image
 heading: Runtime as image.
 lede: >-
   A tebako runtime is not one binary. It is two artifacts, an interpreter
-  executable and an env `.tfs` image, downloaded once, sha256-verified, and
+  executable and an env .tfs image, downloaded once, sha256-verified, and
   mounted, never extracted, into the same process as the payloads it runs.
 description: >-
   A tebako runtime is two artifacts, the interpreter exe and the env .tfs

@@ -2,8 +2,8 @@
 title: Migrate from v1 to v2
 heading: Migrate from v1 to v2.
 lede: >-
-  The v1 tebako was the Ruby gem: `gem install tebako`, a `tebako setup`
-  that built Ruby from source, and a `tebako press` that produced one
+  The v1 tebako was the Ruby gem: gem install tebako, a tebako setup
+  that built Ruby from source, and a tebako press that produced one
   monolithic binary with the runtime embedded. v2 is the same press, rebuilt
   in Rust: one static binary, no gem, no CMake, and no setup step, plus a
   package format that can share one runtime between every tebako app on a
