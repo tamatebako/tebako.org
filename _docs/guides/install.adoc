@@ -2,11 +2,14 @@
 title: Install tebako
 heading: Install tebako.
 lede: >-
-  Four binaries, one directory, no daemon. Everything below runs as your
-  user — nothing needs root, and uninstalling means deleting files.
+  The tebako toolchain is four binaries in one directory, with no
+  daemon. Every command on this page runs as the invoking user, nothing
+  needs root, and uninstalling means deleting files.
 description: >-
-  Install the tebako CLI with Homebrew, the shell installer, or a direct
-  binary: four static binaries, one store directory, no daemon, no root.
+  This guide describes installing the tebako command-line interface
+  (CLI) with Homebrew, the shell installer, or a direct binary
+  download: four static binaries, one store directory, no daemon, and
+  no root requirement.
 ---
 
 
@@ -15,11 +18,9 @@ description: >-
 This guide is part 1 of the link:/blog/2026-09-05-basic-payloads-run-first-package/[Basic payloads] tutorial. The blog chapter walks a first run end to end.
 ====
 
-== Pick a route.
+== The install routes.
 
-All three install the same four binaries. Brew and the installer verify
-SHA-256 checksums before anything lands; if you download by hand, verify
-the sums yourself against the `SHA256SUMS` file on the release.
+All three routes install the same four binaries. Homebrew and the shell installer verify SHA-256 checksums before anything lands; a hand download is verified against the `SHA256SUMS` file on the release.
 
 *Homebrew (macOS, Linux).*
 
@@ -28,7 +29,7 @@ the sums yourself against the `SHA256SUMS` file on the release.
 brew install tamatebako/tap/tebako
 ----
 
-The binaries link into your brew prefix, which is already on PATH.
+The binaries link into the brew prefix, which is already on PATH.
 
 *Shell installer (any Unix).*
 
@@ -37,13 +38,9 @@ The binaries link into your brew prefix, which is already on PATH.
 curl -fsSL https://tebako.org/install.sh | sh
 ----
 
-The installer detects your platform, downloads the binaries plus
-`SHA256SUMS`, verifies before installing, and never uses sudo.
+The installer detects the platform, downloads the binaries plus `SHA256SUMS`, verifies before installing, and never uses sudo.
 
-*Direct binaries.* On the
-link:https://github.com/tamatebako/tebako/releases[releases page], one
-asset per binary per platform, for `macos-arm64`, `macos-x86_64`, and the
-``linux-gnu-* / linux-musl-*`` families:
+*Direct binaries.* The link:https://github.com/tamatebako/tebako/releases[releases page] carries one asset per binary per platform, for `macos-arm64`, `macos-x86_64`, and the ``linux-gnu-* / linux-musl-*`` families:
 
 [source,console]
 ----
@@ -53,22 +50,13 @@ tfs-<ver>-macos-arm64
 tebako-bootstrap-<ver>-macos-arm64
 ----
 
-The installer puts the binaries in `~/.local/bin` (mode 0755) and prints
-the PATH line for your shell. Set `TEBAKO_INSTALL_DEST` to change the
-destination, `TEBAKO_VERSION` to pin a specific release.
+The installer puts the binaries in `~/.local/bin` (mode 0755) and prints the PATH line for the user's shell. The destination directory is changed with `TEBAKO_INSTALL_DEST`, and a specific release is pinned with `TEBAKO_VERSION`.
 
 == What lands.
 
-Four static binaries: `tebako` (the packager and store CLI),
-`tebako-pkg` (package trailer surgery and signing), `tfs` (image
-inspection and creation), and `tebako-bootstrap` (the loader that
-`tebako press` stitches into every package). Everything they keep on
-your machine lives under `~/.tebako`.
+The release ships four static binaries: `tebako` (the packager and store CLI), `tebako-pkg` (package trailer surgery and signing), `tfs` (image inspection and creation), and `tebako-bootstrap` (the loader that `tebako press` stitches into every package). Everything they keep on the machine lives under `~/.tebako`.
 
-The dispatcher `tebako-shim` is not among the four. Shims are registered
-later, by `tebako install`: each shim is a link to a dispatcher binary —
-by default `tebako-shim` located next to the tebako binary, overridable
-with `TEBAKO_SHIM_BINARY`.
+The dispatcher `tebako-shim` is not among the four. Shims are registered later, by `tebako install`: each shim is a link to a dispatcher binary — by default `tebako-shim` located next to the tebako binary, overridable with `TEBAKO_SHIM_BINARY`.
 
 == Check the install.
 
@@ -78,14 +66,11 @@ $ tebako --version
 Tebako executable packager version 2.1.7
 ----
 
-If the shell cannot find `tebako` after the shell installer, the install
-destination is not on PATH — the installer printed the exact line to add
-to your shell startup file.
+If the shell cannot find `tebako` after the shell installer, the install destination is not on PATH — the installer printed the exact line to add to the shell startup file.
 
-== Sixty seconds to a first packaged command.
+== A first packaged command.
 
-The managed flow in four commands: add a registry, install a payload
-from it, put the shim directory on PATH once, run the tool by name.
+The managed flow is four commands: a registry is added, a payload is installed from it, the shim directory is put on PATH once, and the tool runs by name.
 
 [source,console]
 ----
@@ -97,25 +82,17 @@ $ tebako-shim install-shell    # once per machine — puts ~/.tebako/shims on PA
 $ hello
 ----
 
-The first run of `hello` downloads the ruby runtime once, verifies its
-SHA-256, and caches it; every later run starts from the cache. Open a
-new shell after `install-shell` so the PATH change takes effect. _Output
-versions shown are representative._
+The first run of `hello` downloads the ruby runtime once, verifies its SHA-256, and caches it; every later run starts from the cache. Open a new shell after `install-shell` so the PATH change takes effect. _Output versions shown are representative._
 
 == Platform notes.
 
-* *musl is the universal Linux artifact.* The ``linux-musl-*`` builds are
-  fully static and run on any distribution. The installer selects them
-  automatically on musl systems such as Alpine.
-* *Windows.* Download the `.exe` assets from the releases page. The
-  store lives at `%LOCALAPPDATA%\tebako`.
-* *Moving the store.* Set `TEBAKO_HOME` to relocate `~/.tebako` — useful
-  for shared caches and CI sandboxes.
+* *musl is the universal Linux artifact.* The ``linux-musl-*`` builds are fully static and run on any distribution. The installer selects them automatically on musl systems such as Alpine.
+* *Windows.* The `.exe` assets are downloaded from the releases page. The store lives at `%LOCALAPPDATA%\tebako`.
+* *Moving the store.* `TEBAKO_HOME` relocates `~/.tebako`, which is useful for shared caches and continuous integration (CI) sandboxes.
 
 == Uninstall.
 
-Delete the binaries and the store; there is nothing else. Remove the
-shim PATH block first if you installed it.
+Uninstallation deletes the binaries and the store; there is nothing else. The shim PATH block is removed first when `install-shell` was run.
 
 [source,console]
 ----
@@ -126,9 +103,7 @@ rm ~/.local/bin/tebako ~/.local/bin/tebako-pkg ~/.local/bin/tfs ~/.local/bin/teb
 rm -rf ~/.tebako
 ----
 
-Runtimes and payloads re-download on demand, but the store also holds
-your config, your signing keys (`keys/`), and your pinned publisher keys
-(`trust/`) — those do not come back.
+Runtimes and payloads re-download on demand, but the store also holds the operator's config, signing keys (`keys/`), and pinned publisher keys (`trust/`) — those do not come back.
 
 See also: link:/docs/guides/run/[Run a packaged app] ·
 link:/docs/guides/shims/[Shims & versions] ·
