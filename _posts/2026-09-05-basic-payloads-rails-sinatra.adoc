@@ -26,9 +26,9 @@ Reference guide: link:/docs/guides/package-ruby/[Package a Ruby app].
 ====
 
 A web application is an application whose entrypoint starts a server.
-That is the whole trick: press the app so that running the executable
-serves HTTP. This post's subject is packaging Rails and Sinatra
-applications, and the few decisions that are specific to them.
+The task is therefore to press the app so that running the executable
+serves HTTP. The subject of this post is packaging Rails and Sinatra
+applications, along with the few decisions that are specific to them.
 
 
 ++++
@@ -76,19 +76,19 @@ Puma starting in single mode…
 ----
 
 The app code, Sinatra, Puma, and every gem travel inside the payload
-slice. `curl localhost:3000` is serving from the package.
+slice, and a request to `localhost:3000` is served from the package.
 
 == Rails: the same, with the pieces named
 
-Rails is bigger, not different. What travels inside the image: the
-application code, the bundled gems, and the precompiled assets —
-assets are files like any other, and mounting them beats expecting the
-host to have them. What stays outside:
+Rails is larger, not different. The image carries the application
+code, the bundled gems, and the precompiled assets — assets are files
+like any other, and mounting them is more reliable than expecting the
+host to provide them. The following stay outside:
 
 * *The port* — the server binds it at run time, like any server.
 * *The database* — an SQLite file can travel inside the image or live
-  on the host; PostgreSQL and friends are host services, reached over
-  the network exactly as in development.
+  on the host; PostgreSQL and similar services are host services,
+  reached over the network exactly as in development.
 * *Temporary and log paths* — a running Rails app writes to `tmp/` and
   `log/`. Writable host paths are granted by declaration, which the
   advanced series covers; for a self-contained package, point both at
@@ -102,11 +102,12 @@ $ ./blog
 * Listening on http://0.0.0.0:3000
 ----
 
-Press it for every platform your users run — the choices are the ones
-from the previous post.
+The executable is pressed for every platform its users run; the
+choices are the ones from the previous post.
 
 == What you can do now
 
-You can package a web application — Sinatra in one command, Rails with
-assets inside and services outside — and serve it from a single file.
-The last post in this series publishes what you have built.
+This post has packaged a web application — Sinatra in one command,
+Rails with assets inside and services outside — and served it from a
+single file. The last post in this series publishes what has been
+built.

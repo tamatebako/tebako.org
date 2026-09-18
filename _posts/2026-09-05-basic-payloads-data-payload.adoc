@@ -25,10 +25,11 @@ series_post: 2
 Reference guide: link:/docs/guides/data-payload/[Create a data payload].
 ====
 
-The simplest payload there is: a directory of files. Fonts, schemas,
-dictionaries, word lists, datasets — anything versioned that
-applications read. No code, no compilation, one command. This post
-makes one and then reads it back two ways.
+The simplest payload is a directory of files: fonts, schemas,
+dictionaries, word lists, or datasets — anything versioned that
+applications read. Such a payload involves no code and no compilation,
+and one command produces it. This post makes one and then reads it
+back two ways.
 
 
 ++++
@@ -65,7 +66,7 @@ makes one and then reads it back two ways.
 </figure>
 ++++
 
-_Figure 1 — A directory with a manifest becomes one image; applications mount it at a path, or you read it directly with the tfs commands._
+_Figure 1 — A directory with a manifest becomes one image; applications mount it at a path, or a reader inspects it directly with the tfs commands._
 
 == Make the payload
 
@@ -87,7 +88,7 @@ EOF
 $ tfs mkimage acme-fonts/ -o acme-fonts-2.1.0.tfs
 ----
 
-You now have one file — `acme-fonts-2.1.0.tfs` — that is a complete,
+The result is one file — `acme-fonts-2.1.0.tfs` — that is a complete,
 versioned, self-describing payload.
 
 == Read it back
@@ -124,6 +125,6 @@ image — the same bytes, no copies on disk.
 
 == What you can do now
 
-You can turn any directory of files into a versioned payload, inspect
-it, pull files out of it, and mount it into an application. The next
-post packages the application itself.
+This post has turned any directory of files into a versioned payload
+that can be inspected, unpacked, and mounted into an application. The
+next post packages the application itself.

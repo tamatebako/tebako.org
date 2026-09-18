@@ -27,10 +27,11 @@ Reference guide: link:/docs/guides/install/[Install tebako] and link:/docs/guide
 
 This series teaches tebako v2 hands-on, one subject per post: run a
 package, make payloads, package applications, publish them. Every step
-is a command you can run right now.
+is a command that can be run as written.
 
-This post's subject is the first one: running a package. You do not
-need Ruby, any other language, or any toolchain — only tebako itself.
+The subject of this post is the first one: running a package. The task
+requires no Ruby, no other language, and no toolchain — only tebako
+itself.
 
 
 ++++
@@ -70,7 +71,7 @@ need Ruby, any other language, or any toolchain — only tebako itself.
 </figure>
 ++++
 
-_Figure 1 — Install tebako once, install a payload from any registry, and you get an ordinary command; a fat executable works the other way, with no install at all._
+_Figure 1 — Installing tebako once and installing a payload from any registry produces an ordinary command; a fat executable works the other way, with no install at all._
 
 == Install tebako
 
@@ -86,8 +87,8 @@ Tebako executable packager version 2.1.8
 
 == Install a payload and run it
 
-Payloads live in registries — a registry is just a YAML file hosted
-next to someone's releases. Add one, install from it, and run:
+Payloads live in registries — a registry is a YAML file hosted next to
+a publisher's releases. Add one registry, install from it, and run:
 
 [source,console]
 ----
@@ -97,17 +98,17 @@ $ hello
 Hello, world!
 ----
 
-An ordinary command appeared on your PATH. That command is a *shim*: a
-small link that dispatches, every time you invoke it, to the right
-payload version and runtime. You will meet version pinning in the last
-chapter of this series.
+An ordinary command has appeared on the PATH. That command is a
+*shim*: a small link that dispatches, on every invocation, to the
+right payload version and runtime. Version pinning is covered in the
+last chapter of this series.
 
 == The other way: a fat executable
 
 Some projects ship a single executable with everything carried inside.
-You download it, make it runnable, and run it — the runtime it needs is
-resolved and verified on first run, then shared with every other tebako
-package on the machine:
+The user downloads it, makes it runnable, and runs it; the runtime it
+needs is resolved and verified on first run, then shared with every
+other tebako package on the machine:
 
 [source,console]
 ----
@@ -117,8 +118,8 @@ resolving runtime: ruby >= 3.3, < 5.0 (arm64-macos)
 runtime ruby-3.3.7 (downloaded, verified)
 ----
 
-Both ways run the same bytes. What you just used is the whole model
-from the
+Both ways run the same bytes. What the preceding commands exercised is
+the whole model from the
 link:/blog/2026-09-05-architecture-three-part-package/[architecture
-series]: a bootstrap, a mounted runtime, payload slices. The next post
-makes your first payload.
+series]: a bootstrap, a mounted runtime, and payload slices. The next
+post builds a first payload.

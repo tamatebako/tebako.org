@@ -26,13 +26,13 @@ may touch, who decides, and how the decision is enforced.
 
 The model has three rules:
 
-. *Read-only by default.* Every file access a payload makes flows
+. *Read-only by default:* every file access a payload makes flows
   through one choke point in tebako's filesystem layer, and the default
   answer to each access is no.
-. *The payload declares; the run binds.* Grants are written in the
+. *The payload declares, and the run binds:* grants are written in the
   manifest under `needs:`, with a reason for each one, and the run
   binds them per invocation.
-. *Denials are named.* A denied access is reported with the path, the
+. *Denials are named:* a denied access is reported with the path, the
   operation, and a documented exit code — never a crash.
 
 
@@ -76,7 +76,7 @@ The model has three rules:
 </figure>
 ++++
 
-_Figure 1 — A payload declares what it needs; the run binds it; one choke point enforces it — and record mode can draft the grants for you._
+_Figure 1 — A payload declares what it needs; the run binds it; one choke point enforces it — and record mode can draft the grants for the operator._
 
 == The grant
 

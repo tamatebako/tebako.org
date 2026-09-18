@@ -25,9 +25,9 @@ series_post: 3
 Reference guide: link:/docs/guides/package-ruby/[Package a Ruby app].
 ====
 
-A Ruby application, one executable. This post's subject is pressing
-your app — and the choices you make at press time: what the executable
-carries, and which platforms it targets.
+A Ruby application becomes one executable. The subject of this post is
+pressing an application — and the choices a packager makes at press
+time: what the executable carries, and which platforms it targets.
 
 
 ++++
@@ -67,7 +67,7 @@ carries, and which platforms it targets.
 </figure>
 ++++
 
-_Figure 1 — Press turns a source tree into an executable; fat carries the payload, lean resolves everything at run time, and you build one universal file for pure Ruby or one per platform for native code._
+_Figure 1 — Press turns a source tree into an executable; fat carries the payload, lean resolves everything at run time, and the packager builds one universal file for pure Ruby or one per platform for native code._
 
 == Press the application
 
@@ -79,10 +79,11 @@ $ tebako press -r ./myapp -e bin/myapp -o myapp
 $ ./myapp
 ----
 
-Your gems are resolved at press time and travel inside the payload
-slice; your users get a file that runs without Ruby installed. If your
-app's entrypoint should become a command on your users' PATH — the
-shim you met in the first post — declare it in the manifest:
+The application's gems are resolved at press time and travel inside
+the payload slice; users receive a file that runs without Ruby
+installed. If the application's entrypoint should become a command on
+the users' PATH — the shim introduced in the first post — declare it
+in the manifest:
 
 [source,yaml]
 ----
@@ -96,13 +97,15 @@ shims.
 
 == The first choice: fat or lean
 
-* *Fat* — the payload is carried inside the executable. One
-  self-contained file, the simplest thing to hand someone.
+* *Fat* — the payload is carried inside the executable, so the result
+  is one self-contained file and the simplest artifact to hand to a
+  user.
 * *Lean* — the executable references the payload, and everything
-  resolves at run time. The smallest file; the same bytes and behavior.
+  resolves at run time; the result is the smallest file with the same
+  bytes and behavior.
 
-Your users cannot tell the difference at run time; the difference is
-where the bytes come from on the first run.
+Users cannot tell the difference at run time; the difference is where
+the bytes come from on the first run.
 
 == The second choice: which platforms
 
@@ -111,14 +114,14 @@ where the bytes come from on the first run.
 * Native extensions — gems with compiled C — press once per *triplet*:
   `macos-arm64`, `macos-x86_64`, `linux-gnu-x86_64`,
   `linux-gnu-aarch64`, `linux-musl-x86_64`, `linux-musl-aarch64`,
-  `windows-ucrt-x86_64`. The compilation happens on your machine or
-  your CI, and your users never compile anything.
+  `windows-ucrt-x86_64`. The compilation happens on the packager's
+  machine or CI, and users compile nothing.
 
 The advanced series covers native code in depth — including the case
 where shipping prebuilt binaries is the entire point.
 
 == What you can do now
 
-You can press a Ruby application into a fat or lean executable, choose
-its platforms, and declare the commands it provides. The next post
-does the same for a web application.
+This post has pressed a Ruby application into a fat or lean
+executable, chosen its platforms, and declared the commands it
+provides. The next post does the same for a web application.
