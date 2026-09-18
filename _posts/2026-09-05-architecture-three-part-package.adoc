@@ -30,13 +30,13 @@ each part does exactly one job:
 
 . *The bootstrap* — a small Rust loader, under 3 MB. It is the entry
   point of every package: it reads the package trailer, finds the
-  runtime, verifies it, and hands control over. It never runs your code
-  itself.
-. *The runtime* — the language interpreter your application needs. It
+  runtime, verifies it, and hands control over. It never runs the
+  application's code itself.
+. *The runtime* — the language interpreter the application needs. It
   ships as two artifacts — the interpreter executable, and an
   environment image holding the standard library and gems. The next
   post covers it in full.
-. *Payload slices* — your application, your data, and the tools it
+. *Payload slices* — the application, its data, and the tools it
   needs, each a disk image that describes itself with a manifest
   inside the image.
 
@@ -90,7 +90,7 @@ each part does exactly one job:
 </figure>
 ++++
 
-_Figure 1 — The file: a small bootstrap, numbered payload slots, and a trailer that names the runtime and the mounts. At run time the parts co-mount in one process._
+_Figure 1 — The file contains a small bootstrap, numbered payload slots, and a trailer that names the runtime and the mounts; at run time the parts co-mount in one process._
 
 == What holds the parts together
 
@@ -100,19 +100,20 @@ names the runtime the package needs and lists the slices stitched into
 the executable.
 
 Because the parts are glued at the end of a normal file, a tebako
-package stays a normal file: you can `curl` it, `chmod` it, ship it in
-a tarball, notarize it, or hardlink it into a Chocolatey package.
+package stays a normal file: it can be fetched with `curl`, made
+executable with `chmod`, shipped in a tarball, notarized, or hardlinked
+into a Chocolatey package.
 
 == Carried or shared
 
 Every slice is one of two kinds, and the choice is made when the
 package is pressed:
 
-* *Carried* — the slice's bytes are inside the executable. One file,
-  everything included.
-* *Shared* — the executable names the slice, and it resolves from a
-  registry into the machine's store on first use. Runtimes always work
-  this way; toolkits can too.
+* *Carried* — the slice's bytes are inside the executable, so the
+  distribution is one file that includes everything.
+* *Shared* — the executable names the slice, and the slice resolves
+  from a registry into the machine's store on first use. Runtimes
+  always work this way; toolkits can too.
 
 Carry changes where the bytes come from, never what runs: the mounted
 result is identical either way.
@@ -120,7 +121,8 @@ result is identical either way.
 == Where this series goes
 
 The next four posts cover each part of the model in depth: the runtime
-as an image, the composition grammar, the host boundary, and trust. If
-you would rather start doing than reading, the
+as an image, the composition grammar, the host boundary, and trust.
+The
 link:/blog/2026-09-05-basic-payloads-run-first-package/[basic payloads
-series] runs the whole model hands-on.
+series] runs the whole model hands-on for readers who prefer to start
+by doing.

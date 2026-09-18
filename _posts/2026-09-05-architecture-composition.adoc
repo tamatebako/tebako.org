@@ -87,7 +87,7 @@ requires:
     mount: /opt/inkscape
 ----
 
-Three kinds of requirement, three mechanisms:
+Three kinds of requirement correspond to three mechanisms:
 
 * A *language* runtime boots the application: its two artifacts mount
   as described in the previous post.

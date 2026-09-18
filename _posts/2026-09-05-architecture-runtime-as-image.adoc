@@ -102,13 +102,13 @@ there is no partial mount.
 
 == What this buys you
 
-The lean-versus-fat choice you meet as a packager is a direct
+The lean-versus-fat choice that a packager meets is a direct
 consequence of this model:
 
 * A *fat* executable carries its payload and resolves its runtime on
-  first run — small file, shared runtime.
-* A *lean* executable references everything and resolves it all at run
-  time — smaller file, same guarantees.
+  first run, which produces a small file with a shared runtime.
+* A *lean* executable references everything and resolves all of it at
+  run time, which produces a smaller file with the same guarantees.
 
 The next post covers the grammar that ties runtimes, toolkits, and
 slices together: composition.
