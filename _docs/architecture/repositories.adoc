@@ -2,40 +2,40 @@
 title: The repositories
 heading: The repository map.
 lede: >-
-  The ecosystem is a fleet of small repos, each owning one artifact and one
-  contract. They consume each other's published releases, never source trees
-  — so every repo builds its own platforms and publishes its own releases.
-  Retired repos stay readable; oracle repos stay frozen; neither is a
-  graveyard.
+  The ecosystem is a fleet of small repositories, each owning one artifact
+  and one contract. They consume each other's published releases, never
+  source trees, so every repository builds its own platforms and publishes
+  its own releases. Retired repositories stay readable, and oracle
+  repositories stay frozen; neither is a graveyard.
 description: >-
-  Every tamatebako repository and its lifecycle state, plus the product
-  repo's crate map, the bootstrap size gate, and the golden-parity
-  discipline.
+  This page lists every tamatebako repository and its lifecycle state, plus
+  the product repo's crate map, the bootstrap size gate, and the
+  golden-parity discipline.
 ---
 
 // normative: spec 13, spec 14 — wave-1 rewrite 2026-08-25. Repo set + states verified live via api.github.com; crate map from `cargo metadata` on tebako main (workspace 0.2.4); five binaries + triplets from .github/workflows/release.yml; size-gate history from ci.yml + commit e3005cd + the tebako-bootstrap v0.2.0 release asset sizes.
 
-== The map.
+== The map
 
 [cols="1,4,1"]
 |===
 | REPO | ROLE | STATE
 
-| https://github.com/tamatebako/tebako[tebako] | THE PRODUCT. The Rust workspace and nothing else: the five shipped binaries (tebako, tfs, tebako-pkg, tebako-shim, tebako-bootstrap) plus every library crate behind them — wire format, VFS, resolver, driver, signer. Publishes its own per-platform releases across seven triplets. | Product — releases ship
-| https://github.com/tamatebako/ruby[ruby] | SOURCE FACTORY. Canonical ruby patches + versions.yml; every upstream fetch sha256-verified; a daily monitor onboards new ruby-lang.org releases or files a named drift issue. Publishes tfs-ruby-<ver>-src[-<scenario>].tar.gz + SHA256SUMS. Ruby tooling around vendored upstream C — the patches are the only tebako-specific C consumers. | Factory — active
-| https://github.com/tamatebako/tebako-runtime-ruby[tebako-runtime-ruby] | RUNTIME FACTORY. Builds the patched source per (ruby version × triplet), boot-smokes each built runtime, and publishes the two runtime artifacts — interpreter exe + env .tfs image — with manifest.json + SHA256SUMS. Consumes only the source factory's releases. | Factory — active
-| https://github.com/tamatebako/tebako-runtime-python[tebako-runtime-python] | RUNTIME FACTORY for CPython, including the experimental jit flavor lines. Publishes interpreter exe + env .tfs per (version, flavor, triplet) with signed manifests. | Factory — active
-| https://github.com/tamatebako/tebako-runtime-jruby[tebako-runtime-jruby] | RUNTIME FACTORY for JRuby: one universal env image composed on the OpenJDK owner (a runtime stacked on a runtime). | Factory — active
-| https://github.com/tamatebako/tebako-runtime-truffleruby[tebako-runtime-truffleruby] | RUNTIME FACTORY for TruffleRuby in native and jvm modes. | Factory — active
-| https://github.com/tamatebako/tebako-runtime-openjdk[tebako-runtime-openjdk] | RUNTIME FACTORY for OpenJDK (Temurin JRE and GraalVM editions): the hermetic java the composed runtimes sit on. | Factory — active
-| https://github.com/tamatebako/dwarfs-t[dwarfs-t] | The ONLY tebako-owned C++: the DwarFS-T image format library (FlatBuffers metadata — upstream dwarfs cannot read it) behind the dwarfs_c_* C ABI. Read-only at runtime forever; the Writer exists at creation time only. Never archived — the foundation, not a legacy repo. | Foundation — active
-| https://github.com/tamatebako/dwarfs-t-rs[dwarfs-t-rs] | Standalone Rust binding to dwarfs-t: the safe crate (reader + in-process Writer) over the hand-pinned FFI sys crate. Not tebako-specific — the product consumes it as an ordinary external dependency. | Foundation — active
-| https://github.com/tamatebako/tebako-ci-containers[tebako-ci-containers] | The Docker toolchain images the factories build in. | Tooling — active
-| https://github.com/tamatebako/tebako.org[tebako.org] | This site: the docs, the blog, and the trust-anchor publication point. | Site — active
-| https://github.com/tebako-packages[tebako-packages/*] | The feedstock org, conda-forge model: one repo per package (recipe + patch sets + manifest templates + CI), each owning its own release line. A feedstock's releases host its payload artifacts + its tpkg-registry.yaml; the index repo is the registry-of-registries behind tebako add-registry. | Org — active
-| https://github.com/tamatebako/tebako-v1[tebako-v1] | The C++/gem era, frozen: the gem press, the C++ tebako-main driver, the merged env+app image model. Kept readable as the behavioral reference and the history. Nothing new lands there — do not touch. | Retired
-| https://github.com/tamatebako/libtfs[libtfs] | The C++ tebako_fs_* engine the Rust tfs crate superseded. No new features — it stays because product CI still downloads its released binaries (tebakofs, mkdwarfs) as the golden-parity oracle. | Oracle — maintenance
-| https://github.com/tamatebako/tebako-bootstrap[tebako-bootstrap] | The C99 v1 launcher. Same arrangement: frozen, and still downloaded by product CI as the Rust bootstrap's behavioral oracle and the printed size baseline. | Oracle — maintenance
+| https://github.com/tamatebako/tebako[tebako] | This is the product: the Rust workspace and nothing else, namely the five shipped binaries (tebako, tfs, tebako-pkg, tebako-shim, tebako-bootstrap) plus every library crate behind them — wire format, VFS, resolver, driver, signer. It publishes its own per-platform releases across seven triplets. | Product — releases ship
+| https://github.com/tamatebako/ruby[ruby] | This is the source factory: canonical ruby patches and versions.yml, with every upstream fetch sha256-verified, plus a daily monitor that onboards new ruby-lang.org releases or files a named drift issue. It publishes tfs-ruby-<ver>-src[-<scenario>].tar.gz + SHA256SUMS. The repo is Ruby tooling around vendored upstream C, and the patches are the only tebako-specific C consumers. | Factory — active
+| https://github.com/tamatebako/tebako-runtime-ruby[tebako-runtime-ruby] | This is the runtime factory: it builds the patched source per (ruby version × triplet), boot-smokes each built runtime, and publishes the two runtime artifacts, the interpreter exe and the env .tfs image, with manifest.json + SHA256SUMS. It consumes only the source factory's releases. | Factory — active
+| https://github.com/tamatebako/tebako-runtime-python[tebako-runtime-python] | This is the runtime factory for CPython, including the experimental jit flavor lines. It publishes interpreter exe + env .tfs per (version, flavor, triplet) with signed manifests. | Factory — active
+| https://github.com/tamatebako/tebako-runtime-jruby[tebako-runtime-jruby] | This is the runtime factory for JRuby: one universal env image composed on the OpenJDK owner, a runtime stacked on a runtime. | Factory — active
+| https://github.com/tamatebako/tebako-runtime-truffleruby[tebako-runtime-truffleruby] | This is the runtime factory for TruffleRuby in native and jvm modes. | Factory — active
+| https://github.com/tamatebako/tebako-runtime-openjdk[tebako-runtime-openjdk] | This is the runtime factory for OpenJDK (Temurin JRE and GraalVM editions), the hermetic java that the composed runtimes sit on. | Factory — active
+| https://github.com/tamatebako/dwarfs-t[dwarfs-t] | This is the only tebako-owned C++: the DwarFS-T image format library (FlatBuffers metadata, which upstream dwarfs cannot read) behind the dwarfs_c_* C ABI. It is read-only at runtime forever, and the writer exists at creation time only. It is never archived; it is the foundation, not a legacy repo. | Foundation — active
+| https://github.com/tamatebako/dwarfs-t-rs[dwarfs-t-rs] | This is the standalone Rust binding to dwarfs-t: the safe crate (reader + in-process writer) over the hand-pinned FFI sys crate. It is not tebako-specific, and the product consumes it as an ordinary external dependency. | Foundation — active
+| https://github.com/tamatebako/tebako-ci-containers[tebako-ci-containers] | This repo provides the Docker toolchain images that the factories build in. | Tooling — active
+| https://github.com/tamatebako/tebako.org[tebako.org] | This site hosts the docs, the blog, and the trust-anchor publication point. | Site — active
+| https://github.com/tebako-packages[tebako-packages/*] | This is the feedstock org on the conda-forge model: one repo per package (recipe + patch sets + manifest templates + CI), each owning its own release line. A feedstock's releases host its payload artifacts and its tpkg-registry.yaml, and the index repo is the registry-of-registries behind tebako add-registry. | Org — active
+| https://github.com/tamatebako/tebako-v1[tebako-v1] | This is the C++/gem era, frozen: the gem press, the C++ tebako-main driver, and the merged env+app image model. It is kept readable as the behavioral reference and the history. Nothing new lands there. | Retired
+| https://github.com/tamatebako/libtfs[libtfs] | This is the C++ tebako_fs_* engine that the Rust tfs crate superseded. It gains no new features; it stays because product CI still downloads its released binaries (tebakofs, mkdwarfs) as the golden-parity oracle. | Oracle — maintenance
+| https://github.com/tamatebako/tebako-bootstrap[tebako-bootstrap] | This is the C99 v1 launcher, under the same arrangement: frozen, and still downloaded by product CI as the Rust bootstrap's behavioral oracle and the printed size baseline. | Oracle — maintenance
 |===
 
 Also in the tamatebako org, outside the stack itself: tebako-samples
@@ -43,11 +43,11 @@ Also in the tamatebako org, outside the stack itself: tebako-samples
 stack no longer consumes), and aibika (a separate Windows Ruby application
 packager — not part of tebako).
 
-== The product repository.
+== The product repository
 
 [NOTE]
 ====
-Status: shipped — v0.2.x, five binaries across seven triplets.
+The product is shipped as v0.2.x, five binaries across seven triplets.
 ====
 
 https://github.com/tamatebako/tebako[tamatebako/tebako] is one Rust
@@ -60,81 +60,83 @@ binaries before any upload: a bare launch in the cleanest environment the
 leg claims, plus a hard dynamic-dependency whitelist audit
 (https://github.com/tamatebako/tebako/blob/main/.github/workflows/release.yml[release.yml]).
 
-Stated plainly: every checksum bundle and manifest ships with a detached
-OpenPGP signature (the release trust chain, live since tebako v2.6.0); a
-release that is still rolling out platform by platform stays unsigned until
-it is complete, and unsigned releases remain first-class. The brew formula
-tracks the same five binaries.
+This point is stated plainly: every checksum bundle and manifest ships with
+a detached OpenPGP signature (the release trust chain, live since tebako
+v2.6.0); a release that is still rolling out platform by platform stays
+unsigned until it is complete, and unsigned releases remain first-class. The
+brew formula tracks the same five binaries.
 
-=== The crate map.
+=== The crate map
 
 *The wire*
 
 * https://github.com/tamatebako/tebako/tree/main/crates/tpkg[tpkg] — the
-  tpkg trailer + manifest format — parse, serialize, validate. The single
-  source of truth for the wire format; `#![forbid(unsafe_code)]`.
+  tpkg trailer and manifest format: it parses, serializes, and validates.
+  The crate is the single source of truth for the wire format, with
+  `#![forbid(unsafe_code)]`.
 * https://github.com/tamatebako/tebako/tree/main/crates/tebako-json[tebako-json]
-  — minimal exact-format JSON — writer + small parser, no serde.
+  — minimal exact-format JSON: a writer plus a small parser, with no serde.
 * https://github.com/tamatebako/tebako/tree/main/crates/tebako-log[tebako-log]
-  — the stack's one debug facility — `TEBAKO_DEBUG` levels, stderr/file
-  sinks, component filters.
+  — the stack's one debug facility: `TEBAKO_DEBUG` levels, stderr/file
+  sinks, and component filters.
 
 *The VFS*
 
-* https://github.com/tamatebako/tebako/tree/main/crates/tfs[tfs] — libtfs-rs:
-  the `tebako_fs_*` C ABI in Rust (cdylib/staticlib). The shipping TFS
-  implementation — the C++ libtfs is its parity oracle.
+* https://github.com/tamatebako/tebako/tree/main/crates/tfs[tfs] —
+  libtfs-rs: the `tebako_fs_*` C ABI in Rust (cdylib/staticlib). It is the
+  shipping TFS implementation, and the C++ libtfs is its parity oracle.
 * https://github.com/tamatebako/tebako/tree/main/crates/sqfs-sys[sqfs-sys] —
-  hand-pinned FFI to libsquashfs (squashfs-tools-ng), same discipline as
-  dwarfs-t-sys.
+  hand-pinned FFI to libsquashfs (squashfs-tools-ng), with the same
+  discipline as dwarfs-t-sys.
 * https://github.com/tamatebako/tebako/tree/main/crates/libtfs-preload[libtfs-preload]
-  — the preload interposition shim — DYLD_INSERT_LIBRARIES / LD_PRELOAD VFS
+  — the preload interposition shim: DYLD_INSERT_LIBRARIES / LD_PRELOAD VFS
   injection for dynamic native binaries.
 
 *The CLI surface (four of the five binaries)*
 
 * https://github.com/tamatebako/tebako/tree/main/crates/tebako-cli[tebako-cli]
-  — the `tebako` binary — press / run / install / publish / check / trace /
+  — the `tebako` binary: press / run / install / publish / check / trace /
   cache / info.
 * https://github.com/tamatebako/tebako/tree/main/crates/tfs-cli[tfs-cli] —
-  the `tfs` binary — the generic VFS image tool: info / ls / tree / cat /
+  the `tfs` binary: the generic VFS image tool, with info / ls / tree / cat /
   extract / find / mkimage / exec.
 * https://github.com/tamatebako/tebako/tree/main/crates/tebako-pkg[tebako-pkg]
-  — tpkg trailer surgery — bundle / unbundle / insert-image / set-runtime /
+  — tpkg trailer surgery: bundle / unbundle / insert-image / set-runtime /
   sign / verify / validate / info.
 * https://github.com/tamatebako/tebako/tree/main/crates/tebako-shim[tebako-shim]
-  — the dispatcher + version manager — argv0 resolution, the version chain,
-  runtime resolution, the handoff.
+  — the dispatcher and version manager: argv0 resolution, the version chain,
+  runtime resolution, and the handoff.
 
 *Load time*
 
 * https://github.com/tamatebako/tebako/tree/main/crates/tebako-bootstrap[tebako-bootstrap]
-  — the Rust loader — the fifth binary and the process entry point of every
-  stitched package. Size-gated, below.
+  — the Rust loader: the fifth binary and the process entry point of every
+  stitched package. It is size-gated, below.
 * https://github.com/tamatebako/tebako/tree/main/crates/tebako-driver[tebako-driver]
-  — the driver linked inside every runtime exe: mounts the env image +
-  payload images, applies the jail, rewrites argv. The Rust successor of the
-  v1 C++ tebako-main.
+  — the driver linked inside every runtime exe: it mounts the env image +
+  payload images, applies the jail, and rewrites argv. It is the Rust
+  successor of the v1 C++ tebako-main.
 
 *Shared plumbing*
 
 * https://github.com/tamatebako/tebako/tree/main/crates/tebako-resolve[tebako-resolve]
-  — MECE payload references, transport-agnostic fetchers, the shared payload
-  cache.
+  — MECE payload references, transport-agnostic fetchers, and the shared
+  payload cache.
 * https://github.com/tamatebako/tebako/tree/main/crates/tebako-http[tebako-http]
-  — in-process HTTPS — ureq + rustls, webpki-roots bundled. No curl
-  anywhere.
+  — in-process HTTPS, with ureq + rustls and webpki-roots bundled. There is
+  no curl anywhere.
 * https://github.com/tamatebako/tebako/tree/main/crates/tebako-signer[tebako-signer]
-  — OpenPGP sign/verify via rnp-rs, vendored — no system librnp provisioning.
+  — OpenPGP sign/verify via rnp-rs, vendored, with no system librnp
+  provisioning.
 * https://github.com/tamatebako/tebako/tree/main/crates/tebako-info[tebako-info]
-  — the info/inspect surface — payload and package introspection as JSON
+  — the info/inspect surface: payload and package introspection as JSON
   documents.
 * https://github.com/tamatebako/tebako/tree/main/crates/tebako-term[tebako-term]
-  — terminal progress — TTY detect, hand-rolled ANSI bar/spinner, zero
+  — terminal progress: TTY detect, a hand-rolled ANSI bar/spinner, and zero
   dependencies.
 * https://github.com/tamatebako/tebako/tree/main/crates/tebako-arscope[tebako-arscope]
   — scopes Rust staticlib symbols for single-link embedding (the
-  yjit-collision seal), pure Rust, no shell-outs.
+  yjit-collision seal); it is pure Rust with no shell-outs.
 
 Beside the workspace, not in it:
 https://github.com/tamatebako/dwarfs-t-rs[dwarfs-t-rs], the standalone Rust
@@ -142,21 +144,22 @@ binding to dwarfs-t — consumed as an ordinary external dependency, tracking
 dwarfs-t releases. dwarfs-t itself stays C++ forever; the `dwarfs_c_*` C ABI
 is the only Rust-consumable surface.
 
-== The bootstrap size gate.
+== The bootstrap size gate
 
 [NOTE]
 ====
-Status: shipped — hard fail at or above 3 MB.
+The size gate is shipped, with a hard fail at or above 3 MB.
 ====
 
 The bootstrap is the process entry point of every stitched package, so its
-size is a hard CI gate, not a nice-to-have. Every
+size is a hard CI gate rather than a nice-to-have. Every
 https://github.com/tamatebako/tebako/blob/main/.github/workflows/ci.yml[CI run]
 builds the release bootstrap per platform, prints it next to the C99 v0.2.0
-baseline, and fails at 3,145,728 bytes. The discipline that keeps it there:
-`opt-level="z"`, fat LTO, one codegen unit, `panic="abort"`, stripped
-symbols; no async runtime, no clap, no logging framework. The budget moved
-as the feature set did — and the moves are on record, not swept under:
+baseline, and fails at 3,145,728 bytes. The discipline that keeps it there
+is `opt-level="z"`, fat LTO, one codegen unit, `panic="abort"`, and stripped
+symbols, with no async runtime, no clap, and no logging framework. The
+budget moved as the feature set did, and the moves are on record rather than
+swept under:
 
 [cols="2,1,2"]
 |===
@@ -174,13 +177,13 @@ https://github.com/tamatebako/tebako/commit/e3005cdcd524a7c4ab62f8e9d8c2cc863554
 the C99 baseline numbers are the published
 https://github.com/tamatebako/tebako-bootstrap/releases/tag/v0.2.0[v0.2.0 release assets].
 
-== The golden-parity discipline.
+== The golden-parity discipline
 
 The order is law: if a C++ or gem predecessor exists, golden vectors and
-fixtures are generated from it _first_ — no oracle, no parity claim. Then
-the ported corpus runs unchanged against the Rust implementation, and parity
-legs diff byte-for-byte. That is not a README promise; it is what CI does on
-every run:
+fixtures are generated from it _first_, because without an oracle there is
+no parity claim. Then the ported corpus runs unchanged against the Rust
+implementation, and the parity legs diff byte-for-byte. That is not a README
+promise; it is what CI does on every run:
 
 * CI downloads the C++ oracle binaries — `tebakofs` and `mkdwarfs` from
   https://github.com/tamatebako/libtfs/releases/tag/v0.13.0[libtfs v0.13.0],
@@ -198,21 +201,21 @@ every run:
 * An exported-symbol audit passes only when nothing but the `tebako_*`
   surface leaks.
 * Anything ported from a C++/gem predecessor is byte-compared, or the
-  deviation is documented. A mismatch means the contract moved — and both
+  deviation is documented. A mismatch means the contract moved, and both
   sides must move together.
 
-This is why the two oracle repos are not archived: the parity claim needs
-the oracle to exist. libtfs and the C99 bootstrap get no new features — they
-stay frozen, citable, and downloaded by the product's own CI.
+This is why the two oracle repositories are not archived: the parity claim
+needs the oracle to exist. libtfs and the C99 bootstrap get no new features;
+they stay frozen, citable, and downloaded by the product's own CI.
 
-== What retired: tebako-v1.
+== What retired: tebako-v1
 
-The whole v1 implementation — the gem press, the C99 bootstrap as the
-shipped product, the C++ driver, the merged env+app image model — is frozen
-in https://github.com/tamatebako/tebako-v1[tebako-v1]. It stays readable: it
-is the behavioral reference the parity story is proven against, and the
+The whole v1 implementation (the gem press, the C99 bootstrap as the shipped
+product, the C++ driver, and the merged env+app image model) is frozen in
+https://github.com/tamatebako/tebako-v1[tebako-v1]. It stays readable: it is
+the behavioral reference against which the parity story is proven, and the
 history of why v2 looks the way it does. Nothing new lands there. The
-piece-by-piece succession:
+piece-by-piece succession follows:
 
 [cols="1,1"]
 |===
@@ -224,34 +227,34 @@ piece-by-piece succession:
 | the C++ tebako-main driver | crates/tebako-driver (linked into the runtime)
 |===
 
-== The lifecycle rules.
+== The lifecycle rules
 
 === Contracts outlive implementations
 
 The `tebako_fs_*` ABI and the tpkg trailer are byte-level contracts.
-Consumers don't care which repo ships them — that is what let the Rust
+Consumers do not care which repository ships them; that is what let the Rust
 reimplementation ship without a flag day, and it is why the C++ side still
 matters as the oracle.
 
 === Releases are the interface
 
 Repos consume each other's published releases, never source trees. The
-factories and the product live in different repos with separate cadences —
-the manifest.json contract sits between them, so the packager never
+factories and the product live in different repos with separate cadences,
+and the manifest.json contract sits between them, so the packager never
 hardcodes a runtime matrix.
 
-=== C++ exactly once
+=== C++ appears exactly once
 
 dwarfs-t is the only tebako-owned C++ (upstream ruby's own C is vendored
 upstream source, built in the two factories). Everything else is Rust, pure
-Ruby tooling, or Docker — no exceptions, no "temporary" ports.
+Ruby tooling, or Docker, with no exceptions and no "temporary" ports.
 
 === dwarfs-t is not legacy
 
 A Rust DwarFS reader/writer is explicitly out of scope. dwarfs-t is
-read-only at runtime forever, with the Writer at creation time only; the
+read-only at runtime forever, with the writer at creation time only; the
 only Rust-consumable surface is the C ABI, co-versioned with the C++ it
-wraps — which is what dwarfs-t-rs binds.
+wraps, which is what dwarfs-t-rs binds.
 
 See also: link:/docs/architecture/factories/[The artifact chain] ·
 link:/docs/architecture/contributors/[Working across the repos] ·

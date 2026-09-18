@@ -2,29 +2,31 @@
 title: Declarative overlays
 heading: Declarative overlays.
 lede: >-
-  Images are read-only forever — that is the transforms law. When a workload
+  Images are read-only forever, which is the transforms law. When a workload
   must write, or a slice arrives sealed, the run gains a transform: a
-  copy-on-write layer, an encryption view. Each enters exclusively through a
-  written declaration, resolved before exec, journaled at run time. Nothing is
-  transformed that was not declared.
+  copy-on-write layer or an encryption view. Each transform enters
+  exclusively through a written declaration, resolved before exec and
+  journaled at run time. Nothing is transformed that was not declared.
 description: >-
-  Nothing is transformed that was not declared: how a slice says 'I write here'
-  or 'I am sealed — bind a key', how the operator binds the store or the
-  recipient, and the one pinned stack — COW over ENC over backend.
+  Nothing is transformed that was not declared: this page covers how a slice
+  says 'I write here' or 'I am sealed — bind a key', how the operator binds
+  the store or the recipient, and the one pinned stack, COW over ENC over
+  backend.
 ---
 
 // normative: spec 24 (§1 stack order, §2 D1 needs.write/needs.decrypt, §3 D2 bindings, §4 resolution 3a-3c/5', §5 write gate + sealed read, §6 record mode, §7 exit 68, §8 post-bake swap, §9 SSOT), spec 11 §4/§7 (COW mechanics), spec 10 §7 (envelope grant manifest)
 
 [NOTE]
 ====
-Status: shipped — the gated COW composite, the TEBAKO_OVERLAYS / TEBAKO_DECRYPT
-env grammars, vfs-deny journaling, the needs generator's write fold, exit 68.
+The gated COW composite, the TEBAKO_OVERLAYS / TEBAKO_DECRYPT env grammars,
+vfs-deny journaling, the needs generator's write fold, and exit 68 are
+shipped.
 
-Status: planned — the D1/D2 manifest model and the driver's boot-time
-consumption are phased.
+The D1/D2 manifest model and the driver's boot-time consumption are phased,
+and they are planned.
 ====
 
-== One pinned stack, top to bottom.
+== One pinned stack, top to bottom
 
 Per mount point, from the syscall side down to the bytes:
 
@@ -34,22 +36,22 @@ COW  →  ENC  →  format backend
 CowBackend( EncBackend( LimnifsBackend | DwarfsBackend | SquashfsBackend | … ) )
 ----
 
-COW is always outermost; ENC wraps exactly one image's backend and sits under
-COW. The order is not a taste: `EncBackend` is a decrypting _read_ view — it
-implements no write path — so only `COW(Enc(base))` can accept a write, and
-copy-up then reads _through_ the ENC layer: modifying a sealed base file copies
-its plaintext into the operator-bound overlay store. That store is outside the
-image's confidentiality envelope, stated honestly — scratch at rest is the
-host's disk-encryption layer, never a tebako declaration. Whiteouts name
-plaintext view paths, consistent with the ENC format keeping names and
-structure plaintext and only regular-file content ciphertext. A union mount
-composes the per-image stacks beneath COW — sealed union members wrap
-individually and merge as plaintext views.
+COW is always outermost, and ENC wraps exactly one image's backend and sits
+under COW. The order is not a taste: `EncBackend` is a decrypting _read_
+view that implements no write path, so only `COW(Enc(base))` can accept a
+write, and copy-up then reads _through_ the ENC layer; modifying a sealed
+base file copies its plaintext into the operator-bound overlay store. That
+store is outside the image's confidentiality envelope, stated honestly:
+scratch at rest is the host's disk-encryption layer, never a tebako
+declaration. Whiteouts name plaintext view paths, consistent with the ENC
+format keeping names and structure plaintext and only regular-file content
+ciphertext. A union mount composes the per-image stacks beneath COW, and
+sealed union members wrap individually and merge as plaintext views.
 
-== D1 — a slice declares its writes and its seals.
+== D1 — a slice declares its writes and its seals
 
-Two blocks extend the ONE `needs:` key of the slice manifest — the composition
-grammar, amended once, owned in one place.
+Two blocks extend the one `needs:` key of the slice manifest: the
+composition grammar is amended once and owned in one place.
 
 [source,yaml]
 ----
@@ -64,21 +66,23 @@ decrypt:                      # key-binding requirements — ENC
   why: "the converter reads the licensed font tree"   # MANDATORY
 ----
 
-A write area is a PATH the slice will write, not a mechanism — COW is the only
-mechanism, so resolution always satisfies a write need with a CowBackend stack.
-`persistence` is the slice's contract about its own data: `ephemeral` says any
-per-run scratch satisfies me; `retained` says my writes must survive the run,
-so an operator-bound durable store is mandatory. The operator may widen
-durability upward, never demote a retained need to scratch — declarations
-request, the operator tightens. For decrypt: the FACT of encryption is owned by
-the identity block (paths, algorithm, envelope refs — never keys); the need
-only names WHICH sealed parts the workload requires opened. Sealed state with
-no `needs.decrypt` defaults to ALL parts required — fail-closed. With entries,
-unlisted parts may stay sealed: one artifact, N audiences, each run opening
-exactly its declared subtree. A data slice declares no `needs.write` ever; a
-sealed data slice is the one exception that may carry `needs.decrypt`.
+A write area is a path that the slice will write, not a mechanism; COW is
+the only mechanism, so resolution always satisfies a write need with a
+CowBackend stack. `persistence` is the slice's contract about its own data:
+`ephemeral` states that any per-run scratch satisfies the slice, and
+`retained` states that the slice's writes must survive the run, so an
+operator-bound durable store is mandatory. The operator may widen durability
+upward and never demotes a retained need to scratch; declarations request,
+and the operator tightens. For decrypt, the fact of encryption is owned by
+the identity block (paths, algorithm, envelope refs, never keys), and the
+need only names which sealed parts the workload requires opened. Sealed
+state with no `needs.decrypt` defaults to all parts required, fail-closed.
+With entries, unlisted parts may stay sealed: one artifact serves N
+audiences, and each run opens exactly its declared subtree. A data slice
+declares no `needs.write` ever, and a sealed data slice is the one exception
+that may carry `needs.decrypt`.
 
-== D2 — the operator binds the store and the recipient.
+== D2 — the operator binds the store and the recipient
 
 The composition document gains two top-level keys; D5 maps 1:1 as repeatable
 `--overlay` / `--decrypt` flags, and flags win.
@@ -94,20 +98,21 @@ decrypt:                      # ENC key bindings — REFERENCES, never material
   recipient: pgp:3c8dba971d2b4f01   # a key in $TEBAKO_HOME/keys/
 ----
 
-Bindings satisfy needs; they never create capability. An entry naming a slice
-with no matching declared need is a named ORPHAN-BINDING error at resolution,
-never a silent grant — giving an undeclared slice a write area takes both
-lines: the composition declares the need AND binds the store. One store per
-mount; the directory is created when missing and gains a derived rw identity
-grant in the effective policy, so declared write access to host surface stays
-visible by construction. `recipient:` names a key reference — `pgp:` plus 16
-lowercase hex — resolved against `$TEBAKO_HOME/keys/`, the only secret-key
-home. Key material in any authored document is a named validation error, not a
-grammar. Trust posture, stated honestly: a package signature covers slices and
-trailer, NOT the bindings; an overlay store's content is host state, outside
+Bindings satisfy needs; they never create capability. An entry naming a
+slice with no matching declared need is a named ORPHAN-BINDING error at
+resolution, never a silent grant; giving an undeclared slice a write area
+takes both lines, because the composition declares the need and binds the
+store. There is one store per mount; the directory is created when missing
+and gains a derived rw identity grant in the effective policy, so declared
+write access to host surface stays visible by construction. `recipient:`
+names a key reference, `pgp:` plus 16 lowercase hex, resolved against
+`$TEBAKO_HOME/keys/`, the only secret-key home. Key material in any authored
+document is a named validation error, not a grammar. The trust posture,
+stated honestly, is that a package signature covers slices and the trailer,
+not the bindings, and an overlay store's content is host state, outside
 every image's trust anchor.
 
-== Resolution — before exec, never mid-run.
+== Resolution: before exec, never mid-run
 
 Between the composition algorithm's needs-union and needs-check steps, the
 resolver gains three ordered steps:
@@ -136,67 +141,68 @@ spawned children inherit and re-bind identically
 |===
 |VAR |GRAMMAR |NOTE
 
-|`TEBAKO_OVERLAYS` |`<mount>=<store>` ; separated, split on the FIRST = |a store keeps its own = and its drive-qualified :
-|`TEBAKO_DECRYPT` |`<mount>=pgp:<keyid>` |key REFERENCES cross the wire — key material never does
+|`TEBAKO_OVERLAYS` |`<mount>=<store>` ; separated, split on the FIRST = |A store keeps its own = and its drive-qualified :.
+|`TEBAKO_DECRYPT` |`<mount>=pgp:<keyid>` |Key references cross the wire; key material never does.
 |===
 
 Malformed env forms fail closed with exit 68, each a named error quoting the
 offending entry: an empty spec, a stray `;`, a missing `=`, a non-absolute
-mount or store, a duplicate mount, a decrypt recipient that is not `pgp:` + 16
-lowercase hex. A store containing `;` is unrepresentable by construction — it
-splits into a second entry that fails the grammar. Fail-closed, never a silent
-misparse.
+mount or store, a duplicate mount, or a decrypt recipient that is not `pgp:`
+plus 16 lowercase hex. A store containing `;` is unrepresentable by
+construction, because it splits into a second entry that fails the grammar.
+The failure is fail-closed, never a silent misparse.
 
-== Run time — the write gate and the sealed read.
+== Run time: the write gate and the sealed read
 
 A mount carrying at least one write area stacks CowBackend with the declared
-area set; the jail installs AFTER the mounts with the derived store grants in
-force. The gate's predicate is locked: areas are absolute in-image paths
-normalized at mount time; a write to an area itself or any path BELOW it —
-component boundary, `/a/b` never covers `/a/bc` — is permitted; all four write
-verbs (`pwrite`, `truncate`, `mkdir`, `remove`) are gated identically; reads
-are never gated; the whiteout journal keeps its EPERM under every area set. A
-malformed area fails the mount with EINVAL — fail-closed, never a silent
-widening.
+area set, and the jail installs after the mounts with the derived store
+grants in force. The gate's predicate is locked: areas are absolute in-image
+paths normalized at mount time; a write to an area itself or to any path
+below it (on a component boundary; `/a/b` never covers `/a/bc`) is permitted;
+all four write verbs (`pwrite`, `truncate`, `mkdir`, `remove`) are gated
+identically; reads are never gated; and the whiteout journal keeps its EPERM
+under every area set. A malformed area fails the mount with EINVAL,
+fail-closed and never a silent widening.
 
 [cols="4,4,3"]
 |===
 |SURFACE |ANSWER |JOURNAL
 
-|write under a declared write area |lands in the overlay store |`vfs-write (record mode) · silent success (deny mode)`
-|write anywhere else in a held tree |EROFS — the jail-safe default |`event=vfs-deny op=write`
-|read of a sealed path with no opening grant |ENOKEY (126), never garbage |`event=vfs-deny op=read class=ekey`
-|store-side IO failure (ENOSPC, EACCES) |the write syscall's own errno |no translation — the run degrades like a full disk
+|write under a declared write area |It lands in the overlay store. |`vfs-write (record mode) · silent success (deny mode)`
+|write anywhere else in a held tree |The answer is EROFS, the jail-safe default. |`event=vfs-deny op=write`
+|read of a sealed path with no opening grant |The answer is ENOKEY (126), never garbage. |`event=vfs-deny op=read class=ekey`
+|store-side IO failure (ENOSPC, EACCES) |The answer is the write syscall's own errno. |No translation occurs; the run degrades like a full disk.
 |===
 
-== Record mode discovers writes too.
+== Record mode discovers writes too
 
-Under `policy: record` every image mount stacks an ephemeral scratch COW — the
-"nothing is denied" promise now covers writes into held trees: the write lands
-in scratch, journaled `event=vfs-write`, and is discarded at exit. The payload
-observed a writable world it never owned. Deny-mode `vfs-deny` lines and
-record-mode `vfs-write` lines both fold into `tfs needs --from-journal`, which
-emits a draft `needs.write:` block beside `needs.host:` — persistence
-`ephemeral` (the observed minimum), each with the `why:` TODO. Sealed-read
-denials fold into a draft `needs.decrypt:` entry. The human gate is unchanged:
-the author flips persistence, prunes noise, fills why, merges into D1 or D2.
-The generator never edits a manifest.
+Under `policy: record`, every image mount stacks an ephemeral scratch COW,
+so the "nothing is denied" promise now covers writes into held trees: the
+write lands in scratch, journaled `event=vfs-write`, and is discarded at
+exit. The payload observed a writable world that it never owned. Deny-mode
+`vfs-deny` lines and record-mode `vfs-write` lines both fold into
+`tfs needs --from-journal`, which emits a draft `needs.write:` block beside
+`needs.host:`, with persistence `ephemeral` (the observed minimum) and each
+entry carrying its `why:` TODO. Sealed-read denials fold into a draft
+`needs.decrypt:` entry. The human gate is unchanged: the author flips
+persistence, prunes noise, fills why, and merges into D1 or D2. The
+generator never edits a manifest.
 
-== Swap the bindings, never rebuild the slice.
+== Swapping the bindings without rebuilding the slice
 
-Overlay and key bindings live in the composition layer — swappable by
+Overlay and key bindings live in the composition layer and are swappable by
 construction. Managed mode edits `tebako.yaml` or passes flags. A standalone
 package's baked composition carries the resolved needs union and the
-press-time bindings as the DEFAULT; the override document (argv `--compose` >
-`TEBAKO_COMPOSE` > sidecar) carries `overlays:` / `decrypt:` with the same
-grammar. The reserved L2 `mounts[].mode: cow` spelling becomes live for
-exactly this; `enc` stays reserved — a sealed slice's fact is its own
-manifest's, never the L2 row's. The boot journal names what ran:
-`event=overlay mount=… store=… source=declared|ephemeral` and
-`event=decrypt mount=… recipient=pgp:… grants=…`. Key material never touches a
-journal. The one added exit-code row: **68 `EX_TEBAKO_OVERLAY`** — unbound
-retained store, missing or non-opening key material, unwritable store, orphan
-binding, malformed env grammar.
+press-time bindings as the default, and the override document (argv
+`--compose` > `TEBAKO_COMPOSE` > sidecar) carries `overlays:` / `decrypt:`
+with the same grammar. The reserved L2 `mounts[].mode: cow` spelling becomes
+live for exactly this, and `enc` stays reserved, because a sealed slice's
+fact is its own manifest's, never the L2 row's. The boot journal names what
+ran: `event=overlay mount=… store=… source=declared|ephemeral` and
+`event=decrypt mount=… recipient=pgp:… grants=…`. Key material never touches
+a journal. The one added exit-code row is **68 `EX_TEBAKO_OVERLAY`**: an
+unbound retained store, missing or non-opening key material, an unwritable
+store, an orphan binding, or a malformed env grammar.
 
 See also: link:/docs/architecture/composition/[Declarative composition] ·
 link:/docs/architecture/encryption/[Encryption and envelopes] ·

@@ -2,30 +2,32 @@
 title: Trace and observability
 heading: Trace and observability.
 lede: >-
-  Virtualizing an application means answering three questions: what does it
-  touch, which hop failed when it breaks, and is anything it does NOT
-  virtualized. Each used to be answered by hand-rolled one-off diagnostics.
-  Now there is one substrate and three front-ends.
+  Virtualizing an application means answering three questions: what the
+  application touches, which hop failed when something breaks, and whether
+  anything escapes virtualization. Each question used to be answered by
+  hand-rolled one-off diagnostics; now one substrate and three front-ends
+  answer them.
 description: >-
-  One interception bus, three front-ends: trace run discovers what a payload
-  touches, trace explain names the first failed hop, trace cover proves what
-  escaped virtualization — cross-platform and runtime-independent by
-  construction.
+  The design is one interception bus with three front-ends: trace run
+  discovers what a payload touches, trace explain names the first failed
+  hop, and trace cover proves what escaped virtualization, cross-platform
+  and runtime-independent by construction.
 ---
 
 // normative: spec 25 (§1 laws, §2 bus, §3 envelope, §4 run, §5 explain, §6 cover + three-layer model + correlator, §8 phasing T1-T4)
 
 [NOTE]
 ====
-Status: shipped — the tfs::trace bus + schema, trace run / explain / cover, the
-procmon converter — golden-parity with retrace-correlate on the shared fixture
-tree.
+The tfs::trace bus and schema, trace run / explain / cover, and the procmon
+converter are shipped, with golden parity against retrace-correlate on the
+shared fixture tree.
 
-Status: planned — the remainder is dogfood, not code: retrace libc-layer legs
-on both platforms, the kernel-layer leg, incident-13 capture archival.
+The remainder is dogfood rather than code, and it is planned: the retrace
+libc-layer legs on both platforms, the kernel-layer leg, and incident-13
+capture archival.
 ====
 
-== The laws.
+== The laws
 
 [source,text]
 ----
@@ -48,19 +50,19 @@ on both platforms, the kernel-layer leg, incident-13 capture archival.
 7. Human gate — a generated suggestion never edits a manifest.
 ----
 
-== The interception bus.
+== The interception bus
 
-The bus lives in the Rust `tfs` crate — the shipping VFS implementation on
-every platform. Every interception point the driver and TFS already implement
-emits one structured event per decision. Armed by `TEBAKO_TRACE=<host-path>`
-or the driver's `--tebako-trace` argument (the argument wins; it travels the
-env-scrubbed handoff). The channel opens at driver boot, before any mount;
-writes are append-only, process-internal, and never policy-gated. Disarmed, an
-emission point is one `Option::is_none()` branch — and the bus compiles into
-the runtime/driver side only, so the bootstrap's size gate is untouched.
-Spawned children inherit the armed channel (fd inheritance on POSIX;
-re-open-for-append on windows); every event carries pid/tid so front-ends
-regroup.
+The bus lives in the Rust `tfs` crate, the shipping VFS implementation on
+every platform. Every interception point that the driver and TFS already
+implement emits one structured event per decision. The bus is armed by
+`TEBAKO_TRACE=<host-path>` or by the driver's `--tebako-trace` argument (the
+argument wins, and it travels the env-scrubbed handoff). The channel opens
+at driver boot, before any mount; writes are append-only, process-internal,
+and never policy-gated. When disarmed, an emission point is one
+`Option::is_none()` branch, and the bus compiles into the runtime/driver
+side only, so the bootstrap's size gate is untouched. Spawned children
+inherit the armed channel (fd inheritance on POSIX; re-open-for-append on
+windows), and every event carries pid/tid so front-ends can regroup.
 
 [cols="2,4,4"]
 |===
@@ -75,33 +77,35 @@ regroup.
 |`resolve` |the driver's --tebako-image triple resolution |`whole / slot:<n> / error:<errno>`
 |===
 
-The stream is JSONL — one JSON object per line, streamable, diffable, robust
-to a crashed tail — under the versioned schema `trace-event.yaml` (envelope
-v1: additive only, never bumped; ts/pid/tid/op/path/verdict/detail/dur_us/
-errno). CI property-tests the whole op matrix against the schema.
-`TEBAKO_DEBUG_TFS` remains as the human-readable degraded view over the same
-emission points.
+The stream is JSONL, one JSON object per line, streamable, diffable, and
+robust to a crashed tail, under the versioned schema `trace-event.yaml`
+(envelope v1: additive only, never bumped;
+ts/pid/tid/op/path/verdict/detail/dur_us/errno). CI property-tests the whole
+op matrix against the schema. `TEBAKO_DEBUG_TFS` remains as the
+human-readable degraded view over the same emission points.
 
-== `tebako trace run` — discovery.
+== `tebako trace run`: discovery
 
-Runs a composition under `policy: record` with the bus armed, then synthesizes
-a suggested manifest — a commented YAML fragment, never applied. Host reads
-become ro grants, host writes become rw grants (strongest-observed-op wins);
-a VFS-resident file read through a RAW host fd (a native library's own fopen —
-the exec-cache answer consumed it) becomes a `materialize:` candidate, caught
-automatically instead of discovered by a failing import; an in-image dlopen
-whose deps all resolve in-image earns a NOTE "closure-covered — nothing to
-declare"; a spawned host-absolute executable becomes an entrypoint/runtime-dep
-note. Floor, store, and exec-cache paths are excluded — the automatic surface
-is never declared. Each entry carries its evidence line; the author reviews,
-flips ro↔rw, deletes noise, fills why.
+The command runs a composition under `policy: record` with the bus armed,
+then synthesizes a suggested manifest, a commented YAML fragment that is
+never applied. Host reads become ro grants, and host writes become rw grants
+(strongest-observed-op wins). A VFS-resident file read through a raw host fd
+(a native library's own fopen, where the exec-cache answer consumed it)
+becomes a `materialize:` candidate, caught automatically instead of
+discovered by a failing import; an in-image dlopen whose deps all resolve
+in-image earns a NOTE "closure-covered — nothing to declare"; and a spawned
+host-absolute executable becomes an entrypoint/runtime-dep note. Floor,
+store, and exec-cache paths are excluded, because the automatic surface is
+never declared. Each entry carries its evidence line, and the author
+reviews, flips ro↔rw, deletes noise, and fills why.
 
-== `tebako trace explain` — diagnosis.
+== `tebako trace explain`: diagnosis
 
-Replays a capture into the hop chain — mount → manifest read → resolve →
-materialize → OS bind — and prints the first hop whose verdict is red, with a
-signature table seeded from the incident corpus. The table lives in data,
-extended as incidents teach new signatures — never hard-coded into the bus.
+The command replays a capture into the hop chain (mount → manifest read →
+resolve → materialize → OS bind) and prints the first hop whose verdict is
+red, with a signature table seeded from the incident corpus. The table lives
+in data and is extended as incidents teach new signatures; it is never
+hard-coded into the bus.
 
 [cols="4,3"]
 |===
@@ -113,11 +117,11 @@ extended as incidents teach new signatures — never hard-coded into the bus.
 |materialize error |exec-cache write failure
 |===
 
-== `tebako trace cover` — coverage.
+== `tebako trace cover`: coverage
 
-The escapes report. "What isn't tebako intercepting" is answerable ONLY by
-subtracting the inside stream from an outside capture — and only up to the
-outside capture's own layer.
+This command is the escapes report. The question of what tebako does not
+intercept is answerable only by subtracting the inside stream from an
+outside capture, and only up to the outside capture's own layer.
 
 [cols="2,4,4,3"]
 |===
@@ -128,15 +132,16 @@ outside capture's own layer.
 |kernel syscall |retrace ptrace; strace → strace2retrace; eBPF bridge |ETW / procmon (via converter) |kernel tracers
 |===
 
-Escapes split in two at the libc boundary: libc-routed escapes (the app called
-open/CreateFileW directly — visible to retrace on both platforms today) and
-sub-libc escapes (raw syscall / NtCreateFile, loader-internal probes like
-macOS's dyld rpath class — only a kernel-layer producer sees them). A report
-MUST name the producing layer of its outside input: a libc-boundary capture
-certifies libc-routed escapes only, and a raw-syscall fixture paired with one
-reports UNCERTIFIABLE, not covered. The outside format is the retrace trace
-document — tebako never authors a competing one; procmon/ETW join through an
-offline converter (`tebako trace import procmon`, pure Rust, in-process).
+Escapes split in two at the libc boundary: libc-routed escapes (the app
+called open/CreateFileW directly, visible to retrace on both platforms
+today) and sub-libc escapes (raw syscall / NtCreateFile, and loader-internal
+probes like macOS's dyld rpath class, which only a kernel-layer producer
+sees). A report must name the producing layer of its outside input: a
+libc-boundary capture certifies libc-routed escapes only, and a raw-syscall
+fixture paired with one reports UNCERTIFIABLE, not covered. The outside
+format is the retrace trace document, and tebako never authors a competing
+one; procmon/ETW join through an offline converter
+(`tebako trace import procmon`, pure Rust, in-process).
 
 [source,console]
 ----
@@ -149,15 +154,15 @@ $ tebako trace cover --inside tfs.jsonl --outside retrace.json \
 # exit 0 = no escapes · 1 = escapes found (CI-gateable) · 2 = usage/IO
 ----
 
-The correlator is tebako-owned, safe Rust, self-contained — the invariants
-leave no other home (no shell-outs in shipped artifacts; no C/C++ linkage
-outside dwarfs-t). The FORMAT is retrace's single source; the ALGORITHM has
-two implementations that must agree — the shared golden fixtures produce
-byte-identical escapes reports from both correlators in CI.
+The correlator is tebako-owned, safe Rust, and self-contained, because the
+invariants leave no other home (no shell-outs in shipped artifacts, and no
+C/C++ linkage outside dwarfs-t). The format is retrace's single source, and
+the algorithm has two implementations that must agree; the shared golden
+fixtures produce byte-identical escapes reports from both correlators in CI.
 Intentionally-unserved surfaces (documented passthroughs like the platform
-floor) are declared in the composition, so the report separates KNOWN-UNSERVED
-from ESCAPE. A NAME-NOT-FOUND probe on an unserved under-prefix path IS an
-escape — existence is information.
+floor) are declared in the composition, so the report separates
+KNOWN-UNSERVED from ESCAPE. A NAME-NOT-FOUND probe on an unserved
+under-prefix path is an escape, because existence is information.
 
 See also: link:/docs/architecture/jails-and-proxying/[Jails and host proxying] ·
 link:/docs/architecture/interposition/[Native interposition] ·

@@ -7,23 +7,23 @@ lede: >-
   env image, plus the ruby DLL on windows), and payloads are
   self-describing slices. This page is the map from there to here.
 description: >-
-  The v1 to v2 migration guide: what changed, what to do, and the mapping
-  from gem-era commands to the Rust platform.
+  This page is the v1 to v2 migration guide: what changed, what to do, and
+  the mapping from gem-era commands to the Rust platform.
 ---
 
 // normative: spec 03, spec 05, spec 06, spec 09, spec 16 — version strings current-era (tebako CLI 0.2.x, ruby runtimes 0.16.x per the release lines)
 
 [NOTE]
 ====
-Status: shipped — ships today: the CLI on the 0.2.x line, ruby runtimes on
-the 0.16.x line; the migration path below is live.
+The CLI on the 0.2.x line and the ruby runtimes on the 0.16.x line ship
+today, and the migration path below is live.
 ====
 
-== The short version.
+== The short version
 
 *If you run tebako packages:* uninstall the gem-era tooling, install the v2
-CLI, and keep working. Packages pressed with v1 must be re-pressed — v1
-embedded images do not load in v2.
+CLI, and keep working. Packages pressed with v1 must be re-pressed, because
+v1 embedded images do not load in v2.
 
 *If you press packages:* your workflow no longer needs CMake, compilers, or
 system libraries on the packager's machine. The packaging tools arrive as
@@ -33,7 +33,7 @@ binaries.
 payload manifest (`runtime_requirement: ruby "~> 3.3.0"`). Runtimes download
 once and are shared by every package on the machine.
 
-== What changed, in one table.
+== What changed, in one table
 
 [cols="1,2,2"]
 |===
@@ -47,7 +47,7 @@ once and are shared by every package on the machine.
 | Native tools | not supported | zero-runtime payloads (Inkscape, JRE, hello) as first-class slices
 |===
 
-== The command map.
+== The command map
 
 [cols="2,2,3"]
 |===
@@ -59,12 +59,12 @@ once and are shared by every package on the machine.
 | `RUBY VERSION` pin | `runtime_requirement: ruby "~> 3.3.0"` | in the payload manifest; the dispatcher resolves it
 |===
 
-== The steps, in order.
+== The steps, in order
 
 . *Remove the gem-era install.* `gem uninstall tebako` and drop any v1
   build trees. The v1 repo is archived at
-  https://github.com/tamatebako/tebako-v1[tamatebako/tebako-v1] — read-only
-  reference, no new development.
+  https://github.com/tamatebako/tebako-v1[tamatebako/tebako-v1], a read-only
+  reference with no new development.
 . *Install the v2 CLI.* `brew install tamatebako/tap/tebako` (or the
   per-platform release asset from
   https://github.com/tamatebako/tebako/releases[tamatebako/tebako]).
@@ -78,11 +78,11 @@ once and are shared by every package on the machine.
   on the machine. Subsequent runs are silent cache hits;
   `TEBAKO_OFFLINE=1` makes that explicit.
 
-== Worth knowing.
+== Points worth knowing
 
 * *The env image is not your app.* v1 merged them; v2 never does. The
-  runtime's env image is the interpreter's stdlib and gems — your app is a
-  separate payload slice mounted over it.
+  runtime's env image is the interpreter's stdlib and gems, and your app is
+  a separate payload slice mounted over it.
 * *Native tools are slices now.* If your app shells out to a binary
   (Inkscape, a JRE, ffmpeg), package it as a toolkit payload and declare it
   in `requires:` with a mount point. Your users stop installing it by hand.
@@ -95,4 +95,4 @@ once and are shared by every package on the machine.
 
 See also: link:/docs/architecture/migrate-v1-v2/[The deep migration guide] —
 the press flag map, lean versus fat packages, verified CI before/afters,
-and the behavior differences that bite.
+and the behavior differences that matter.

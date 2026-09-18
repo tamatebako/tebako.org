@@ -3,27 +3,28 @@ title: The store
 heading: >-
   The store: one directory, nothing hidden.
 lede: >-
-  Everything tebako keeps on your machine lives under one roof — ~/.tebako.
-  Runtimes download once and are shared by every application; payloads stay
-  byte-identical with what the publisher released; uninstalling means
-  deleting files. There is no daemon, no database, no state anywhere else.
+  Everything tebako keeps on a machine lives under one directory,
+  `~/.tebako`. Runtimes download once and are shared by every application;
+  payloads stay byte-identical with what the publisher released;
+  uninstalling means deleting files. There is no daemon, no database, and no
+  state anywhere else.
 description: >-
-  The tebako store: one directory holding runtimes, payloads, shims,
-  registries, keys, and trust — content-addressed, SHA-256 anchored,
-  installed atomically, shared machine-wide.
+  The tebako store is one directory holding runtimes, payloads, shims,
+  registries, keys, and trust, content-addressed, SHA-256 anchored,
+  installed atomically, and shared machine-wide.
 ---
 
 [NOTE]
 ====
-Status: shipped — shipped in v2.0.0; inspect yours with `tebako info store`.
+The store is shipped in v2.0.0; inspect it with `tebako info store`.
 ====
 
-== The layout.
+== The layout
 
-Precious things (your config, your trust pins, your keys) sit next to
-re-derivable things (runtimes, payloads, registry caches) — so a backup
-policy and a cleanup policy are both obvious. Every downloaded artifact
-carries its own trust anchor beside it.
+Precious things (config, trust pins, and keys) sit next to re-derivable
+things (runtimes, payloads, and registry caches), so a backup policy and a
+cleanup policy are both obvious. Every downloaded artifact carries its own
+trust anchor beside it.
 
 ++++
 <figure role="img" aria-label="The ~/.tebako store layout: runtimes, payloads, shims, registries, config, keys, trust, journal, locks, tmp">
@@ -99,28 +100,28 @@ carries its own trust anchor beside it.
 
 _Figure 1 — The ~/.tebako store layout: runtimes, payloads, shims, registries, config, keys, trust, journal, locks, and tmp — with the house rules beside them._
 
-== Install and run are different verbs.
+== Install and run are different verbs
 
 Double-clicking a package, or executing it in a terminal, **runs** it: the
-loader resolves the runtime (downloading it once if needed — that is runtime
-resolution, shared infrastructure, not installation) and starts your program.
+loader resolves the runtime (downloading it once if needed, which is runtime
+resolution, shared infrastructure, not installation) and starts the program.
 Nothing from the package's payload slots enters the store.
 
-`tebako install` is the explicit verb: it brings a payload into the store —
+`tebako install` is the explicit verb: it brings a payload into the store,
 downloaded to a temporary location, verified against its published SHA-256,
-renamed into place read-only — and registers a shim for every command the
-payload declares. Registry installs always register shims; installing a
-local package file registers them only when you pass `--shims`. `tebako
-uninstall` removes the shims and the cache entry.
+and renamed into place read-only, and it registers a shim for every command
+the payload declares. Registry installs always register shims, and
+installing a local package file registers them only when the caller passes
+`--shims`. `tebako uninstall` removes the shims and the cache entry.
 
 The store itself is versioned: a single integer marks its layout generation.
 A newer store refuses an older tool with a named error instead of a silent
 mix, and an older store is migrated by name, never silently rewritten.
 
-== Housekeeping.
+== Housekeeping
 
-The cache is yours to inspect and prune. Everything here is read-only
-against the store; nothing fetches.
+The cache is available for inspection and pruning. Everything here is
+read-only against the store, and nothing fetches.
 
 .See what is cached
 [source,console]
@@ -137,15 +138,15 @@ tebako cache prune --older-than 90d
 tebako cache prune --all
 ----
 
-Pruning only ever removes re-derivable artifacts — the next run that needs
-one downloads and verifies it again. Your config, keys, and trust pins are
+Pruning only ever removes re-derivable artifacts, and the next run that
+needs one downloads and verifies it again. Config, keys, and trust pins are
 never pruned.
 
-== Why a directory and not a database.
+== Why a directory and not a database
 
-Because the store contents are the authority. Every artifact carries its own
-proof (the sidecar), its own provenance (the origin marker), and its own
-manifest mirror — so the store is auditable with ordinary tools, repairable
-by deleting things, and portable by copying it. The registry caches are the
-only derived state, and they rebuild themselves on a 24-hour cycle or on
-`tebako update-registries`.
+The reason is that the store contents are the authority. Every artifact
+carries its own proof (the sidecar), its own provenance (the origin marker),
+and its own manifest mirror, so the store is auditable with ordinary tools,
+repairable by deleting things, and portable by copying it. The registry
+caches are the only derived state, and they rebuild themselves on a 24-hour
+cycle or on `tebako update-registries`.
