@@ -1,0 +1,66 @@
+---
+layout: post
+title:  "tebako v2.8.12: signed delivery end to end — installers, signatures, enterprise networks, and the completed windows platform"
+date:   2026-09-19 12:00:00 +0800
+categories:
+  - tebako
+  - release
+  - security
+  - windows
+  - installers
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+---
+
+The tebako packaging and loading ecosystem has completed its delivery chain: packages now ship signed, notarized, and installable through the operating system's own installer formats on macOS and Windows, and the Windows platform has joined macOS and Linux as a first-class target for every payload in the suite. This post records what has shipped, how the pieces compose, and where each guarantee comes from.
+
+== Signed installers for both desktop platforms
+
+The tebako release now carries a macOS installer package and a Windows installer (MSI) alongside the loose binaries. The macOS package (`tebako-setup-<version>-macos-arm64.pkg`) is signed with a Developer ID Installer certificate, notarized with Apple's notary service, and stapled so that the Gatekeeper verdict holds on machines that never reach the notary log. The Windows MSI (`tebako-setup-<version>-windows-ucrt64.msi`) is signed through Azure Artifact Signing, whose certificates chain to the Microsoft Trusted Root Program and carry baseline publisher reputation with SmartScreen. A package that installs through the platform's own machinery — `installer` on macOS, `msiexec` on Windows — meets users where their expectations and their management tooling already live.
+
+The same pipeline is available to any publisher. The hello-runtimes reference suite has published release 1.0.3, which demonstrates the full flow on a real application: one signed MSI and two signed, notarized, stapled macOS packages (a lean composition that installs the tools and fetches payloads at install time, and a self-contained fat composition that carries its runtimes and needs no network at all), each accompanied by per-platform payload images and their signatures — 52 assets in total, every one of them verifiable.
+
+== Signatures and validation at every layer
+
+Signature coverage now spans three surfaces, each with its own verifier and its own failure mode.
+
+The tebako plane signs every release artifact with an OpenPGP detachable signature (a `.asc` sidecar for each binary, image, manifest, and checksum file). The trust chain was minted on 2026-09-09 from a root key whose fingerprint the `tebako doctor` diagnostics command reports and whose public half is published at the project's well-known location; releases carry production-key signatures, and the revocation and rotation ceremony is documented with the trust-anchor material. The `TEBAKO_REQUIRE_SIGNED` setting makes verification mandatory rather than advisory: an environment that sets it refuses unsigned content outright.
+
+The macOS plane signs binaries with a Developer ID Application certificate before they are wrapped in their packages, so a pressed self-contained executable is itself a signed, notarized artifact rather than an unsigned binary hiding inside a signed container. The Windows plane signs executables with Azure Artifact Signing under federated credentials scoped to one repository and one environment, so no signing secret ever rests in a workflow.
+
+Validation happens where the guarantees are consumed. Verification of signed artifacts is strict at fetch and install time; the loader journals what it verified; `tebako doctor` walks the trust state — the embedded root, the keyrings, the signature verdicts per registry entry — and reports problems by name.
+
+== Enterprise networks: proxies and custom certificate authorities
+
+Machines behind corporate proxies and TLS-inspecting appliances are a first-class deployment, not an afterthought. The download client honors `HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY`, and `NO_PROXY` in either case, accepts proxy credentials in the URL, and refuses SOCKS with a named error that says exactly what it will not do. A proxy that demands authentication it did not receive answers with a named error that names the two places the credentials belong.
+
+Certificate trust is never reduced: there is no setting that disables verification. The default root set is Mozilla's bundled bundle. `TEBAKO_EXTRA_CA` adds an organization's own PEM certificates (a path list, one file or several) to the bundled set, which serves networks whose proxy re-encrypts traffic with an internal authority. `TEBAKO_TLS_PLATFORM_ROOTS` switches the verifier to the operating system's store, which serves fleets whose management pushes roots by policy. The two spellings do not combine, and the client says so rather than guessing. The resolved verdict — which proxy, which roots — is carried by the runtime handoff, so a payload's own HTTPS connections follow the same decision without any payload-side configuration, and `tebako doctor` names a TLS-intercepting proxy when it detects one.
+
+== Private and gated payloads
+
+Payloads that must not be public ship through the same machinery as public ones, with access control at the layer that already owns it. A private payload publishes to a private GitHub repository's releases; its registry is any YAML file the operator controls; consumers authenticate with the token their environment already gives them (the client reads `TEBAKO_GITHUB_TOKEN` or `GITHUB_TOKEN`), so gated content follows the repository's own permissions rather than a parallel account system. The metanorma flavors published for private standards bodies are distributed through this pattern today. Air-gapped deployments compose the same artifacts into offline bundles whose checksums verify exactly as the online ones do; the network is an optimization, never a correctness dependency.
+
+== The Windows platform, complete
+
+Windows has joined macOS and Linux across the whole chain. The Ruby runtime factory builds and signs the ucrt64 line for every Ruby from 3.1 through 4.0. The Python runtime boots Windows payloads through the materialize tier, which extracts verified images into a per-machine execution cache and runs the entrypoint from real files. The xml2rfc payload — a Python application with compiled dependencies that the mingw toolchain must supply — publishes a signed Windows image. The metanorma composition ships Windows payload slices for both Ruby lines, and the registry carries them, so a Windows user who installs the tools and dispatches `metanorma` resolves everything with no manual steps.
+
+Reaching this state required fixing the failure modes in the layers below the application: a coreutils checksum format that differs by platform, an interpreter macro that classified Winsock handles by a C runtime rule, a load-command flag that silenced the variable carrying the standard library, and a tree-extraction walk that followed the wrong mount. Each fix lives at its owning layer — the source factory, the runtime factory, or the product — and each is covered by a test that reproduces the original failure.
+
+== Ruby 4.0 and the parallel runtime lines
+
+The Ruby runtime lines now span 3.1 through 4.0, and the constraint grammar carries variant-suffixed versions, so an extension slice can pin itself to one interpreter line (`1.16.9-ruby4.0`) while the base payload serves every line. A dispatch resolves the newest compatible runtime that satisfies the payload's own declared requirement, and native-extension payloads declare an ABI line rather than a single version, so the wrong interpreter is a named error rather than a crash.
+
+== Faster, quieter downloads
+
+Downloads now run as a pipeline: multiple artifacts fetch concurrently (three by default, tunable), each stream verifies its SHA-256 checksum as the bytes arrive rather than after them, and the progress display renders one line per artifact with live byte counts and rates. The same pipeline retrieves trust-anchor keys when a registry vouches for them, so a first install on a clean machine needs no preparatory key step.
+
+== The documentation, rewritten
+
+The documentation, the reference pages, and the architecture documents — seventy-five files — have been rewritten to a single formal standard, and a lint suite now enforces it on every change. The enterprise-networks guide walks the proxy and certificate configurations end to end; the trust pages state what is signed, by whom, and how a user verifies it.
+
+== Where to verify every claim
+
+Every statement in this post names its artifact. The installers and binaries sit on the tebako v2.8.12 release with their checksums and OpenPGP signatures; the hello-runtimes 1.0.3 release demonstrates the installer pipeline on a real application; the runtime factories' releases carry per-platform interpreters and environment images with sidecar signatures; the metanorma 1.16.9-17 release and its registry entries carry the completed Windows composition. `tebako doctor` reports the trust and network state of any installation, and the documentation at tebako.org describes every setting this post has named.
