@@ -41,7 +41,7 @@ Certificate trust is never reduced: there is no setting that disables verificati
 
 == Private and gated payloads
 
-Payloads that must not be public ship through the same machinery as public ones, with access control at the layer that already owns it. A private payload publishes to a private GitHub repository's releases; its registry is any YAML file the operator controls; consumers authenticate with the token their environment already gives them (the client reads `TEBAKO_GITHUB_TOKEN` or `GITHUB_TOKEN`), so gated content follows the repository's own permissions rather than a parallel account system. The metanorma flavors published for private standards bodies ride this pattern today. Air-gapped deployments compose the same artifacts into offline bundles whose checksums verify exactly as the online ones do; the network is an optimization, never a correctness dependency.
+Payloads that must not be public ship through the same machinery as public ones, with access control at the layer that already owns it. A private payload publishes to a private GitHub repository's releases; its registry is any YAML file the operator controls; consumers authenticate with the token their environment already gives them (the client reads `TEBAKO_GITHUB_TOKEN` or `GITHUB_TOKEN`), so gated content follows the repository's own permissions rather than a parallel account system. The metanorma flavors published for private standards bodies are distributed through this pattern today. Air-gapped deployments compose the same artifacts into offline bundles whose checksums verify exactly as the online ones do; the network is an optimization, never a correctness dependency.
 
 == The Windows platform, complete
 
