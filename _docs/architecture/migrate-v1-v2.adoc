@@ -52,13 +52,12 @@ longer exists.
 == Installing v2
 
 v2 is a single static binary, plus its `tebako-bootstrap` companion.
-Prebuilt binaries for the six POSIX platforms land with the first tagged
-release, and the
-link:https://github.com/tamatebako/tebako/blob/main/.github/workflows/release.yml[release pipeline]
-is in final validation on main. Until the
+Prebuilt binaries ship with every tagged release: the
 link:https://github.com/tamatebako/tebako/releases[releases page] carries
-`tebako-<version>-<platform>` assets, build from source, once, taking
-20–40 minutes, with no Ruby required:
+`tebako-<version>-<platform>` assets for `macos-arm64`, `macos-x86_64`, the
+``linux-gnu-* / linux-musl-*`` families, and windows ucrt64 (v2.8.12 is
+live). Building from source remains available — once, taking 20–40 minutes,
+with no Ruby required:
 
 [source,console]
 ----
@@ -228,9 +227,9 @@ executed.
 
 The install-tebako block is identical in all three workflows and is inlined
 once, in pair A; copy it verbatim into B and C where marked. It builds from
-source because no binary release exists yet, and when the first tagged v2
-release lands, the whole block collapses to a two-line download of `tebako`
-and `tebako-bootstrap`.
+source, which remains a supported route; since the binary releases began
+shipping, the same install also collapses to a two-line download of
+`tebako` and `tebako-bootstrap` from the releases page.
 
 === A · Press in CI (a script app, no Gemfile)
 

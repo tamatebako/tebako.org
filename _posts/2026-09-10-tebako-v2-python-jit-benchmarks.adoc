@@ -29,7 +29,7 @@ post] ended with a promise: the Python runtime line would get the same
 kernel-and-real-workload treatment. This post fulfills it. The Python factory
 ships CPython 3.11.16 / 3.12.14 / 3.13.15 / 3.14.7 as tebako runtimes, plus
 **JIT flavors** of the two newest (3.13.15-jit, 3.14.7-jit —
-https://peps.python.org/pep-0836/[PEP 836]'s copy-and-patch tier; musl legs
+https://peps.python.org/pep-0744/[PEP 744]'s copy-and-patch tier; musl legs
 skip loudly because upstream's own matrix excludes them). The team ran eight
 arms through the real dispatch path — driver → runtime exe + mounted env image +
 mounted payload, `TEBAKO_OFFLINE=1`, no host Python anywhere.

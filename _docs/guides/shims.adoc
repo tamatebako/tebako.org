@@ -57,7 +57,7 @@ defaults:
   metanorma: 1.2.3
 ----
 
-The file is hand-edited. The only command that ever writes it is `tebako add-registry`; there is no `tebako use`.
+The file is hand-edited. Two commands write it: `tebako add-registry`, and `tebako shim use <tool> <pin>`, which sets a tool's default; there is no top-level `tebako use`.
 
 *4. Registry default — the publisher's word.*
 
@@ -88,7 +88,7 @@ exec        tebako-runtime-… --tebako-image … --tebako-entry metanorma
 $ tebako-shim doctor
 ----
 
-`doctor` checks that the shim directory is on PATH, that every shim resolves, that payload records and their trust anchors exist, that the config parses, that registries are fresh, and that the runtime cache is intact. It ends with _no problems found_ (exit 0) or a problem count (exit 1). Note the binary: there is no `tebako doctor` — the verb is `tebako-shim doctor`.
+`doctor` checks that the shim directory is on PATH, that every shim resolves, that payload records and their trust anchors exist, that the config parses, that registries are fresh, and that the runtime cache is intact. It ends with _no problems found_ (exit 0) or a problem count (exit 1). The store-wide diagnostic is `tebako doctor`, which carries this same report as its dispatch section; `tebako-shim doctor` remains the dispatcher's own verb.
 
 == Park a version, or a whole tool.
 
