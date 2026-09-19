@@ -282,8 +282,10 @@ const ecosystem = [
         as if it were running in its original directory structure.
       </p>
       <p>
-        The Ruby runtime itself is patched and embedded, so the executable is truly
-        self-contained. Native C extensions, gem dependencies, and configuration
+        The Ruby runtime itself is patched, and it ships as two artifacts — the
+        interpreter executable and its environment image — which tebako downloads
+        once per machine, verifies, and mounts at run time, never extracting on
+        POSIX. Native C extensions, gem dependencies, and configuration
         files all travel inside the box.
       </p>
     </div>
