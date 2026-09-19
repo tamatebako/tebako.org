@@ -184,7 +184,7 @@ every number above:
 
 * **Python joins the bench.** The Python runtime factory shipped
   3.11.16/3.12.14/3.13.15/3.14.7 last week, plus CPython **JIT flavor**
-  runtimes (3.13.15-jit, 3.14.7-jit — PEP 836's experimental-in-3.13,
+  runtimes (3.13.15-jit, 3.14.7-jit — PEP 744's experimental-in-3.13,
   production-track-in-3.14 tier-1 JIT; musl legs skip loudly because upstream's
   own matrix excludes them). The same kernel-and-real-workload protocol runs
   against those four arms next window.
