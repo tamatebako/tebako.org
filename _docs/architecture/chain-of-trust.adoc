@@ -108,15 +108,16 @@ first-class and loud._
 
 [NOTE]
 ====
-This link is planned.
+This link is shipped.
 ====
 
 The whole project uses one signature mechanism: OpenPGP via rnp-rs over
 vendored botan, which is post-quantum cryptography (PQC) capable. The root
 fingerprint of the tamatebako release keypair is published on tebako.org and
 embedded in the loader at release time (`EMBEDDED_ROOT_FINGERPRINT`, which
-stays empty until the root ceremony fills it; `TEBAKO_TRUSTED_ROOT`
-overrides it for development). Rotation is a signed successor-key statement
+the root ceremony filled when it minted the classical root;
+`TEBAKO_TRUSTED_ROOT` overrides it for development). Rotation is a signed
+successor-key statement
 (`TEBAKO-ROOT-SUCCESSOR-V1`; the machinery is shipped in tebako-signer), so
 machines forward trust with no out-of-band step. Revocation
 (`TEBAKO-ROOT-REVOCATION-V1`) kills a key that has no successor: the format
@@ -127,15 +128,15 @@ mints the roots has its own runbook, below.
 
 [NOTE]
 ====
-This link is planned.
+This link is shipped.
 ====
 
 Every released part, the runtime packages, the bootstrap, the src tarballs,
 and the libraries, ships a detached .asc per artifact plus a signed release
 manifest, which gives one verify path for all. The release index
 (manifest.json) is signed too; resolvers verify the index signature before
-trusting its hashes, which closes the swap-the-manifest gap. This is the
-release-side phase, and the format and verifier below are ready for it.
+trusting its hashes, which closes the swap-the-manifest gap. The release
+side shipped with v2.6.0: the release workflows produce the signatures.
 
 === 3. tpkg trailer v2
 
@@ -222,14 +223,14 @@ https://github.com/tamatebako/tebako/tree/main/crates/tebako-pkg[tamatebako/teba
 — whose five binaries (tebako, tfs, tebako-pkg, tebako-shim,
 tebako-bootstrap) are downloadable from the
 https://github.com/tamatebako/tebako/releases[project's release pages] today.
-"Planned" covers the release-side wrap and the loader's OpenPGP verification;
+"Planned" covers the loader's OpenPGP verification;
 see "What is still planned" below.
 
 == The root-key ceremony
 
 [NOTE]
 ====
-The ceremony is planned, and its runbook is written.
+The ceremony ran, and its runbook is the record.
 ====
 
 The top link of the chain is made once, offline, by the project owner, with
@@ -252,8 +253,8 @@ in the product repository; it produces, in order:
 The private keys move to hardware tokens from two vendors and to two offline
 backups, and the factories sign with a subkey held in CI secrets, never with
 the root primary. The only public outputs are the fingerprints and the
-armored public keys, which are wired into `EMBEDDED_ROOT_FINGERPRINT` (empty
-until this moment, which is what makes today's builds dev/unsigned-first),
+armored public keys, which are wired into `EMBEDDED_ROOT_FINGERPRINT` (filled
+when the ceremony minted the classical root on 2026-09-09),
 published on this site, and mirrored to the org's `.github` repository and
 the keyservers. Rotation and revocation are rehearsed on a scratch keyring
 before the first signed release: the runbook publishes the pre-made
@@ -448,22 +449,19 @@ than a crash.
 
 [NOTE]
 ====
-The release side plus loader verification remain, and they are planned.
+Only the loader's signature check remains, and it is planned.
 ====
 
-The package-side machinery is shipped; what remains is the release-side wrap
-and the loader's signature check. Specifically, the remainder comprises the
-root-key ceremony itself (offline and hardware-held; the runbook is above),
-publication of the tamatebako root fingerprint on this site and into
-`EMBEDDED_ROOT_FINGERPRINT`, detached `.asc` signatures per released
-artifact plus a signed release manifest and index, loader-side revocation
-consumption (the format is locked), and the return of the OpenPGP
-verification feature to the shipped bootstrap via the tebako-crypto toolkit
-payload. Until those land, the chain's release link rests on the
-sha256-verified release index, which is transport-checked but not yet
-object-signed, and signed packages run under the loud unverified-first
-posture described above, with `TEBAKO_REQUIRE_SIGNED=1` failing closed for
-hardened environments.
+The package-side machinery is shipped, and so is the release side: since
+v2.6.0 every released artifact carries its detached `.asc` signature beside
+the sha256 sidecar, the release manifest and the checksum index are
+object-signed, and the root-key ceremony has minted the classical root that
+this site publishes and the tools embed. What remains is the loader's
+signature check: loader-side revocation consumption (the format is locked),
+and the return of the OpenPGP verification feature to the shipped bootstrap
+via the tebako-crypto toolkit payload. Until that lands, signed packages run
+under the loud unverified-first posture described above, with
+`TEBAKO_REQUIRE_SIGNED=1` failing closed for hardened environments.
 
 See also: link:/docs/guides/verify/[Verify integrity] ·
 link:/docs/architecture/store/[The store]
