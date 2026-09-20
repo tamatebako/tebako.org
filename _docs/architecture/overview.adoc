@@ -547,8 +547,8 @@ audience.
 | `tfs` ships natively on windows x64 and, from tebako v2.8.13, on windows-arm64. A `universal` image needs no triplet at all.
 
 | Developers shipping applications
-| `tebako-pkg` presses once per target triplet in a matrix job, and the prebuilt runtimes resolve for every macOS and Linux target.
-| `tebako-pkg` ships natively on windows x64 and, from tebako v2.8.13, on windows-arm64, so authoring on an arm64 machine does not pass through emulation. Pressing a package whose target is windows-arm64 itself awaits the arm64 runtimes from the factories.
+| `tebako press` presses once per target triplet in a matrix job, and the prebuilt runtimes resolve for every macOS and Linux target.
+| The full authoring flow runs on windows x64 today. On windows-arm64, tebako v2.8.13 ships `tebako-pkg` natively — trailer surgery, signing, and release-index work — while `tebako press` itself arrives on arm64 with the remaining tools in the phase that ships the bootstrap and the shim; pressing a package whose target is windows-arm64 additionally awaits the arm64 runtimes from the factories.
 
 | People hacking on tebako
 | The product workspace and the contract suites build on every triplet that the continuous integration matrix covers.
