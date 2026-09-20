@@ -575,7 +575,7 @@ gem set, this is the reason, and v2 fixes it.
 Rubies: v2 presses only the rubies the pinned runtime release carries
 (3.1.6–4.0.6 at v0.16.9), because the 2.7/3.0 lines were v1
 source-build-only. Windows: shipped, since the v2 loader and runtime
-releases cover all seven triplets, windows-ucrt64 included. Gem/gemspec
+releases cover the full platform axis, windows-ucrt64 included. Gem/gemspec
 press scenarios (packaging a gem itself) are not yet ported. On macOS the
 deploy re-signs ad-hoc after stripping, so precompiled `.bundle` files keep
 loading.

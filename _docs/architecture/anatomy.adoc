@@ -215,7 +215,7 @@ table is on the link:/docs/architecture/factories/[the factories page].
           </g>
 
           <!-- the platform matrix -->
-          <text x="470" y="166" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10.5" font-weight="600" fill="var(--tb-c-text-3)">EVERY STAGE PUBLISHES PER PLATFORM — THE SEVEN TRIPLETS</text>
+          <text x="470" y="166" text-anchor="middle" font-family="var(--font-mono), monospace" font-size="10.5" font-weight="600" fill="var(--tb-c-text-3)">EVERY STAGE PUBLISHES PER PLATFORM — THE EIGHT TRIPLETS</text>
           <g font-family="var(--font-mono), monospace" font-size="10">
             <g transform="translate(40, 182)"><rect width="200" height="30" rx="6" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" /><text x="100" y="19" text-anchor="middle" fill="var(--tb-c-text-2)">aarch64-macos · arm64</text></g>
             <g transform="translate(260, 182)"><rect width="200" height="30" rx="6" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" /><text x="100" y="19" text-anchor="middle" fill="var(--tb-c-text-2)">x86_64-macos · target 11.0</text></g>
@@ -224,7 +224,7 @@ table is on the link:/docs/architecture/factories/[the factories page].
             <g transform="translate(40, 222)"><rect width="200" height="30" rx="6" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" /><text x="100" y="19" text-anchor="middle" fill="var(--tb-c-text-2)">x86_64-linux-musl · static</text></g>
             <g transform="translate(260, 222)"><rect width="200" height="30" rx="6" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" /><text x="100" y="19" text-anchor="middle" fill="var(--tb-c-text-2)">aarch64-linux-musl · static</text></g>
             <g transform="translate(480, 222)"><rect width="200" height="30" rx="6" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" /><text x="100" y="19" text-anchor="middle" fill="var(--tb-c-text-2)">x86_64-windows-ucrt · Win 10+</text></g>
-            <g transform="translate(700, 222)"><rect width="200" height="30" rx="6" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-dasharray="4 3" /><text x="100" y="19" text-anchor="middle" fill="var(--tb-c-text-3)">aarch64-windows-ucrt · reserved</text></g>
+            <g transform="translate(700, 222)"><rect width="200" height="30" rx="6" fill="var(--tb-c-card)" stroke="var(--tb-c-divider-strong)" stroke-dasharray="4 3" /><text x="100" y="19" text-anchor="middle" fill="var(--tb-c-text-3)">aarch64-windows-ucrt · v2.8.13</text></g>
           </g>
           <text x="470" y="286" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="11" fill="var(--tb-c-text-3)">The musl builds are fully static — the universal Linux artifacts. Pure-language payloads ship once as <tspan font-family="var(--font-mono), monospace">universal</tspan>;</text>
           <text x="470" y="304" text-anchor="middle" font-family="var(--font-sans), sans-serif" font-size="11" fill="var(--tb-c-text-3)">only payloads with native code multiply across the matrix.</text>
@@ -232,7 +232,7 @@ table is on the link:/docs/architecture/factories/[the factories page].
 </figure>
 ++++
 
-_Figure 2 — The release chain: ruby-lang.org tarball through the source and runtime factories to the product and the user machine, with the seven platform triplets._
+_Figure 2 — The release chain: ruby-lang.org tarball through the source and runtime factories to the product and the user machine, with the eight platform triplets. The windows-arm64 triplet (dashed) carries the authoring tools and the link unit from tebako v2.8.13, and its runtimes follow from the factories._
 
 == How a run works
 
