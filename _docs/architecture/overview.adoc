@@ -43,9 +43,12 @@ python, julia, or any other language later. The loader hands off to an
 entrypoint, and it never learns a language.
 
 Any platform::
-Artifacts are built per platform triplet; seven triplets are locked, from
-`aarch64-macos` to `x86_64-windows-ucrt`. Pure-language payloads may also be
-`universal`.
+Artifacts are built per platform triplet; eight triplets are locked, from
+`aarch64-macos` to `aarch64-windows-ucrt`. The eighth triplet joined the
+axis at tebako v2.8.13 with the windows-arm64 authoring tools and the link
+unit, and the arm64 runtimes follow as the factories publish their legs; the
+other seven triplets carry the full tool set and the full runtime catalog.
+Pure-language payloads may also be `universal`.
 
 Any payload::
 Application code, data, fonts, native tools, and runtimes themselves are all
@@ -526,6 +529,37 @@ toolchain: the factories, the product workspace, and the contract suites.
 The entry points are
 link:/docs/architecture/repositories/[the repo map] and
 link:/docs/architecture/contributors/[the contributor page].
+
+The four audiences meet the platform matrix at different depths, and the
+windows-arm64 triplet is the one place where that depth differs per
+audience.
+
+[cols="1,3,3",options="header"]
+|===
+| Audience | On macOS and Linux | On Windows
+
+| People running packages
+| Stitched packages and the managed shim install run on every macOS and Linux triplet, x64 and arm64 alike.
+| Every published package runs on windows x64 today. A windows-arm64 machine runs those same x64 artifacts under the emulation layer of Windows 11 today; native arm64 packages arrive with the arm64 bootstrap, shim, and factory runtimes.
+
+| Developers shipping data
+| `tfs` builds and inspects images natively on all four triplets.
+| `tfs` ships natively on windows x64 and, from tebako v2.8.13, on windows-arm64. A `universal` image needs no triplet at all.
+
+| Developers shipping applications
+| `tebako-pkg` presses once per target triplet in a matrix job, and the prebuilt runtimes resolve for every macOS and Linux target.
+| `tebako-pkg` ships natively on windows x64 and, from tebako v2.8.13, on windows-arm64, so authoring on an arm64 machine does not pass through emulation. Pressing a package whose target is windows-arm64 itself awaits the arm64 runtimes from the factories.
+
+| People hacking on tebako
+| The product workspace and the contract suites build on every triplet that the continuous integration matrix covers.
+| The product builds on windows x64 with the MSYS2 ucrt64 toolchain and on windows-arm64 with the MSYS2 clangarm64 toolchain, and the aarch64 link unit ships from tebako v2.8.13 as the input that the runtime factories consume.
+|===
+
+One toolchain note applies to Windows as a whole. The shipped binaries are
+compiled with GCC under MSYS2 ucrt64 on x64 and with clang and libc++ under
+MSYS2 clangarm64 on arm64, because MSYS2 publishes no GCC for aarch64
+windows. An MSVC build of tebako is not shipped on either architecture; MSVC
+appears in the pipeline only as the host compiler for build-time helpers.
 
 See also: link:/docs/architecture/[concepts] ·
 link:/docs/architecture/factories/[the factories] ·

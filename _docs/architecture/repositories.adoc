@@ -21,7 +21,7 @@ description: >-
 |===
 | REPO | ROLE | STATE
 
-| https://github.com/tamatebako/tebako[tebako] | This is the product: the Rust workspace and nothing else, namely the five shipped binaries (tebako, tfs, tebako-pkg, tebako-shim, tebako-bootstrap) plus every library crate behind them — wire format, VFS, resolver, driver, signer. It publishes its own per-platform releases across seven triplets. | Product — releases ship
+| https://github.com/tamatebako/tebako[tebako] | This is the product: the Rust workspace and nothing else, namely the five shipped binaries (tebako, tfs, tebako-pkg, tebako-shim, tebako-bootstrap) plus every library crate behind them — wire format, VFS, resolver, driver, signer. It publishes its own per-platform releases across seven triplets, and from v2.8.13 it also publishes the windows-arm64 authoring tools and link unit on the eighth triplet of the axis. | Product — releases ship
 | https://github.com/tamatebako/ruby[ruby] | This is the source factory: canonical ruby patches and versions.yml, with every upstream fetch sha256-verified, plus a daily monitor that onboards new ruby-lang.org releases or files a named drift issue. It publishes tfs-ruby-<ver>-src[-<scenario>].tar.gz + SHA256SUMS. The repo is Ruby tooling around vendored upstream C, and the patches are the only tebako-specific C consumers. | Factory — active
 | https://github.com/tamatebako/tebako-runtime-ruby[tebako-runtime-ruby] | This is the runtime factory: it builds the patched source per (ruby version × triplet), boot-smokes each built runtime, and publishes the two runtime artifacts, the interpreter exe and the env .tfs image, with manifest.json + SHA256SUMS. It consumes only the source factory's releases. | Factory — active
 | https://github.com/tamatebako/tebako-runtime-python[tebako-runtime-python] | This is the runtime factory for CPython, including the experimental jit flavor lines. It publishes interpreter exe + env .tfs per (version, flavor, triplet) with signed manifests. | Factory — active
@@ -47,7 +47,9 @@ packager — not part of tebako).
 
 [NOTE]
 ====
-The product is shipped as v0.2.x, five binaries across seven triplets.
+The product is shipped as v2.8.x, five binaries across seven triplets, with
+the windows-arm64 authoring tools (tfs and tebako-pkg) and the aarch64 link
+unit joining from v2.8.13.
 ====
 
 https://github.com/tamatebako/tebako[tamatebako/tebako] is one Rust
@@ -55,7 +57,9 @@ workspace and the whole product: no C/C++, no shell-outs, no system
 dependencies in anything it ships. Each release publishes the five binaries
 — `tebako`, `tfs`, `tebako-pkg`, `tebako-shim`, `tebako-bootstrap` — for
 macOS arm64/x86_64, linux-gnu x86_64/arm64, linux-musl x86_64/arm64, and
-windows ucrt64, with SHA256SUMS + manifest.json. Every leg proves its staged
+windows ucrt64, with SHA256SUMS + manifest.json; from v2.8.13 the release
+additionally carries `tfs`, `tebako-pkg`, and the link unit for windows
+arm64 (ucrt). Every leg proves its staged
 binaries before any upload: a bare launch in the cleanest environment the
 leg claims, plus a hard dynamic-dependency whitelist audit
 (https://github.com/tamatebako/tebako/blob/main/.github/workflows/release.yml[release.yml]).
