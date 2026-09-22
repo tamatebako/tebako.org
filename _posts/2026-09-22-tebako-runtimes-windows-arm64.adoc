@@ -1,0 +1,40 @@
+---
+layout: post
+title:  "tebako runtimes for Windows on ARM: the ruby and python lines ship native arm64 packages"
+date:   2026-09-22 12:00:00 +0800
+categories:
+  - tebako
+  - release
+  - windows
+  - arm64
+  - runtimes
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+---
+
+The tebako runtime factories have extended the Windows platform to the ARM architecture. The ruby runtime factory now publishes native `windows-ucrt-arm64` runtime packages for every capable published ruby, and the python runtime factory publishes its `windows-ucrt-arm64` line on the same terms, so an ARM Windows machine resolves a native interpreter from the same registries and through the same resolution rules as every other platform.
+
+== What has shipped
+
+The ruby runtime factory's arm64 line carries every published ruby that the architecture supports: ruby 3.4.10 and ruby 4.0.6 at the current source pin. Each package ships in the established three-part shape — the interpreter executable, its `.tfs` environment image, and the ruby DLL — accompanied by the `.sha256` sidecars that anchor trust, the `.manifest.json` shard that carries the package's release-index entry, and detached OpenPGP signatures over every served name. The executables are Authenticode-signed in the build leg through Azure Artifact Signing, the same federated-credential pipeline that signs the x64 line, so an arm64 package carries exactly the verification surface of its x64 sibling.
+
+The python runtime factory's arm64 line ships python 3.14.7 at the current pin, built with the msys2 clangarm64 toolchain and published with the same sidecar, shard, and signature set.
+
+== A capability floor, stated by name
+
+The arm64 legs build natively on GitHub's `windows-11-arm` runners, which means no cross-compilation and no emulation in the factory itself. Upstream ruby gained Windows on ARM build support only in the 3.4 line, so the factory serves arm64 packages from ruby 3.4.8 onward and does not manufacture them for the 3.1, 3.2, and 3.3 lines. The build matrix excludes the incapable version-and-architecture pairs by construction rather than by fallback, which means the registry never lists a combination that does not exist. A deployment that requires an older ruby on an ARM Windows host runs the x64 package under the operating system's emulation, which remains fully supported.
+
+== What a deployment changes
+
+Nothing. Resolution keys on the platform triplet, so an arm64-native tebako toolchain on a Windows ARM host resolves the `windows-ucrt-arm64` runtime exactly as an x64 toolchain resolves `windows-ucrt64`, with no flag, no configuration, and no payload-side change. A payload image is architecture-neutral Ruby or Python source in the common case, which means the same payload slices serve both architectures unchanged.
+
+== What this wave does not include
+
+This wave publishes the runtime packages, which are the factories' deliverable. The tebako product's own arm64 Windows binaries — the command-line tool, the shim, and the bootstrap — build and pass their smoke tests in continuous integration on both the ucrt and msvc-cross lines but are not yet shipped, and their publication is the remaining phase of the platform-coverage roadmap together with the link-unit pin that client builds consume. The sequencing is deliberate: the factories and the product travel on separate release chains, and publishing the runtimes first means the product's arm64 binaries will arrive at registries that already carry everything they resolve.
+
+== Where to verify
+
+The arm64 packages sit on the factories' current releases — `tebako-runtime-ruby` v0.16.27 and `tebako-runtime-python` v0.2.6 — next to their x64 siblings, with checksums, manifest shards, and detached signatures on every name. The registries in those repositories carry the arm64 Windows entries, and `tebako doctor` on an installation reports which runtime variant a dispatch resolved.
