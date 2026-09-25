@@ -67,6 +67,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
       { label: 'Package a Ruby app', href: '/docs/guides/package-ruby/', status: 'live' },
       { label: 'Create a data payload', href: '/docs/guides/data-payload/', status: 'live' },
       { label: 'Publish to your own registry', href: '/docs/guides/publish/', status: 'live' },
+      { label: 'Run your own registries', href: '/docs/guides/registries/', status: 'live' },
       { label: 'Curate a local library', href: '/docs/guides/library/', status: 'live' },
       { label: 'Enterprise networks', href: '/docs/guides/enterprise-networks/', status: 'live' },
       { label: 'Shims & versions', href: '/docs/guides/shims/', status: 'live' },

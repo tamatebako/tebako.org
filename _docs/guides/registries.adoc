@@ -1,0 +1,126 @@
+---
+title: Run your own registries
+heading: Run your own registries.
+lede: >-
+  A tebako registry is one YAML file on any host that can serve it,
+  and one machine mixes several of them safely: the public catalog, an
+  organization's own instance, and an airgapped mirror resolve side by
+  side, with credentials confined to the host they belong to and every
+  installed payload remembering the registry it came from.
+description: >-
+  This guide describes the tebako registry book: registering and
+  naming registries, the qualified alias/name form, per-registry
+  signing policy, confined credentials, origin binding, private
+  runtimes, the three hosting tiers (static HTTPS, a git host, an
+  airgap), and the official registry that tebako setup seeds.
+---
+
+
+[NOTE]
+====
+The publishing half — putting payloads on a registry of one's own — is covered by link:/docs/guides/publish/[Publish to your own registry]. This guide covers the consumption side: many registries, one machine, no confusion.
+====
+
+== One machine, many registries.
+
+A real deployment mixes two hosting worlds: public payloads from the official catalog (the seeded aggregate described in the final section of this guide), and private payloads from an instance the organization controls — a consultancy's GitHub organization for public tools beside its own GitLab for client work, or a public catalog beside a gated registry whose tokens must never leak into another customer's repositories. Tebako keeps these worlds separate by construction rather than by convention: every registry is a named entry in a local book, every credential is confined to the host it was issued for, and every installed payload is bound to the registry that resolved it.
+
+== The book.
+
+The registry book is the `registries:` section of `~/.tebako/config.yaml`. It is authored configuration — tebako writes it only when asked, and the file can be edited by hand at any time. A registry joins the book with one command:
+
+[source,console]
+----
+$ tebako add-registry tfs:github:acme/tebako-registry --name acme --require-signed
+----
+
+`--name` assigns the local alias, which must match `[a-z][a-z0-9-]*`. `--require-signed` makes the registry fail-closed, so an unsigned payload from it is refused with the named `UnsignedRegistryPayload` error (exit 70) rather than installed. `--default` marks the entry the publishing and listing surfaces prefer; the book holds at most one default, and a second one is the named `DuplicateDefaultRegistry` error at configuration load.
+
+The book is inspectable and refreshable:
+
+[source,console]
+----
+$ tebako list-registries
+$ tebako update-registries
+----
+
+`list-registries` renders every entry with its alias, policy flags, and cache freshness. `update-registries` refreshes the dispatch-time cache of every remote entry on demand; the cache otherwise refreshes itself after 24 hours.
+
+== Names never collide: the qualified form.
+
+Two registries may both carry a payload named `inkscape`. A bare name that more than one registered registry carries is the named `AmbiguousRegistries` error, never a silent priority pick. The qualified form selects the registry explicitly, at every surface that names a payload:
+
+[source,console]
+----
+$ tebako install acme/inkscape          # the alias prefixes the name
+----
+
+A payload's own dependency edges carry the same scoping as an authored `registry:` key in its manifest, so a payload that depends on a private toolkit resolves that toolkit from the one registry its author named and from no other. An alias that matches no book entry is the named `UnknownRegistryAlias` error, which lists the aliases that do exist.
+
+== Credentials stay in their lane.
+
+Private registries authenticate with tokens that live in the environment, never in the configuration file:
+
+[source,yaml]
+----
+# ~/.tebako/config.yaml
+credentials:
+  - registry: acme
+    token_env: ACME_TEBAKO_TOKEN
+----
+
+The first tier matches the registry's alias; a second tier matches a bare `host:` for servers that host several registries. Confinement is the rule that makes the book safe: a credential registered for one registry is sent only to that registry's own hosts, it is never carried across a redirect to a different host, and a matched-but-unset environment variable means anonymous access for that registry rather than a fall-through to a broader credential. A registry that answers 401 or 403 without a matching credential fails with the named `CredentialRequired` error (exit 69), which names the registry and the environment variable that would satisfy it. The audit journal records only the class of credential used — the token itself is never written anywhere.
+
+== Origin binding: upgrades come from where the payload came from.
+
+The store records which registry resolved every installed payload, beside the existing record of which host served the bytes. Version resolution and unscoped installs consult only that origin registry, so a same-named payload appearing in another registered registry is never installed as a silent "upgrade" of the existing one — the confusion attack that priority-based ecosystems leak by design. Switching registries is an explicit act: `tebako install acme/inkscape` reinstalls and rebinds the origin, the journal records the rebind as `origin-rebind`, and a rebind whose registry-declared digest disagrees with the cached bytes is refused as `Sha256Mismatch` (exit 70) with the instruction to uninstall first.
+
+== Private runtimes.
+
+A registry row of `kind: runtime` — carrying an `engine:` and an optional `implementation:` — is discoverable by a payload's runtime dependency edge, exactly as the public runtime lines are. The row's release reference derives the download location for GitHub, GitHub Enterprise, and GitLab hosts, and the registry's signing policy applies to runtime rows unchanged. A private Ruby or OpenJDK line is thereby hostable next to public payloads with no special case anywhere in the product.
+
+== The three hosting tiers.
+
+Any of these resolves; they compose freely within one book.
+
+*Tier 1 — zero software.* A static HTTPS server (nginx, an Amazon Simple Storage Service (S3) bucket behind a content delivery network, or a generic artifact repository) serves the payload images, their sidecars, and one `tpkg-registry.yaml`. The book entry names the file directly:
+
+[source,console]
+----
+$ tebako add-registry "tfs+https://artifacts.corp.example/tebako/tpkg-registry.yaml" --name corp
+----
+
+*Tier 2 — the git host already in place.* GitHub Enterprise, self-hosted GitLab, Gitea, and Forgejo all work through the explicit-host reference forms, and release pages provide the artifact storage exactly as on the public hosts:
+
+[source,console]
+----
+$ tebako add-registry "tfs+github://ghe.corp.example/platform/tebako-registry" --name platform
+$ tebako add-registry "tfs+gitlab://gitlab.corp.example/tools/tebako-registry" --name tools
+----
+
+Secure Shell (SSH) transport is refused by name (`SshTransportUnsupported`), because tokens over HTTPS are the auditable path; Bitbucket Data Center is refused by name (`UnsupportedService`) with the same steer toward the explicit `tfs+https://` form.
+
+*Tier 3 — the airgap.* A `file://` mirror directory or a `tebako bundle`-preseeded store resolves with no network surface at all:
+
+[source,console]
+----
+$ tebako add-registry "file:///srv/tebako-mirror/tpkg-registry.yaml" --name mirror
+----
+
+All three tiers compose with the enterprise-networking configuration described in link:/docs/guides/enterprise-networks/[Enterprise networks]; an inspecting proxy is a transport concern the federation grammar never sees.
+
+== The official registry.
+
+The installer and `tebako setup` seed the official registry — the generated aggregate at `tebako-packages/registry`, which re-publishes every feedstock's own registry rows with parity checked on every change:
+
+[source,console]
+----
+$ tebako setup
+seeded the official registry tfs:github:tebako-packages/registry (14 payload(s))
+----
+
+The seed is authored, user-visible, and user-removable configuration, and it is idempotent — a second `tebako setup` reports that the official registry is already seeded. No binary carries the entry as a built-in default: a tebako built from source that never ran setup ships zero registries, and removing the entry from `config.yaml` removes it from resolution. The aggregate itself is never hand-edited; the authored authority for every row remains the feedstock repository that published it.
+
+== What the book never does.
+
+The registry book fails closed, by name, at every ambiguity: two registries carrying one bare name, a duplicate alias, a second default, a credential naming two selectors, an unknown alias in a pin. No failure in the book ever changes what is installed or what resolves elsewhere, and there is no priority ordering, no search chain, and no implicit default service.
