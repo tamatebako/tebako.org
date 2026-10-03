@@ -70,6 +70,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
       { label: 'Run your own registries', href: '/docs/guides/registries/', status: 'live' },
       { label: 'Curate a local library', href: '/docs/guides/library/', status: 'live' },
       { label: 'Enterprise networks', href: '/docs/guides/enterprise-networks/', status: 'live' },
+      { label: 'Host packages on your own OCI registry', href: '/docs/guides/oci-registry/', status: 'live' },
       { label: 'Shims & versions', href: '/docs/guides/shims/', status: 'live' },
       { label: 'Set a jail policy', href: '/docs/guides/jails/', status: 'live' },
       { label: 'Verify integrity', href: '/docs/guides/verify/', status: 'live' },

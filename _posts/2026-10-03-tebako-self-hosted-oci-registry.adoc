@@ -1,0 +1,37 @@
+---
+layout: post
+title:  "Host your own tebako packages: the OCI registry lane is open to every organization"
+date:   2026-10-03 12:00:00 +0800
+categories:
+  - tebako
+  - distribution
+  - oci
+  - enterprise
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+---
+
+The tebako distribution layer has opened its container-registry transport to every organization. A payload published through the Open Container Initiative (OCI) lane now installs from any registry that speaks the OCI distribution protocol — the protocol every docker-compatible registry implements — so an organization can serve its own payloads, the public payloads it consumes, and the runtimes beneath them from inside its own network perimeter, without changing a byte of what the publisher shipped.
+
+== What has shipped
+
+The OCI payload lane is in production in the project's own catalog. The metanorma payload serves seven per-triplet tags from the project's container registry, each accompanied by its signature as a `sha256-<hex>.asc` digest-tag, and the xml2rfc payload serves the same shape; both install anonymously over the lane, byte-identical with their GitHub-release twins. The resolution grammar is unchanged — an `oci:` locator joins the existing registry row as an additive field, so a registry index can name the organization's registry, the public release page, or both, and a payload's origin is recorded at install so that later resolution does not silently cross registry boundaries.
+
+The same lane is now documented for self-hosting. The new guide, link:/docs/guides/oci-registry/[Host packages on your own OCI registry], walks the arrangement end to end: mirroring artifacts byte-identically under the per-triplet tag grammar, writing the registry index, authenticating through the docker credential store or environment-indirected config, trusting an internal certificate authority, and signing with the organization's own key.
+
+== The invariant that makes it inexpensive
+
+The arrangement rests on one property of the distribution layer: bytes never change across transports. A payload mirrored from the public catalog into an organization's registry keeps its SHA-256 anchor and verifies against the publisher's published signature, because the organization re-serves exactly what the publisher shipped rather than a rebuild it must trust on its own authority. Mirroring is copying, and copying preserves the chain of custody — which means an organization's audit trail extends back to the publisher's signature rather than stopping at its own perimeter.
+
+== What an organization does with it
+
+Three deployments are served directly. An enterprise whose perimeter forbids public fetches at run time mirrors the public payloads it consumes, adds its private payloads under the same grammar, and pins its fleet to its own index, with credentials confined to the host they belong to. A vendor that ships licensed software publishes its payloads to its customers' registries with its own key, and its registry rows declare the signer's fingerprint so that `TEBAKO_REQUIRE_SIGNED=1` fails closed on anything else. An operator of sealed networks combines the lane with `TEBAKO_OFFLINE=1`, which turns every run into cache-or-named-error after the initial seeding.
+
+== Boundaries, stated plainly
+
+The OCI transport covers payloads today; the runtime lane — `oci:` locators on runtime rows, so that the interpreter pair resolves from the same registry — is the arriving extension of the same design and is tracked in the project's public queue. Until it lands, a self-hosted deployment seeds runtimes into the machine-wide cache through its installer or image pipeline, which is an out-of-band step that needs no registry support. A deployment with no registry at all remains served by the `file://` library form and by stitched single-executable installers, which carry the runtime inside the package.
+
+The guide has the steps: link:/docs/guides/oci-registry/[Host packages on your own OCI registry].
