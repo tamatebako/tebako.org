@@ -25,6 +25,26 @@ The publishing half — putting payloads on a registry of one's own — is cover
 
 A real deployment mixes two hosting worlds: public payloads from the official catalog (the seeded aggregate described in the final section of this guide), and private payloads from an instance the organization controls — a consultancy's GitHub organization for public tools beside its own GitLab for client work, or a public catalog beside a gated registry whose tokens must never leak into another customer's repositories. Tebako keeps these worlds separate by construction rather than by convention: every registry is a named entry in a local book, every credential is confined to the host it was issued for, and every installed payload is bound to the registry that resolved it.
 
+== The transports, in one table.
+
+A registry arrangement has two moving parts — the host that serves the index, and the transport that serves the artifacts the index names — and each part has its own small set of supported forms:
+
+[cols="1,2,2,1",options="header"]
+|===
+| Part | Form | Reference | Instructions
+
+| Index hosting | Static HTTPS (nginx, Amazon Simple Storage Service (S3) behind a content delivery network) | `tfs+https://host/path/tpkg-registry.yaml` | this guide, tier 1
+| Index hosting | GitHub and GitHub Enterprise, GitLab and self-hosted GitLab, Gitea, Forgejo | `tfs+github://…`, `tfs+gitlab://…`, explicit-host forms | this guide, tier 2
+| Index hosting | An airgapped directory | `file:///srv/mirror/tpkg-registry.yaml` | link:/docs/guides/library/[Curate a local library]
+| Index hosting | Secure Shell (SSH) git transport, Bitbucket Data Center | refused by name (`SshTransportUnsupported`, `UnsupportedService`) | this guide, tier 2
+| Artifacts | GitHub releases, public or token-gated private | `tfs:github:org/repo` | link:/docs/guides/publish/[Publish to your own registry]
+| Artifacts | An OCI registry — GitHub Container Registry (ghcr) or a privately hosted Harbor, Azure Container Registry, Amazon Elastic Container Registry, zot, or Artifactory instance | `tfs+oci://registry/repo:tag` | link:/docs/guides/oci-registry/[Host packages on your own OCI registry]
+| Artifacts | A static HTTPS tree | `tfs+https://…` rows | this guide, tier 1
+| Artifacts | A local directory | `file://` rows | link:/docs/guides/library/[Curate a local library]
+|===
+
+Anything that serves bytes over HTTPS can carry artifacts — GitLab generic packages and Bitbucket downloads reduce to the `tfs+https://` row form — and the two first-class shorthands exist for the hosts with a release grammar (GitHub) and for the container-registry protocol (OCI).
+
 == The book.
 
 The registry book is the `registries:` section of `~/.tebako/config.yaml`. It is authored configuration — tebako writes it only when asked, and the file can be edited by hand at any time. A registry joins the book with one command:

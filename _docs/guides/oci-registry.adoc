@@ -1,0 +1,115 @@
+---
+title: Host packages on your own OCI registry
+heading: Host packages on your own OCI registry.
+lede: >-
+  An organization that already operates a container registry can serve
+  every tebako artifact it depends on — its own payloads, the public
+  payloads it consumes, and the runtimes beneath them — from inside
+  its own network perimeter, with signatures and hashes carried
+  unchanged and credentials confined to the registry they belong to.
+description: >-
+  This guide describes hosting tebako packages on an organization's
+  own OCI registry: mirroring payloads byte-identically, the tag
+  grammar and signature digest-tags, writing the registry index with
+  oci: locators, authentication through docker credentials or
+  environment-indirected config, enterprise roots and proxies, and
+  signing with the organization's own key.
+---
+
+[NOTE]
+====
+This guide covers the OCI transport: artifacts served from a registry that speaks the Open Container Initiative (OCI) distribution protocol, which is the protocol every docker-compatible registry implements. The sibling guides cover the adjacent material: link:/docs/guides/publish/[Publish to your own registry] authors payloads and the index on a git host, link:/docs/guides/registries/[Run your own registries] covers the consumption side in full, and link:/docs/guides/library/[Curate a local library] covers the `file://` form for fleets with no registry at all.
+====
+
+== Why an organization hosts its own.
+
+Some deployments may not fetch from the public internet at run time: the network perimeter forbids it, policy requires that executable content pass through the organization's own gates, or an audit requires that every installed byte be traceable to an artifact the organization itself served. These deployments already operate a registry for their container images, and the same registry can serve tebako artifacts, because a tebako payload or runtime is, on the wire, content-addressed bytes — the registry neither knows nor needs to know what the bytes contain.
+
+One invariant makes the whole arrangement inexpensive: *the bytes never change across transports*. A payload mirrored from the public catalog into an organization's registry is bit-identical with the public artifact, so its SHA-256 anchor is unchanged, its detached signature still verifies against the publisher's published key, and the organization re-serves exactly what the publisher shipped rather than a rebuild it must now trust on its own authority. Mirroring is copying, and copying preserves the chain of custody.
+
+== The four things the registry holds.
+
+A self-hosted arrangement serves three kinds of artifacts and one index:
+
+* *Payload slices* — the organization's own `.tfs` images and the public payloads it consumes, one per platform triplet per version.
+* *Runtime pairs* — the interpreter executable and its environment image for each (runtime version, platform triplet) pair the organization runs.
+* *Trust companions* — each artifact's `.sha256` anchor and detached signature, carried as additional tags of the same object so that the verification material travels with the bytes it covers.
+* *The registry index* — one `tpkg-registry.yaml`, served anywhere convenient (the same registry, a git repository, or a static host), whose rows point at the organization's own locators.
+
+== Step 1 — mirror the artifacts.
+
+On a machine that can reach both the public side and the organization's registry, install the payloads once; the local store then holds byte-identical copies with their anchors, ready to be pushed onward.
+
+[source,console]
+----
+$ tebako install metanorma
+----
+
+Push each artifact to the organization's registry under the tag grammar the index will reference — one repository per payload, one tag per (version, triplet) pair, and one `sha256-<hex>.asc` tag per signature, which is the form that lets a consumer fetch a signature without knowing anything but the artifact's hash:
+
+[source,text]
+----
+registry.corp.example/tebako/metanorma-cli:1.17.0-x86_64-linux-gnu
+registry.corp.example/tebako/metanorma-cli:1.17.0-aarch64-linux-gnu
+registry.corp.example/tebako/metanorma-cli:sha256-882fc586….asc
+----
+
+Any OCI client performs the push, because the artifacts are ordinary registry blobs; tebako's own publishing machinery emits the same grammar when a feedstock publishes with an OCI destination, so an organization that packages its own software with tebako publishes to its registry directly and skips the mirroring leg for those payloads. The push must preserve bytes exactly — a registry or proxy that recompresses or rewrites blobs breaks the anchor, and the verification steps below will say so by name.
+
+== Step 2 — write the registry index.
+
+The index is one YAML file. Each row mirrors the public row's shape, with the `oci:` locator naming the organization's registry and the hash and signature fields carried over unchanged:
+
+[source,yaml]
+----
+- name: metanorma-cli
+  version: 1.17.0
+  entrypoints: [metanorma]
+  triplets:
+    x86_64-linux-gnu:
+      sha256: 882fc586…
+      oci: tfs+oci://registry.corp.example/tebako/metanorma-cli:1.17.0-x86_64-linux-gnu
+      signature: sha256-882fc586….asc
+    aarch64-linux-gnu:
+      sha256: cb0b7d3c…
+      oci: tfs+oci://registry.corp.example/tebako/metanorma-cli:1.17.0-aarch64-linux-gnu
+      signature: sha256-cb0b7d3c….asc
+----
+
+The organization's private payloads take rows of the same form in the same index. A private flavor that extends a public base declares its dependency on the base by exact version — the loader mounts the base and the flavor together from the organization's registry, and the base's row never needs to know that the flavor exists.
+
+== Step 3 — point the machines at it.
+
+Consumers register the index once, in `~/.tebako/config.yaml`:
+
+[source,yaml]
+----
+registries:
+  - https://registry.corp.example/tebako/tpkg-registry.yaml
+----
+
+Keeping the public registry in the list makes the organization's index an overlay — its rows win for the names it carries, and everything else resolves publicly. Removing the public entry pins resolution to the organization's index alone, which is the correct posture for a fleet that must install only what the organization serves. `TEBAKO_OFFLINE=1` goes one step further and turns every run into cache-or-named-error, which suits sealed networks after the initial seeding.
+
+== Step 4 — authenticate.
+
+The OCI transport reads the docker credential store, so an operator who has run `docker login registry.corp.example` needs no further configuration — the existing habit works unchanged. For continuous integration (CI) runners and other headless machines, credentials live in `config.yaml` in environment-indirected form, so the secret itself comes from the runner's secret store and never sits on disk:
+
+[source,yaml]
+----
+hosts:
+  registry.corp.example:
+    username: tebako-ci
+    password: ${CORP_REGISTRY_TOKEN}
+----
+
+Credentials are confined to the host they belong to: a token for the organization's registry is never sent to any other host, and a payload's origin is recorded at install so that later resolution does not silently cross registry boundaries.
+
+== Step 5 — trust the organization's own network and key.
+
+Two enterprise realities are covered by the sibling guide and named here for completeness. A registry served under an internal certificate authority is trusted by adding that authority to tebako's certificate store, and an egress proxy between the fleet and the registry is declared in the same configuration file; link:/docs/guides/enterprise-networks/[Enterprise networks] gives both halves.
+
+An organization that publishes its own payloads signs them with its own key in its own CI, and its registry rows declare the signer's fingerprint. `TEBAKO_REQUIRE_SIGNED=1` then fails closed on anything unsigned — including, deliberately, the organization's own artifacts until they are signed — and link:/docs/guides/verify/[Verify integrity] covers the verification surface in full.
+
+== Boundaries, stated plainly.
+
+The OCI transport for *payloads* is available today, and the public catalog exercises it: the metanorma and xml2rfc payloads serve per-triplet tags and signature digest-tags from the project's own container registry, anonymously. The OCI transport for *runtimes* — `oci:` locators on runtime rows, so that the interpreter pair also resolves from an organization's registry — is the arriving extension of the same lane; until it lands, a self-hosted deployment seeds runtimes into the machine-wide cache through its installer or image pipeline, which is an out-of-band step that needs no registry support. A deployment with no registry at all is served by the link:/docs/guides/library/[`file://` library] or by stitched single-executable installers, which carry the runtime inside the package and need no network of any kind.
