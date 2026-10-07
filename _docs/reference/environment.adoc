@@ -18,7 +18,8 @@ description: >-
 // 949a7a3), audited against the v2.1.7 tree: TEBAKO_COMPOSE retired (the
 // settings registry carries the compose-document channel), TEBAKO_SIGN
 // and TEBAKO_QUIET_NOTICES added (settings registry), TEBAKO_SPAWN_LOCK
-// added, exit 78 renamed EX_TEBAKO_LAYOUT.
+// added, exit 78 renamed EX_TEBAKO_LAYOUT. TEBAKO_RUNTIME_LAZY added
+// 2026-10-07 (the spec-39 lazy install, default on).
 
 == Three roles.
 
@@ -131,6 +132,13 @@ Operator inputs: the operator sets these, and they shape what the run may touch 
 | unset — the chain falls through to .tebako-tools.yaml, then config defaults, then the registry default
 | The variable pins the version per invocation — the first link of the dispatch chain.
 | A pin naming a version that is not installed costs exit 65, which names the source and the installed set.
+
+| `TEBAKO_RUNTIME_LAZY`
+| tebako-shim · bootstrap
+| 1 \| true \| yes \| on, or 0 \| false \| no \| off
+| on (lazy)
+| The variable is the machine's lazy-install policy for runtime env images: a lazy install seeds the image's 4 MiB block groups on demand and seals in the background into the same bytes a whole-image install produces, while the block-checksum sidecar is fetched and pinned at install so a run touches only the groups it reads. The store config carries the same policy as `runtime_lazy`; the environment wins, then the config, then the default. A release that does not serve the lazy wire installs eagerly, with a loud notice.
+| A value outside the grammar costs exit 65, which names the variable and the value.
 
 | `TEBAKO_OVERLAYS`
 | tfs owns the grammar; driver consumption is planned
@@ -507,7 +515,7 @@ These names surface in the same greps and read like variables. None of them is o
 See also: link:/docs/architecture/dispatch/[Dispatch] · link:/docs/architecture/store/[The store] · link:/docs/guides/jails/[Set a jail policy] · link:/docs/guides/debug/[Debug & logging]
 
 // cites — The store and the fetch: TEBAKO_HOME · TEBAKO_OFFLINE · TEBAKO_RUNTIME_MIRROR · TEBAKO_TLS_PLATFORM_ROOTS · TEBAKO_REQUIRE_SIGNED · TEBAKO_TRUSTED_ROOT · TEBAKO_NO_PROGRESS · TEBAKO_GITHUB_TOKEN (tebako-cli/src/publish.rs)
-// cites — Policy and dispatch: TEBAKO_JAIL · TEBAKO_JAIL_SOURCE · TEBAKO_JAIL_JOURNAL · TEBAKO_<TOOL>_VERSION · TEBAKO_OVERLAYS · TEBAKO_DECRYPT
+// cites — Policy and dispatch: TEBAKO_JAIL · TEBAKO_JAIL_SOURCE · TEBAKO_JAIL_JOURNAL · TEBAKO_<TOOL>_VERSION · TEBAKO_RUNTIME_LAZY (tpkg settings registry) · TEBAKO_OVERLAYS · TEBAKO_DECRYPT
 // cites — The handoff: TEBAKO_RUNTIME_IMAGE · TEBAKO_MOUNT_ROOT · TEBAKO_TFS_MOUNTS · TEBAKO_EXEC_CACHE · TEBAKO_RUNTIME_DLL · TEBAKO_PRELOAD_SHIM · TEBAKO_MOUNT_<SLUG> · TEBAKO_TRACE · TEBAKO_CONTRACT_VERSION
 // cites — Packaging time: TEBAKO_BOOTSTRAP · TEBAKO_BOOTSTRAP_MIRROR · TEBAKO_PREFIX (tebako-cli/src/options.rs) · TEBAKO_SDK_SRC_RELEASE (tebako-cli/src/sdk.rs) · TEBAKO_SDK_SRC_MIRROR (tebako-cli/src/sdk.rs) · TEBAKO_SHIM_BINARY (tebako-cli/src/install.rs) · TEBAKO_TFS_PRELOAD (tfs-cli/src/lib.rs) · TEBAKO_DEPLOY_BINDIR (tebako-cli/src/deploy.rs) · TEBAKO_SIGN · TEBAKO_QUIET_NOTICES (tpkg settings registry)
 // cites — Diagnostics: TEBAKO_DEBUG · TEBAKO_DEBUG_TFS · TEBAKO_DEBUG_FILE · TEBAKO_DEBUG_COMPONENTS
