@@ -118,6 +118,18 @@ The store itself is versioned: a single integer marks its layout generation.
 A newer store refuses an older tool with a named error instead of a silent
 mix, and an older store is migrated by name, never silently rewritten.
 
+== Installs are lazy by default
+
+A runtime install does not wait for the whole env image. The install fetches
+and pins the image's block-checksum sidecar, and the image's 4 MiB block
+groups arrive on demand — a run touches only the groups it reads — while a
+background seal completes the entry into the same bytes a whole-image
+install would have produced. A sealed entry is byte-identical in both
+modes, which makes the mode a scheduling decision rather than a format. A
+release that does not serve the lazy wire installs eagerly, with a loud
+notice, and `TEBAKO_RUNTIME_LAZY=0` — or `runtime_lazy: false` in
+`config.yaml` — restores the whole-image install for the machine.
+
 == Housekeeping
 
 The cache is available for inspection and pruning. Everything here is
