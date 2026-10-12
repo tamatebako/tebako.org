@@ -1,0 +1,38 @@
+---
+layout: post
+title:  "tebako v2.8.28: one composition spectrum — fat, lean, and everything between"
+date:   2026-10-12 12:00:00 +0800
+categories:
+  - tebako
+  - release
+  - composition
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+---
+
+A package format decides early how much it carries, and the decision is usually permanent. A self-contained package ships its runtime inside its own bytes and pays the size on every machine; a runtime-resolving package ships small and pays a download on first run. Tebako v2.8.28 removes the permanence of that choice: the two shapes are now two positions of one dial, and the dial has intermediate positions that name exactly which payload slices travel inside the package and which resolve at run time.
+
+== What has shipped
+
+The composition spectrum is one pipeline. The press writes a single package whose trailer carries a manifest of its parts; the `--embed` option selects which parts are embedded as trailer slots, from `--embed=all`, which is the self-contained shape, through a named list such as `--embed=metanorma,iso-codes`, to `--embed=none`, which is the fully resolved shape. The two names the tool has always accepted, fat and lean, remain as the two ends of the same dial.
+
+What a package does not embed, it resolves at run time under the locked-digest discipline. The press records each shared slice's registry row and its SHA-256 pin in the package manifest, and the loader fetches the slice by that pin on first run, verifies the bytes against the pin before they enter the store, and treats a mismatch as a trust failure rather than a download to be retried. A machine that is offline, or is run with `TEBAKO_OFFLINE=1`, answers from the cache or refuses with a named error; it never substitutes a different version for the locked one. The same lock governs the seeding direction: a package that carries a slice also seeds the machine-wide cache from its own bytes, so the second package that needs the slice finds it already present and verified.
+
+== The factory side, held to the same standard
+
+The Ruby runtime factory's registry now renders each platform row with the release reference of the shard tag its bytes were published from, which is what allows a catalog larger than one release object's asset ceiling to remain one logical registry. The ceiling math is no longer a publish-path concern: the live catalog's shard tags carry between 18 and 28 assets each against the platform limit of 1000. Beginning with this release, the factory's publish pipeline validates every accumulated registry render with the product's own `tebako registry validate` reader before the registry update is proposed, so a render the product cannot parse stops the pipeline rather than reaching the catalog.
+
+== The discipline underneath
+
+The wave that completes the spectrum also emptied the project's issue tracker. Thirty-five planned work items and every tracked defect across the product and its factories were dispositioned in the release line that v2.8.28 closes: the diagnostics surface, the jail policy, the Windows hardening set, the environment-scrubbing contract, and the composition machinery all landed with their acceptance suites green. Two of the closed items were feature requests whose premises had expired — the v1 gem's gemspec press path and the POSIX-only spawn limitation on Windows — and each was closed with the evidence of where the v2 architecture answers it, the latter by the Windows host tier that materializes a dependency's executables for the platform's spawn model.
+
+== Boundaries, stated plainly
+
+Run-time resolution fetches what the lock names and nothing else; a package that must run without any network continues to be built with `--embed=all`, and that shape remains the default for the project's own distributions. The per-platform registry rows require readers of this release or later, and the factory's registry continues to carry the version-level reference that earlier readers consume. The verification of signed artifacts remains strict, and an unsigned payload remains installable with the same loud warning it has always carried.
+
+== Where to verify every claim
+
+The composition contract is specified in the product repository's specification set, and the behaviors named here are pinned by the dispatch-level acceptance tests that run in every continuous integration run of the product. The registry render gate runs in the runtime factory's publish pipeline on every release. The release notes for v2.8.28 enumerate the individual changes with their pull-request references.
