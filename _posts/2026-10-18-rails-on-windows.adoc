@@ -1,0 +1,46 @@
+---
+layout: post
+title:  "Rails on Windows: built from source, booted from one file"
+date:   2026-10-18 12:00:00 +0800
+categories:
+  - tebako
+  - release
+  - windows
+  - ruby
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: "The tebako packaging and loading ecosystem now presses a full Rails application on Windows, compiles its native extensions from source against the packaged runtime, and boots the result as a single executable. This post records what shipped, the twelve defect layers the work separated, and the instruments the chain left behind."
+---
+
+The tebako packaging and loading ecosystem has closed the gap that issue tamatebako/tebako#753 tracked since September: a freshly generated Rails application now presses on Windows, compiles every native extension it needs from source against the packaged runtime's own SDK, and boots the complete Rails stack from a single executable whose only host dependency is the operating system. The closing verdict, produced by the Rails-on-Windows validation leg on release v2.8.44 on 18 October 2026, printed the marker line `RAILS-BOOT-OK-8.1.4` from inside the packaged executable, which means the runner booted autoloaders, initializers and railties through the tebako runtime rather than through any installed Ruby.
+
+The same release line carried two further completions that earlier posts foreshadowed. The metanorma packaging now publishes Alpine (musl) builds for both x86-64 and arm64 alongside its glibc, macOS and Windows assets, which brings the single-executable Metanorma distribution to every platform it supports. The developer loop that produced the chain has been hardened into reviewed tooling — a five-minute probe workflow, an iteration input on the validation leg, and a nightly dependency canary — so the next chain of this shape costs days instead of weeks.
+
+== What a press on Windows now does
+
+A Windows press of a Rails application performs the following work, in order, with nothing compiled on the user's machine beyond the application's own extensions.
+
+The press resolves the prebuilt Ruby runtime pair — a 99 KB loader executable and the `x64-ucrt-ruby340.dll` that carries the interpreter, roughly 3,400 exported symbols across a 50 MB image — from the machine-wide cache, verifying both against the publisher's checksums. The runtime's shape is the first thing the chain had to learn: every Ruby symbol an extension references lives in the DLL, not the executable, and any link surface built from the wrong binary fails on nearly everything.
+
+The press then provisions the runtime SDK, which regenerates the header tree a native extension needs by replaying the runtime's own recorded `./configure` invocation against the patched Ruby source. On Windows the replay runs under an explicitly resolved msys bash rather than any `bash` the search path happens to offer, with the compiler pinned to the mingw toolchain rather than the MSVC-ABI LLVM clang that the runner image otherwise prefers, with the generated configure's cache-eval probes rewritten to a form that msys bash does not abort on, and with the shared-library default disabled because the runtime ships no DLL import library in its store. Each of those four pins closes a defect class that the chain separated and documented; `docs/windows-native-extensions.md` in the product repository records all of them with their evidence.
+
+Bundler then installs the application's gems, and the gems that ship no precompiled variant for the platform — bigdecimal, date, json, prism, erb, io-console and nio4r in the Rails case — compile from source. The link resolves against an import library that the SDK generates from the DLL's true export table, which `objdump` reads directly; the table answers both the plain and the `__imp_` spellings that a probe-driven compile can produce, and it contains no C runtime internals, so the extension's C runtime references continue to bind the system C runtime that the loader expects.
+
+The resulting executable boots with no Ruby installed anywhere: the loader mounts the runtime's environment image, the packaged payload and the packaged driver, applies the declared filesystem policy, and starts the interpreter on the application's entry point.
+
+== The twelve layers, and the instrument that separated them
+
+The distance between the first red run and the green verdict was twelve distinct defect layers, each of which produced a failure that looked like the previous one. A spawn could not find `ruby.exe`, because the re-entry vehicle did not exist; then the driver refused to boot, because two mounted images declared the same library alias; then the SDK's configure run died in a shell that turned out to be the Windows Subsystem for Linux launcher; then it died in a compiler that turned out to drive the MSVC linker; then the extensions referenced symbols through an import path the runtime never exported. Every layer was separated from its neighbours by a small dispatch workflow that pressed real bytes through the pinned toolchain on a live runner and printed the one artifact under suspicion, which turned a diagnosis that a release cycle — roughly two hours — could not have resolved into a five-minute experiment.
+
+That instrument now ships as reviewed tooling. The `deploy-probe` workflow dispatches a scenario from a template library in `tools/probes/`: one scenario presses any named gem through any pinned release, one dissects the SDK's link surface, and one boots the packaged child layer by layer so a boot failure names its own layer. The Rails validation leg accepts an iteration input that presses a release run's staged, gate-passed tool bytes before they publish, which reduces a fix-to-verdict loop from a release cycle to a single run. A nightly dependency canary resolves the workspace against the live package index and opens a tracking issue when upstream yanks a line the workspace requires, because two such mass-yanks — the `bisync` and the entire 2.x line of `zip` — each cost a red pull-request cycle during this work before anyone could have known upstream had moved.
+
+== The musl lane, and where this goes next
+
+The metanorma packaging joined the Windows completion in the same release line. Release v1.17.0-2 publishes `metanorma-linux-musl-x86_64` and `metanorma-linux-musl-arm64` alongside the existing platforms, built inside the tpkg-builder container images that the factories also use, with the full validation suite — press, structural gates, boot smoke and document compilation against the schema and font pipelines — executing in-container on Alpine. The Alpine builds complete a platform matrix that now covers macOS (Apple Silicon and Intel), Linux (glibc and musl, x86-64 and arm64) and Windows (x86-64, with arm64 toolchains published), each asset signed or checksum-verified according to the platform's own conventions.
+
+One latent defect that the chain's investigation surfaced is filed rather than fixed: the driver's alias collection reads a mounted image's manifest through the union of everything mounted before it, which attributes the environment image's declarations to a payload that mounts at the same point without its own manifest (tamatebako/tebako#825). Nothing in the product triggers the defect today, because the deploy driver mounts at its own point; the filed issue carries the evidence, the fix shape and the acceptance criteria for whoever picks it up.
+
+The Rails-on-Windows walkthrough lives at `docs/rails-packaging.md` in the product repository, the native-extension architecture at `docs/windows-native-extensions.md`, and the validation leg that produced the closing verdict runs weekly on schedule and on demand against every future release.
