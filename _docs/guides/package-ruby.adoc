@@ -45,6 +45,13 @@ The tree is pressed into an executable:
 $ tebako press -r ./myapp -e bin/myapp -o myapp
 ----
 
+Inside the project directory the flags are optional: a press with neither `-r` nor `-e` reads the project in place — a `Gemfile` marks a ruby project, the entry point is the single executable Ruby script under `bin/` then `exe/`, or the single `*.rb` at the root — and proceeds with what it found. An ambiguous layout (two candidate scripts) is refused by name with the candidates listed, never guessed; a `package.json`, `pyproject.toml`, or `Cargo.toml` project is refused with its engine named, because detection ships for ruby first.
+
+[source,console]
+----
+$ cd myapp && tebako press -o myapp
+----
+
 `-r` is the source root, `-e` is the entry script inside it, and `-o` is the output file. `-R` picks the ruby version (default 3.3.7). `-c` pins the working directory the app starts in, and `-p` overrides the in-image prefix the root is packed under — both options are rarely needed. `-l error|warn|debug|trace` sets the press tool's own log level. `--format dwarfs|limnifs` picks the image format the payload is written in — *limnifs is the default*; `dwarfs` stays a first-class opt-in, and existing dwarfs images read everywhere they always have.
 
 The v1 modes are gone by design: `-m classic` and `-m runtime` fail with a named error, and there is no tebafile — `-t` is rejected.
