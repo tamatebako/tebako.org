@@ -97,9 +97,13 @@ The declared command sets differ by engine and platform, because each factory pu
 | `jruby`, `jgem`, `jirb`
 | The commands run on the Java runtime the JRuby image composes with.
 
-| Ruby (MRI), Python
+| Python
+| `pip`, `pip3`
+| Declared from the v0.3.1 line onward, generated from the installed pip's own console-script metadata on every platform.
+
+| Ruby (MRI)
 | none yet
-| These two runtimes declare no spawn surface today, so the bare form is their whole surface on the direct path.
+| The image declares no spawn surface on the published line; the factory's declaration is in review, and this table is updated when that line publishes.
 |===
 
 A command that the runtime does not declare is refused by name, never silently rerouted:
