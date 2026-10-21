@@ -47,9 +47,10 @@ Signing at press resolves through the settings registry — the CLI flag wins, t
 ----
 tebako run <pkg> [--jail <spec>] [--mount <host:mount:ro|rw>]... [--no-host]
             [--] [<args>...]
+tebako run <engine>[:<command>] [<args>...]
 ----
 
-Everything after `--` reaches the payload verbatim; the flags before it shape this run only. The guide is link:/docs/guides/run/[Run a packaged app].
+Everything after `--` reaches the payload verbatim; the flags before it shape this run only. When the first token names no existing file it is read as an engine reference and boots that runtime directly — the bare form runs the interpreter, the colon form a command the runtime declares. The guide is link:/docs/guides/run/[Run a packaged app].
 
 == Trace: run, cover, import, explain.
 
@@ -104,12 +105,13 @@ The guide is link:/docs/guides/check/[Check a payload].
 tebako cache list [--json]
 tebako cache prune [--all] [--older-than Nd]
 tebako install <ref | name[@ver]>
+tebako install <engine>[:<command>]
 tebako uninstall <name>
 tebako info [topic] [--remote] [--json]
 tebako inspect <artifact> [flags]
 ----
 
-`tebako install` installs a payload and registers its shims; `tebako uninstall` removes the shims and the cache entry. `tebako info` reports on the store and its contents — the topics are system, runtimes, payloads, shims, registries, and store. `tebako inspect` reads a single artifact; `--contract` prints the contract card: the era, the contract versions, mount_root, the ABI, and the trust verdict. The guide is link:/docs/guides/info-inspect/[info & inspect].
+`tebako install` installs a payload and registers its shims, and the engine form pre-stages that engine's runtime and registers a runtime-own shim instead (the bare form registers the interpreter's own name, the colon form the declared command's name). `tebako uninstall` removes the shims and the cache entry. `tebako info` reports on the store and its contents — the topics are system, runtimes, payloads, shims, registries, and store. `tebako inspect` reads a single artifact; `--contract` prints the contract card: the era, the contract versions, mount_root, the ABI, and the trust verdict. The guide is link:/docs/guides/info-inspect/[info & inspect].
 
 == Registries: add, list, update.
 

@@ -26,6 +26,19 @@ $ tebako-shim install-shell --shell zsh  # or name it: bash|zsh|fish|csh
 
 `tebako install` registers them — registry installs always do; installing a local package file does it only with `--shims`. `tebako uninstall <name>` removes the shims and the cache entry. There is no `tebako shim add/remove/list` — the read-side verb is `tebako-shim list`.
 
+Two classes of shim share the directory. A *payload shim* dispatches to a packaged payload, which is the class the rest of this guide describes. A *runtime-own shim* dispatches to an engine's own tool with no payload in between, and `tebako install <engine>[:<command>]` creates it: the bare form registers the interpreter's own name, and the colon form registers the declared command's name.
+
+[source,console]
+----
+$ tebako install node:node
+node 24.22.0 is already installed (~/.tebako/runtimes/node-24.22.0-2.8.49-macos-arm64)
+  shim ~/.tebako/shims/node
+$ node --version
+v24.22.0
+----
+
+The claims live in `~/.tebako/shims/.runtime-own.yaml`, a map from each registered name to the engine and the entry token it boots. `tebako-shim list` reports them beside the payload shims and marks them `[runtime-own]`. When a payload provides a name that a runtime-own claim also carries, the payload's name wins on every dispatch, and a later payload claim displaces the runtime-own one loudly.
+
 == The version chain: four levels, first hit wins.
 
 Every invocation re-evaluates the chain. The environment beats the project, the project beats the config, and the config beats the publisher's default.

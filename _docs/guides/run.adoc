@@ -55,7 +55,66 @@ $ tebako run ./myapp --no-host -- status
 
 `--jail <spec>` tightens the filesystem policy for this run. `--mount <host:mount:ro|rw>` adds a one-off host directory grant, read-only or read-write, and the option is repeated once per grant. `--no-host` drops every host grant the package requested. The full grammar is in the link:/docs/guides/jails/[jails guide].
 
-== C · The managed way: registry, install, shim.
+== C · A runtime's own tools.
+
+A package is not the only thing `tebako run` starts. When the first token names no existing file, it is read as an engine reference of the form `<engine>[:<command>]`, and the command boots that engine's runtime directly, with no package in between.
+
+[source,console]
+----
+$ tebako run ruby --version
+ruby 4.0.6 (2026-07-14 revision 03b6d3f889) +PRISM [arm64-darwin23]
+$ tebako run node:node --version
+v24.22.0
+----
+
+The bare form runs the interpreter itself. The colon form runs one of the commands the runtime declares in its own image manifest, and every argument after the reference reaches the command verbatim. The runtime is resolved per engine through the version chain that link:/docs/guides/shims/[Shims & versions] describes, so the direct surface and the shimmed surface resolve identically.
+
+The declared command sets differ by engine and platform, because each factory publishes the surface its distribution actually carries:
+
+[cols="1.2,3,2"]
+|===
+| Engine | Declared commands | Notes
+
+| Java (Temurin)
+| `java`, `jfr`, `jrunscript`, `jwebserver`, `keytool`, `rmiregistry`
+| The complete `bin` inventory of the staged JRE.
+
+| Java (GraalVM)
+| `java`, `jar`, `jarsigner`, `javac`, `javadoc`, `javap`, `jcmd`, `jconsole`, `jdb`, `jdeps`, `jfr`, `jimage`, `jinfo`, `jlink`, `jmap`, `jmod`, `jpackage`, `jps`, `jrunscript`, `jshell`, `jstack`, `jstat`, `jwebserver`, `keytool`, `rmiregistry`, `serialver`, `native-image`, `native-image-configure`, `native-image-utils`
+| The JDK tool set; the `native-image` tools are Windows `.cmd` launchers and are not declared there.
+
+| Node.js
+| `node`, `npm`, `npx`, `corepack`
+| `npm`, `npx`, and `corepack` are not declared on Windows.
+
+| Bun
+| `bun`, `bunx`
+
+| TruffleRuby
+| `ruby`, `gem`, `bundle`, `bundler`, `irb`, `rake`, `rdoc`, `ri`, `rbs`, `rdbg`, `racc`, `erb`, `syntax_suggest`, `truffleruby`, `truffleruby-polyglot-get`
+
+| JRuby
+| `jruby`, `jgem`, `jirb`
+| The commands run on the Java runtime the JRuby image composes with.
+
+| Ruby (MRI), Python
+| none yet
+| These two runtimes declare no spawn surface today, so the bare form is their whole surface on the direct path.
+|===
+
+A command that the runtime does not declare is refused by name, never silently rerouted:
+
+[source,console]
+----
+$ tebako run node:nosuch
+tebako-runtime-launcher: --tebako-entry 'nosuch': the env image declares no
+runtime entrypoint of that name — the parent's expose list outruns the
+runtime's spawn surface
+----
+
+`tebako install <engine>[:<command>]` registers the same reference as a command on PATH, which the link:/docs/guides/shims/[Shims & versions] guide covers.
+
+== D · The managed way: registry, install, shim.
 
 For a tool in daily use, the managed flow applies: a registry resolves names and versions, an explicit install places the payload into the store, and a shim on PATH exposes the payload as an ordinary command.
 
