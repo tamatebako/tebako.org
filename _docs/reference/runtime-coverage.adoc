@@ -1,0 +1,210 @@
+---
+title: Runtime coverage
+heading: Every runtime, every platform, one table.
+lede: >-
+  A tebako runtime is published per engine, per version line, and per
+  platform triplet. This page is the grid of what exists: every
+  published cell, and for every unpublished cell the reason it is
+  unpublished.
+description: >-
+  The runtime coverage matrix: every tebako runtime engine and version
+  line against the eight platform triplets, with each unpublished cell
+  named and explained.
+---
+
+// normative: verified 2026-10-21 against the live factory releases
+// (tebako-runtime-ruby v0.17.1, tebako-runtime-python v0.2.7,
+// tebako-runtime-node v2.8.49, tebako-runtime-bun v2.8.50,
+// tebako-runtime-openjdk v2.8.50, tebako-runtime-jruby v2.8.49,
+// tebako-runtime-truffleruby v2.8.49) by listing each release's assets
+// and parsing the platform suffix per the Platform::ALL axis of
+// crates/tpkg/src/manifest.rs. The JIT skip reasons are quoted from
+// tebako-runtime-python's scripts/compute_matrix.rb.
+
+== Why this page exists
+
+A tebako runtime is not one artifact but a family of artifacts. Each
+runtime factory publishes its interpreter once per engine, once per
+version line of that engine, and once per platform triplet, so the
+question an author must answer before pinning a runtime requirement is
+whether the cell they need — this engine, this version, this platform —
+actually exists. This page answers that question with a single matrix,
+and it treats an empty cell as a statement that owes the reader a
+reason: every unpublished cell below is named, and the reason it is
+unpublished is given in a sentence of its own.
+
+== The platform axis
+
+The axis is eight platform triplets. The canonical form is the
+vcpkg-form triplet, which is what manifests and runtime requirements
+use; the release-asset form is the suffix that appears in published
+file names, which is what a release listing shows.
+
+[cols="2,2,3"]
+|===
+| Canonical triplet | Release-asset suffix | Platform
+
+| `aarch64-macos`
+| `macos-arm64`
+| macOS on Apple silicon
+
+| `x86_64-macos`
+| `macos-x86_64`
+| macOS on Intel
+
+| `x86_64-linux-gnu`
+| `linux-gnu-x86_64`
+| Linux on x86-64, glibc
+
+| `aarch64-linux-gnu`
+| `linux-gnu-arm64`
+| Linux on arm64, glibc
+
+| `x86_64-linux-musl`
+| `linux-musl-x86_64`
+| Linux on x86-64, musl
+
+| `aarch64-linux-musl`
+| `linux-musl-arm64`
+| Linux on arm64, musl
+
+| `x86_64-windows-ucrt`
+| `windows-ucrt64`
+| Windows on x86-64
+
+| `aarch64-windows-ucrt`
+| `windows-ucrt-arm64`
+| Windows on arm64
+|===
+
+== The matrix
+
+A check mark (✓) means the cell is published in the factory's current
+release. An em dash (—) means the cell is unpublished, and the reason
+is stated in the next section. The matrix below was verified against
+the live factory releases on 2026-10-21.
+
+[cols="1.6,1.2,1,1,1,1,1,1,1,1"]
+|===
+| Engine | Version | macOS aarch64 | macOS x86_64 | Linux gnu x86_64 | Linux gnu aarch64 | Linux musl x86_64 | Linux musl aarch64 | Windows x86_64 | Windows aarch64
+
+| Ruby
+| 3.1.6
+| ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | —
+
+| Ruby
+| 3.2.11
+| ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | —
+
+| Ruby
+| 3.3.12
+| ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | —
+
+| Ruby
+| 3.4.10
+| ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓
+
+| Ruby
+| 4.0.7
+| ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓
+
+| Python
+| 3.11.16
+| ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — | —
+
+| Python
+| 3.12.14
+| ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — | —
+
+| Python
+| 3.13.15
+| ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — | —
+
+| Python
+| 3.13.15 (JIT)
+| ✓ | ✓ | ✓ | ✓ | — | — | — | —
+
+| Python
+| 3.14.7
+| ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓
+
+| Python
+| 3.14.7 (JIT)
+| ✓ | ✓ | ✓ | ✓ | — | — | — | —
+
+| Node.js
+| 24.22.0
+| ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓
+
+| Bun
+| 1.4.3
+| ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓
+
+| OpenJDK (Temurin)
+| 21.0.12
+| ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓
+
+| OpenJDK (GraalVM CE)
+| 25.0.4.1
+| ✓ | — | ✓ | ✓ | — | — | ✓ | —
+
+| JRuby
+| 10.1.1.0
+| ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓
+
+| TruffleRuby
+| 34.0.1
+| ✓ | — | ✓ | ✓ | — | — | — | —
+|===
+
+The JRuby row is inherited rather than built. JRuby ships as a single
+universal image, because its interpreter is Java bytecode, and that
+image runs on whichever OpenJDK (Temurin) runtime is installed; the
+JRuby row therefore covers exactly the platforms the Temurin row
+covers, which today is the full axis.
+
+== The unpublished cells, named
+
+Every em dash above is one of the following six situations, and no
+unpublished cell exists outside these six.
+
+. *Ruby 3.1, 3.2, and 3.3 on Windows aarch64.* RubyInstaller, the
+upstream source of the factory's Windows builds, began publishing
+Windows arm64 builds with the Ruby 3.4 line. The older lines will never
+gain this cell, because upstream will never build it for them.
+
+. *Python 3.11, 3.12, and 3.13 on Windows.* The factory's Windows legs
+are built from the source factory's MSYS2 scenario tree, which is
+currently published for the 3.14 line only. The POSIX cells of these
+lines are unaffected, and the Windows cells appear when the scenario
+trees for these lines ship.
+
+. *The Python JIT variant on musl.* CPython's JIT target whitelist
+rejects `*-linux-musl` targets, so the just-in-time (JIT) variant
+cannot be compiled for musl upstream. This is an upstream constraint,
+not a factory choice, and the cell opens only if CPython admits musl
+targets to the whitelist.
+
+. *The Python JIT variant on Windows.* The same upstream whitelist
+admits only MSVC targets on Windows, while the factory's Windows legs
+build on the UCRT toolchain, so the JIT variant has no Windows cells.
+
+. *GraalVM Community Edition (CE) on macOS x86_64, on musl, and on
+Windows aarch64.* Upstream GraalVM CE publishes no builds for these
+platforms, so the factory has nothing to package. The Temurin row
+covers each of these cells for Java workloads.
+
+. *TruffleRuby on macOS x86_64, on musl, and on Windows.* Upstream
+TruffleRuby publishes native-mode builds for Linux on glibc and macOS
+on Apple silicon only, so the remaining five cells are unpublished for
+as long as upstream publishes nothing for them. On the cells TruffleRuby
+does not cover, the Ruby rows above carry the same payloads.
+
+== Keeping this page true
+
+The matrix is verified by listing the assets of each factory's current
+release and parsing their platform suffixes, which is a mechanical
+check that anyone can repeat with the GitHub CLI's `gh release view`
+command against the factory repositories. The page is re-verified at
+every factory release, and the verification date in the matrix section
+is updated with it.
