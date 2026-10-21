@@ -13,9 +13,10 @@ description: >-
 ---
 
 // normative: verified 2026-10-21 against the live factory releases
-// (tebako-runtime-ruby v0.17.1, tebako-runtime-python v0.2.7,
+// (tebako-runtime-ruby v0.17.1, tebako-runtime-python v0.3.1,
 // tebako-runtime-node v2.8.49, tebako-runtime-bun v2.8.50,
-// tebako-runtime-openjdk v2.8.50, tebako-runtime-jruby v2.8.49,
+// tebako-runtime-openjdk v2.8.50, tebako-runtime-jruby v2.8.50 —
+// the eight triplets' wrapper exes plus the universal image —
 // tebako-runtime-truffleruby v2.8.49) by listing each release's assets
 // and parsing the platform suffix per the Platform::ALL axis of
 // crates/tpkg/src/manifest.rs. The JIT skip reasons are quoted from
