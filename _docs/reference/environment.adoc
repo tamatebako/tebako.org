@@ -130,7 +130,7 @@ Operator inputs: the operator sets these, and they shape what the run may touch 
 | tebako-shim
 | an installed payload version; the var name is the uppercased command name, non-alphanumerics → _
 | unset — the chain falls through to .tebako-tools.yaml, then config defaults, then the registry default
-| The variable pins the version per invocation — the first link of the dispatch chain. On a runtime-own reference (`tebako run <engine>`, or a runtime-own shim) the same name pins the ENGINE — `TEBAKO_RUBY_VERSION`, `TEBAKO_NODE_VERSION` — and its value is a version constraint, a bare version or a range (`4.0.7`, `>= 4.0.7`, `~> 4.0.7`); a `payload@version` value is meaningless on that axis and is a named error.
+| The variable pins the version per invocation — the first link of the dispatch chain.
 | A pin naming a version that is not installed costs exit 65, which names the source and the installed set.
 
 | `TEBAKO_RUNTIME_LAZY`
