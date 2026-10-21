@@ -102,8 +102,8 @@ The declared command sets differ by engine and platform, because each factory pu
 | Declared from the v0.3.1 line onward, generated from the installed pip's own console-script metadata on every platform.
 
 | Ruby (MRI)
-| none yet
-| The image declares no spawn surface on the published line; the factory's declaration is in review, and this table is updated when that line publishes.
+| `gem`, `irb`, `rake`, `bundle`, `bundler`, `rdoc`, `ri`, `rdbg`, `rbs`, `racc`, `erb`, `syntax_suggest`, `typeprof`, `minitest`, `test-unit`
+| The gem toolchain the image carries, declared from the v0.17.2 line onward; the interpreter itself is the bare form.
 |===
 
 A command that the runtime does not declare is refused by name, never silently rerouted:
