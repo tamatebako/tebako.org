@@ -116,16 +116,23 @@ tebako inspect <artifact> [flags]
 
 `tebako install` installs a payload and registers its shims, and the engine form pre-stages that engine's runtime and registers a runtime-own shim instead (the bare form registers the interpreter's own name, the colon form the declared command's name). `tebako uninstall` removes the shims and the cache entry. `tebako info` reports on the store and its contents — the topics are system, runtimes, payloads, shims, registries, and store. `tebako inspect` reads a single artifact; `--contract` prints the contract card: the era, the contract versions, mount_root, the ABI, and the trust verdict. The guide is link:/docs/guides/info-inspect/[info & inspect].
 
-== Registries: add, list, update.
+== Registries: add, list, update, validate, retire, doctor.
 
 [source,text]
 ----
 tebako add-registry <ref>
 tebako list-registries
 tebako update-registries
+tebako registry validate <path-or-url> [--json]
+tebako registry retire <registry-file> <name>@<version> [--force]
+tebako registry doctor <path-or-url> [--full] [--sample <n>] [--json]
 ----
 
 `tebako add-registry` registers a tpkg-registry.yaml; `tebako update-registries` refreshes the dispatch-time registry cache. The guides are link:/docs/guides/publish/[Publish to your own registry] and link:/docs/guides/library/[Curate a local library].
+
+`tebako registry validate` runs the reader every install and dispatch path runs, together with the stricter checks a pipeline gate wants collected in one report, and the exit code is the verdict: zero for a valid document and 65 for an invalid one. `tebako registry retire` removes one version row from a local registry file, refusing while the removal would strand a runtime edge, dangle the payload's default, or delete the payload's last row; `--force` overrides each refusal loudly.
+
+`tebako registry doctor` extends the document gate to the host that serves it. The reference is parsed into its transport class, the document is validated, and every row is resolved for the host platform through the same resolver an install runs. An artifact the host does not serve, a digest that disagrees with the row's pin, and a signature that does not verify are problems; a platform the payload is not published for is a note, because the platform matrix belongs to each payload. `--full` downloads the resolved artifacts, which makes the digest and signature checks real; it samples one version per payload unless `--sample` names a larger count. The exit code is zero for a conformant registry and one when problems were found, and `--json` emits a `registry_doctor_schema` document for pipelines.
 
 == Publish.
 
