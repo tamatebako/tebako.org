@@ -109,6 +109,22 @@ $ tebako press --suite suite.yaml
 
 An entry may pin its own runtime with a `runtime_ref` key; entries without one share the suite's resolved runtime.
 
+== From a press to a feedstock.
+
+A press proves one project on one platform. A feedstock builds the same payload for a matrix of platforms and publishes it under a release line. `--emit-recipe` closes the distance between the two: the press renders the feedstock recipe from the press that just ran, so the document carries the values the press resolved rather than values retyped by hand.
+
+[source,console]
+----
+$ cd myapp && tebako press --emit-recipe
+…
+Created tebako package at "myapp"
+Wrote feedstock recipe at "Tebakofile"
+----
+
+The rendered document names the engine and its requirement, the entry point, the press mode, the image format, the lockfile the press vendored, and the resolved runtime pair with the factory release the pair came from, which the press reads from the pair's own provenance record. It names the platform leg the press proved, written as a platform triplet, and the executable the payload provides. The bare flag writes `Tebakofile` at the project root; `--emit-recipe=<path>` writes the document where the feedstock repository expects it.
+
+The platform list carries one entry because a press proves one platform. A feedstock adds a leg when a continuous-integration leg proves it, and the recipe's `build.system: press` tells that leg to run the press the author already ran. The command never overwrites a recipe it did not generate: a file without the generated marker is refused by name, so an authored recipe stays the author's.
+
 == What press resolves.
 
 Two artifacts come from outside the source tree: the ruby runtime (interpreter executable plus env image) from the runtime factory's release index, and the bootstrap loader from the tebako releases. Both are downloaded and SHA-256 verified during press.

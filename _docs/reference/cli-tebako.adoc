@@ -28,8 +28,9 @@ tebako press -r <root> -e <entry> [-o <output>] [-p <prefix>] [-c <cwd>]
              [--image <path>:<mount>]... [--bootstrap <path>]
              [--tebako-version <v>] [--prefer-local] [--jail <spec>]
              [--no-install] [--quiet-notices] [--sign[=<keyid>] | --no-sign]
-             [--format dwarfs|limnifs] [--compose <tebako.yaml>]
+             [--format dwarfs|limnifs] [--exclude <glob>]... [--compose <tebako.yaml>]
              [--carry all|none|<name,...>] [--share <name,...>]
+             [--emit-recipe[=<path>]]
 ----
 
 The `lean` and `fat` mode names stay accepted as deprecated aliases of `shared-runtime` and `self-contained`. A suite presses one package with N commands:
@@ -38,6 +39,8 @@ The `lean` and `fat` mode names stay accepted as deprecated aliases of `shared-r
 ----
 tebako press --suite <suite.yaml> [-o <output>] [-p <prefix>] [-R <ruby>]
 ----
+
+`--emit-recipe` renders the feedstock recipe for the press that just succeeded, which is the graduation path from a directory press to a feedstock repository. The rendered document names the engine, the entry point, the mode, the image format, the vendored lockfile, the resolved runtime pair together with the factory release the pair came from, the platform leg the press proved and the executable the payload provides. The bare flag writes `Tebakofile` at the project root; a value writes the document to that path. A file the command did not generate is never overwritten, because an authored recipe is the author's property.
 
 Signing at press resolves through the settings registry — the CLI flag wins, then the environment, then the compose document. Only the CLI may name a key. The task-oriented walkthrough is the link:/docs/guides/package-ruby/[Package a Ruby app] guide.
 
