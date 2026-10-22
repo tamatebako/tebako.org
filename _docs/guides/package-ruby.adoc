@@ -45,11 +45,24 @@ The tree is pressed into an executable:
 $ tebako press -r ./myapp -e bin/myapp -o myapp
 ----
 
-Inside the project directory the flags are optional: a press with neither `-r` nor `-e` reads the project in place — a `Gemfile` marks a ruby project, the entry point is the single executable Ruby script under `bin/` then `exe/`, or the single `*.rb` at the root — and proceeds with what it found. An ambiguous layout (two candidate scripts) is refused by name with the candidates listed, never guessed; a `package.json`, `pyproject.toml`, or `Cargo.toml` project is refused with its engine named, because detection ships for ruby first.
+Inside the project directory the flags are optional: a press with neither `-r` nor `-e` reads the project in place — a `Gemfile` marks a ruby project, the entry point is the single executable Ruby script under `bin/` then `exe/`, or the single `*.rb` at the root — and proceeds with what it found. An ambiguous layout (two candidate scripts) is refused by name with the candidates listed, never guessed.
+
+A project for another engine is refused with what the press read, not just the engine's name: a `package.json` directory reports the entry it derived (`bin`, else `main`, else a root `index.js`) and the `engines.node` requirement, and points at the feedstock model — the route a pressed package for that engine takes today. `pyproject.toml` and `Cargo.toml` projects are named the same way; detection and its refusal ship for ruby first.
 
 [source,console]
 ----
 $ cd myapp && tebako press -o myapp
+----
+
+With no `-o`, the output takes the entry's name; with no flags at all, one command does the whole job:
+
+[source,console]
+----
+$ cd myapp && tebako press
+… target entry point will be at /__tfs__/local/bin/myapp
+… Created tebako package at "/…/myapp"
+$ ./myapp
+hello from a pressed package
 ----
 
 `-r` is the source root, `-e` is the entry script inside it, and `-o` is the output file. `-R` picks the ruby version (default 3.3.7). `-c` pins the working directory the app starts in, and `-p` overrides the in-image prefix the root is packed under — both options are rarely needed. `-l error|warn|debug|trace` sets the press tool's own log level. `--format dwarfs|limnifs` picks the image format the payload is written in — *limnifs is the default*; `dwarfs` stays a first-class opt-in, and existing dwarfs images read everywhere they always have.
