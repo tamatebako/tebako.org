@@ -93,6 +93,25 @@ work, and that is the point of composition. A target outside every mount is
 host-passthrough under the same jail policy as any host path, so a symlink
 can never widen a jail.
 
+The C ABI answers a link three ways, and the difference is the caller's to
+choose. `lstat` reports the entry itself — a link answers `S_IFLNK` with its
+target's length as `st_size` — while `stat` follows it and answers the
+target's metadata. `readlink` returns the stored target verbatim, a relative
+target staying relative, and refuses to guess when the buffer is too small
+(`ERANGE`) rather than truncating. `open` follows unless the caller passes
+`O_NOFOLLOW`, in which case a final-component link answers `ELOOP`;
+`opendir` and `access` follow, as their POSIX counterparts do. Resolution is
+bounded at 32 hops, so a cycle is `ELOOP` and never a hang.
+
+A dangling link is a real entry: `lstat` sees it, `stat` and `open` answer
+`ENOENT`. That distinction matters for the same reason it does on a normal
+filesystem — a tool that inspects a tree before touching it can tell "a broken
+link lives here" from "nothing lives here".
+
+Image writers store links as links. A backend without a link notion serves
+one as an ordinary entry, which is the only case where a link's identity is
+lost.
+
 == Coverage is not presence
 
 A mount _covers_ everything under its mount point, but its image _holds_
