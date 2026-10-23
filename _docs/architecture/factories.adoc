@@ -210,6 +210,11 @@ Each row names the artifact that can be downloaded and verified today.
 | link:https://github.com/tebako-packages/index[tebako-packages/index]
 | This repo is the registry-of-registries: one tpkg-registry.yaml listing each feedstock's registry ref and summary. `tebako add-registry tfs:github:tebako-packages/index` exposes the whole catalog, and nothing is hosted centrally.
 | shipped
+
+| Official registry
+| link:https://github.com/tebako-packages/registry[tebako-packages/registry]
+| The generated aggregate `tebako setup` seeds. It mirrors the feedstocks' own payload rows — the runtime factories' rows included, so `tebako install node` resolves on a machine that has run nothing else — and every row keeps its own `release.ref`, so the mirror never rewrites where an artifact comes from. Re-rendered every six hours, never hand-edited.
+| shipped
 |===
 
 == Releases are the interface
