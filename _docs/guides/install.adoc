@@ -48,7 +48,24 @@ tebako-<ver>-macos-arm64
 tebako-pkg-<ver>-macos-arm64
 tfs-<ver>-macos-arm64
 tebako-bootstrap-<ver>-macos-arm64
+tebako-shim-<ver>-macos-arm64
 ----
+
+The asset names carry the version; the binaries expect the bare names. Rename on download, or `tebako install` stops at the shim step with `the dispatcher binary …/tebako-shim does not exist — shims would point at nothing [74]` after it has already downloaded the payload:
+
+[source,console]
+----
+$ mkdir -p ~/.local/bin && cd ~/.local/bin
+$ for b in tebako tebako-pkg tfs tebako-bootstrap tebako-shim; do
+    curl -fsSLO "https://github.com/tamatebako/tebako/releases/download/v<ver>/$b-<ver>-macos-arm64"
+    mv "$b-<ver>-macos-arm64" "$b"
+  done
+$ chmod 0755 tebako tebako-pkg tfs tebako-bootstrap tebako-shim
+$ ./tebako --version
+Tebako executable packager version <ver>
+----
+
+`tebako-shim` is the fifth binary, and the one the hand download is most likely to miss: it is the dispatcher every installed shim links to. It is not needed by `tebako press`, which is why the toolchain is described as four binaries plus the dispatcher.
 
 The installer puts the binaries in `~/.local/bin` (mode 0755) and prints the PATH line for the user's shell. The destination directory is changed with `TEBAKO_INSTALL_DEST`, and a specific release is pinned with `TEBAKO_VERSION`.
 
@@ -70,19 +87,37 @@ If the shell cannot find `tebako` after the shell installer, the install destina
 
 == A first packaged command.
 
-The managed flow is four commands: a registry is added, a payload is installed from it, the shim directory is put on PATH once, and the tool runs by name.
+`tebako setup` seeds the official registry, so the managed flow is three commands: a payload is installed from it, the shim directory is put on PATH once, and the tool runs by name.
 
 [source,console]
 ----
-$ tebako add-registry tfs:github:tamatebako/hello
+$ tebako setup
+fetching registry tfs:github:tebako-packages/registry
+seeded the official registry tfs:github:tebako-packages/registry (16 payload(s))
 $ tebako install hello
-installed hello 0.1.0 -> ~/.tebako/payloads/hello/0.1.0.tfs
+resolving hello
+└ toolkit hello 2.12 — fetching
+installed payload hello@2.12 (28.3 KB)
 shim ~/.tebako/shims/hello
 $ tebako-shim install-shell    # once per machine — puts ~/.tebako/shims on PATH
 $ hello
+Hello, world!
 ----
 
-The first run of `hello` downloads the ruby runtime once, verifies its SHA-256, and caches it; every later run starts from the cache. Open a new shell after `install-shell` so the PATH change takes effect. _Output versions shown are representative._
+The first run of a payload that carries a runtime downloads that runtime once, verifies its SHA-256, and caches it; every later run starts from the cache. Open a new shell after `install-shell` so the PATH change takes effect, or call the shim by path (`~/.tebako/shims/hello`) until you do.
+
+Adding a registry is only needed for a private or third-party one. Registering a repo that already carries a payload the official registry has makes the bare name ambiguous — the error names both registries and asks for the full reference:
+
+[source,console]
+----
+$ tebako add-registry tfs:github:tebako-packages/hello-runtimes
+$ tebako install hello-ruby
+Tebako script failed: payload 'hello-ruby' is listed by 2 registered registries (AmbiguousRegistries):
+    - tfs:github:tebako-packages/registry
+    - tfs:github:tebako-packages/hello-runtimes
+  disambiguate with the full reference: tebako install tfs:<service>:owner/repo:version[#artifact] [65]
+----
+
 
 == Platform notes.
 
