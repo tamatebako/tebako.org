@@ -62,6 +62,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
     titleSuffix: 'Tebako guides',
     entries: [
       { label: 'Guides home', href: '/docs/guides/', status: 'live' },
+      { label: 'The first ten minutes', href: '/docs/guides/first-ten-minutes/', status: 'live' },
       { label: 'Install tebako', href: '/docs/guides/install/', status: 'live' },
       { label: 'Run a packaged app', href: '/docs/guides/run/', status: 'live' },
       { label: 'Package a Ruby app', href: '/docs/guides/package-ruby/', status: 'live' },
