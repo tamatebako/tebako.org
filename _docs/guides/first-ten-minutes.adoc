@@ -58,9 +58,17 @@ seeded the official registry tfs:github:tebako-packages/registry (16 payload(s))
 $ tebako install hello
 resolving hello
 └ toolkit hello 2.12 — fetching
+fetching payload hello@2.12: 1 artifacts, unknown total
+downloading payload hello@2.12 (28.3 KB)
 installed payload hello@2.12 (28.3 KB)
-shim ~/.tebako/shims/hello
-$ tebako-shim install-shell    # once per machine — puts ~/.tebako/shims on PATH
+fetched payload hello@2.12: 1 artifacts, unknown in 2.7s
+1 node(s): 0 cached, 1 fetched, 0 skipped
+installed hello 2.12 -> ~/.tebako/payloads/hello/2.12.tfs
+  signature verified (signer 7a437d7382a3cf5a)
+  shim ~/.tebako/shims/hello
+$ tebako-shim install-shell    # once per machine
+installed the tebako shim block in ~/.bashrc (bash)
+restart the shell, or re-source the file
 $ hello
 Hello, world!
 ----
@@ -77,10 +85,14 @@ machine — verifies it, and caches it; every later run starts from the cache.
 
 [source,console]
 ----
-$ tebako install hello-ruby
 $ hello-ruby
+fetching registry tfs:github:tamatebako/tebako-runtime-ruby
 fetching runtime ruby@4.0.7;tebako=0.17.3;image: 2 artifacts, 19.2 MB total
-… lazy: seeding on demand, sealing in background
+downloading tebako-runtime-0.17.3-ruby-4.0.7-macos-arm64.tfs
+runtime env image tebako-runtime-0.17.3-ruby-4.0.7-macos-arm64.tfs (19.2 MB) — lazy: seeding on demand, sealing in background
+downloading tebako-runtime-0.17.3-ruby-4.0.7-macos-arm64 (46.3 MB)
+installed tebako-runtime-0.17.3-ruby-4.0.7-macos-arm64 (46.3 MB)
+fetched runtime ruby@4.0.7;tebako=0.17.3;image: 2 artifacts, 19.2 MB in 1.9s
 Hello from tebako (ruby 4.0.7, arm64-darwin23)
 ----
 
@@ -123,14 +135,14 @@ an empty `HOME`:
 |===
 | step | seconds | exit
 | `tebako setup` | 1.74 | 0
-| `tebako install hello` | 3.21 | 0
-| `tebako-shim install-shell` | 0.27 | 0
-| `hello` | 0.24 | 0
-| `tebako install hello-ruby` | 4.11 | 0
-| `hello-ruby (first run)` | 8.13 | 0
-| `tebako press (cold)` | 19.56 | 0
-| `tebako press (again)` | 3.64 | 0
-| `the pressed app` | 1.46 | 0
+| `tebako install hello` | 3.72 | 0
+| `tebako-shim install-shell` | 0.26 | 0
+| `hello` | 0.16 | 0
+| `tebako install hello-ruby` | 4.14 | 0
+| `hello-ruby (first run)` | 6.60 | 0
+| `tebako press (cold)` | 4.66 | 0
+| `tebako press (again)` | 4.05 | 0
+| `the pressed app` | 0.94 | 0
 |===
 // END GENERATED
 
