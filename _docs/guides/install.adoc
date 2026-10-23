@@ -106,7 +106,30 @@ Hello, world!
 
 The first run of a payload that carries a runtime downloads that runtime once, verifies its SHA-256, and caches it; every later run starts from the cache. Open a new shell after `install-shell` so the PATH change takes effect, or call the shim by path (`~/.tebako/shims/hello`) until you do.
 
-Adding a registry is only needed for a private or third-party one. Registering a repo that already carries a payload the official registry has makes the bare name ambiguous — the error names both registries and asks for the full reference:
+One case does need a registry the guide has not mentioned: installing a **runtime** by name, without an app that carries it.
+
+[source,console]
+----
+$ tebako install node
+Tebako script failed: no registered registry carries a payload named 'node'
+  registered registries:
+    - tfs:github:tebako-packages/registry
+  register one with: tebako add-registry <ref> [65]
+$ tebako add-registry tfs:github:tamatebako/tebako-runtime-node
+$ tebako install node
+installed node 24.22.1 -> ~/.tebako/runtimes/node-24.22.1-2.8.58-macos-arm64
+  shim ~/.tebako/shims/node
+$ node --version
+v24.22.1
+----
+
+Each runtime has its own factory repository — `tebako-runtime-node`, `…-bun`,
+`…-ruby`, `…-openjdk`, `…-jruby`, `…-truffleruby`, `…-python` under
+`tamatebako/` — and the seeded registry does not point at them. A payload that
+*depends* on a runtime needs none of this: its manifest names the registry and
+`tebako install` fetches it (that is what `` hello-ruby `` does above).
+
+Adding a registry is otherwise only needed for a private or third-party one. Registering a repo that already carries a payload the official registry has makes the bare name ambiguous — the error names both registries and asks for the full reference:
 
 [source,console]
 ----
