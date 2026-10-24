@@ -116,6 +116,36 @@ tebako inspect <artifact> [flags]
 
 `tebako install` installs a payload and registers its shims, and the engine form pre-stages that engine's runtime and registers a runtime-own shim instead (the bare form registers the interpreter's own name, the colon form the declared command's name). `tebako uninstall` removes the shims and the cache entry. `tebako info` reports on the store and its contents — the topics are system, runtimes, payloads, shims, registries, and store. `tebako inspect` reads a single artifact; `--contract` prints the contract card: the era, the contract versions, mount_root, the ABI, and the trust verdict. The guide is link:/docs/guides/info-inspect/[info & inspect].
 
+== Trust material: keys, trust.
+
+[source,text]
+----
+tebako keys import <file>
+tebako keys list
+tebako keys remove <fingerprint>
+tebako trust add <file.pem>
+tebako trust list
+tebako trust remove <name>
+----
+
+The two families cover the two keyrings a run consults, and neither of them is the host's.
+
+The signing keyring answers the question of who may have made an artifact. `tebako keys import` registers a public key into it, `tebako keys list` reports the trusted signing keys together with the root, the keyring and the pins, and `tebako keys remove` drops a key from both the keyring and the pin store, so a removed key cannot keep vouching for a pinned digest through the store alone.
+
+The TLS trust store answers the question of which certificate authorities a fetch may trust, and `tebako trust add`, `tebako trust list` and `tebako trust remove` are its whole surface. The store exists because a corporate proxy that inspects TLS presents a certificate the host trusts and a packaged runtime cannot see: the driver exports this store to the interpreter through `SSL_CERT_FILE` at mount time. The guide is link:/docs/guides/verify/[Verify integrity], and the enterprise walkthrough is link:/docs/guides/enterprise-networks/[Enterprise networks].
+
+== Setup and the dispatcher: setup, shim.
+
+[source,text]
+----
+tebako setup
+tebako shim <verb> ...
+----
+
+`tebako setup` seeds the official registry into the machine's configuration. It is the step an installer runs on a fresh machine, it is idempotent, and the row it writes is an ordinary configuration row the user may remove, which is why a machine that has run it carries no privileged state.
+
+`tebako shim` is the dispatcher behind every registered command, and it is the same program as `tebako-shim`, so the verbs are `list`, `use`, `enable`, `disable`, `which`, `doctor`, `install-shell` and `uninstall-shell`. The verb reference is link:/docs/reference/cli-tebako-shim/[tebako-shim CLI], and the version chain a shim resolves per invocation is in link:/docs/guides/shims/[Shims & versions].
+
 == Registries: add, list, update, validate, retire, doctor.
 
 [source,text]
@@ -156,13 +186,17 @@ tebako bundle <name[@ver]> --output <dir> [--config <org.yaml>] [--archive tar.g
 
 The verb assembles an offline bundle: the payload's whole dependency closure plus the runtimes it needs, gathered into one directory (optionally archived) that installs and runs with no network. Bundling draws from the local store and refuses a partial set by name — the closure is cached first.
 
-== Diagnose: doctor.
+== Diagnose: doctor, audit.
 
 [source,text]
 ----
 tebako doctor [--json]
+tebako audit [--since <t>] [--until <t>] [--event <e,...>] [--artifact <needle>]
+            [--tail <n>] [--count] [--json] [--strict] [--seal] [--verify]
 ----
 
-The verb is the read-only diagnostics surface: five sections (store, dispatch, network, trust, registries) carry a named verdict on every check, with exit 0 when healthy and 1 with a problem count. `--json` prints the same report as a machine-readable document. The dispatch section is the `tebako-shim doctor` report rendered in place.
+`tebako doctor` is the read-only diagnostics surface: five sections (store, dispatch, network, trust, registries) carry a named verdict on every check, with exit 0 when healthy and 1 with a problem count. `--json` prints the same report as a machine-readable document. The dispatch section is the `tebako-shim doctor` report rendered in place.
+
+`tebako audit` reads the ledger, which records what this host fetched, verified, mounted and ran. The query flags select by time window, by event name and by an artifact substring, `--tail` bounds the output and `--count` answers with counts instead of rows. The command is read-only until `--seal` anchors the ledger's current head, after which `--verify` recomputes the chain and compares it to that anchor: exit zero means the anchor holds and exit 80 means a finding, with exit 74 for a ledger that carries no anchor and 64 for a usage error. A damaged line is always reported with its line number and raw bytes, and `--strict` promotes that report to exit 80. The guide is link:/docs/guides/verify/[Verify integrity].
 
 See also: link:/docs/reference/exit-codes/[Exit codes] · link:/docs/reference/environment/[Environment variables] · link:/docs/guides/install/[Install tebako]
