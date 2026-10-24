@@ -60,7 +60,7 @@ requires: []
 | This carries the provenance: the source tree digest, the commit, and the builder.
 
 | `digest`
-| This carries the tree hash and the blob digest — the integrity anchors for the image.
+| This carries the tree hash and the blob digest — the integrity anchors for the image. Both fields are required, and their spellings differ: `tree_hash` is `<algorithm>:<64 lowercase hex>` (for example `sha256:…`) while `blob_sha256` is the bare 64 hexadecimal characters with no algorithm prefix. The loader validates both spellings strictly and refuses the manifest by name when either disagrees with the form; it does not compare either value against the bytes it read, so a well-formed placeholder is accepted. The artifact's bytes are anchored by the registry pin or the `.sha256` sidecar, never by this block.
 
 | `signing`
 | The signing state; unsigned is first-class.
