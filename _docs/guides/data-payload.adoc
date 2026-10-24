@@ -65,7 +65,7 @@ requires: []
 * `kind: data` declares that nothing here executes, and `capabilities.exec: false` makes that a fact the loader enforces rather than a courtesy.
 * The value `universal` for `platforms` means one image serves every operating system (OS); platform-split payloads name their triplets instead.
 * `mount_semantics.suggested` is a hint, not a rule — the consumer decides the mount point (see the mount rule below).
-* The two digests are *required* and the loader checks their spelling strictly: `tree_hash` is `sha256:` followed by 64 lowercase hexadecimal characters, and `blob_sha256` is the bare 64 hexadecimal characters with no prefix. Both are written by hand today — `tfs mkimage` embeds the manifest it is given and computes neither, so an image built with a placeholder installs only if the placeholder is well formed, which is the wrong reason to succeed.
+* Both digest fields are required, and the loader checks their spelling strictly: `tree_hash` is `sha256:` followed by 64 lowercase hexadecimal characters, and `blob_sha256` is the bare 64 hexadecimal characters with no prefix. `tree_hash` is computed for you — `tfs mkimage` stages the tree, hashes the copy it images, and stamps `tree_hash` there, so a placeholder in your source file stays a placeholder while the image carries the real value. `blob_sha256` is not computed by anything today, so the value you write is the value the image carries: a placeholder is accepted as long as its spelling is correct, which is the wrong reason to succeed.
 * `signing` stays `unsigned` until the artifact is signed — see link:/docs/guides/verify/[the verify guide].
 
 == Creating the image.
