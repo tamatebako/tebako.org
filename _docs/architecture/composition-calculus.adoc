@@ -1,0 +1,274 @@
+---
+title: The composition calculus
+heading: The composition calculus.
+lede: >-
+  A tebako package is not a program with attachments. It is a small formal
+  system, in which payloads are objects, mounting is a relation, and a run is
+  the unique model of a declared requirement set. This page writes that system
+  down as a draft paper: its objects, its composition relation, its closure
+  rule, and the two laws that give it a single answer.
+description: >-
+  This page is a draft paper on the tebako composition calculus: slices and
+  runtimes as objects, the mounting relation with longest-prefix dispatch, the
+  requirement closure, the maximal-assignment law, the named-conflict
+  contract, and the lockfile that records the answer.
+---
+
+// normative: spec 23 (declaration law, needs-check law, §6 algorithm), spec 33
+// (runtime-on-runtime: the MECE table and the depending-runtime clause), spec 42
+// (closure, assignment law, named conflicts, lockfile), spec 17 (mount order and
+// entry resolution), spec 02 (the trailer). Measurements cited below are those
+// recorded in the product's test suite and in run logs named inline.
+
+== Abstract
+
+A tebako package is a composition of three kinds of independently
+distributable part, executed as one process. This paper states the composition
+as a small calculus: a set of objects, a relation that mounts them, a closure
+rule that closes a declared requirement set over the requirements of what it
+selects, and an assignment law that either satisfies every edge at once or
+names the conflict. The calculus is not a description of intent. Each of its
+laws is the statement that one shipped test or one recorded run already
+establishes, and the boundaries section records what the draft does not claim,
+including the one seam that is refused by name rather than approximated.
+
+== 1. The problem the calculus answers
+
+The three parts of a package are the bootstrap, a runtime, and one or more
+payload slices, and they are glued by a trailer that sits at the end of the
+file. The trailer carries a 166-byte header and a sequence of 280-byte slot
+records, each naming an offset, a size, a format identifier, and a mount point,
+while the header carries the runtime reference, the launcher ABI version, and
+the package flags.
+
+A package therefore contains several filesystems at once, and the interpreter
+inside it sees them as one tree. Two questions follow immediately, and neither
+is answered by the wire format. The first question is which of the several
+thousand paths that a run may open belongs to which slice, and the second is
+what a package must do when the slices it was asked to compose require
+versions that cannot all be true at the same time. The first question is
+answered by a dispatch rule, and the second by a solver; this paper states both
+as parts of one system, because a composition that resolves correctly and then
+mounts ambiguously is not a composition.
+
+The deployed alternative to a written calculus is traversal-order first fit. It
+works whenever the tree is shallow and the registry is small, and it fails as a
+mount collision or a version mismatch discovered after the package was built,
+which is to say at the worst possible moment and with the least possible
+diagnosis.
+
+== 2. The objects
+
+The calculus has three object classes, and the classes are disjoint by
+construction.
+
+*Object 1, the slice.* A slice is a filesystem image with a manifest inside it,
+at a fixed in-image path. The manifest declares the slice's identity, what it
+provides, and what it depends on. A slice is self-describing, so a reader that
+holds the image holds everything needed to decide how the slice may be used.
+The image format is an implementation detail of the slice and is named by the
+format identifier in the trailer; seven formats are admitted, and the
+orthogonality law of the system states that the question of whether an object
+is a runtime and the question of where its entrypoint lives are both
+independent of that identifier.
+
+*Object 2, the runtime.* A runtime is a slice of kind `runtime`, and it
+physically consists of two artifacts, which are the interpreter executable and
+an environment image holding the files that the interpreter's load paths
+expect. The pair is a unit of resolution and a unit of verification. In the
+image era the environment image is mounted whole rather than extracted, and the
+mount root is a value that flows from the patched interpreter's own build
+metadata downstream, never re-authored by a consumer.
+
+*Object 3, the package.* A package is a bootstrap, a set of slots, and a
+trailer. A fat package carries its runtime as a slot, and a lean package
+resolves the runtime at run time from a registry and a machine-wide cache. The
+distinction is a packaging decision and is not visible to the mounted
+filesystems.
+
+The three classes are sufficient because a run has exactly one process owner.
+A payload that needs a second language runtime inside its own process is not a
+fourth class; it is the runtime-on-runtime edge of section 3.3, and a payload
+that needs a separate process is a spawned edge, which the platform treats as a
+declared dependency rather than as an object of this calculus.
+
+== 3. The composition relation
+
+The composition relation is written `M ⊢ p ⇝ t`, read as "the mount table `M`
+resolves path `p` to the slice tree `t`". A mount table is a finite set of
+triples, each naming a slice, a slot within it, and a mount point.
+
+_3.1 Mounting is ordered, and the order is declared._
+
+The driver mounts the environment image first, at the runtime root, and then
+mounts each payload at its declared mount point, in the order that the
+invocation names them. Every triple must be well formed: a bare image file is
+mounted whole, a packaged file mounts the region that its trailer describes,
+and a slot whose format identifier declares the runtime role is never mounted
+as a payload.
+
+A duplicate mount point is a failure with a named error, `EEXIST`, and the
+failure is not partial: any failure unmounts everything already mounted, so a
+process never observes half of a composition.
+
+_Theorem 1, determinacy of dispatch._ Given a mount table whose mount points
+are distinct, the relation is a function, and it is computed by longest
+matching prefix.
+
+The proof is the duplicate rule together with the definition of the relation.
+Because no two mount points coincide, the set of prefixes of a path that are
+also mount points has a unique longest element, so the relation assigns exactly
+one slice tree to each path. The distinctness premise is not an assumption that
+the platform hopes for; it is the `EEXIST` rule, which turns a colliding
+composition into a refused mount rather than a last-writer-wins table.
+
+_Theorem 2, locality of unmount._ Removing one mount point from the table does
+not remove any other, and a path that matched a deeper mount still matches it.
+
+This theorem is what makes a composition safe to dismantle in any order, and it
+is the statement that a test in the filesystem crate proves directly: a middle
+level of a five-level table is unmounted, and the deeper levels continue to
+serve their own content. The practical consequence is that a failure in the
+middle of a run's teardown cannot silently expose the runtime root's copy of a
+path in place of the payload's.
+
+_3.2 Entry resolution is anchored to the first image._
+
+The entrypoint is resolved against the mount of the first image that the
+invocation names, which is the application payload. When the invocation names
+no image at all, the entrypoint is resolved against the runtime root. The rule
+is stated as an anchor rather than as a search because a search would make the
+entrypoint a function of whatever happened to be mounted, and a package whose
+entrypoint depends on its neighbours is not a package.
+
+_3.3 The runtime-on-runtime edge closes the relation under composition._
+
+A Java-implemented Ruby, and a Ruby implemented on a Java virtual machine, both
+need a second runtime to own the process. The platform does not invent a third
+artifact class for this case. The edge is declared by the depending runtime's
+manifest, the process owner is the runtime that the edge names, and the
+depending runtime contributes an environment image and an entry rewrite. The
+spawned edge and the spawned payload edge are the two other classes of "one
+thing runs inside another", and the three classes are mutually exclusive and
+collectively exhaustive by construction, which is the property that keeps the
+model from growing a fourth case with every new language.
+
+== 4. The requirement closure
+
+A requirement set is the set of edges declared by a press recipe. The closure
+of that set adds, for every edge whose candidate the assignment has fixed, the
+edges that the chosen payload declares. The closure is computed to a fixed
+point, and the three edge kinds have three candidate spaces: a language edge
+is resolved by the dispatcher's own runtime resolution, a toolkit or data edge
+is resolved against registry rows of that kind, and an application edge is
+resolved against rows of the application kind. An edge whose declared triplets
+do not include the host is skipped, which is the rule that lets a package carry
+a platform-specific dependency without failing on the platforms it does not
+name.
+
+_Theorem 3, termination._ The closure reaches a fixed point in finitely many
+steps for every finite payload universe.
+
+The proof is monotonicity over a finite lattice. Each round adds only the edges
+of payloads that the assignment has already fixed, the set of payloads in a
+registry is finite, and an edge is never removed, so the sequence of
+requirement sets is monotone and bounded above by the edge set of the universe.
+A cyclic dependency therefore does not diverge; it either closes or produces a
+conflict in section 5.
+
+One design decision in this rule is worth stating, because it is the invariant
+that a second implementation would violate. The language edge does not
+re-implement runtime resolution inside the solver. The solver calls the
+dispatcher's own resolution, so a runtime edge has exactly one implementation
+in the ecosystem, and the two code paths cannot drift into disagreement about
+what "compatible" means.
+
+== 5. The assignment law and the named-conflict contract
+
+The assignment is the maximal set of choices that satisfies every edge at once.
+
+_Law 1, no silent downgrade._ The solver either returns an assignment that
+satisfies the closure, or it returns a conflict. It never returns an assignment
+that satisfies a subset and reports success.
+
+_Law 2, the conflict is a diagnosis._ A conflict names the requirement, the
+candidates that were considered, and the reason each was rejected. The process
+exits 81, which is the solver's own code and is distinct from the loader's
+codes and from the interpreter's.
+
+Law 1 is the property that first-fit traversal lacks, and law 2 is what makes
+law 1 usable. The implementation is exercised by thirteen tests, which cover
+the maximal assignment, the named conflict, the lockfile round trip, the
+refusal of a drifted lockfile under a locked install, and the requirement that
+the answer not depend on the order in which registry rows happen to be listed.
+
+== 6. The lockfile
+
+The solved assignment serializes to a lockfile, and re-solving from that
+lockfile reproduces it byte for byte. The round trip is a test rather than an
+aspiration because a lockfile that is merely stable in content would let a
+rebuild reorder rows and thereby change the pressed bytes, which would break
+the reproducibility property that the rest of the trust story rests on.
+
+The reproducibility property itself is measured at the image layer, where it is
+achievable: the same content pressed by two hosts, on two architectures, at a
+fixed source epoch, produced the identical payload image digest
+`2416ccdbe60eff25c4805c1c4c6e5777dda7ebcbe13fa25fe355845c75b934a4` and the
+identical size of 806 bytes, recorded in run `39890850505` with both hosts
+compared in one job. The package digest is deliberately not claimed across
+hosts, because a package embeds its host's runtime pair and bootstrap; that
+boundary is measured and stated in the trust arc rather than papered over.
+
+== 7. Worked instance: five levels
+
+The recursive case is the statement that the relation is closed under
+composition, and it is proven at depth rather than asserted. Five payloads are
+mounted at `/a`, `/a/b`, `/a/b/c`, `/a/b/c/d` and `/a/b/c/d/e`, each carrying
+its own copy of a file of the same name, and the composed package is executed
+as one process. Every level prints its own content, the deepest path is not
+shadowed by its ancestors, and the fixture ends with its own assertion that
+five levels were each served from their own mount. The library proves the same
+property with five tests over the mount table, and the driver proves it through
+argument parsing, the mount loop and entry resolution with seventy-three tests,
+five image triples in one process, and the entry resolving against the first
+image.
+
+== 8. Boundaries of the draft
+
+Four boundaries are stated here so that the draft cannot be read as claiming
+more than it establishes.
+
+The runtime edge of the solver delegates to the dispatcher's resolver, and the
+seam is named in the specification as such rather than duplicated. Slices are
+today generalized to the layouts that the shipped runtimes use, and the
+per-runtime layout grant that other ecosystems' content plugins need is
+specified but not complete. Cross-registry composition within one solved tree
+is designed and not yet exercised end to end. The resource-bound half of
+hermeticity, which would bound what a composition may consume, is open: mounts
+carry no quotas, and the content pool's bounds are the only limit that exists
+today.
+
+== 9. Why the calculus is worth writing down
+
+Three properties follow from the statements above and from nothing else. A
+composition has one answer, because the assignment law excludes the
+alternative. A failure is diagnosable before the process starts, because the
+closure and the conflict are computed before the mount and because the mount
+itself is all-or-nothing. And an answer is portable, because the lockfile
+reproduces it byte for byte and the image bytes are reproducible across hosts.
+
+None of these properties is a performance claim, and none of them requires
+trust in a build server. They are the reason a package can be verified by a
+party who did not build it, which is where the next paper in this sequence
+begins.
+
+== Sources
+
+The normative statements are in the product repository, and each is public:
+link:https://github.com/tamatebako/tebako/blob/main/docs/spec/23-declarative-composition.md[declarative composition],
+link:https://github.com/tamatebako/tebako/blob/main/docs/spec/33-runtime-on-runtime.md[runtime-on-runtime composition],
+link:https://github.com/tamatebako/tebako/blob/main/docs/spec/42-tree-solving.md[tree solving and lockfiles],
+link:https://github.com/tamatebako/tebako/blob/main/docs/spec/17-runtime-driver-contract.md[the runtime driver contract], and
+link:https://github.com/tamatebako/tebako/blob/main/docs/spec/02-tpkg-wire-format.md[the wire format].
+The measurements cited above are recorded in the test suites named in sections
+3, 5, 6 and 7, and in the runs named inline.
