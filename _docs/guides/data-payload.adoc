@@ -41,26 +41,32 @@ acme-fonts/
 
 == The manifest.
 
+The manifest is the payload model (link:/docs/reference/manifest/[the manifest reference]): `identity` carries who the payload is, `provides` what it offers, and `requires` what it needs. A data payload's file is `__tpkg__/manifest.yaml` inside the directory being imaged:
+
 [source,yaml]
 ----
-schema_version: 1
-kind: data
-name: acme-fonts
-version: 2.1.0
-producer: {tool: tfs, tool_version: "0.2.5"}
-created: "2026-08-01T00:00:00Z"
-digest: {tree_hash: "…", blob_sha256: "…"}
-signing: {state: unsigned}
-encryption: {state: none}
-mount_semantics: {suggested: /usr/share/fonts/acme}
-capabilities: {exec: false, read: true}
-platforms: universal
+identity:
+  schema_version: 1
+  kind: data
+  name: acme-fonts
+  version: 2.1.0
+  producer: {tool: tfs, tool_version: "0.2.5"}
+  created: "2026-08-01T00:00:00Z"
+  digest: {tree_hash: "sha256:…", blob_sha256: "…"}
+  signing: {state: unsigned}
+  encryption: {state: none}
+provides:
+  mount_semantics: {suggested: /usr/share/fonts/acme}
+  platforms: universal
+  capabilities: {exec: false, read: true}
+requires: []
 ----
 
 * `kind: data` declares that nothing here executes, and `capabilities.exec: false` makes that a fact the loader enforces rather than a courtesy.
 * The value `universal` for `platforms` means one image serves every operating system (OS); platform-split payloads name their triplets instead.
 * `mount_semantics.suggested` is a hint, not a rule — the consumer decides the mount point (see the mount rule below).
-* `mkimage` fills in the digests, and `signing` stays `unsigned` until the artifact is signed — see link:/docs/guides/verify/[the verify guide].
+* The two digests are *required* and the loader checks their spelling strictly: `tree_hash` is `sha256:` followed by 64 lowercase hexadecimal characters, and `blob_sha256` is the bare 64 hexadecimal characters with no prefix. Both are written by hand today — `tfs mkimage` embeds the manifest it is given and computes neither, so an image built with a placeholder installs only if the placeholder is well formed, which is the wrong reason to succeed.
+* `signing` stays `unsigned` until the artifact is signed — see link:/docs/guides/verify/[the verify guide].
 
 == Creating the image.
 

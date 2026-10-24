@@ -63,16 +63,25 @@ Each machine adds the library once and installs by name:
 
 [source,console]
 ----
-$ tebako add-registry file:///opt/my-library
+$ tebako add-registry file:///opt/my-library/tpkg-registry.yaml
 $ tebako install acme-tool          # the registry's default version
 $ tebako install acme-fonts@2.1.0   # an explicit version
 ----
+
+The reference names the *document*, not the directory. A directory reference is the natural spelling for a library, and on the current release it fails by name rather than resolving the fixed file name inside:
+
+```
+$ tebako add-registry file:///opt/my-library
+Tebako script failed: download failed for file:///opt/my-library: … Is a directory (os error 21) reading /opt/my-library [69]
+```
+
+The document form is the one that works today, and the directory form is tracked as a product gap rather than papered over here.
 
 The registry index itself can be pinned as well; the reference is quoted because it contains shell metacharacters:
 
 [source,console]
 ----
-$ tebako add-registry 'file:///opt/my-library?sha256=77b1…0e'
+$ tebako add-registry 'file:///opt/my-library/tpkg-registry.yaml?sha256=77b1…0e'
 ----
 
 From there everything is the standard surface: shims dispatch `acme-tool`, `TEBAKO_ACME_TOOL_VERSION=1.3.9` pins a version, and `tebako cache list` shows what is cached.
