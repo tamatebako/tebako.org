@@ -127,24 +127,31 @@ is a few seconds rather than a download.
 
 == What the numbers were.
 
-A single run of the walkthrough script, on the release named in its header, in
-an empty `HOME`:
+A single run of the walkthrough script against `v2.8.60` on macOS arm64, in an
+empty `HOME`, with the script timing each step:
 
 // BEGIN GENERATED — splice tools/stranger-walkthrough.sh's table here verbatim
 [cols="2,1,1",options="header"]
 |===
 | step | seconds | exit
-| `tebako setup` | 1.74 | 0
-| `tebako install hello` | 3.72 | 0
-| `tebako-shim install-shell` | 0.26 | 0
-| `hello` | 0.16 | 0
-| `tebako install hello-ruby` | 4.14 | 0
-| `hello-ruby (first run)` | 6.60 | 0
-| `tebako press (cold)` | 4.66 | 0
-| `tebako press (again)` | 4.05 | 0
-| `the pressed app` | 0.94 | 0
+| `tebako setup` | 1.67 | 0
+| `tebako install hello` | 3.60 | 0
+| `tebako-shim install-shell` | 0.31 | 0
+| `hello` | 0.32 | 0
+| `tebako install hello-ruby` | 5.65 | 0
+| `hello-ruby (first run)` | 7.50 | 0
+| `tebako press (cold)` | 8.83 | 0
+| `tebako press (again)` | 7.93 | 0
+| `the pressed app` | 2.73 | 0
 |===
 // END GENERATED
+
+The run shared its machine with a local Rust build and a CI pipeline, so these
+timings are an upper bound rather than a quiet-machine figure. The same step on
+a quiet machine measured 3.86 s and 4.01 s, which is the number the release
+notes quote, and an A/B run of the previous release (`v2.8.59`) on this same
+shared machine measured 7.46 s for it minutes earlier — so what this table adds
+is the shape of the walkthrough, not a claim about the press's floor.
 
 [source,console]
 ----
