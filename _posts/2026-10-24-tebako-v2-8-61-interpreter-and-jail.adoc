@@ -1,0 +1,56 @@
+---
+layout: post
+title:  "A declared command runs through its interpreter, and the jail gains the predicate it was missing"
+date:   2026-10-24 20:00:00 +0800
+categories:
+  - tebako
+  - release
+  - runtime
+  - jail
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: "Release v2.8.61 makes a declared runtime entrypoint compose through the interpreter that runs it instead of being executed as a program, which is what `tebako run node:npm` required; it adds the host-guard predicate that reports whether the installed policy judges a path outside every mount, which is the product half of the jail defect filed as tebako#917, together with the working-directory anchor a relative path needs at the interface entry; it prunes DWARF bundles before the strip pass on macOS; and it makes the release pipeline dispatch the benchmark suite itself."
+---
+
+Release v2.8.61 has been published. Its first subject is a command that a runtime declares and a wrapper executed as if it were the runtime itself, and its second is the predicate that a jail needs before an interpreter can be asked to respect it. Both were found by measurement rather than by reading, and both are stated here together with the boundary of what they settle.
+
+== A declared command is not a program
+
+A runtime payload declares the commands it serves. Node.js declares `node` together with `npm`, `npx` and `corepack`, and the last three are scripts that the interpreter runs rather than executables that the kernel can start. The wrapper that starts a published runtime pair treated every declared name alike: it resolved the name against the environment image's declarations, materialized the declared path, and executed the result. That form is correct for exactly one name, which is the interpreter itself, and the bare `node` keyword took it.
+
+The form became reachable when version 2.8.60 taught the reader about links, because `bin/npm` inside a Node.js distribution is a symbolic link to `lib/node_modules/npm/bin/npm-cli.js`. The wrapper asked the mount router for a file and received the answer that the entry is a directory, and six of the eight platform legs of the node factory's smoke failed on the same line. The direct form is now gated on the one condition that makes it true, which is the declared path resolving to the interpreter's own path, and every other declared entrypoint composes as the specification states: the interpreter, then the declaration's default arguments, then the entry, then the user's arguments.
+
+A new case beside twenty-eight existing ones in the wrapper's suite builds the Node.js shape as a fixture image and asserts that the program executed is the interpreter's bytes and that the argument vector is the declared default, then the entry, then the user's arguments. The existing case for the interpreter's own keyword passes unchanged, because its path resolves to the interpreter.
+
+== The jail needed a predicate, not another check
+
+A policy that denies host reads was measured against a pressed one-file payload on version 2.8.60, and the payload read a file in the home directory under `--jail deny`, under `--no-host`, and with the policy installed through the environment. The trace carried 99 denials for paths beside the image and no event at all for the path that was read.
+
+The experiment that separated the possible causes mounted an application image at the root of the namespace, so that every path is covered by a mount, and repeated the identical read under the identical policy. That read answered `EPERM` and produced three trace events. Coverage was the gate, and the policy had never seen the path that mattered.
+
+The cause lies in the interpreter rather than in the routing engine. The shims that the linked pattern installs into the interpreter call the C interface for the paths that the mount table covers, and they hand every other path to the kernel, which is a namespace test used as if it were an enforcement point. The engine's own fall-throughs consulted the policy correctly throughout, which is why every jail test passed while a real payload walked around them.
+
+This release carries the product half of the answer. `tebako_fs_host_guard()` reports whether the installed policy judges an uncovered path, which is true for a deny default and for a record default and false for an open one, and a shim that reads it can widen its route predicate for those runs alone. A path that the policy allows still answers `ENOENT`, which these shims already treat as host passthrough, so a run without a jail is unchanged. The header also gains the jail section it had never carried: the policy installer and the host-mount structure were exported and consumed through hand-written declarations.
+
+The same release anchors a relative path at the interface entry. Every grant is absolute, because binding canonicalizes it, so a relative spelling matched no grant: under a deny policy a payload's own write of `out.adoc` was refused while the same file named absolutely was allowed. The guard is what makes a relative spelling reach the policy at all, so the two ship together. The anchor sits at the C interface entry, before the lock is taken, which is where a linked runtime reaches the engine; inside the preload library the working-directory call itself recurses through the interpose readback, and that defect is filed rather than worked around.
+
+The interpreter half is a patch in the ruby factory's set and is not part of this release. It widens the route predicate of the shims across every supported version, and the runtime pair that carries it follows from that build. A user receives the fix by resolving a newer runtime inside the same range, because the interpreter lives in the pair and not in the payload, and no payload needs to be rebuilt. Until that pair ships, the defect filed as tebako#917 remains open, and the totality record keeps the corresponding cell marked as broken rather than as narrowed.
+
+== The press stops handing DWARF to strip
+
+A press on macOS printed six warnings from the strip utility, each reporting that a string table was not at the end of the file, and each caused by a bundle of debug symbols that the walk had presented to the tool. Directories whose name ends in `.dSYM` are pruned before the strip pass now, and a test asserts that such a bundle is never presented.
+
+== The release that ships dispatches the suite
+
+The benchmark suite listens for the event that a published release emits, and that event has never reached a workflow for a release created by this repository's own pipeline, because the release object is created with the job's token and that token's events fan out to no workflow. Four releases therefore shipped without a run of the suite, and the published comparison carried no number in its second column. The pipeline's final job now dispatches the suite once the completeness gate has passed, and the dispatch is gated on a tag push so that a rehearsal on a branch wakes nothing.
+
+== A test suite that shares one context now shares one lock
+
+The driver's tests share a single process-global context, and two of them carried module-private mutexes, so a test in one module could unmount beneath a test in another. Both take the lock that the rest of the binary already used. Measured at 32 test threads, 2 runs of 8 failed before the change and 10 runs of 10 passed after it, with the suite unchanged at 145 library tests.
+
+== What the release does not change
+
+The workspace version is the only value that moves in this release, and the intra-crate pins are untouched because they carry the crate API version rather than the release line. The mounted filesystem model, the wire format and the driver contract are unchanged, so packages pressed against earlier releases on this line continue to load. The jail's remaining half is described above, and it is not claimed by this release.
