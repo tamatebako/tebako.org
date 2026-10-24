@@ -1,0 +1,54 @@
+---
+layout: post
+title:  "Links inside images, and two diagnostics that stopped lying"
+date:   2026-10-24 11:00:00 +0800
+categories:
+  - tebako
+  - release
+  - vfs
+  - symlinks
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: "Release v2.8.60 makes a symlink inside a payload image readable through the C ABI, so a mounted link behaves as a link for every interpreter and every libc caller. The same release makes the interposed realpath answer a canonical target, teaches tebako doctor to probe a lock instead of assuming it is stale, lets a re-press reuse the cached runtime layout, and adds the release gate that refuses a tag cut from a red commit."
+---
+
+Release v2.8.60 has been published, and its subject is a class of file entry that the packaging chain had been flattening without saying so. A payload image could carry a symbolic link, and the writer emitted it correctly — a pressed image holds the entry with mode `0x120777` and its target — but the C ABI that every interpreter reaches through could not read it back. The stat call answered `EINVAL`, there was no readlink call at all, and open had no follow rule. A mounted link was therefore invisible at the surface where it mattered, and `tfs ls -l` printed a zero-length regular file because its stat-error path was the only answer available.
+
+The consequence was not academic. A Node.js payload whose command is a link into its own library tree failed with `MODULE_NOT_FOUND`, and a Java classpath entry that named a linked jar canonicalized to a path the loader had never opened. Both faults were traced to the reader, not the writer, and both close with this release.
+
+== The three verbs, POSIX-shaped
+
+The ABI now carries the verbs that a filesystem with links must carry, and each one has the shape a caller already expects.
+
+* `tebako_fs_lstat` reports the link entry itself: mode `S_IFLNK`, and a size equal to the length of the target.
+* `tebako_fs_readlink` returns the stored target, and answers `ERANGE` for a buffer that is too small rather than truncating the answer silently.
+* `tebako_fs_stat` follows, and `open` follows unless the caller passes `O_NOFOLLOW`, in which case the answer is `ELOOP`. `opendir` and `access` follow.
+
+Resolution goes through the one router that already owns mount dispatch. A relative target stays in the mount that holds the link, an absolute target is matched against the longest-prefix mount table so a link inside `/app` may name `/data`, a target outside every mount remains a host path and is subject to the jail policy, and a chain longer than thirty-two hops answers `ELOOP` instead of running away. The preload shim maps the libc spellings onto these verbs: `stat`, `stat64` and `__xstat` follow, while `lstat`, `lstat64`, `__lxstat` and `readlink` do not.
+
+Six integration cases exercise the behaviour over real limnifs images: a following stat, an absolute target that crosses a mount, a cycle that answers `ELOOP`, `opendir` through a link, a dangling link, and a buffer smaller than the target.
+
+The interposed `realpath` was the second half of the same fault, and it is fixed in the same release. It had routed on the lstat form and then returned its own input, so a link canonicalized to itself, a dangling link produced a path that nothing could open, and a cycle never raised an error. The canonical form now follows the hops and requires the target to exist, which is the surface the Java virtual machine reaches when it resolves a canonical file path.
+
+== The aarch64 compile failure, and the gate that now prevents its repeat
+
+The first build of this release failed on both aarch64 Linux legs and passed on both x86-64 legs. The link work's boot arm called `SYS_readlink`, a constant that the libc crate defines for x86-64, s390x, mips64, sparc64 and ppc64, and aarch64 Linux carries only `readlinkat`. The syscall now goes through `readlinkat(AT_FDCWD, …)`, which every Linux architecture has, and the aarch64 row passed on the corrected commit before the tag was cut again.
+
+The failure also exposed a hole in the release path rather than only in the code. The arm row runs on merges to main and not on pull requests, which is a deliberate cost decision, so the arm row's verdict arrives after a merge and nothing consulted it before a tag. The release workflow now reads the continuous-integration conclusion for the commit a tag points at, and it refuses to create the release object unless that verdict is success. A tag cut from a red commit therefore fails by name at the first step instead of producing a release with a partial asset set.
+
+== Two diagnostics that stopped lying
+
+`tebako doctor` reported every lock file older than one hundred and twenty seconds as stale, without asking whether anyone held it. The probe is now a non-blocking lock: a free lock is reported as a leftover from a finished run with the advice to remove it, and a held lock stays a reported problem with how long its holder has held it.
+
+The benchmark suites declared the payload registry and not the runtime factories, so the priming dispatch had nowhere to resolve a runtime and every v2 cell in the published comparison read `unavailable`. The suites now register the runtime factories alongside the payload registry, which is the change that lets the comparison produce a v2 number at all. This release also makes the pipeline dispatch that suite itself when a release completes, because a release object created by the pipeline's own token wakes no workflow.
+
+== A re-press reuses the layout it already has
+
+An image-era press expanded the runtime's environment image into a packaging tree on every invocation, which cost between 4.3 and 4.5 seconds of a loop that measured 6.19 to 7.14 seconds for the 19.2 MB image containing 2,629 files. The press now asks the resolver for the layout and copies from it, as the earlier-era path always did. The measured loop on a quiet machine is 4.01 seconds and 3.86 seconds, and 5.58 seconds for the press that performs the expansion. The derivation is marked with a digest written last beside the layout, so an interrupted extraction and an image replaced by a re-install are both rebuilt rather than trusted.
+
+== What the release does not change
+
+The workspace version is the only value that moves in this release, and the intra-crate pins are untouched because they carry the crate API version rather than the release line. The mounted filesystem model, the wire format and the driver contract are unchanged, so packages pressed against earlier releases on this line continue to load.
