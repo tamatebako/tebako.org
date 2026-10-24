@@ -66,6 +66,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
       { label: 'The first ten minutes', href: '/docs/guides/first-ten-minutes/', status: 'live' },
       { label: 'Install tebako', href: '/docs/guides/install/', status: 'live' },
       { label: 'Run a packaged app', href: '/docs/guides/run/', status: 'live' },
+      { label: "A runtime's own commands", href: '/docs/guides/runtimes/', status: 'live' },
       { label: 'Package a Ruby app', href: '/docs/guides/package-ruby/', status: 'live' },
       { label: 'Create a data payload', href: '/docs/guides/data-payload/', status: 'live' },
       { label: 'Publish to your own registry', href: '/docs/guides/publish/', status: 'live' },
