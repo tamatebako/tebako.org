@@ -33,11 +33,11 @@ $ tebako run node:npm --version
 
 The bare form runs the runtime's default entry, which is the interpreter named by the image's `layout.interpreter`, and the arguments are handed over verbatim. The colon form names one of the runtime's declared commands.
 
-The first positional token decides which of the two target classes `tebako run` is serving, and the rule is total. A token that names an existing file is a package, that is the ordinary runnable-artifact form. Otherwise the token is parsed as `engine[:command]`. A token that is neither is a usage error that names the token, so a mistyped engine is a diagnosis rather than a silent search.
+The first positional token decides which of the two target classes `tebako run` is serving, and the rule is total. A token that names an existing file is a package, which is the ordinary runnable-artifact form. Otherwise the token is parsed as `engine[:command]`, and each way that parse can fail has its own answer. A well-formed engine that resolves nowhere exits 69, after naming the four local surfaces it consulted and the registry that would have answered. A command the engine does not declare exits 65, with the declared set in the message. A token that is neither an existing file nor a well-formed reference is a usage error that names the token.
 
 == What each runtime declares.
 
-A runtime declares its commands in its own manifest, and an undeclared name is an error that lists the declared set rather than a guess. The shipped sets are:
+A runtime declares its commands in its own manifest, and an undeclared name is an error that lists the declared set rather than a guess — measured on v2.8.60, `tebako run node:notacommand` answers `the env image declares no runtime entrypoint of that name (declared: node, npm, npx, corepack)` and exits 65. The shipped sets are:
 
 [cols="1,3"]
 |===
