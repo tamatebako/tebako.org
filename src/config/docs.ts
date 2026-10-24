@@ -39,6 +39,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
       { label: 'Dispatch', href: '/docs/architecture/dispatch/', status: 'live' },
       { label: 'Driver contract', href: '/docs/architecture/driver-contract/', status: 'live' },
       { label: 'Composition', href: '/docs/architecture/composition/', status: 'live' },
+      { label: 'Composition calculus', href: '/docs/architecture/composition-calculus/', status: 'live' },
       { label: 'The store', href: '/docs/architecture/store/', status: 'live' },
       { label: 'VFS model', href: '/docs/architecture/vfs/', status: 'live' },
       { label: 'Image formats', href: '/docs/architecture/image-formats/', status: 'live' },
