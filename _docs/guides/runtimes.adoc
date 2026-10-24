@@ -1,0 +1,100 @@
+---
+title: A runtime's own commands
+heading: A runtime's own commands.
+lede: >-
+  A runtime is a payload like any other, and its own tools are first-class
+  commands rather than something only a packaged application can reach. The
+  interpreter, its package manager and its loaders are addressable as
+  engine:command on the command line and, once installed, as shims on PATH.
+description: >-
+  This guide describes the runtime-own surface: tebako run node:npm, the
+  engine grammar and its resolution order, the declared command set of each
+  runtime, the shim form, and the argument and jail rules that apply.
+---
+
+// normative: spec 07 §10 (the runtime-own command surface), spec 03 §2.2 (the
+// entrypoint declaration), spec 17 §1 (the dispatch wire), spec 29 §1 (the
+// wrapper composition). The declared sets below are read from each factory's
+// recipe; the runtime's own manifest is the authority at run time.
+
+== The problem this surface solves.
+
+A packaged application carries its own runtime, and that runtime is exactly the interpreter its payload runs on. The same interpreter has tools that a developer reaches for directly: npm beside node, gem beside ruby, javac beside java. Before this surface existed, those tools were reachable only through a payload that declared them, which meant that a developer with a runtime installed could not simply ask it for its own package manager's version.
+
+The runtime-own surface closes that gap without inventing a second kind of artifact. A runtime's environment image already declares the commands it carries, and this surface is the addressing scheme for those declarations.
+
+== The two forms.
+
+[source,console]
+----
+$ tebako run node
+$ tebako run node:npm --version
+----
+
+The bare form runs the runtime's default entry, which is the interpreter named by the image's `layout.interpreter`, and the arguments are handed over verbatim. The colon form names one of the runtime's declared commands.
+
+The first positional token decides which of the two target classes `tebako run` is serving, and the rule is total. A token that names an existing file is a package, that is the ordinary runnable-artifact form. Otherwise the token is parsed as `engine[:command]`. A token that is neither is a usage error that names the token, so a mistyped engine is a diagnosis rather than a silent search.
+
+== What each runtime declares.
+
+A runtime declares its commands in its own manifest, and an undeclared name is an error that lists the declared set rather than a guess. The shipped sets are:
+
+[cols="1,3"]
+|===
+| Runtime | Declared commands
+
+| node
+| `node`, `npm`, `npx`, `corepack`
+
+| bun
+| `bun`, `bunx`
+
+| java
+| the JDK toolkit — `java`, `javac`, `jar`, `jlink`, `jpackage`, `keytool`, `jshell`, `jcmd`, `jconsole` and their siblings; the JRE flavor declares the smaller set it carries
+
+| jruby
+| `jruby`, `jgem`, `jirb`
+
+| truffleruby
+| `ruby`, `gem`, `bundle`, `rake`, `irb`, `rdoc`, `ri`, `rbs`, `rdbg`, `erb`, `racc`, `syntax_suggest` and the executable names it stages
+
+| ruby
+| the interpreter plus the tooling the build staged beside it
+
+| python
+| the interpreter plus the console scripts the build staged, `pip` and `pip3` among them
+|===
+
+=== An engine name is a registry key, not a display name.
+
+`node` addresses the runtime whose registry row carries `engine: node`. The engine name is never a product name and never a directory name, which is why the same three letters address the runtime on every platform.
+
+== Resolution, and the version chain.
+
+The engine resolves against the machine first and the network second. The store answers with the newest compatible cached runtime, and only a miss reaches the registries, where the download is verified and cached on the same path every payload's runtime requirement uses.
+
+The version chain per engine is the same chain shims use, in this order: `TEBAKO_<ENGINE>_VERSION` in the environment, the nearest `.tebako-tools.yaml` walking up from the working directory, the `defaults:` block of `~/.tebako/config.yaml`, and the registry's newest row. Every one of those surfaces is local, so a runtime-own command never routes through a registry when the machine already holds an answer.
+
+== What the driver receives.
+
+The handoff is the ordinary dispatch wire: the runtime's wrapper executable, `TEBAKO_RUNTIME_IMAGE` naming the environment image, and `--tebako-entry <command>` followed by the user's arguments. The driver composes the interpreter's argument vector as `[interpreter, <the command's declared args_default…>, <the command>, <the user's arguments…>]`, which is why `tebako run node:npm --version` reaches npm rather than node.
+
+One composition rule is worth stating because it explains an observable difference. A declared command whose path *is* the interpreter is started directly, which is the bare-form case. Every other declared command is a program the interpreter runs, so `npm`, `npx` and `corepack` are shebang scripts that node executes: their relative requires resolve from the script's canonical path inside the image, which is what makes `npm` work at all.
+
+== Shims: the same surface without the verb.
+
+[source,console]
+----
+$ tebako install node:npm
+$ npm --version
+----
+
+Installing an engine registers a shim named after the command, so the second form needs no `tebako` prefix. `tebako install node` registers the default entry's name instead, which is `node`. The shim's dispatch, its enable and disable verbs, and the version chain are the subject of link:/docs/guides/shims/[Shims & versions].
+
+== Arguments and the jail.
+
+The runtime-own surface parses no flags. Every token after the engine reference is the engine's own argument, so a `--jail` written there reaches the engine rather than tebako. A jail policy for a runtime-own command is the user's own, set through `TEBAKO_JAIL` in the environment and enforced by the driver per link:/docs/guides/jails/[Set a jail policy]; the posture is open by default, because a runtime-own command is the user's own process rather than a payload's.
+
+== Related reading.
+
+The architecture page for the dispatch chain is link:/docs/architecture/dispatch/[Dispatch], and the wrapper composition is link:/docs/architecture/driver-contract/[Driver contract].
