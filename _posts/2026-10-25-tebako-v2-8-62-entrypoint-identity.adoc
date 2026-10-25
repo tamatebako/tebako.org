@@ -1,0 +1,47 @@
+---
+layout: post
+title:  "An entrypoint that links to the interpreter is the interpreter"
+date:   2026-10-25 08:10:00 +0800
+categories:
+  - tebako
+  - release
+  - runtime
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: "Release v2.8.62 teaches the composition path two facts it needed about links: a declared command whose link resolves to the interpreter takes the direct form, which is what bun's `bunx` required, and a link entry keeps its virtual spelling under preload, which is what node's `npm` required on macOS. Both defects were found by a factory smoke rather than by a test of ours."
+---
+
+Release v2.8.62 has been published. It settles two shapes of one question — when a declared command is the interpreter and when it is a program the interpreter runs — and both were found by pressing a real runtime against a real entrypoint rather than by reading our own tests.
+
+== The form is about identity, not spelling
+
+`bunx --version` under a published bun runtime printed bun's own executable header: `wrapper smoke (bunx --version) failed: 1 | \x7fELF\x02\x01\x01\x02>…`. Five of the eight platform legs of the bun factory's roll answered the same line.
+
+A runtime payload declares the commands it serves, and the wrapper chooses one of two forms for a declared name. The direct form is right when the entrypoint is the interpreter itself, because then the kernel should start the interpreter and the name is a convenience. The composed form is right for everything else, because the interpreter must run the program. The gate that chose between them compared the declared path with the interpreter's path literally, and `bunx` is a symbolic link to `bun`, so the two spellings differed, the direct form was refused, and bun was handed its own binary as source.
+
+The gate now asks the engine for identity instead of comparing spellings. Both paths resolve through the link resolution the engine already owns — the chain follows through the mount router and stops with `ELOOP` at 32 hops — and the direct form follows when the canonical paths agree. The neighbouring case that must not take it keeps its behaviour: `bin/npm` in a Node.js distribution is a link to a shebang script, so `npm` composes through the interpreter as before.
+
+The wrapper's suite gains the bunx shape beside the npm one, on a fixture whose `bin/bunx` is a real symbolic link to the interpreter, and asserts that the program is the interpreter's bytes and that the entry never rides the argument vector.
+
+== Under preload, a link keeps its virtual spelling
+
+The node factory's macOS smoke answered `npm smoke failed: tebako-runtime-launcher: cannot materialize the entrypoint '/__tfs__/bin/npm' for the preloaded interpreter: Is a directory`.
+
+The preload mechanism bridges an entry token to a host twin so that an interpreter's exec heuristics see plain data at a plain path. That is right for a script and wrong for a link, because a twin carries the target's bytes at a temporary host path: `npm`'s own `require('../lib/cli.js')` then resolved outside the image, where the directory it needed does not exist.
+
+A link entry now keeps its virtual spelling under preload. The armed shim serves that spelling, and `realpath` answers the canonical target, which is exactly the surface Node.js module resolution asks for. The suite gains the preload-plus-link shape beside the exec-cache case and the direct-form case.
+
+== What the release settles, and what proves it
+
+The two composition paths that produced the failures are now the two the wrapper's suite asserts: a declared command whose link resolves to the interpreter starts the interpreter, and a link entry under preload keeps the virtual spelling that the interpreter's own module resolution asks for. That suite is the release's proof, because both defects were reachable only through a real runtime's entrypoint rather than through a test of ours.
+
+The end-to-end proof is the next runtime publish on each line: the node factory's `npm --version` smoke and the bun factory's `bunx --version` smoke are the two legs that failed, and they answer first. A package pressed against an earlier release on this line picks the change up through the runtime pair — resolving a newer runtime inside the same range — so no payload needs to be rebuilt.
+
+== What the release does not change
+
+The workspace version is the only value that moves. The mounted filesystem model, the wire format and the driver contract are unchanged, so packages pressed against earlier releases on this line continue to load.
+
+Both defects were reachable only after version 2.8.60 taught the reader about links and the interposed `realpath` made a canonical target answerable. The link reader, the canonicalizer and this composition are the three parts that a declared command needed, and a factory smoke found the last two of them.
