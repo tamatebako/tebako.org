@@ -24,7 +24,7 @@ A runtime payload declares the commands it serves, and the wrapper chooses one o
 
 The gate now asks the engine for identity instead of comparing spellings. Both paths resolve through the link resolution the engine already owns — the chain follows through the mount router and stops with `ELOOP` at 32 hops — and the direct form follows when the canonical paths agree. The neighbouring case that must not take it keeps its behaviour: `bin/npm` in a Node.js distribution is a link to a shebang script, so `npm` composes through the interpreter as before.
 
-The wrapper's suite gains the bunx shape beside the npm one, on a fixture whose `bin/bunx` is a real symbolic link to the interpreter, and asserts that the program is the interpreter's bytes and that the entry never rides the argument vector.
+The wrapper's suite gains the bunx shape beside the npm one, on a fixture whose `bin/bunx` is a real symbolic link to the interpreter, and asserts that the program is the interpreter's bytes and that the entrypoint is never an argument in the vector.
 
 == Under preload, a link keeps its virtual spelling
 
