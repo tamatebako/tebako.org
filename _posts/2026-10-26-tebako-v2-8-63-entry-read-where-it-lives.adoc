@@ -1,0 +1,55 @@
+---
+layout: post
+title:  "An entry is read where it lives"
+date:   2026-10-26 14:00:00 +0800
+categories:
+  - tebako
+  - release
+  - runtime
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: "Release v2.8.63 settles how the wrapper hands an entry to its interpreter. Two defects sat on that one surface: a script entry was copied out of the image, so its relative includes found nothing, and the close of a descriptor opened through the mount never reached the shim on arm64. Both were found by a factory smoke rather than by our own tests."
+---
+
+Release v2.8.63 has been published. It settles one question with two answers — how the wrapper hands an entry to its interpreter — and both defects it fixes were found by pressing a real runtime against a real entrypoint rather than by reading our own tests.
+
+== A script entry is read where it lives
+
+The node factory's `npm` smoke failed on every official platform leg, and bun's six legs failed with the mirror-image error. The wrapper materialised the entry to a host file whatever the entry was, and a copy sitting alone in a temporary directory cannot satisfy the relative includes its program makes: node's `bin/npm` is fifty-four bytes whose entire body is `require('../lib/cli.js')`.
+
+A copy exists for the opposite case. A runtime whose file-runner spawn-execs its entry needs one, because the spawned shebang would otherwise resolve through the kernel's `PATH` and the host decides which interpreter runs. That is a property of the runtime and never of the file: every entry inside an image is plain data with no execute bit, so nothing about the file can decide it.
+
+The runtime now declares the answer, and the default follows the common case. An entry is read through the mount, and a runtime that needs a copy asks for one. The declaration is one line in the image's layout, its grammar has two values, and a third value is refused by name with the exit code that names the image and the value.
+
+== The close that never reached the shim
+
+With the entry reaching the mount, node died one layer deeper:
+
+----
+Assertion failed: (0) == (uv_fs_close(nullptr, &req, file, nullptr))
+----
+
+The interposition replaced `close`, and on arm64 the C library's `close` is exactly that spelling. The spelling the runtime's file operations actually use is a different one, so those calls went to the kernel with a descriptor the kernel had never issued, and came back `EBADF`. On x86_64 the split runs the other way and was already covered; arm64 had one spelling of the two.
+
+Both spellings route to the shim on both architectures now, and the failure path reports the errno under the debug switch, because an error carrying a code the caller never reads is how this stayed invisible for two releases.
+
+== The proof is a factory smoke
+
+A pair minted by the node factory's own tooling from the published 24.22.1 distribution, with this shim and this launcher:
+
+----
+boot smoke OK
+wrapper smoke OK
+npm smoke OK
+$ tebako-runtime-launcher --tebako-entry npm --version
+11.19.1
+----
+
+The wrapper's suite pins both arms — an entry read through the mount, and a declared copy — beside the case where the entry is the interpreter itself. The driver's library suite is 146 tests.
+
+== What the release does not change
+
+The workspace version is the only value that moves. Packages pressed against earlier releases on this line pick the change up through the ordinary runtime range, and the factories' own `npm --version` and `bunx --version` smokes are what turns this proof into published artifacts.
