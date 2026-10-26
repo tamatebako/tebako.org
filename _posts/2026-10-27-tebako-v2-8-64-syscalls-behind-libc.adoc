@@ -1,0 +1,65 @@
+---
+layout: post
+title:  "The calls a runtime makes behind libc's back"
+date:   2026-10-27 10:00:00 +0800
+categories:
+  - tebako
+  - release
+  - runtime
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: "Release v2.8.64 interposes the raw syscall entry, because two runtimes reach the file system without passing through a single interposable symbol. On Linux that made every mounted file answer ENOENT to stat, while the mount itself was armed and readable."
+---
+
+Release v2.8.64 has been published. It answers a class of failure that no amount of symbol interposition could reach, and it was found the same way as the last one: by pressing a real runtime against a real entrypoint and reading what the kernel was told.
+
+== The mount was armed and the file was invisible
+
+Node's `npm` smoke failed on every Linux leg and passed on both macOS legs, with the same image on both sides:
+
+----
+Error: Cannot find module '/__tfs__/bin/npm'
+----
+
+The path is the mount's own spelling, and the file is in it. A tracer settles what the error cannot:
+
+----
+statx(AT_FDCWD, "/__tfs__", AT_STATX_SYNC_AS_STAT, STATX_ALL, …) = -1 ENOENT
+close(1073741825)                                                = -1 EBADF
+----
+
+Both calls reached the kernel. Neither the interposed `statx` nor the interposed `close` ran, which means the runtime did not call them: it asked the kernel directly. Node's own imports say the same thing from the other side — for the stat family it names `__xstat`, `__lxstat` and `syscall`, and the dynamic loader never binds `statx` inside the process.
+
+The reason is a library's own fast path. libuv probes `statx` once and, when the kernel answers, uses it for every stat it makes, through the `syscall` entry rather than through the C library's wrapper. macOS has no such path, which is why the two platform families disagreed.
+
+== What the shim answers now
+
+The shim interposes the raw entry and routes the numbers a mounted tree can answer: the three stat forms, `close`, and `execve`. Every other number forwards verbatim, and so does a routed number whose path is not inside a mount — an ordinary host operation must not change because a package is running.
+
+One detail of the ABI is worth stating, because it looks wrong at first: the interposition is a fixed seven-argument function. Linux caps a syscall's arguments at six, so that signature is identical to the variadic original for every call the kernel can answer, and a variadic *definition* is not expressible on stable Rust. The pre-arm arm forwards through a resolved entry, so the interposition cannot call itself while the shim boots.
+
+Two gaps the same afternoon exposed land with it. A stat that honours the no-follow flag has to report a link as a link, because module resolution walks along a path and `bin/npm` is a link to `npm-cli.js`. And the directory listing is answered from the mount, because the C library implements it on its own internal calls that no preload can interpose — so `readdir` answered `ENOENT` while `opendir` worked.
+
+== What this release does not do
+
+One case stays open, and it is named rather than implied. Bun's `bunx` is not a link to the interpreter but a full copy of it, exec'd from a child process, and a child is not the process that armed the engine — the backends own worker pools that do not survive a fork. Reaching into the engine from there is the wedge a guard already exists for, and bypassing the guard makes our own regression pin hang until its watchdog kills it.
+
+So the answer for bun is not a longer guard. It is the entry resolving to the interpreter itself: a link in the image, and the driver's direct form taking it under the preload mechanism as it already does under the exec-cache one. That lands next.
+
+== The proof is the two smokes that were red
+
+A Linux pair built from the previous release's assets, in a container, with the new shim in front:
+
+[cols="2,3,3",options="header"]
+|===
+| probe | before | after
+| `npm --version` | `Cannot find module '/__tfs__/bin/npm'` | `11.19.1`
+| `npm --help`, `npm ls` | — | print, and walk the tree
+| reading a file from the image | `EBADF` at `fstat`, then at `close` | 2110 bytes
+| listing the root, `bin`, a nested package | `ENOENT` | 8, `[corepack, node, npm]`, 10
+|===
+
+macOS is unchanged by construction: every added interposition is Linux-only, and the shared bodies keep their existing callers. The crate's tests run on both hosts, including one that pins the child rule — the engine is entered when it is free and answered `EAGAIN` when it is held, never waited on.
