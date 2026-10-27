@@ -63,19 +63,25 @@ Each machine adds the library once and installs by name:
 
 [source,console]
 ----
-$ tebako add-registry file:///opt/my-library/tpkg-registry.yaml
+$ tebako add-registry file:///opt/my-library
 $ tebako install acme-tool          # the registry's default version
 $ tebako install acme-fonts@2.1.0   # an explicit version
 ----
 
-The reference names the *document*, not the directory. A directory reference is the natural spelling for a library, and on the current release it fails by name rather than resolving the fixed file name inside:
+The directory form is enough. A library is a directory by design, and the registry document's name inside it is fixed (`tpkg-registry.yaml`), so a reference that names the directory resolves that document:
 
 ```
 $ tebako add-registry file:///opt/my-library
-Tebako script failed: download failed for file:///opt/my-library: … Is a directory (os error 21) reading /opt/my-library [69]
+fetching registry file:///opt/my-library/tpkg-registry.yaml
+registered registry file:///opt/my-library/tpkg-registry.yaml (1 payload(s): acme-fonts)
 ```
 
-The document form is the one that works today, and the directory form is tracked as a product gap rather than papered over here.
+Naming the document yourself works the same way; the registration records the document either way, so later reads go straight at the file:
+
+[source,console]
+----
+$ tebako add-registry file:///opt/my-library/tpkg-registry.yaml
+----
 
 The registry index itself can be pinned as well; the reference is quoted because it contains shell metacharacters:
 
