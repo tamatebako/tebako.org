@@ -68,6 +68,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
       { label: 'Run a packaged app', href: '/docs/guides/run/', status: 'live' },
       { label: "A runtime's own commands", href: '/docs/guides/runtimes/', status: 'live' },
       { label: 'Package a Ruby app', href: '/docs/guides/package-ruby/', status: 'live' },
+      { label: 'Package a Rails app', href: '/docs/guides/package-rails/', status: 'live' },
       { label: 'Create a data payload', href: '/docs/guides/data-payload/', status: 'live' },
       { label: 'Publish to your own registry', href: '/docs/guides/publish/', status: 'live' },
       { label: 'Run your own registries', href: '/docs/guides/registries/', status: 'live' },
