@@ -122,8 +122,8 @@ transition, the flags already look like v2's, and the only differences are
 |`-p, --prefix` |`-p, --prefix` |unchanged (packaging work area, ~/.tebako by default)
 |`-c, --cwd` |`-c, --cwd` |unchanged (packaged app's working directory, relative to root)
 |`-R, --Ruby` |`-R, --Ruby` |The role is the same, but the choice is limited to the rubies the prebuilt runtime release carries (3.1.6–4.0.6 at v0.16.9, with no 2.7/3.0).
-|`-l, --log-level` |`-l, --log-level` |unchanged (error|warn|debug|trace)
-|`-m, --mode bundle|both|runtime|application` |`-m, --mode lean|fat` |see the mode map below
+|`-l, --log-level` |`-l, --log-level` |unchanged (error\|warn\|debug\|trace)
+|`-m, --mode bundle\|both\|runtime\|application` |`-m, --mode lean\|fat` |see the mode map below
 |`-P, --patchelf` |`—` |removed (v1 dropped it in 0.14 too): the GLIBC_PRIVATE/patchelf era ended with prebuilt runtimes
 |`-u, --ref` |`—` |removed: named an external runtime package; a v2 lean package carries its runtime reference automatically
 |`-t, --tebafile` |`—` |removed: v2 exits with ".tebako.yml is not supported by the tebako-rs CLI (pass the options directly)"
