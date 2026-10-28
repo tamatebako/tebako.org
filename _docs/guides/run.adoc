@@ -71,7 +71,7 @@ The bare form runs the interpreter itself. The colon form runs one of the comman
 
 The declared command sets differ by engine and platform, because each factory publishes the surface its distribution actually carries:
 
-[cols="1.2,3,2"]
+[cols="2,3,2"]
 |===
 | Engine | Declared commands | Notes
 
@@ -89,9 +89,11 @@ The declared command sets differ by engine and platform, because each factory pu
 
 | Bun
 | `bun`, `bunx`
+| The images carry no alias; `bunx` is declared alongside `bun`.
 
 | TruffleRuby
 | `ruby`, `gem`, `bundle`, `bundler`, `irb`, `rake`, `rdoc`, `ri`, `rbs`, `rdbg`, `racc`, `erb`, `syntax_suggest`, `truffleruby`, `truffleruby-polyglot-get`
+| The full ruby toolchain of the native distribution, declared from the 34.0.1 line onward.
 
 | JRuby
 | `jruby`, `jgem`, `jirb`

@@ -85,7 +85,7 @@ release. An em dash (—) means the cell is unpublished, and the reason
 is stated in the next section. The matrix below was verified against
 the live factory releases on 2026-10-21.
 
-[cols="1.6,1.2,1,1,1,1,1,1,1,1"]
+[cols="2,2,1,1,1,1,1,1,1,1"]
 |===
 | Engine | Version | macOS aarch64 | macOS x86_64 | Linux gnu x86_64 | Linux gnu aarch64 | Linux musl x86_64 | Linux musl aarch64 | Windows x86_64 | Windows aarch64
 
