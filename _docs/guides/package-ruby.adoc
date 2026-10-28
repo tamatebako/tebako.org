@@ -146,7 +146,11 @@ $ tebako inspect --contract ./myapp
 
 A payload with compiled gems pins the ruby application binary interface (ABI) line it was built against — `~> 3.3.0` — plus the platform ABI string. A machine whose cached runtimes offer no compatible line fails at resolve time with a named error, never a segfault. Pure-ruby payloads declare a range instead — `>= 3.3, < 5.0` — and one universal payload serves every platform.
 
-The manifest model, field by field, is the link:/docs/reference/manifest/[manifest reference].
+A compiled gem does not require a patch to be packaged, and this point is worth stating because the previous generation of the tool asked for one. The image carries the compiled extension and the runtime loads it by the same rules as any other extension, with the library and its dependencies resolved from the image. The gem is built against the interpreter's ABI line during the press, which is why the line is pinned rather than chosen at run time.
+
+The image is not a sandbox by itself. Host paths remain reachable unless a policy restricts them, which is why the jail is a declaration that the driver enforces; link:/docs/guides/jails/[Set a jail policy] describes the grammar, and link:/docs/architecture/interposition/[Runtime native interposition] describes which callers the runtime routes through the mounted images and on which delivery tier.
+
+The manifest model, field by field, is the link:/docs/reference/manifest/[manifest reference]. An application with a build step and a writable state directory — a Rails application, for example — is described in link:/docs/guides/package-rails/[Package a Rails app].
 
 See also: link:/docs/guides/data-payload/[Create a data payload] ·
 link:/docs/guides/publish/[Publish to your own registry] ·

@@ -59,6 +59,23 @@ once and are shared by every package on the machine.
 | `RUBY VERSION` pin | `runtime_requirement: ruby "~> 3.3.0"` | in the payload manifest; the dispatcher resolves it
 |===
 
+== The flags you remember
+
+A request for help with a v1 command usually names one of four flags, and each of them has a current spelling. The two that changed name are the two that most often appear in older tutorials.
+
+[cols="2,3,3"]
+|===
+| v1 flag | v2 flag | What changed
+
+| `--tebako-mount <host>:<mount>` | `--image <path>:<mount>` on `tebako press`, repeated once per slice | A mount is now a payload slice with its own image, and the option names the image rather than a host directory. Naming a host directory is the jail's `--mount`, a different mechanism with the same word.
+| `--cwd <dir>` | `-c <dir>` on `tebako press` | The package working directory is baked at press time; the default remains the host's current directory at run time, which the press announces.
+| `-m lean` / `-m fat` | `-m shared-runtime` / `-m self-contained` | The two names say what the package does rather than how large it is. `lean` and `fat` stay accepted as deprecated aliases.
+| `tebako setup` (compile the toolchain) | `tebako setup` (seed the official registry) | The verb survives with a different meaning. Nothing is compiled: a runtime arrives as two published artifacts, and `setup` writes the default registry into the configuration so that `tebako install` has an index to search.
+
+|===
+
+The remaining press flags kept their v1 spelling: `-r` for the project root, `-e` for the entry, `-o` for the output, `-p` for the prefix, `-R` for the runtime line, and `--sign` for signing at press time. The full surface is printed by `tebako press --help`, and link:/docs/guides/package-ruby/[Package a Ruby app] describes each option in the order it is used.
+
 == The steps, in order
 
 . *Remove the gem-era install.* `gem uninstall tebako` and drop any v1

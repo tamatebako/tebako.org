@@ -70,6 +70,30 @@ $ tebako update-registries
 
 _Output representative._
 
+== The packaged application exits immediately.
+
+A package that starts and exits within a second is the most common report, and the cause is nearly always one of six conditions. The first line of standard error names which one, so the sequence below reads that line before anything else is changed.
+
+[source,console]
+----
+$ ./myapp server
+tebako-bootstrap: WARNING: ./myapp carries no signature (unsigned package)
+runtime ruby-3.4.9 (cached)
+myapp: 1: Syntax error: "(" unexpected
+----
+
+A line that names the runtime and then stops means the interpreter started and the entry did not. A line that names no runtime means the loader stopped before the handoff, and the exit code identifies the reason: 69 is a fetch that failed or was forbidden by `TEBAKO_OFFLINE`, 75 is a runtime whose contract is not compatible with this loader, and 73 is a malformed jail policy.
+
+The five checks below are ordered by how often each one explains the symptom:
+
+. *The contract card.* `tebako inspect --contract ./myapp` prints the package's era, launcher ABI, and slots, and ends with a verdict. A package the loader refuses states the reason there, outside any payload logic.
+. *The runtime line and the network.* A lean package downloads its runtime on first use, and `TEBAKO_OFFLINE=1` converts a miss into a named error rather than a silent delay. The runtime line on standard error is the record of that resolution.
+. *The entry path.* The handoff starts the interpreter with the in-image entry as its argument, so an entry that does not exist is reported by the interpreter rather than by the loader. `tebako inspect ./myapp` prints each slot and its mount point, and the press prints the in-image path it created.
+. *A write to the image.* An image is read-only, and a write inside it fails with `EROFS`. A server that exits while writing a pid file, a cache entry, or a log inside its own tree is reasoned about in link:/docs/guides/package-rails/[Package a Rails app]: the writable path belongs to the host or to a declared write area.
+. *A jail denial.* Under a `deny` policy a host path that the workload needs surfaces as the workload's own error, and the denial is recorded in the journal as `event=vfs-deny` with the path and the mount. `tebako trace run` reports the paths a run actually touched, which is how a grant list is derived rather than guessed.
+
+`tebako doctor` remains the first command for anything that involves the store, the shims, or the registries rather than the payload itself.
+
 == Exit codes.
 
 Every loader failure prints a one-line reason before exiting, and that line is the first thing to read. The two everyday codes are 69 (something could not be fetched — the `TEBAKO_OFFLINE` setting is checked first) and 73 (a malformed jail policy — the run fails closed and nothing mounts). The complete table — all loader codes 64 through 79, plus the three outside the block — lives in the reference: link:/docs/reference/exit-codes/[Exit codes].

@@ -1,0 +1,152 @@
+---
+title: Package a Rails app
+heading: Package a Rails app.
+lede: >-
+  A Rails application is a Ruby application with three additional
+  requirements: compiled assets, native gems, and paths it writes at run
+  time. The press handles the first two, and the host boundary answers the
+  third.
+description: >-
+  This guide describes packaging a Rails application with tebako press: the
+  preparation steps, the command, why native gems pin the ABI line, how a
+  read-only image handles the paths Rails writes, and the boundaries that
+  remain.
+---
+
+// normative: spec 03 §2/§6 (manifest, suites), spec 06 (handoff), spec 08 §2 (jail), spec 11 §4 (write gate), spec 24 §2/§5 (needs.write, COW, EROFS default), spec 28 §8 (implementation axis) — flags verified against crates/tebako-cli/src/main.rs USAGE
+
+
+[NOTE]
+====
+This guide is the reference for a production application. The tutorial in link:/blog/2026-09-05-basic-payloads-rails-sinatra/[Package a Rails or Sinatra application] walks the same path with a sample application and shows the output of every step.
+====
+
+== Why a Rails application needs more than a script
+
+A plain Ruby script is a single entry file and a set of libraries, and the press turns that tree into an image without further information. A Rails application adds three requirements that a script does not have. Its assets must be compiled before the image is written, because the image is immutable bytes and nothing compiles at run time. Its gems frequently carry native extensions, which bind to one Ruby application binary interface line and to one platform. Its boot sequence writes files, while an image is read-only by design.
+
+The first two requirements are satisfied during the press. The third is satisfied by the host boundary, which is configured in the composition document or on the command line rather than inside the image.
+
+== Preparing the application
+
+Four preparation steps are performed before the press, and each of them exists because the packaged application cannot perform it later.
+
+Run the bundle in deployment mode, so that the exact resolved set is the set that ships:
+
+[source,console]
+----
+$ bundle config set --local deployment true
+$ bundle install
+----
+
+Compile the assets into the tree, so that `public/assets` and `public/packs` are part of the image:
+
+[source,console]
+----
+$ RAILS_ENV=production bin/rails assets:precompile
+----
+
+Decide how the application receives its secret. The credentials file is encrypted with `config/master.key`, and that key is a secret which should not be baked into a distributable image. Supplying `SECRET_KEY_BASE` from the environment at run time is the arrangement that keeps the image free of secrets:
+
+[source,console]
+----
+$ SECRET_KEY_BASE=... ./myapp server
+----
+
+Confirm that the database is reachable over the network from the machines that will run the package. The database is not part of the image, and the application connects to it as it would from any other deployment.
+
+== The press
+
+The press detects a Rails application from the `Gemfile` in the current directory and selects the entry script from `bin/`.
+
+[source,console]
+----
+$ cd myapp
+$ tebako press
+----
+
+The explicit form names the root and the entry, and is used when the detection selects a different script than the one intended:
+
+[source,console]
+----
+$ tebako press -r . -e bin/rails -o myapp
+----
+
+The press reports the in-image path it created, of the form `/__tfs__/local/bin/rails`, and `tebako inspect <package>` prints each slot's mount point. Both values are worth reading once, because a declared write area names a path inside that tree.
+
+The entry is `bin/rails`, so the packaged executable accepts the subcommands of that script:
+
+[source,console]
+----
+$ ./myapp server -b 0.0.0.0 -p 3000
+$ ./myapp runner "puts Rails.version"
+----
+
+== Native gems and the ABI line
+
+An application whose bundle includes a gem with a compiled extension, which is the ordinary case for a database adapter, for `nokogiri`, or for an image processor, carries code compiled against one Ruby application binary interface (ABI) line and one platform. The manifest records that line as a constraint of the form `~> 3.3.0`, which admits patch releases of the 3.3 line and refuses every other line.
+
+The consequence is worth stating plainly. A payload with native extensions is per-platform and per-ABI-line, while a payload of pure Ruby is universal and declares a range such as `>= 3.3, < 5.0`. The resolver reports a missing compatible runtime as a named error before the process starts, which is the alternative to a segmentation fault inside a compiled extension.
+
+A short Ruby script has no such requirement, and link:/docs/guides/package-ruby/[Package a Ruby app] describes that case and the rest of the press surface.
+
+== The paths Rails writes
+
+An image is read-only, and that property is deliberate rather than incidental. A write to a path inside the mounted image fails with `EROFS`, whether the write creates a file or overwrites one, and the refusal is journaled as a named event. A Rails application writes to `tmp/` and to `log/` on boot, so a packaged application needs one of two arrangements, and the difference between them is where the bytes land.
+
+Under the first arrangement the application writes to a directory on the host. A packaged process sees host paths as host paths: a policy of `open` permits them, and a `deny` policy requires a grant naming the directory. A grant is a jail-policy entry rather than a mount of new content, so it never makes an image path writable.
+
+The application is therefore pointed at the host directory through its own configuration, which for the log is one line in `config/environments/production.rb`:
+
+[source,ruby]
+----
+config.logger = ActiveSupport::Logger.new(ENV.fetch("MYAPP_LOG", "/state/production.log"))
+----
+
+The run then supplies the location and the policy together:
+
+[source,console]
+----
+$ mkdir -p "$HOME/Library/Application Support/myapp"
+$ MYAPP_LOG="$HOME/Library/Application Support/myapp/production.log" \
+  ./myapp server
+----
+
+Under a `deny` policy the directory joins the policy document, and link:/docs/guides/jails/[Set a jail policy] gives the grammar. The measured rule that matters here is that a write inside the mounted image fails with `EROFS` whether or not a grant is present, so a writable path always belongs to the host or to a declared write area.
+
+Under the second arrangement the image declares the areas it writes and binds a copy-on-write store, so the paths stay inside the application's own tree and the state is ephemeral unless a durable store is bound. The declaration and the binding are described in link:/docs/architecture/overlays/[Declarative overlays], and their shape is:
+
+[source,yaml]
+----
+# the slice manifest
+needs:
+  write:
+    - path: local/tmp
+      persistence: ephemeral
+      why: "the Rails boot writes a pid file and a cache under tmp/"
+    - path: local/log
+      persistence: ephemeral
+      why: "the default logger writes one file per environment"
+----
+
+A write area is a path inside the slice's own tree, and the copy-on-write layer is the only mechanism that satisfies it. Writes outside a declared area remain refused, so a path the application writes but the manifest does not declare fails with `EROFS` and a journal entry instead of silently losing data.
+
+== The host boundary
+
+The jail policy of a packaged application is declarative and is enforced by the driver. A web application usually needs three grants: the writable directories above, network access to the database, and no access to the rest of the home directory. link:/docs/guides/jails/[Set a jail policy] describes the grammar, and `tebako trace run` reports the paths an application actually touches, which is how the grant list is derived rather than guessed.
+
+== Boundaries
+
+Four things are outside what a packaged Rails application does, and each of them follows from the image model rather than from a missing feature.
+
+*Code is fixed at press time.* A source change requires a new press, and the development server's reloader has nothing to reload. Packaging is a release step, not a development loop.
+
+*Gems are fixed at press time.* `bundle install` at run time has no writable gem tree to install into, and no compiler on the target machine.
+
+*Assets are compiled at press time.* Running `assets:precompile` on the target machine would require the toolchain the package exists to avoid.
+
+*The database is external.* The package carries the application and its libraries; it does not carry a database server, and the connection is an ordinary network connection that the jail policy must permit.
+
+== Related
+
+The runtime's own commands, including a Rails console reached through `bin/rails`, are described in link:/docs/guides/runtimes/[A runtime's own commands]. Publishing the result to the people who run it is described in link:/docs/guides/publish/[Publish to your own registry], and the failure modes of a packaged application that exits immediately are collected in link:/docs/guides/debug/[Debug & logging].
