@@ -10,7 +10,7 @@ Every docs page and blog post is an **AsciiDoc collection entry** (`.adoc` file)
 content                          rendering                    gates (CI)
 _docs/architecture/  25 .adoc →  [slug].astro (thin wrapper) → astro check
 _docs/guides/        15 .adoc →  [slug].astro (thin wrapper) → vitest (39 tests)
-_docs/reference/      9 .adoc →  [slug].astro (thin wrapper) → build
+_docs/reference/     20 .adoc →  [slug].astro (thin wrapper) → build
 _posts/              35 .adoc →  blog/[slug].astro           → link checker
 ```
 
@@ -39,6 +39,12 @@ Scoped exemptions: pre-2026 posts (frozen history), the 404 page's nautical them
 1. Create `_docs/<section>/<slug>.adoc` with frontmatter: `title`, `description`, optional `heading` and `lede`
 2. Add one entry to the matching section in `src/config/docs.ts`
 3. `npm test` fails if the entry and the file disagree
+
+Exception: the `_docs/reference/schema-*.adoc` pages are generated twins of
+the product repository's `docs/spec/schemas/*.yaml` grammars. Never create or
+edit them by hand — `ruby tools/sync-schemas.rb [<product-repo>]` regenerates
+them, `--check` is the drift gate (`.github/workflows/schema-sync.yml`), and
+each page records its source blob SHA in a `// source:` marker.
 
 **A blog post**:
 1. Create `_posts/<date>-<slug>.adoc` with frontmatter: `title`, `date`, `categories`, `author`, `excerpt`
