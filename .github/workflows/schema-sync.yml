@@ -1,0 +1,38 @@
+name: schema-sync
+
+# The drift gate for the schema reference pages under
+# _docs/reference/schema-*.adoc. Each generated page records the blob SHA
+# of the docs/spec/schemas/*.yaml grammar it was generated from in the
+# product repository (tamatebako/tebako), and that grammar is the source
+# of truth: a schema edit that lands without the reference page being
+# regenerated leaves the recorded SHA stale, and this job goes red.
+
+on:
+  pull_request:
+    paths:
+      - "_docs/reference/schema-*.adoc"
+      - "tools/sync-schemas.rb"
+      - ".github/workflows/schema-sync.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: schema-sync-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  drift:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: site
+      - uses: actions/checkout@v7
+        with:
+          repository: tamatebako/tebako
+          path: tebako
+      - run: ruby tools/sync-schemas.rb --check ../tebako
+        working-directory: site
