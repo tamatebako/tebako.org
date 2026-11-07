@@ -114,7 +114,33 @@ function familyOf(lang: string): string {
   return m ? m[1] : lang
 }
 
-// Newest row per language family, newest family last within a runtime.
+// Segment-wise numeric compare for dotted versions ("0.17.4" > "0.2.0",
+// never a string sort). Non-numeric segments compare by string.
+function cmpVersions(a: string, b: string): number {
+  const pa = a.split(/[.-]/)
+  const pb = b.split(/[.-]/)
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = pa[i] ?? ''
+    const y = pb[i] ?? ''
+    const nx = /^\d+$/.test(x) ? Number(x) : NaN
+    const ny = /^\d+$/.test(y) ? Number(y) : NaN
+    if (!Number.isNaN(nx) && !Number.isNaN(ny) && nx !== ny) return nx - ny
+    if (Number.isNaN(nx) !== Number.isNaN(ny)) return Number.isNaN(nx) ? 1 : -1
+    if (Number.isNaN(nx) && Number.isNaN(ny) && x !== y) return x < y ? -1 : 1
+  }
+  return 0
+}
+
+// A row's wrapper line: the registry version with the language part
+// dropped ("24.22.1-2.8.64" → "2.8.64"; a plain "34.0.1" → "").
+function wrapperVersion(version: string, lang: string): string {
+  return version === lang ? '' : version.replace(`${lang}-`, '')
+}
+
+// Newest row per language family, ordered (language version, then the
+// wrapper line) — a first-encountered or string-sorted pick lets a stale
+// row represent the family (the registry's row order is append history,
+// not recency).
 function rowsFor(label: string, payload: Payload | undefined): MatrixRow[] {
   if (!payload?.versions) return []
   const byFamily = new Map<string, VersionRow>()
@@ -123,7 +149,15 @@ function rowsFor(label: string, payload: Payload | undefined): MatrixRow[] {
     const lang = langVersion(row.version)
     const fam = familyOf(lang)
     const cur = byFamily.get(fam)
-    if (!cur || langVersion(cur.version) < lang) byFamily.set(fam, row)
+    if (!cur || isNewer(row, cur)) byFamily.set(fam, row)
+  }
+
+  function isNewer(a: VersionRow, b: VersionRow): boolean {
+    const la = langVersion(a.version)
+    const lb = langVersion(b.version)
+    const byLang = cmpVersions(la, lb)
+    if (byLang !== 0) return byLang > 0
+    return cmpVersions(wrapperVersion(a.version, la), wrapperVersion(b.version, lb)) > 0
   }
   return [...byFamily.entries()]
     .sort(([a], [b]) => (a < b ? -1 : 1))
