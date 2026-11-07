@@ -1,0 +1,298 @@
+---
+import DocsLayout from '../../../layouts/DocsLayout.astro'
+
+// Runtime coverage, generated at build time from the aggregate registry
+// (tebako-packages/registry's tpkg-registry.yaml — the CI-generated roll-up
+// of the seven runtime factories' own registries). A ✓ cell links to the
+// release whose tag the registry row names — the evidence, one hop away.
+// The site rebuilds daily, so the matrix is never older than a day; the
+// page it replaced was verified by hand on a date and aged from the moment
+// it merged. A failed or malformed fetch degrades to the prose sections
+// with a notice — the build never fails on a network blip.
+
+const REGISTRY_URL =
+  'https://raw.githubusercontent.com/tebako-packages/registry/main/tpkg-registry.yaml'
+
+interface PlatformRow {
+  artifact?: string
+  sha256?: string
+  oci?: string
+}
+
+interface VersionRow {
+  version: string
+  platforms?: Record<string, PlatformRow>
+  release?: { ref?: string }
+}
+
+interface Payload {
+  name: string
+  kind?: string
+  engine?: string
+  versions?: VersionRow[]
+}
+
+interface RuntimeSpec {
+  payload: string
+  label: string
+}
+
+// The current runtime payload names in the aggregate. The legacy
+// tebako-runtime-java-temurin name still rides the aggregate's history —
+// the openjdk payload is the current java row and the only one shown.
+const RUNTIMES: RuntimeSpec[] = [
+  { payload: 'ruby', label: 'Ruby (MRI)' },
+  { payload: 'python', label: 'Python (CPython)' },
+  { payload: 'node', label: 'Node.js' },
+  { payload: 'bun', label: 'Bun' },
+  { payload: 'openjdk', label: 'Java (Temurin)' },
+  { payload: 'openjdk-graalvm', label: 'Java (GraalVM)' },
+  { payload: 'jruby', label: 'JRuby' },
+  { payload: 'truffleruby', label: 'TruffleRuby (native)' },
+  { payload: 'truffleruby-jvm', label: 'TruffleRuby (JVM)' },
+]
+
+// The platform axis: canonical triplet → the release-asset suffix → the
+// human label, in the page's column order.
+const TRIPLETS: Array<[string, string, string]> = [
+  ['aarch64-macos', 'macos-arm64', 'macOS arm64'],
+  ['x86_64-macos', 'macos-x86_64', 'macOS x86-64'],
+  ['x86_64-linux-gnu', 'linux-gnu-x86_64', 'Linux x86-64 (glibc)'],
+  ['aarch64-linux-gnu', 'linux-gnu-arm64', 'Linux arm64 (glibc)'],
+  ['x86_64-linux-musl', 'linux-musl-x86_64', 'Linux x86-64 (musl)'],
+  ['aarch64-linux-musl', 'linux-musl-arm64', 'Linux arm64 (musl)'],
+  ['x86_64-windows-ucrt', 'windows-ucrt64', 'Windows x86-64'],
+  ['aarch64-windows-ucrt', 'windows-ucrt-arm64', 'Windows arm64'],
+]
+
+interface Cell {
+  present: boolean
+  releaseUrl: string | null
+}
+
+interface MatrixRow {
+  runtime: string
+  family: string
+  version: string
+  cells: Cell[]
+}
+
+interface FamilyGroup {
+  runtime: string
+  rows: MatrixRow[]
+}
+
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v)
+
+async function fetchRegistry(): Promise<Payload[] | null> {
+  try {
+    const { default: YAML } = await import('yaml')
+    const res = await fetch(REGISTRY_URL)
+    if (!res.ok) return null
+    const doc = YAML.parse(await res.text())
+    if (!isRecord(doc) || !Array.isArray(doc.payloads)) return null
+    return doc.payloads as Payload[]
+  } catch {
+    return null
+  }
+}
+
+// A row's language version: the composite `<lang>-<wrapper>` shard-era
+// spelling reduces to the language part (tpkg::versions::language_part's
+// rule — the first dash-separated segment that parses as a version).
+function langVersion(version: string): string {
+  const parts = version.split('-')
+  const lang = parts.find((p) => /^\d+(\.\d+)+$/.test(p))
+  return lang ?? version
+}
+
+// The family's key: the language version's major.minor line (ruby/python
+// maintain several; the JS engines and javas ride one).
+function familyOf(lang: string): string {
+  const m = lang.match(/^(\d+\.\d+)/)
+  return m ? m[1] : lang
+}
+
+// Newest row per language family, newest family last within a runtime.
+function rowsFor(label: string, payload: Payload | undefined): MatrixRow[] {
+  if (!payload?.versions) return []
+  const byFamily = new Map<string, VersionRow>()
+  for (const row of payload.versions) {
+    if (!isRecord(row.platforms)) continue
+    const lang = langVersion(row.version)
+    const fam = familyOf(lang)
+    const cur = byFamily.get(fam)
+    if (!cur || langVersion(cur.version) < lang) byFamily.set(fam, row)
+  }
+  return [...byFamily.entries()]
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+    .map(([fam, row]) => ({
+      runtime: label,
+      family: fam,
+      version: langVersion(row.version),
+      cells: TRIPLETS.map(([triplet]) => {
+        const present = row.platforms ? triplet in row.platforms : false
+        return { present, releaseUrl: releaseUrl(row.release?.ref) }
+      }),
+    }))
+}
+
+function releaseUrl(ref: string | undefined): string | null {
+  if (!ref) return null
+  const m = ref.match(/^tfs:github:([^:]+):([^:]+)$/)
+  if (!m) return null
+  return `https://github.com/${m[1]}/releases/tag/${m[2]}`
+}
+
+const registry = await fetchRegistry()
+const groups: FamilyGroup[] | null = registry
+  ? RUNTIMES.map((spec) => ({
+      runtime: spec.label,
+      rows: rowsFor(spec.label, registry.find((p) => p.name === spec.payload)),
+    })).filter((g) => g.rows.length > 0)
+  : null
+
+const toc = [
+  { id: 'why-this-page-exists', title: 'Why this page exists' },
+  { id: 'the-platform-axis', title: 'The platform axis' },
+  { id: 'the-matrix', title: 'The matrix' },
+  { id: 'the-named-gaps', title: 'The named gaps' },
+]
+---
+
+<DocsLayout
+  section="reference"
+  href="/docs/reference/runtime-coverage/"
+  title="Runtime coverage"
+  heading="Every runtime, every platform, one table."
+  lede="A tebako runtime is published per engine, per version line, and per platform triplet. This page is the grid of what exists: every published cell, and for every unpublished cell the reason it is unpublished."
+  description="The runtime coverage matrix: every tebako runtime engine and version line against the eight platform triplets, each published cell linking to the release that proves it, each gap named."
+  toc={toc}
+>
+  <div class="tb-prose mt-16">
+    <h2 id="why-this-page-exists">Why this page exists</h2>
+    <p>
+      A tebako runtime is not one artifact but a family of artifacts. Each
+      runtime factory publishes its interpreter once per engine, once per
+      version line of that engine, and once per platform triplet, so the
+      question an author must answer before pinning a runtime requirement is
+      whether the cell they need — this engine, this version, this platform —
+      actually exists. This page answers that question with a single matrix,
+      and it treats an empty cell as a statement that owes the reader a
+      reason: every unpublished cell below is named, and the reason it is
+      unpublished is given in the named gaps section.
+    </p>
+
+    <h2 id="the-platform-axis">The platform axis</h2>
+    <p>
+      The axis is eight platform triplets. The canonical form is the
+      vcpkg-form triplet, which is what manifests and runtime requirements
+      use; the release-asset form is the suffix that appears in published
+      file names, which is what a release listing shows.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Canonical triplet</th><th>Release-asset suffix</th><th>Platform</th></tr>
+      </thead>
+      <tbody>
+        {TRIPLETS.map(([triplet, suffix, label]) => (
+          <tr>
+            <td><code>{triplet}</code></td>
+            <td><code>{suffix}</code></td>
+            <td>{label}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+
+    <h2 id="the-matrix">The matrix</h2>
+    <p>
+      A check mark means the cell is published in the factory's current
+      release — and links to it. An em dash means the cell is unpublished,
+      and the reason is stated in the next section. The matrix is generated
+      at site build time from the aggregate registry
+      (<code>tebako-packages/registry</code>, the CI-generated roll-up of the
+      seven runtime factories' own registries) and the site rebuilds daily —
+      it is never older than a day.
+    </p>
+    {
+      groups === null ? (
+        <p>
+          <em>
+            The aggregate registry was unreachable at build time, so the
+            matrix could not be generated. The named gaps below still apply;
+            reload tomorrow's build for the grid.
+          </em>
+        </p>
+      ) : (
+        <table>
+          <thead>
+            <tr>
+              <th>Runtime</th>
+              <th>Version</th>
+              {TRIPLETS.map(([, , label]) => (
+                <th>{label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {groups.map((group) =>
+              group.rows.map((row, i) => (
+                <tr>
+                  {i === 0 && <td rowspan={group.rows.length}>{row.runtime}</td>}
+                  <td>{row.version}</td>
+                  {row.cells.map((cell) => (
+                    <td>
+                      {cell.present ? (
+                        cell.releaseUrl ? (
+                          <a href={cell.releaseUrl}>✓</a>
+                        ) : (
+                          '✓'
+                        )
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              )),
+            )}
+          </tbody>
+        </table>
+      )
+    }
+
+    <h2 id="the-named-gaps">The named gaps</h2>
+    <p>
+      Every dash above is one of these, and each carries its reason:
+    </p>
+    <ul>
+      <li>
+        <strong>Java (GraalVM) on musl and Windows arm64</strong> — the
+        upstream substrate does not exist: GraalVM CE's current release
+        publishes linux-aarch64, linux-x64 and macos-aarch64 only (verified
+        2026-11-06 against graalvm/graalvm-ce-builds), and a factory cannot
+        pack a platform its upstream does not build. The Temurin line covers
+        all eight.
+      </li>
+      <li>
+        <strong>TruffleRuby's missing legs</strong> — parked on upstream: the
+        two MRI-parity defects we filed (oracle/truffleruby#4435 and
+        oracle/truffleruby#4456) are closed-fixed on their side and the
+        factory adopts them on their next release
+        (tamatebako/tebako-runtime-truffleruby#5 tracks it).
+      </li>
+      <li>
+        <strong>FreeBSD and illumos</strong> — declared out of scope until an
+        owner asks: a named non-goal, not a hole. The platform axis grows by
+        owner decision, not by drift.
+      </li>
+      <li>
+        <strong>The legacy <code>tebako-runtime-java-temurin</code> name</strong>
+        — retired in favor of the <code>openjdk</code> payload; its rows
+        remain in the aggregate's history but no longer publish.
+      </li>
+    </ul>
+  </div>
+</DocsLayout>
