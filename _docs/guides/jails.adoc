@@ -24,7 +24,7 @@ This guide is part 2 of the link:/blog/2026-09-05-advanced-payloads-jails-profil
 == What a jail is not.
 
 * *A jail is not a sandbox for hostile code.* It shapes the filesystem view; it is not a security boundary against an adversarial payload.
-* *A jail is filesystem-only.* There is no network, CPU, or memory metering.
+* *A jail meters the filesystem and the outbound network.* A `deny` policy refuses every outbound connection the invocation did not grant with `net:` (below); CPU and memory stay unmetered. The network axis judges _outbound_ peers only — a payload that opens a listener is not governed (yet), and neither is a statically linked binary, exactly as on the filesystem side.
 * *A jail is not for static binaries.* Jails cover interpreted payloads and native binaries running under the preload shim. A statically linked binary sees only the host filesystem — for it there is no VFS, and so no jail.
 
 == The three profiles.
@@ -97,7 +97,20 @@ $ tebako press -r ./myapp -e bin/myapp --jail ./jail.yaml   # baked in
 $ tebako run ./myapp --jail ./jail.yaml -- build              # per run
 ----
 
-The same grammar works from the environment: `TEBAKO_JAIL` takes directives separated by semicolons — `open`, `deny`, `<host>:<mount>:ro|rw`, or `@<path>` to read directives from a file:
+== Granting the network.
+
+The same policy carries the network axis: `net:<host>` grants an outbound peer (any port), `net:<host>:<port>` pins one port. Under `deny` there is no other way out — a connection to an ungranted peer fails with `EPERM` and a journal line (`op=connect`), exactly like a refused path. DNS resolution itself is never gated: a query leaks a name, never payload bytes, and a grant names hosts whose addresses must resolve. A grant names _intent_, not an address — connecting to a granted host by its bare IP, when that IP never came back from the resolver under the name, is refused.
+
+[source,console]
+----
+$ metanorma --jail 'deny;net:fonts.example.com:443' compile site.adoc
+----
+
+The record loop covers the axis: a `record` run journals every connection (`event=jail-allow peer=… op=connect`), and `tfs needs --from-journal` drafts the `network:` entries with the resolved names.
+
+== The grammar from the environment.
+
+`TEBAKO_JAIL` takes directives separated by semicolons — `open`, `deny`, `<host>:<mount>:ro|rw`, `net:<host>[:<port>]`, or `@<path>` to read directives from a file:
 
 [source,console]
 ----
@@ -136,6 +149,9 @@ needs:
       when: [macos]             # OPTIONAL platform filter
       optional: true            # OPTIONAL: absent at bind = silently skipped
       why: "fontist cache"      # MANDATORY
+  network:
+    - peer: fonts.example.com:443   # a DNS name (any port when unpinned)
+      why: "fetches the font index"  # MANDATORY
 ----
 
 The symbolic atoms resolve at bind, per invocation, per user — never baked: `$HOME`, `$TMPDIR`, `$CWD` (the invoking directory), `$TEBAKO_HOME`. A need absent at bind without the `optional` marker is a named error, never a silent skip.

@@ -7,10 +7,11 @@ lede: >-
   docker -v semantics: a default, a mount list, and named errors instead of
   surprises. Enforcement exists because coverage is total by construction.
 description: >-
-  This page covers filesystem-only host-access policy at the one TFS choke
-  point: docker -v semantics, the deny default, the evidence-driven platform
-  floor, symlink re-validation, the audit journal, and the record mode that
-  discovers a payload's needs.
+  This page covers host-access policy at the one TFS choke point —
+  filesystem and outbound network: docker -v semantics, the deny default,
+  the evidence-driven platform floor, net: peer grants, symlink
+  re-validation, the audit journal, and the record mode that discovers a
+  payload's needs.
 ---
 
 // normative: spec 08 (§1 model, §2 semantics + §2.1 platform floor, §3 choke + shipped semantics, §4 manifest integration, §5 scope, §6 executor trust), spec 23 §8 (record mode), spec 25 §4 (trace run generator)
@@ -156,10 +157,21 @@ the store's audit journal marks record-mode runs.
 
 == The scope of the jail
 
-Jails are filesystem-only. `capabilities.network` is advisory metadata, not
-an enforcement promise, and OS-level network confinement
-(seatbelt/seccomp/WFP) is a possible later layer that is never claimed
-today. Coverage is every IO route through TFS: all interpreted payloads,
+Jails cover the filesystem and the outbound network. A `deny` policy
+refuses every outbound connection the composition did not grant with
+`net:host[:port]` — the refusal is `EPERM` at `connect`/`sendto`/`sendmsg`,
+journaled with the peer, judged in-process by the same preload family.
+DNS resolution is never gated (a query leaks a name, never payload bytes);
+a grant names hosts whose addresses must resolve, and the resolver's
+answers are what bridge a name grant to a numeric peer. Not covered:
+inbound service (`bind`/`listen` — the axis is outbound peers), AF_UNIX
+peers (the filesystem axis's territory), the legacy `gethostbyname`
+resolver (numeric-spelling judgment only), macOS `connectx`, and — as on
+the filesystem side — statically linked binaries and any process that
+escapes the shim. OS-level confinement (seatbelt/seccomp/WFP) stays a
+possible later layer, never claimed.
+
+Coverage is every IO route through TFS: all interpreted payloads,
 plus native binaries under the preload interposition shim. The shim's
 coverage is symbol-level (tebako#439): a jail holds only for the libc entry
 points that the shim interposes, and the named list includes the
