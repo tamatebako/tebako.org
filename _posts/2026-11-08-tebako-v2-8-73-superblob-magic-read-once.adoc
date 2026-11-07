@@ -1,0 +1,39 @@
+---
+layout: post
+title: "The superblob's magic number, read once"
+date: 2026-11-08 09:00:00 +0800
+categories:
+  - tebako
+  - release
+  - runtime
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: "Release v2.8.73 corrects one constant in the macOS loader-interposition gate, restoring class-L coverage for signed runtimes on macOS 15, and proves that one dispatch composes a payload and a runtime fetched through two different registry channels."
+---
+
+Release v2.8.73 has been published. It carries a one-constant correction whose blast radius was larger than the line it occupies, and a proof that the composition calculus holds across registry boundaries.
+
+== The constant that read every signature as unsigned
+
+Since v2.8.69, the loader's self-insertion on macOS has carried a gate for the tightened Apple Mobile File Integrity (AMFI) behavior of macOS 15: an exec'd image whose code signature carries no Cryptographic Message Syntax (CMS) blob is killed when the insertion is armed, so the driver checks the running executable's signature before re-executing itself with the interpose library loaded. The check reads the Mach-O `LC_CODE_SIGNATURE` region and asks whether the signature's superblob indexes a CMS slot.
+
+The parse demanded the magic `0xFADE0CC2`, a constant that names nothing in the code-signature format. The region opens with the superblob, `CSMAGIC_EMBEDDED_SIGNATURE = 0xFADE0CC0`, for ad-hoc and real signatures alike; the CMS slot, index type 5, is what distinguishes them. Every signature shape therefore read as carrying no CMS blob, and on macOS 15 every runtime executable, signed and notarized ones included, skipped the insertion and booted uninserted.
+
+The failure surface was exact. Loader interposition — the class-L coverage that materializes a library stored inside a mounted image before the host loader is asked — was gone, so a `dlopen` of a VFS-resident path fell through to libSystem and answered "no such file". Exec interposition kept working, because the executable shape's exec family binds at link time and never rides the inserted library, and every non-macOS platform was untouched, because the gate only fires on macOS 15 and later. That asymmetry is why the window shipped green: the product's own interpose test never calls `dlopen`, by design, and the fleet's runtime factories still pinned a line older than the gate. The first consumer to combine the gate with macOS 15 runners was the Ruby factory's boot smoke, which runs the only class-L materialization suite in the ecosystem, and its four macOS legs turned red on the pin roll with the failure named above.
+
+The correction is the constant, verified against real binaries before it was written down: a Developer ID executable's superblob indexes slot 5 and now answers true, an ad-hoc signature's superblob does not and still answers false, and the bare code-directory shape still answers false. The regression net is a unit test that builds a synthetic Mach-O whose superblob index carries or omits slot 5, so both directions are pinned on every host without a signing identity. A second leg, filed as tebako#989, will exercise the signed insertion end-to-end in the product's own continuous integration, so the next gate regression dies on the pull request that introduces it.
+
+No published runtime carries the misread. Every factory release predates the gate's window, which the release ledger confirms line by line, so the correction reaches the fleet through the pin rolls that follow this release rather than through a recall.
+
+== One dispatch, two registries, each named
+
+The release's second half is a proof rather than a repair. The composition model has always permitted a payload published in one registry to dispatch against a runtime resolved from another, but no end-to-end test composed the two across channel boundaries until now. The new proof installs the two halves through different channels on purpose: the payload's dependency arrives from a `file:` registry, and the runtime resolves from a second registry whose index and bundle both ride the Open Container Initiative (OCI) distribution protocol, under the declared `channel: oci` switch that routes the row through its per-triplet mirror locator.
+
+Two provenance gaps closed to make the proof possible. The dispatch journal now records which registry answered a runtime pick (`event=runtime-source-registry`), where previously only skips and errors were named, and the dependency fetch now records the installed payload's origin and registry (`event=payload-installed`), where previously the locked resolve discarded the origin it had in hand. The broken arm of the test fails the runtime channel's bundle with a 404 and verifies that the error names the channel's own coordinates, that no partial runtime install is visible, and that the payload fetched through the other registry keeps its trust anchor — a torn composition is never left behind.
+
+== The line
+
+The release is `v2.8.73`, published from the tamatebako/tebako repository with its full 164-asset matrix, and the factory pin rolls that move the runtime line onto it follow the usual path. Operators who dispatch runtimes on macOS 15 should prefer runtimes built against this line once the factories publish them; runtimes built against earlier lines remain correct on macOS 14 and on every other platform.
