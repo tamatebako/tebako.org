@@ -35,7 +35,7 @@ The runtime-owning commands — the shims that put a tebako-provided `ruby`, `no
 
 == The smaller repairs
 
-Two defects in the store's identity handling are corrected: a bare image installed by a pin now lands under the identity its embedded manifest declares, rather than under a second entry derived from the pin (tebako#999), and the release pipeline's attestation step retries with backoff, removing a class of transient publication failures (tebako#992). The release also carries the benchmark covenant's producer and release gate, the machinery that turns each release's published performance numbers into a budget the release must satisfy; the calibration of the covenant's cells against the runtime suite's measured baselines is landing separately as tebako#1010.
+Two defects in the store's identity handling are corrected: a bare image installed by a pin now lands under the identity its embedded manifest declares, rather than under a second entry derived from the pin (tebako#999), and the release pipeline's attestation step retries with backoff, removing a class of transient publication failures (tebako#992). The release also carries the benchmark covenant's producer, its release gate, and the covenant's calibration against the runtime suite's measured baselines (tebako#1010): every budget cell now bounds a statistic the suite actually produces, the fixed-cost axes are bounded in absolute units the user feels, and the per-call mount taxes are published at their measured values, so a clean run is green and only a regression trips the gate.
 
 == The line
 
