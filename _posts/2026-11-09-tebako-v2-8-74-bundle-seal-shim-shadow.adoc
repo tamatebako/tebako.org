@@ -1,0 +1,42 @@
+---
+layout: post
+title: "A bundle that is offline by construction, and the shim that says so"
+date: 2026-11-09 09:00:00 +0800
+categories:
+  - tebako
+  - release
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: "Release v2.8.74 seals a lazily fetched runtime into a bundle before packing, so an air-gapped machine never meets a descriptor without its bytes; materializes an in-image working directory for a spawned child; and teaches the runtime-owning commands to warn before shadowing a tool the machine already has."
+---
+
+Release v2.8.74 has been published. Its three user-visible changes share one theme: an operation must either carry everything it needs or say, by name, what it is missing.
+
+== The bundle that carries its runtime
+
+A tebako bundle is the offline distribution form: a pre-seeded store, packed as an archive, that a machine with no network unpacks and runs from. The sealed-network proof, which builds such a bundle in a networked container and then compiles a Metanorma document in a second container started with no network namespace, caught a gap in that claim. A runtime entry that had been fetched lazily — a descriptor naming where the image lives, with the image bytes themselves still unfetched — could be packed into the bundle as-is, and the sealed dispatch then died at mount time with an input/output error, because the bytes the descriptor pointed at were not in the bundle.
+
+The packer now seals such an entry synchronously before staging it, fetching and verifying the image at bundle time by the same rule the explicit install verb already followed. The proof is red-green: without the change the packed entry carries the descriptor and no image; with it the sealed image lands byte-identical to the published artifact, and the second-phase container, which has no route to any network, completes the compile.
+
+== A spawned child inherits a real directory
+
+A runtime that spawns a subprocess — Metanorma invoking a Java tool is the standing example — must sometimes hand the child a working directory. When that directory lives inside the mounted image, the child has no host path to change into. The release adds the spawn-change-directory surface to the filesystem application programming interface: the runtime materializes the in-image directory to the host before the spawn, so the child starts in a real directory with real files. This is the product half of tamatebako/ruby#152; the interpreter half, which routes the affected spawn sites through the surface, shipped in the factory's current source line.
+
+== The shim that announces a shadow, and leaves when asked
+
+The runtime-owning commands — the shims that put a tebako-provided `ruby`, `node` or similar on the command path — previously registered silently. A machine could therefore resolve `ruby` to tebako's read-only runtime when the operator expected the version manager's, and every mutating command against that runtime failed against its read-only filesystem. Three defects closed this week address the incident directly, which the team's own development machine hit:
+
+* registering a shim that will shadow an existing command now prints a notice naming the conflict (tebako#996);
+* a registered runtime-owning claim can be removed with an explicit verb, where previously no clean un-registration existed (tebako#997);
+* commands that would mutate the runtime's gem home, such as `gem install` against the shimmed Ruby, refuse by name with the reason, instead of crashing against the read-only mount (tebako#998).
+
+== The smaller repairs
+
+Two defects in the store's identity handling are corrected: a bare image installed by a pin now lands under the identity its embedded manifest declares, rather than under a second entry derived from the pin (tebako#999), and the release pipeline's attestation step retries with backoff, removing a class of transient publication failures (tebako#992). The release also carries the benchmark covenant's producer and release gate, the machinery that turns each release's published performance numbers into a budget the release must satisfy; the calibration of the covenant's cells against the runtime suite's measured baselines is landing separately as tebako#1010.
+
+== The line
+
+The release is `v2.8.74`, published from the tamatebako/tebako repository with its full 164-asset matrix. The factory pin rolls that move the runtime line onto it follow the usual path, and the sealed-network proof above runs against this line's shipping bytes.
