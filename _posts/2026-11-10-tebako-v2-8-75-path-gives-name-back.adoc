@@ -1,0 +1,44 @@
+---
+layout: post
+title: "The PATH that gives the name back, and the proof set that closes"
+date: 2026-11-10 09:00:00 +0800
+categories:
+  - tebako
+  - release
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: "Release v2.8.75 teaches the shim layer to free a command name without disabling its dispatch, proves the jail against Windows alternate data streams, rides out minute-scale network flaps on every fetch, and closes the documentation drift the interoperability audit found."
+---
+
+Release v2.8.75 has been published. Its changes share one theme: a tool the operator cannot steer is not a tool, and a claim the project cannot prove is not a claim.
+
+== The shim that gives the name back
+
+A tebako package registers its commands on the command path so that `metanorma` answers the moment it is installed. A toolchain package can carry dozens of commands, and every registration took the name on the operator's PATH, shadowing whatever the machine already had — the defect the team hit on its own development machine, where a document toolchain's twenty-six registered commands displaced the version manager's Ruby and broke an unrelated build for a session.
+
+The release separates the two axes the old surface had fused. `tebako-shim disable` has always gated dispatch while keeping the link, which broke the name on PATH rather than returning it; the new `tebako-shim hide <name>` unlinks the shim and records the choice, so the host's own tool answers again while the packaged command stays reachable through `tebako run <name>` and the version chain, and `tebako-shim expose <name>` restores the link on demand (tebako#1004). A hidden name is never re-registered by a later install, and the listing surfaces the state in text and in the JavaScript Object Notation (JSON) form. The dispatch axis and the PATH axis now answer to different verbs, because they are different decisions.
+
+== The jail's last named gap, closed
+
+The jail-conformance suite attacks a pressed package from every vector a payload can reach — file reads, directory listings, shell-outs, links that escape their grants — and names what it does not cover rather than implying it. One row has stood marked PLANNED since the suite shipped: alternate data streams, the Windows file-system feature that hangs additional byte streams off an ordinary file's name, which a policy that judges only the base name would leak through.
+
+The vector is now armed and proven. On an NT File System (NTFS) volume the suite hides the secret in a stream, requires the open policy to read it and the deny policy to refuse it with the named refusal, and marks the vector inapplicable — never incomplete — on hosts without the feature. The same change carries the suite's Windows path discipline, so the conformance run is now a one-command proof on every supported platform.
+
+== Fetches that ride out the flap
+
+Every download the command-line tools make — runtime images, payload slices, registry indexes — crosses one fetch path, and that path's transient-failure budget was a fixed three tries one second apart. A minute-scale content-delivery flap, the class the release hosts show weekly, killed installs that should have waited it out. The transient class now retries on an exponential, jittered schedule with a bounded budget, while the permanent class — a missing asset, a signature mismatch, a policy refusal — still fails immediately and by name (tebako#1015). The change rode in on evidence: a factory's macOS leg died to a single Transmission Control Protocol (TCP) open timeout at a fetch the retry budget now covers.
+
+== The specifications now say what the code does
+
+The normative specification set is the surface a third party implements against, so this release includes a full audit of the forty-two specifications against the shipped crates, every claim checked file and line on both sides. The wire core — the package trailer's byte layout, the slot records, the signing extension, the loader-to-runtime grammar, the exit-code table, the lockfile, the block-digest sidecar, the container-registry grammar — verified byte-exact. What the audit did find, the release fixes: one missing wire rule (the extension-block critical flag, without which a reader built from the specification alone would skip a block the shipped reader refuses), three status markers that still read PLANNED over features long since shipped, three shipped manifest keys absent from the grammar blocks authors transcribe, and one published diagnostics verb that had no normative paragraph. The queue-era pointers are swept out of the tree wholesale, so the shipped source cites the specifications, not the work list.
+
+== The smaller repairs
+
+The benchmark fan-in no longer mistakes its own report artifact for a missing leg; the continuous-integration stress rig that runs one test per process under the platform's memory checker now covers the package-info suite as well, so the next rare abort names the dying test instead of the bare signal; and the 0.17.5 runtime line for Ruby, published alongside this release, completes the spawn-change-directory pair whose product half v2.8.74 carried — a spawned child that is handed an in-image working directory now starts there, which is what the standards toolchain's Sass compiler needed (tamatebako/ruby#152).
+
+== The line
+
+The release is `v2.8.75`, published from the tamatebako/tebako repository with its full per-platform matrix, and the factory pin rolls that move the runtime lines onto it fire on the release's own dispatch — no human step stands between the tag and the factories any more.
