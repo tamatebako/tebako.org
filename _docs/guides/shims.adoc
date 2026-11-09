@@ -9,7 +9,7 @@ lede: >-
 description: >-
   This guide describes tebako shims, which put packaged commands on
   PATH with per-invocation version dispatch: the version chain,
-  enable/disable, which, doctor, and install-shell.
+  enable/disable, hide/expose, which, doctor, and install-shell.
 ---
 
 == The shim directory on PATH, once.
@@ -113,6 +113,17 @@ $ tebako-shim enable metanorma           # bring it back
 ----
 
 `disable` parks a version — or the whole tool — so dispatch no longer selects it, and `enable` restores it. The state lives in `~/.tebako/shims/.disabled.yaml`: a plain YAML file that can be read or edited.
+
+== Free the name, keep the tool.
+
+[source,console]
+----
+$ tebako-shim hide fontist      # the host's own fontist answers again
+$ tebako run fontist --help     # the packaged one still dispatches
+$ tebako-shim expose fontist    # relink it on PATH
+----
+
+`disable` and `hide` answer different questions. `disable` says the payload's command must not run; the shim stays on PATH and refuses by name. `hide` says the command must not shadow: the link leaves `~/.tebako/shims`, so the machine's own tool answers again, while the claim stays dispatchable through `tebako run` and `enable`. The hidden set lives in `~/.tebako/shims/.hidden.yaml`, a plain list in the same shape as the disabled file. A hidden name is never re-linked by a later install; `expose` brings it back. `tebako-shim list` marks hidden commands in text and in the JSON form.
 
 == Per-run overrides at the shim.
 
