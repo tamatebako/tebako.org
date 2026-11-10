@@ -27,13 +27,17 @@ The jail-conformance suite attacks a pressed package from every vector a payload
 
 The vector is now armed and proven. On an NT File System (NTFS) volume the suite hides the secret in a stream, requires the open policy to read it and the deny policy to refuse it with the named refusal, and marks the vector inapplicable — never incomplete — on hosts without the feature. The same change carries the suite's Windows path discipline, so the conformance run is now a one-command proof on every supported platform.
 
-== Fetches that ride out the flap
+== Fetches that wait out the flap
 
 Every download the command-line tools make — runtime images, payload slices, registry indexes — crosses one fetch path, and that path's transient-failure budget was a fixed three tries one second apart. A minute-scale content-delivery flap, the class the release hosts show weekly, killed installs that should have waited it out. The transient class now retries on an exponential, jittered schedule with a bounded budget, while the permanent class — a missing asset, a signature mismatch, a policy refusal — still fails immediately and by name (tebako#1015). The change rode in on evidence: a factory's macOS leg died to a single Transmission Control Protocol (TCP) open timeout at a fetch the retry budget now covers.
 
 == The specifications now say what the code does
 
 The normative specification set is the surface a third party implements against, so this release includes a full audit of the forty-two specifications against the shipped crates, every claim checked file and line on both sides. The wire core — the package trailer's byte layout, the slot records, the signing extension, the loader-to-runtime grammar, the exit-code table, the lockfile, the block-digest sidecar, the container-registry grammar — verified byte-exact. What the audit did find, the release fixes: one missing wire rule (the extension-block critical flag, without which a reader built from the specification alone would skip a block the shipped reader refuses), three status markers that still read PLANNED over features long since shipped, three shipped manifest keys absent from the grammar blocks authors transcribe, and one published diagnostics verb that had no normative paragraph. The queue-era pointers are swept out of the tree wholesale, so the shipped source cites the specifications, not the work list.
+
+== The packager's version table catches up
+
+The press gate's supported-Ruby table now names 3.3.13 and 4.0.9 — the versions the current runtime line actually builds. A feedstock pinned at the shipped versions used to die at the gate with a not-supported refusal before resolution could name the real state; the gate and the factory catalog now agree by construction. On the continuous-integration side, the macOS legs carry the floor's symbol gate: every shipped binary's undefined symbols are checked against the macOS 14.0 export set, so a component that reaches for a newer library call fails the leg instead of the user's dyld — the defect class that broke the 0.17.6 runtime's macOS executables on 14.x hosts.
 
 == The smaller repairs
 
