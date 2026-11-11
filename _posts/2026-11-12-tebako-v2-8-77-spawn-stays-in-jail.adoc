@@ -1,0 +1,39 @@
+---
+layout: post
+title: "The spawn that stays in the jail, and the PATH that asks first"
+date:   2026-11-12 18:00:00 +0800
+categories:
+  - tebako
+  - release
+  - security
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: "Release v2.8.77 closes the jail's last open boundary — an unplanned child process on Windows now inherits the jail's verdict as a refusal, not an escape — and completes the shim ladder's install-time half, so a package claims exactly the command names its operator allows, at exactly the position on the path its operator chooses. A bare press in a Python project directory now works the way the Node.js and Ruby presses already did."
+---
+
+Release v2.8.77 has been published. Its three changes share one property: each takes a boundary the system already had, and makes the boundary explicit about who decides.
+
+== The spawn that stays in the jail
+
+A packaged application running under the tebako jail has its own file reads judged by the policy the launcher bound, and a read the policy does not grant is refused. One path around that judgment existed on Windows: the application could ask the operating system to start a new host process — Ruby's `IO.popen(["cat", secret])` is the canonical spelling — and the child, being a fresh process with no policy applied, read whatever the host allowed. macOS and Linux close this by construction, because the preload tier that applies the policy is inherited into the child and judges both the program being executed and the reads the child then makes. Windows has no injection tier of that kind, so inheritance cannot carry the judgment.
+
+The release makes the unplanned spawn boundary fail-closed on Windows. A new entry point in the runtime's application binary interface, `tebako_fs_spawn_host_permitted`, answers whether a host child may be started: always on macOS and Linux, and on Windows exactly while the bound policy is the fully open default — a policy that would refuse nothing is the only policy under which an unjudged child is safe. Under any real confinement the interpreter's spawn path refuses the child by name — the caller receives `Errno::EPERM` — rather than letting the read escape. Planned children are unaffected: a child that the composition declared re-applies its own jail inside its own process, on every platform, because the policy travels in its environment. The interpreter half of the handshake rides the next Ruby runtime pair, and the jail conformance suite's Windows arm, which has carried this vector as a named known-gap since the suite began, flips to enforced when that pair publishes.
+
+== The PATH that asks first
+
+A tebako package registers its commands on the command path, and a toolchain package can register dozens, which is how a development machine's version manager once lost its `ruby` to a document toolchain for the length of a session. The previous release gave the operator the verbs to free a name after the fact. This release moves the decision to where the claim is made: installation.
+
+`tebako install <name> --only-shims a,b` narrows the package's claim on the path to exactly the commands named, and `--no-shims` claims nothing at all. The selection applies to the whole dependency closure — the payload's own commands, its dependencies' commands, and the commands a spawned runtime exposes — and it never breaks dispatch, because `tebako run <name>` reaches the command whether or not the name stands on the path. A name the operator has hidden stays hidden across reinstalls, with the subtraction stated once rather than silently re-claimed. The second half is positional: `tebako shim install-shell --position append` places tebako's directory last on the path, so the machine's own tools answer first and tebako answers only what nothing else provides. Prepending remains the default, and switching positions rewrites the installer-managed block in place without touching the surrounding lines of the shell profile.
+
+== The Python press
+
+The zero-ceremony press — the packager that runs from a project directory with no manifest authoring — now covers Python. A bare `tebako press` in a directory carrying a `pyproject.toml` resolves the Python runtime pair through the same managed dispatch that `tebako run python` uses, vendors the dependency closure lockfile-true from `requirements.txt` in wheel form only, installs the project itself without dependencies, and stitches a package whose console script runs beside the packages it imports, at whatever mount point the consumer chooses. The failure modes are named and early: a missing `requirements.txt` refuses before any resolution begins, a dependency that exists only as source refuses by name because compiling it would be the author's toolchain and not ours, and a console script the project never declared is named rather than guessed.
+
+== The numbers
+
+The release's gates all ran to green before publication: the full platform matrix built and shipped 164 assets, and the performance covenant's budgets held. The spawn boundary's evidence is a platform-armed acceptance test that exercises the refusal through the shipped binary, together with a contract harness that proves a process which never bound a policy still answers as fully open. The jail conformance suite keeps the vector named as its tracked known-gap until the interpreter half publishes, because that suite runs against released runtime pairs and never against a build tree.
+
+The upgrade is the usual one. The release page carries every platform's binaries and their checksums, and an existing installation picks the new runtime line up on its next resolution.
