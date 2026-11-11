@@ -106,6 +106,10 @@ Hello, world!
 
 The first run of a payload that carries a runtime downloads that runtime once, verifies its SHA-256, and caches it; every later run starts from the cache. Open a new shell after `install-shell` so the PATH change takes effect, or call the shim by path (`~/.tebako/shims/hello`) until you do.
 
+== Choosing which commands reach PATH.
+
+A registry install links the payload's default-active commands — the set the payload's author marked `active` in its manifest. With tebako 2.8.77 the installer narrows that set at install time: `tebako install <name> --only-shims metanorma,relaton` links exactly the named commands, and `tebako install <name> --no-shims` links none. Neither choice touches dispatch — every declared command still runs through `tebako run <name>` — and a name freed later with `tebako shim hide <name>` stays freed across reinstalls, because install always subtracts the hidden set. The three tiers of a command's life (declared by the author, default-active by the author, linked by the installer) are described in the link:/docs/guides/shims/[Shims & versions] guide.
+
 One case does need a registry the guide has not mentioned: installing a **runtime** by name, without an app that carries it.
 
 [source,console]

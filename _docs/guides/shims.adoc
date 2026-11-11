@@ -22,9 +22,20 @@ $ tebako-shim install-shell --shell zsh  # or name it: bash|zsh|fish|csh
 
 `install-shell` prepends `~/.tebako/shims` to PATH inside a managed block in the shell startup file — idempotent, and removed by `tebako-shim uninstall-shell`. On Windows the shim directory goes on the user PATH in the registry (HKEY_CURRENT_USER, HKCU). Open a new shell afterwards.
 
+Prepend is the default because a shim just installed should answer. Where a version manager (mise, rbenv) or a system tool must keep the lead, `--position append` (tebako 2.8.77) puts the shim directory last on PATH instead, and tebako then answers only for the names nothing else provides:
+
+[source,console]
+----
+$ tebako-shim install-shell --position append
+----
+
+Re-running with the other position rewrites the managed block in place; the rest of the startup file is never touched.
+
 == Where shims come from.
 
-`tebako install` registers them — registry installs always do; installing a local package file does it only with `--shims`. `tebako uninstall <name>` removes the shims and the cache entry. There is no `tebako shim add/remove/list` — the read-side verb is `tebako-shim list`.
+A command passes through three tiers before it answers on PATH, and each tier has its own owner. The payload author declares the complete inventory (the *declared* tier — the only set `tebako run <name>` resolves against) and chooses which of those commands claim a PATH name by default (the *default-active* tier, the manifest's `active:` key). The install decides what actually links on this machine (the *linked* tier): the default is the author's active set, and `tebako install <name> --only-shims a,b` or `--no-shims` (tebako 2.8.77) narrows it. A linked command can always be unlinked later with `tebako shim hide`, and every declared command — linked or not — remains dispatchable through `tebako run`.
+
+`tebako uninstall <name>` removes the shims and the cache entry. There is no `tebako shim add/remove/list` — the read-side verb is `tebako-shim list`.
 
 Two classes of shim share the directory. A *payload shim* dispatches to a packaged payload, which is the class the rest of this guide describes. A *runtime-own shim* dispatches to an engine's own tool with no payload in between, and `tebako install <engine>[:<command>]` creates it: the bare form registers the interpreter's own name, and the colon form registers the declared command's name.
 
@@ -113,6 +124,17 @@ $ tebako-shim enable metanorma           # bring it back
 ----
 
 `disable` parks a version — or the whole tool — so dispatch no longer selects it, and `enable` restores it. The state lives in `~/.tebako/shims/.disabled.yaml`: a plain YAML file that can be read or edited.
+
+== Free a PATH name, keep the dispatch.
+
+[source,console]
+----
+$ tebako-shim hide java       # unlink ~/.tebako/shims/java — the system's java answers again
+$ tebako run java -version    # the packaged java still dispatches by name
+$ tebako-shim expose java     # relink it
+----
+
+`hide` and `disable` are different axes. `disable` keeps the shim on PATH and refuses dispatch, which is the answer to "this version must not run here". `hide` removes the link so the name falls through to whatever PATH resolves next, which is the answer to "my own java lives elsewhere" — and the claim stays dispatchable through `tebako run`. A hidden name stays hidden across reinstalls: install never silently reclaims a name the user freed. The state lives in `~/.tebako/shims/.hidden.yaml`.
 
 == Free the name, keep the tool.
 

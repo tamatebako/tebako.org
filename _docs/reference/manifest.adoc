@@ -82,9 +82,12 @@ An app provides commands. Each entrypoint names the command (the shim registers 
 provides:
   entrypoints:
     - {name: myapp, path: /bin/myapp, runtime_requirement: {engine: ruby, constraint: ">= 3.3, < 5.0"}}
+    - {name: myapp-helper, path: /bin/myapp-helper, active: false}
   platforms: ["aarch64-macos", "x86_64-linux-gnu"]
   capabilities: {exec: true, read: true, host: {default: open}}
 ----
+
+The `entrypoints` list is the complete inventory of commands the image carries — the *declared* tier, and the only set `tebako run <name>` resolves against. Two further tiers decide what reaches the user's PATH, and each tier has its own owner. The `active` key (default `true`) is the payload author's tier: `active: false` declares a command without registering it on PATH at install time, which is how a toolchain payload ships its companion commands without shadowing the user's own tools of the same names. The installer's tier is the per-machine choice made at install (`--only-shims`, `--no-shims`) and afterwards (`tebako shim hide` and `tebako shim expose`); the installer's default is exactly the author's active set. The three tiers and their owners are specified in the link:/docs/architecture/dispatch/[dispatch architecture].
 
 A runtime provides an engine: the engine name, its version, the application binary interface (ABI) line, the platform, and the implementation (which Matz's Ruby Interpreter (MRI)-compatible engine this build is). It also carries the environment the interpreter expects and the spawn surface — the commands this runtime boots as a separate process for a composed payload.
 

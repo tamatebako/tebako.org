@@ -4,17 +4,18 @@ heading: The dispatcher and its verbs.
 lede: >-
   tebako-shim is one binary with two roles. Invoked under a payload's
   own name, it dispatches: argv0 selects the payload, the version, and
-  the runtime for the invocation. Invoked as itself, it manages: list,
-  enable, disable, which, doctor, and the shell integration verbs.
+  the runtime for the invocation. Invoked as itself, it manages the shim
+  surface: list, use, env, enable, disable, hide, expose, which, doctor,
+  and the shell integration verbs.
 description: >-
   This page is the tebako-shim command-line interface (CLI) reference:
-  the dispatch role, the management verbs (list, enable, disable,
-  which, doctor, install-shell, uninstall-shell), and how shims land
-  on PATH.
+  the dispatch role, the management verbs (list, use, env, enable,
+  disable, hide, expose, which, doctor, install-shell, uninstall-shell),
+  the local configuration files they write, and how shims land on PATH.
 ---
 
 // normative: verbs verified against crates/tebako-shim/src/main.rs and
-// manage.rs (v2.1.7, 2026-09-09). Dispatch resolution: the version
+// manage.rs (v2.8.77, 2026-11-11). Dispatch resolution: the version
 // chain (environment, project file, config defaults, registry default)
 // per the dispatch architecture page.
 
@@ -22,35 +23,51 @@ description: >-
 
 A shim is a link to the dispatcher binary named after a payload's command. Each invocation resolves three things: which payload (argv0), which version (the version chain: a per-tool environment pin, then the nearest project file walking up from the working directory, then config defaults, then the registry default), and which runtime (the entrypoint's requirement — newest compatible cached, else download, verify, and cache). The walkthrough is the link:/docs/guides/shims/[Shims & versions] guide.
 
-== Manage: list, enable, disable, which.
+== Manage versions and routing: use, env.
 
 [source,text]
 ----
-tebako-shim list
-tebako-shim enable <name>[@<version>]
-tebako-shim disable <name>[@<version>]
+tebako-shim use <tool> <pin>                    # write the tool's user default ([payload@]version)
+tebako-shim use --clear <tool>                  # remove that default
+tebako-shim use --runtime <engine>@<langver>[:<tebako>]
+                                                # prefer a runtime line for an engine
+tebako-shim env <tool> [KEY=VALUE …]            # list or set the tool's standing interpreter options
+tebako-shim env <tool> --unset KEY …            # remove standing options
+----
+
+`use` and `env` write `~/.tebako/config.yaml` — the machine's local routing configuration — so a default chosen once survives every later invocation. The file stays hand-editable YAML; the verbs are the checked write path (keys preserved, atomic rename).
+
+== Gate dispatch and PATH separately: enable, disable, hide, expose.
+
+[source,text]
+----
+tebako-shim enable <name>[@<version>] [--of <payload>]
+tebako-shim disable <name>[@<version>] [--of <payload>]
+tebako-shim hide <name>
+tebako-shim expose <name>
+----
+
+The two axes answer different questions. `disable` keeps the shim on PATH and refuses dispatch — the answer to "this version must not run here" — and its selectors live in `~/.tebako/shims/.disabled.yaml`. `hide` removes the link so the name falls through to the user's own tool, while the claim stays dispatchable through `tebako run <name>` — the answer to "my own java lives elsewhere"; `expose` relinks. A hidden name stays hidden across reinstalls, and the state lives in `~/.tebako/shims/.hidden.yaml`. Enabling a declared-but-never-linked command (a payload's `active: false` entry) materializes its link on demand.
+
+== Inspect: list, which, doctor.
+
+[source,text]
+----
+tebako-shim list [--json]
 tebako-shim which <tool>
-----
-
-`list` shows the registered shims; enable and disable turn a payload's dispatch on and off without removing it; `which` resolves a tool name the way a dispatch would and prints the plan — the entrypoint, the payload, and the runtime it would use.
-
-== Diagnose: doctor.
-
-[source,text]
-----
 tebako-shim doctor
 ----
 
-The verb checks the dispatch machinery — the store, the registries, the shims — and prints each problem with its remedy. The guide pairs it with the debug surface: link:/docs/guides/debug/[Debug & logging].
+`list` shows the registered shims with their provider, resolved version and its source, and the disabled and hidden marks; `--json` emits one machine-readable document. `which` resolves a tool name the way a dispatch would and prints the plan — the entrypoint, the payload, and the runtime it would use. `doctor` checks the dispatch machinery — the store, the registries, the shims — and prints each problem with its remedy. The guide pairs it with the debug surface: link:/docs/guides/debug/[Debug & logging].
 
 == Shell integration: install-shell, uninstall-shell.
 
 [source,text]
 ----
-tebako-shim install-shell
-tebako-shim uninstall-shell
+tebako-shim install-shell [--shell bash|zsh|fish|csh] [--position prepend|append]
+tebako-shim uninstall-shell [--shell bash|zsh|fish|csh]
 ----
 
-The verbs add or remove the shim directory from the shell's PATH — the step `tebako install` performs when it registers a payload's commands.
+The verbs add or remove the shim directory from the shell's PATH — the step `tebako install` performs when it registers a payload's commands. Prepend is the default, so a shim just installed answers; with tebako 2.8.77, `--position append` puts the shim directory last, so a version manager or a system tool of the same name keeps the lead and tebako answers only for names nothing else provides. Re-running with the other position rewrites the managed block in place.
 
 See also: link:/docs/architecture/dispatch/[Dispatch] · link:/docs/reference/cli-tebako/[tebako CLI] · link:/docs/guides/run/[Run a packaged app]
