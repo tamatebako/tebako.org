@@ -1,0 +1,33 @@
+---
+layout: post
+title:  "Scanned once per build, not once per launch"
+date:   2026-11-11 18:00:00 +0800
+categories:
+  - tebako
+  - release
+  - performance
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: "Release v2.8.76 stops paying macOS's first-seen malware scan on every launch of a packaged app. Native extensions now materialize to a stable, content-segregated path, so the scan prices once per image build — and a silent failure class in native-extension builds is fixed in the same release."
+---
+
+Release v2.8.76 has been published. Its headline is a launch-time cost that has been paid invisibly on every macOS run of a packaged application, and its repair is a change of address, not a change of mechanism.
+
+== The scan you paid on every launch
+
+On macOS, every launch of a tebako-packaged application used to materialize each native extension onto a fresh per-process path under the system temporary directory. macOS treats code at a path it has never seen as code it has never scanned: XProtect and the system policy daemon price that first sight at roughly 350 to 650 milliseconds per extension, and the verdict dies with the per-process directory at exit. An application loading three extensions at startup paid between 1.2 and 1.7 seconds of an approximately two-second start to scans of bytes that had not changed since the image was built.
+
+Windows never paid this, for an unglamorous reason: its materializations are leave-in-place and content-keyed, because a loaded library cannot be unlinked there. macOS now uses the same shape. Extractions land in a persistent namespace under the execution cache, segregated by the image's own digest, so a rebuilt image never reads a stale extraction and a stable path lets the scan verdict survive across launches. The write is staged, hashed in flight, and verified before it installs; a cached copy is re-hashed against its record on every boot, and a copy that fails to match is wiped and re-extracted once rather than served. The measurable consequence is that a second launch of the same package skips both the extraction and the scan; the first launch pays what it always paid.
+
+== The silent build that built nothing
+
+The same release fixes a quieter failure. A runtime whose working directory was presented as a relative spelling — the `.` of a spawned build rather than an absolute path — was answered by the virtual filesystem as if it were the root of the mounted namespace. The practical victim was the native-extension build itself: Ruby's `mkmf` probes the current directory for C sources, received the root listing, found no sources, and produced an extension with no library in it. The build was green and the gem was empty. A relative spelling now answers with the host directory it actually names, and the fix carries the regression test that fails on the old behavior.
+
+== The numbers
+
+The release's gates all ran to green before publication: the full platform matrix built and shipped 164 assets, and the performance covenant's budgets held. The scan cost itself does not appear in a continuous-integration number, because the scanners belong to the host and not to the test; the evidence for the repair is the mechanism — the path no longer changes between launches — and the test suite proves the path's stability by reusing the same inode across two independent boots of one image.
+
+The upgrade is the usual one. The release page carries every platform's binaries and their checksums, and an existing installation picks the new runtime line up on its next resolution.
