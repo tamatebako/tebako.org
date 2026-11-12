@@ -11,10 +11,10 @@ author:
   email: open.source@ribose.com
   social_links:
     - https://github.com/tamatebako
-excerpt: "Release v2.8.77 closes the jail's last open boundary — an unplanned child process on Windows now inherits the jail's verdict as a refusal, not an escape — and completes the shim ladder's install-time half, so a package claims exactly the command names its operator allows, at exactly the position on the path its operator chooses. A bare press in a Python project directory now works the way the Node.js and Ruby presses already did."
+excerpt: "Release v2.8.78 closes the jail's last open boundary — an unplanned child process on Windows now inherits the jail's verdict as a refusal, not an escape — and completes the shim ladder's install-time half, so a package claims exactly the command names its operator allows, at exactly the position on the path its operator chooses. A bare press in a Python project directory now works the way the Node.js and Ruby presses already did."
 ---
 
-Release v2.8.77 has been published. Its three changes share one property: each takes a boundary the system already had, and makes the boundary explicit about who decides.
+Release v2.8.78 has been published. Its three changes share one property: each takes a boundary the system already had, and makes the boundary explicit about who decides.
 
 == The spawn that stays in the jail
 
@@ -31,6 +31,10 @@ A tebako package registers its commands on the command path, and a toolchain pac
 == The Python press
 
 The zero-ceremony press — the packager that runs from a project directory with no manifest authoring — now covers Python. A bare `tebako press` in a directory carrying a `pyproject.toml` resolves the Python runtime pair through the same managed dispatch that `tebako run python` uses, vendors the dependency closure lockfile-true from `requirements.txt` in wheel form only, installs the project itself without dependencies, and stitches a package whose console script runs beside the packages it imports, at whatever mount point the consumer chooses. The failure modes are named and early: a missing `requirements.txt` refuses before any resolution begins, a dependency that exists only as source refuses by name because compiling it would be the author's toolchain and not ours, and a console script the project never declared is named rather than guessed.
+
+== The pipeline that repaired itself
+
+This release exists twice. The first tag's platform legs published every asset — all 164 of them — and its finalize job then died at the benchmark wake step on a command-line defect: the poll that finds the dispatched benchmark run passed a jq flag to the GitHub CLI, which answers a named usage error, never a result. The line moved forward rather than re-tagging, which is how this release also ships the repair: the wake works again, and with it the covenant consult and the factory pin-roll that follow every publication.
 
 == The numbers
 
