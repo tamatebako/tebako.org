@@ -107,14 +107,14 @@ The guide is link:/docs/guides/check/[Check a payload].
 ----
 tebako cache list [--json]
 tebako cache prune [--all] [--older-than Nd]
-tebako install <ref | name[@ver]>
+tebako install <ref | name[@ver]> [--only-shims a,b | --no-shims]
 tebako install <engine>[:<command>]
 tebako uninstall <name>
 tebako info [topic] [--remote] [--json]
 tebako inspect <artifact> [flags]
 ----
 
-`tebako install` installs a payload and registers its shims, and the engine form pre-stages that engine's runtime and registers a runtime-own shim instead (the bare form registers the interpreter's own name, the colon form the declared command's name). `tebako uninstall` removes the shims and the cache entry. `tebako info` reports on the store and its contents — the topics are system, runtimes, payloads, shims, registries, and store. `tebako inspect` reads a single artifact; `--contract` prints the contract card: the era, the contract versions, mount_root, the ABI, and the trust verdict. The guide is link:/docs/guides/info-inspect/[info & inspect].
+`tebako install` installs a payload and registers its shims — the payload's default-active commands by default, exactly the named commands with `--only-shims a,b`, and no PATH claims at all with `--no-shims` (`tebako run <name>` stands either way) — and the engine form pre-stages that engine's runtime and registers a runtime-own shim instead (the bare form registers the interpreter's own name, the colon form the declared command's name). `tebako uninstall` removes the shims and the cache entry. `tebako info` reports on the store and its contents — the topics are system, runtimes, payloads, shims, registries, and store. `tebako inspect` reads a single artifact; `--contract` prints the contract card: the era, the contract versions, mount_root, the ABI, and the trust verdict. The guide is link:/docs/guides/info-inspect/[info & inspect].
 
 == Trust material: keys, trust.
 

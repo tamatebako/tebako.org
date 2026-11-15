@@ -86,6 +86,8 @@ provides:
   capabilities: {exec: true, read: true, host: {default: open}}
 ----
 
+The entrypoint list is the complete inventory of commands a user may invoke directly — a bundled CLI is as much a provided command as the app's namesake. The optional per-entrypoint `active` key (default `true`) is the author's default exposure: an entrypoint with `active: false` is declared and dispatchable through `tebako run <name>`, but an unqualified install does not claim its name on PATH. The installer narrows the claim further with `--only-shims` and `--no-shims`, and adjusts it afterwards with `tebako-shim hide` and `tebako-shim expose`; the full model is described in link:/docs/guides/shims/[Shims & versions].
+
 A runtime provides an engine: the engine name, its version, the application binary interface (ABI) line, the platform, and the implementation (which Matz's Ruby Interpreter (MRI)-compatible engine this build is). It also carries the environment the interpreter expects and the spawn surface — the commands this runtime boots as a separate process for a composed payload.
 
 A data payload provides content for consumers: suggested mount semantics (the mount decision always belongs to the consumer's manifest) and the consumer list.

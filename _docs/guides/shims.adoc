@@ -8,8 +8,10 @@ lede: >-
   version, and which runtime each invocation receives.
 description: >-
   This guide describes tebako shims, which put packaged commands on
-  PATH with per-invocation version dispatch: the version chain,
-  enable/disable, which, doctor, and install-shell.
+  PATH with per-invocation version dispatch: the three tiers of a
+  command's life (declared, default-active, linked), install-time
+  narrowing, hide and expose, the version chain, enable/disable,
+  which, doctor, and install-shell.
 ---
 
 == The shim directory on PATH, once.
@@ -21,6 +23,15 @@ $ tebako-shim install-shell --shell zsh  # or name it: bash|zsh|fish|csh
 ----
 
 `install-shell` prepends `~/.tebako/shims` to PATH inside a managed block in the shell startup file — idempotent, and removed by `tebako-shim uninstall-shell`. On Windows the shim directory goes on the user PATH in the registry (HKEY_CURRENT_USER, HKCU). Open a new shell afterwards.
+
+`--position append` puts the shim directory last on PATH instead of first:
+
+[source,console]
+----
+$ tebako-shim install-shell --position append
+----
+
+Append is the right choice on a machine where another version manager already owns the front of PATH — mise, rbenv, or pyenv keep their precedence, and a tebako shim answers only for a name no earlier manager claims. Re-running the command with the other flag moves the managed block.
 
 == Where shims come from.
 
@@ -38,6 +49,30 @@ v24.22.0
 ----
 
 The claims live in `~/.tebako/shims/.runtime-own.yaml`, a map from each registered name to the engine and the entry token it boots. `tebako-shim list` reports them beside the payload shims and marks them `[runtime-own]`. When a payload provides a name that a runtime-own claim also carries, the payload's name wins on every dispatch, and a later payload claim displaces the runtime-own one loudly.
+
+== Which commands get a shim: the three tiers.
+
+A command name passes through three tiers before it lands on PATH, and each tier has exactly one owner. The payload author *declares* the complete inventory of commands the payload can dispatch, and that inventory is the only set `tebako run <name>` resolves against. The author then marks the *default-active* subset — the commands an unqualified install links; a command that is reached rarely, or whose name collides with a common tool, carries `active: false` in the manifest and stays unlinked by default. The installer makes the final, per-machine choice: the *linked* set is the default-active set as narrowed at install time and adjusted afterwards.
+
+The install-time narrowing is explicit:
+
+[source,console]
+----
+$ tebako install metanorma --only-shims metanorma,mn2pdf   # link exactly these
+$ tebako install metanorma --no-shims                      # claim no PATH names
+----
+
+Naming a command the payload does not declare, or one the author hid, is a named usage error. A PATH claim and the ability to run are separate facts: dispatch through `tebako run <name>` stands either way, and the narrowing rides the whole closure — the payload's own commands, its dependencies', and the commands its spawned runtimes expose.
+
+After install, the installer adjusts the set without reinstalling:
+
+[source,console]
+----
+$ tebako-shim hide fontist      # remove one link; the payload stays installed
+$ tebako-shim expose fontist    # bring it back
+----
+
+A hidden name stays hidden across reinstalls, and the subtraction is printed once at install time. `tebako shim hide` is the same verb reached through the CLI — the dispatcher and the CLI share the management surface, so `tebako shim list` and `tebako-shim list` are one command.
 
 == The version chain: four levels, first hit wins.
 

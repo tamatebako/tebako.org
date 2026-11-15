@@ -106,6 +106,8 @@ Hello, world!
 
 The first run of a payload that carries a runtime downloads that runtime once, verifies its SHA-256, and caches it; every later run starts from the cache. Open a new shell after `install-shell` so the PATH change takes effect, or call the shim by path (`~/.tebako/shims/hello`) until you do.
 
+An install claims the payload's default-active command names on PATH, and the claim is the installer's to narrow: `--only-shims a,b` links exactly the named commands, and `--no-shims` claims nothing while leaving `tebako run <name>` fully working. The complete model — which names a payload declares, which of those the author activates by default, and how the linked set is adjusted after install with `tebako-shim hide` and `tebako-shim expose` — is described in link:/docs/guides/shims/[Shims & versions].
+
 One case does need a registry the guide has not mentioned: installing a **runtime** by name, without an app that carries it.
 
 [source,console]

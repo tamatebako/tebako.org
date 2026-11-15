@@ -22,17 +22,19 @@ description: >-
 
 A shim is a link to the dispatcher binary named after a payload's command. Each invocation resolves three things: which payload (argv0), which version (the version chain: a per-tool environment pin, then the nearest project file walking up from the working directory, then config defaults, then the registry default), and which runtime (the entrypoint's requirement — newest compatible cached, else download, verify, and cache). The walkthrough is the link:/docs/guides/shims/[Shims & versions] guide.
 
-== Manage: list, enable, disable, which.
+== Manage: list, enable, disable, hide, expose, which.
 
 [source,text]
 ----
 tebako-shim list
 tebako-shim enable <name>[@<version>]
 tebako-shim disable <name>[@<version>]
+tebako-shim hide <name>
+tebako-shim expose <name>
 tebako-shim which <tool>
 ----
 
-`list` shows the registered shims; enable and disable turn a payload's dispatch on and off without removing it; `which` resolves a tool name the way a dispatch would and prints the plan — the entrypoint, the payload, and the runtime it would use.
+`list` shows the registered shims; enable and disable turn a payload's dispatch on and off without removing it; `hide` removes one command's link from the shim directory without uninstalling its payload, and `expose` restores the link — a hidden name stays hidden across reinstalls; `which` resolves a tool name the way a dispatch would and prints the plan — the entrypoint, the payload, and the runtime it would use.
 
 == Diagnose: doctor.
 
@@ -47,10 +49,10 @@ The verb checks the dispatch machinery — the store, the registries, the shims 
 
 [source,text]
 ----
-tebako-shim install-shell
+tebako-shim install-shell [--shell bash|zsh|fish|csh] [--position prepend|append]
 tebako-shim uninstall-shell
 ----
 
-The verbs add or remove the shim directory from the shell's PATH — the step `tebako install` performs when it registers a payload's commands.
+The verbs add or remove the shim directory from the shell's PATH — the step `tebako install` performs when it registers a payload's commands. `--position append` places the directory last instead of first, which leaves an existing version manager's precedence intact on a shared machine.
 
 See also: link:/docs/architecture/dispatch/[Dispatch] · link:/docs/reference/cli-tebako/[tebako CLI] · link:/docs/guides/run/[Run a packaged app]
