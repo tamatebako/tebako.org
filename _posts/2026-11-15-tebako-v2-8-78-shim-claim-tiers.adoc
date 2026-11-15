@@ -1,0 +1,50 @@
+---
+layout: post
+title:  "Who may claim a name on PATH: the shim claim gains three tiers and an installer's vote"
+date:   2026-11-15 12:00:00 +0800
+categories:
+  - tebako
+  - release
+  - shims
+author:
+  name: The Tebako team
+  email: open.source@ribose.com
+  social_links:
+    - https://github.com/tamatebako
+excerpt: "Release v2.8.78 changes who decides what lands on PATH. A payload author declares the complete command inventory and marks its default-active set, and the installing user narrows the claim at install time with --only-shims and --no-shims, adjusts it afterwards with hide and expose, and places the shim directory first or last on PATH with install-shell --position."
+---
+
+Release v2.8.78 has been published, and its subject is a question that package managers answer quietly and that a packaging system must answer in writing: when an install finishes, which command names on the user's PATH did it claim, and who got a say?
+
+The incident class is familiar to anyone who runs more than one toolchain manager. A tebako payload that bundles an interpreter registers the commands its manifest declares, and an early line of the product registered all of them. A developer who installed such a payload to reach one command — a document toolchain, say — could find the payload's bundled `ruby` answering in place of the ruby that mise had installed for the project at hand, because the tebako shim directory stood first on PATH. The failure surfaced far from its cause, as a bundler crash in an unrelated worktree, and the machine's other shells inherited the same surprise.
+
+== The model: three tiers, three owners
+
+The release makes the claim path explicit, and each tier of it has exactly one owner. The payload author *declares* the complete inventory of commands the payload can dispatch, and that inventory is the only set `tebako run <name>` resolves against. The same author marks the *default-active* subset — the commands an unqualified install links — with the per-entrypoint `active` key, so a toolchain payload can ship sixty-six dispatchable commands while claiming only the two names its users expect. The installing user owns the third tier: the *linked* set, the names that actually hold a link in `~/.tebako/shims` on this machine.
+
+Each tier is a subset of the previous one, and the boundary between the second and the third is where the installer now has explicit instruments:
+
+[source,console]
+----
+$ tebako install metanorma --only-shims metanorma,mn2pdf   # link exactly these
+$ tebako install metanorma --no-shims                      # claim no PATH names
+----
+
+Naming a command the payload does not declare, or one the author marked inactive, is a named usage error rather than a silent skip. A PATH claim and the ability to run remain separate facts: `tebako run <name>` dispatches any declared command whether or not a shim exists for it, which is what `--no-shims` leaves behind.
+
+== After the install: hide, expose, and the PATH position
+
+The linked set is adjustable without reinstalling. `tebako-shim hide <name>` removes one command's link while the payload stays installed, and `tebako-shim expose <name>` restores it. A hidden name stays hidden across reinstalls — the installer remembers the subtraction, so an upgrade does not re-claim a name the user freed — and the subtraction is printed once at install time.
+
+The shell integration itself gains a position. `tebako-shim install-shell` has always prepended the shim directory to PATH, which is the right default for a machine where tebako is the primary manager. On a machine where mise, rbenv, or pyenv already owns the front of PATH, `--position append` puts the shim directory last instead, and a tebako shim then answers only for names no earlier manager claims:
+
+[source,console]
+----
+$ tebako-shim install-shell --position append
+----
+
+== The contract behind the controls
+
+The dispatch surface's rule set is unchanged where it matters and stricter where it was silent. Shim links remain an explicit act: a registry install registers the payload's default-active set because that is the install's point, a local-package install links only with the explicit `--shims`, and a run — of any package, ever — links nothing. The disable axis is orthogonal to all three tiers and composes with them, so a command can be linked yet disabled (the shim stands and dispatch refuses) or hidden yet enabled (the PATH name is free and `tebako run` answers).
+
+The guides carry the full model for both audiences — the payload author's `active` key in the manifest reference, and the installer's narrowing and adjustment verbs in the shims guide — and the CLI references name the flags in the synopsis where they apply.
