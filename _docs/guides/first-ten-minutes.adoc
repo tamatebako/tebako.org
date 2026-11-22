@@ -22,7 +22,17 @@ from memory.
 
 == The five binaries.
 
-The release publishes one asset per binary per platform, and **the asset
+The shell installer detects the platform, downloads the binaries, verifies
+their SHA-256 sums, and installs them, in one line:
+
+[source,console]
+----
+$ curl -fsSL https://tebako.org/install.sh | sh
+----
+
+The installer prints the PATH line for the shell's startup file at the end.
+Placing the binaries by hand instead means five downloads with a rename
+each: the release publishes one asset per binary per platform, and **the asset
 names carry the version while the binaries expect the bare names**. Rename on
 download — skipping this stops `tebako install` at the shim step, after it has
 already downloaded the payload:
@@ -41,7 +51,7 @@ Tebako executable packager version <ver>
 
 `tebako-shim` is the fifth binary and the one a hand download forgets: it is
 the dispatcher every installed shim links to. Homebrew and the shell installer
-put all five in place, with their names, for you.
+put the binaries in place, with their names, for you.
 
 == A first payload.
 

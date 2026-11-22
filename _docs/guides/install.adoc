@@ -7,7 +7,7 @@ lede: >-
   needs root, and uninstalling means deleting files.
 description: >-
   This guide describes installing the tebako command-line interface
-  (CLI) with Homebrew, the shell installer, or a direct binary
+  (CLI) with the shell installer, Homebrew, or a direct binary
   download: four static binaries, one store directory, no daemon, and
   no root requirement.
 ---
@@ -20,16 +20,7 @@ This guide is part 1 of the link:/blog/2026-09-05-basic-payloads-run-first-packa
 
 == The install routes.
 
-All three routes install the same four binaries. Homebrew and the shell installer verify SHA-256 checksums before anything lands; a hand download is verified against the `SHA256SUMS` file on the release.
-
-*Homebrew (macOS, Linux).*
-
-[source,console]
-----
-brew install tamatebako/tap/tebako
-----
-
-The binaries link into the brew prefix, which is already on PATH.
+All three routes install the same binaries. The shell installer and Homebrew verify SHA-256 checksums before anything lands; a hand download is verified against the `SHA256SUMS` file on the release.
 
 *Shell installer (any Unix).*
 
@@ -39,6 +30,15 @@ curl -fsSL https://tebako.org/install.sh | sh
 ----
 
 The installer detects the platform, downloads the binaries plus `SHA256SUMS`, verifies before installing, and never uses sudo.
+
+*Homebrew (macOS, Linux).*
+
+[source,console]
+----
+brew install tamatebako/tap/tebako
+----
+
+The binaries link into the brew prefix, which is already on PATH.
 
 *Direct binaries.* The link:https://github.com/tamatebako/tebako/releases[releases page] carries one asset per binary per platform, for `macos-arm64`, `macos-x86_64`, and the ``linux-gnu-* / linux-musl-*`` families:
 

@@ -147,7 +147,9 @@ const stats = [
         <HiddenGem id="terminal-gem" style="margin-left:auto; opacity:0.06;" />
       </div>
       <pre class="overflow-x-auto p-6 font-[var(--font-mono)] text-sm leading-relaxed" style="background: var(--color-ink-deep); color: var(--color-paper-soft);"><code><span class="text-[var(--color-mist-pale)]"># Install the tebako CLI — five small binaries, no daemon</span>
-<span class="text-[var(--color-gold)]">$</span> brew install tamatebako/tap/tebako
+<span class="text-[var(--color-gold)]">$</span> curl -fsSL https://tebako.org/install.sh | sh
+
+<span class="text-[var(--color-mist-pale)]"># …or with Homebrew: brew install tamatebako/tap/tebako</span>
 
 <span class="text-[var(--color-mist-pale)]"># Press your app into a single package</span>
 <span class="text-[var(--color-gold)]">$</span> tebako press -r . -e app.rb -o my-app -R 3.4
