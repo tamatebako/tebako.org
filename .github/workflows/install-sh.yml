@@ -1,0 +1,52 @@
+name: install-sh
+
+# The served /install.sh must be byte-identical with the tap's
+# (tamatebako/homebrew-tap owns the installer — SSOT). Weekly regen lands
+# any drift by PR (the auto-merge idiom from the catalog/perf pipelines);
+# PRs touching either copy get the parity gate.
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+  repository_dispatch:
+    types: [install-sh-updated]
+  pull_request:
+    paths: [public/install.sh, tools/sync-install-sh.mjs, .github/workflows/install-sh.yml]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Regenerate / check
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            node tools/sync-install-sh.mjs --check
+          else
+            node tools/sync-install-sh.mjs
+          fi
+      - name: Land the drift by PR
+        if: github.event_name != 'pull_request'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.TEBAKO_CI_PAT_TOKEN }}
+          branch: install-sh/drift
+          add-paths: public/install.sh
+          title: "install.sh: sync from the tap"
+          commit-message: "install.sh: sync from the tap"
+          body: |
+            The served installer drifted from tamatebako/homebrew-tap's main (SSOT). Auto-merges when the parity check goes green.
+      - name: Auto-merge the drift PR
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.TEBAKO_CI_PAT_TOKEN }}
+        run: |
+          gh pr merge --auto --squash install-sh/drift || gh pr merge --squash install-sh/drift || true

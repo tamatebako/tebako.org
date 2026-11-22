@@ -1,5 +1,5 @@
 #!/bin/sh
-# tebako installer: detect platform → download the tebako
+# tebako installer (spec 16 §3.2): detect platform → download the tebako
 # binaries + SHA256SUMS from the tamatebako/tebako release → verify sha256
 # BEFORE installing anything → install to ~/.local/bin (NEVER sudo) →
 # offer the managed PATH block. No dependencies beyond POSIX sh, curl,
@@ -13,7 +13,7 @@ DEST="${TEBAKO_INSTALL_DEST:-$HOME/.local/bin}"
 die() { echo "install.sh: $*" >&2; exit 1; }
 
 # ------------------------------------------------------------------------
-# 1. Platform detection (the four legs, musl included)
+# 1. Platform detection (spec 16's four legs; musl builds follow)
 # ------------------------------------------------------------------------
 os="$(uname -s)"
 arch="$(uname -m)"
@@ -60,7 +60,7 @@ done
 curl -fsSL -o "$tmp/SHA256SUMS" "$base/SHA256SUMS" || die "download failed: SHA256SUMS"
 
 # ------------------------------------------------------------------------
-# 4. Verify sha256 BEFORE installing anything
+# 4. Verify sha256 BEFORE installing anything (spec 16 §3.2)
 # ------------------------------------------------------------------------
 if command -v sha256sum >/dev/null 2>&1; then
   S256() { sha256sum "$1" | awk '{print $1}'; }
@@ -87,7 +87,20 @@ done
 echo "install.sh: installed $BINARIES → $DEST"
 
 # ------------------------------------------------------------------------
-# 6. PATH: hint or the managed block
+# 5a. Seed the official registry (spec 37 §6): the just-installed binary
+# writes the authored, user-removable config entry itself — the seed
+# value lives ONLY in the binary, never a shell-side copy (SSOT).
+# Idempotent. A network hiccup here never fails the install — re-run
+# `tebako setup` anytime.
+# ------------------------------------------------------------------------
+if "$DEST/tebako" setup; then
+  echo "install.sh: seeded the official registry (tebako setup)"
+else
+  echo "install.sh: note: 'tebako setup' did not complete — re-run later: $DEST/tebako setup" >&2
+fi
+
+# ------------------------------------------------------------------------
+# 6. PATH: hint or the managed block (spec 16 §3.2, spec 07 §3)
 # ------------------------------------------------------------------------
 case ":$PATH:" in
   *":$DEST:"*) echo "install.sh: $DEST is already on PATH" ;;
