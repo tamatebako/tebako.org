@@ -46,6 +46,7 @@ export const FOOTER_LINKS = {
     { label: 'GitHub', href: SITE.github },
     { label: 'Samples', href: SITE.samplesRepo },
     { label: 'Documentation', href: SITE.docs },
+    { label: 'Payload catalog', href: '/catalog/' },
     { label: 'Version catalog', href: '/versions/' },
   ],
   Community: [

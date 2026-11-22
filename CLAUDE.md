@@ -20,6 +20,16 @@ Three deep modules hold the system:
 - **`src/config/series.ts`** — the blog series registry. Posts declare membership in frontmatter (`series` + `series_post`); the adoc loader renders the series box at build time. `tests/series.test.ts` pins registry to posts.
 - **`src/content/loaders/adoc-loader.ts`** — converts .adoc to HTML: frontmatter extraction, series-block injection, Asciidoctor conversion. `tests/adoc-loader.test.ts` covers 14 unit tests including the `__tpkg__` emphasis trap.
 
+The payload catalog (`/catalog/`) is a different kind of page: it renders a
+checked-in generated data file, never a build-time fetch. `tools/build-catalog.mjs`
+fetches the official aggregate registry (tebako-packages/registry), validates and
+normalizes it, and writes `src/data/catalog.json` — fail-closed on a malformed
+registry, with artifact sizes enriched from the GitHub releases API (degrading to
+null sizes, never a failed run). `.github/workflows/catalog.yml` regenerates it on
+the registry's `registry-updated` dispatch, daily, and on demand; drift lands by
+auto-merging PR. Descriptions and kind presentation are the authored layer in
+`src/config/catalog.ts`; `tests/catalog.test.ts` pins the data file's invariants.
+
 ## Writing rules (enforced by CI)
 
 `tests/prose-lint.test.ts` sweeps all content for banned vocabulary and structural violations. The rules:
@@ -68,8 +78,10 @@ each page records its source blob SHA in a `// source:` marker.
 npm run dev        # http://localhost:4321
 npm run build      # dist/ + Pagefind index
 npm run check      # astro check (types/templates)
-npm test           # vitest (39 tests)
+npm test           # vitest (49 tests)
 npm run preview    # serve the production build
+npm run catalog        # regenerate src/data/catalog.json from the aggregate registry
+npm run catalog:check  # drift gate: committed file vs a fresh regeneration
 ```
 
 Clear the Astro content cache when debugging loader changes: `rm -rf node_modules/.astro`.
