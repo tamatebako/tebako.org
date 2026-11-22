@@ -1,0 +1,1075 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-22T08:22:53.065Z",
+  "source": "https://raw.githubusercontent.com/tebako-packages/registry/main/tpkg-registry.yaml",
+  "payload_count": 25,
+  "payloads": [
+    {
+      "name": "hello",
+      "kind": "toolkit",
+      "engine": null,
+      "default_version": "2.12",
+      "version_count": 1,
+      "latest": {
+        "version": "2.12",
+        "platforms": {
+          "universal": false,
+          "triplets": {
+            "aarch64-macos": {
+              "artifact": "hello-2.12-aarch64-macos.tfs",
+              "size_bytes": 44100
+            },
+            "x86_64-linux-gnu": {
+              "artifact": "hello-2.12-x86_64-linux-gnu.tfs",
+              "size_bytes": 167459
+            },
+            "x86_64-macos": {
+              "artifact": "hello-2.12-x86_64-macos.tfs",
+              "size_bytes": 76778
+            },
+            "x86_64-windows-ucrt": {
+              "artifact": "hello-2.12-x86_64-windows-ucrt.tfs",
+              "size_bytes": 1266219
+            }
+          }
+        },
+        "release_ref": "tfs:github:tebako-packages/hello:2.12.2-1",
+        "release_url": "https://github.com/tebako-packages/hello/releases/tag/2.12.2-1",
+        "signed": true,
+        "entrypoints": [
+          "hello"
+        ],
+        "runtime_requirement": null
+      }
+    },
+    {
+      "name": "hello-ruby",
+      "kind": "app",
+      "engine": null,
+      "default_version": "1.0.12",
+      "version_count": 9,
+      "latest": {
+        "version": "1.0.12",
+        "platforms": {
+          "universal": false,
+          "triplets": {
+            "aarch64-linux-gnu": {
+              "artifact": "hello-ruby-1.0.12-linux-gnu-arm64.tfs",
+              "size_bytes": 1970
+            },
+            "aarch64-macos": {
+              "artifact": "hello-ruby-1.0.12-macos-arm64.tfs",
+              "size_bytes": 1965
+            },
+            "x86_64-linux-gnu": {
+              "artifact": "hello-ruby-1.0.12-linux-gnu-x86_64.tfs",
+              "size_bytes": 1969
+            },
+            "x86_64-macos": {
+              "artifact": "hello-ruby-1.0.12-macos-x86_64.tfs",
+              "size_bytes": 1964
+            },
+            "x86_64-windows-ucrt": {
+              "artifact": "hello-ruby-1.0.12-windows-ucrt64.tfs",
+              "size_bytes": 1988
+            }
+          }
+        },
+        "release_ref": "tfs:github:tebako-packages/hello-runtimes:1.0.12",
+        "release_url": "https://github.com/tebako-packages/hello-runtimes/releases/tag/1.0.12",
+        "signed": true,
+        "entrypoints": [
+          "hello-ruby"
+        ],
+        "runtime_requirement": {
+          "engine": "ruby",
+          "constraint": ">= 3.3, < 5.0"
+        }
+      }
+    },
+    {
+      "name": "hello-python",
+      "kind": "app",
+      "engine": null,
+      "default_version": "1.0.12",
+      "version_count": 9,
+      "latest": {
+        "version": "1.0.12",
+        "platforms": {
+          "universal": false,
+          "triplets": {
+            "aarch64-linux-gnu": {
+              "artifact": "hello-python-1.0.12-linux-gnu-arm64.tfs",
+              "size_bytes": 1256
+            },
+            "aarch64-macos": {
+              "artifact": "hello-python-1.0.12-macos-arm64.tfs",
+              "size_bytes": 1251
+            },
+            "x86_64-linux-gnu": {
+              "artifact": "hello-python-1.0.12-linux-gnu-x86_64.tfs",
+              "size_bytes": 1255
+            },
+            "x86_64-macos": {
+              "artifact": "hello-python-1.0.12-macos-x86_64.tfs",
+              "size_bytes": 1250
+            }
+          }
+        },
+        "release_ref": "tfs:github:tebako-packages/hello-runtimes:1.0.12",
+        "release_url": "https://github.com/tebako-packages/hello-runtimes/releases/tag/1.0.12",
+        "signed": true,
+        "entrypoints": [
+          "hello-python"
+        ],
+        "runtime_requirement": {
+          "engine": "python",
+          "constraint": ">= 3.13, < 4.0"
+        }
+      }
+    },
+    {
+      "name": "hello-java",
+      "kind": "app",
+      "engine": null,
+      "default_version": "1.0.12",
+      "version_count": 9,
+      "latest": {
+        "version": "1.0.12",
+        "platforms": {
+          "universal": false,
+          "triplets": {
+            "aarch64-macos": {
+              "artifact": "hello-java-1.0.12-macos-arm64.tfs",
+              "size_bytes": 1864
+            },
+            "x86_64-linux-gnu": {
+              "artifact": "hello-java-1.0.12-linux-gnu-x86_64.tfs",
+              "size_bytes": 1870
+            },
+            "x86_64-windows-ucrt": {
+              "artifact": "hello-java-1.0.12-windows-ucrt64.tfs",
+              "size_bytes": 1873
+            }
+          }
+        },
+        "release_ref": "tfs:github:tebako-packages/hello-runtimes:1.0.12",
+        "release_url": "https://github.com/tebako-packages/hello-runtimes/releases/tag/1.0.12",
+        "signed": true,
+        "entrypoints": [
+          "hello-java"
+        ],
+        "runtime_requirement": {
+          "engine": "java",
+          "constraint": ">= 21"
+        }
+      }
+    },
+    {
+      "name": "hello-flavor-acme",
+      "kind": "toolkit",
+      "engine": null,
+      "default_version": "1.0.12",
+      "version_count": 7,
+      "latest": {
+        "version": "1.0.12",
+        "platforms": {
+          "universal": false,
+          "triplets": {
+            "aarch64-linux-gnu": {
+              "artifact": "hello-flavor-acme-1.0.12-linux-gnu-arm64.tfs",
+              "size_bytes": 1723
+            },
+            "aarch64-macos": {
+              "artifact": "hello-flavor-acme-1.0.12-macos-arm64.tfs",
+              "size_bytes": 1718
+            },
+            "x86_64-linux-gnu": {
+              "artifact": "hello-flavor-acme-1.0.12-linux-gnu-x86_64.tfs",
+              "size_bytes": 1722
+            },
+            "x86_64-macos": {
+              "artifact": "hello-flavor-acme-1.0.12-macos-x86_64.tfs",
+              "size_bytes": 1717
+            },
+            "x86_64-windows-ucrt": {
+              "artifact": "hello-flavor-acme-1.0.12-windows-ucrt64.tfs",
+              "size_bytes": 1732
+            }
+          }
+        },
+        "release_ref": "tfs:github:tebako-packages/hello-runtimes:1.0.12",
+        "release_url": "https://github.com/tebako-packages/hello-runtimes/releases/tag/1.0.12",
+        "signed": true,
+        "entrypoints": [],
+        "runtime_requirement": null
+      }
+    },
+    {
+      "name": "hello-jruby",
+      "kind": "app",
+      "engine": null,
+      "default_version": "1.0.12",
+      "version_count": 7,
+      "latest": {
+        "version": "1.0.12",
+        "platforms": {
+          "universal": false,
+          "triplets": {
+            "aarch64-macos": {
+              "artifact": "hello-jruby-1.0.12-macos-arm64.tfs",
+              "size_bytes": 1358
+            },
+            "x86_64-linux-gnu": {
+              "artifact": "hello-jruby-1.0.12-linux-gnu-x86_64.tfs",
+              "size_bytes": 1362
+            }
+          }
+        },
+        "release_ref": "tfs:github:tebako-packages/hello-runtimes:1.0.12",
+        "release_url": "https://github.com/tebako-packages/hello-runtimes/releases/tag/1.0.12",
+        "signed": true,
+        "entrypoints": [
+          "hello-jruby"
+        ],
+        "runtime_requirement": {
+          "engine": "ruby",
+          "constraint": ">= 10, < 11"
+        }
+      }
+    },
+    {
+      "name": "hello-truffleruby",
+      "kind": "app",
+      "engine": null,
+      "default_version": "1.0.12",
+      "version_count": 7,
+      "latest": {
+        "version": "1.0.12",
+        "platforms": {
+          "universal": false,
+          "triplets": {
+            "aarch64-macos": {
+              "artifact": "hello-truffleruby-1.0.12-macos-arm64.tfs",
+              "size_bytes": 1376
+            },
+            "x86_64-linux-gnu": {
+              "artifact": "hello-truffleruby-1.0.12-linux-gnu-x86_64.tfs",
+              "size_bytes": 1380
+            }
+          }
+        },
+        "release_ref": "tfs:github:tebako-packages/hello-runtimes:1.0.12",
+        "release_url": "https://github.com/tebako-packages/hello-runtimes/releases/tag/1.0.12",
+        "signed": true,
+        "entrypoints": [
+          "hello-truffleruby"
+        ],
+        "runtime_requirement": {
+          "engine": "ruby",
+          "constraint": ">= 34, < 35"
+        }
+      }
+    },
+    {
+      "name": "hello-node",
+      "kind": "app",
+      "engine": null,
+      "default_version": "1.0.12",
+      "version_count": 4,
+      "latest": {
+        "version": "1.0.12",
+        "platforms": {
+          "universal": false,
+          "triplets": {
+            "aarch64-linux-gnu": {
+              "artifact": "hello-node-1.0.12-linux-gnu-arm64.tfs",
+              "size_bytes": 1604
+            },
+            "aarch64-macos": {
+              "artifact": "hello-node-1.0.12-macos-arm64.tfs",
+              "size_bytes": 1599
+            },
+            "x86_64-linux-gnu": {
+              "artifact": "hello-node-1.0.12-linux-gnu-x86_64.tfs",
+              "size_bytes": 1604
+            },
+            "x86_64-macos": {
+              "artifact": "hello-node-1.0.12-macos-x86_64.tfs",
+              "size_bytes": 1599
+            },
+            "x86_64-windows-ucrt": {
+              "artifact": "hello-node-1.0.12-windows-ucrt64.tfs",
+              "size_bytes": 1615
+            }
+          }
+        },
+        "release_ref": "tfs:github:tebako-packages/hello-runtimes:1.0.12",
+        "release_url": "https://github.com/tebako-packages/hello-runtimes/releases/tag/1.0.12",
+        "signed": true,
+        "entrypoints": [
+          "hello-node"
+        ],
+        "runtime_requirement": {
+          "engine": "node",
+          "constraint": ">= 24"
+        }
+      }
+    },
+    {
+      "name": "hello-bun",
+      "kind": "app",
+      "engine": null,
+      "default_version": "1.0.12",
+      "version_count": 4,
+      "latest": {
+        "version": "1.0.12",
+        "platforms": {
+          "universal": false,
+          "triplets": {
+            "aarch64-linux-gnu": {
+              "artifact": "hello-bun-1.0.12-linux-gnu-arm64.tfs",
+              "size_bytes": 1586
+            },
+            "aarch64-macos": {
+              "artifact": "hello-bun-1.0.12-macos-arm64.tfs",
+              "size_bytes": 1581
+            },
+            "x86_64-linux-gnu": {
+              "artifact": "hello-bun-1.0.12-linux-gnu-x86_64.tfs",
+              "size_bytes": 1586
+            },
+            "x86_64-macos": {
+              "artifact": "hello-bun-1.0.12-macos-x86_64.tfs",
+              "size_bytes": 1581
+            },
+            "x86_64-windows-ucrt": {
+              "artifact": "hello-bun-1.0.12-windows-ucrt64.tfs",
+              "size_bytes": 1594
+            }
+          }
+        },
+        "release_ref": "tfs:github:tebako-packages/hello-runtimes:1.0.12",
+        "release_url": "https://github.com/tebako-packages/hello-runtimes/releases/tag/1.0.12",
+        "signed": true,
+        "entrypoints": [
+          "hello-bun"
+        ],
+        "runtime_requirement": {
+          "engine": "bun",
+          "constraint": ">= 1.4"
+        }
+      }
+    },
+    {
+      "name": "fontist",
+      "kind": "app",
+      "engine": null,
+      "default_version": "3.0.10",
+      "version_count": 1,
+      "latest": {
+        "version": "3.0.10",
+        "platforms": {
+          "universal": false,
+          "triplets": {
+            "aarch64-macos": {
+              "artifact": "fontist-3.0.10-aarch64-macos.tfs",
+              "size_bytes": 30604480
+            },
+            "x86_64-windows-ucrt": {
+              "artifact": "fontist-3.0.10-x86_64-windows-ucrt.tfs",
+              "size_bytes": 31898670
+            }
+          }
+        },
+        "release_ref": "tfs:github:tebako-packages/fontist:3.0.10-2",
+        "release_url": "https://github.com/tebako-packages/fontist/releases/tag/3.0.10-2",
+        "signed": true,
+        "entrypoints": [
+          "fontist"
+        ],
+        "runtime_requirement": {
+          "engine": "ruby",
+          "constraint": "~> 3.3.0"
+        }
+      }
+    },
+    {
+      "name": "inkscape",
+      "kind": "toolkit",
+      "engine": null,
+      "default_version": "1.4.3",
+      "version_count": 1,
+      "latest": {
+        "version": "1.4.3",
+        "platforms": {
+          "universal": false,
+          "triplets": {
+            "aarch64-linux-gnu": {
+              "artifact": "inkscape-1.4.3-linux-gnu-arm64.tfs",
+              "size_bytes": 84088535
+            },
+            "aarch64-macos": {
+              "artifact": "inkscape-1.4.3-macos-arm64.tfs",
+              "size_bytes": 46300900
+            },
+            "x86_64-linux-gnu": {
+              "artifact": "inkscape-1.4.3-linux-gnu-x86_64.tfs",
+              "size_bytes": 84712036
+            },
+            "x86_64-windows-ucrt": {
+              "artifact": "inkscape-1.4.3-windows-ucrt64.tfs",
+              "size_bytes": 71871613
+            }
+          }
+        },
+        "release_ref": "tfs:github:tebako-packages/inkscape:1.4.3-5",
+        "release_url": "https://github.com/tebako-packages/inkscape/releases/tag/1.4.3-5",
+        "signed": true,
+        "entrypoints": [
+          "inkscape"
+        ],
+        "runtime_requirement": null
+      }
+    },
+    {
+      "name": "metanorma",
+      "kind": "app",
+      "engine": null,
+      "default_version": "1.18.6",
+      "version_count": 10,
+      "latest": {
+        "version": "1.18.6",
+        "platforms": {
+          "universal": false,
+          "triplets": {
+            "aarch64-linux-gnu": {
+              "artifact": "metanorma-1.18.6-linux-gnu-arm64.tfs",
+              "size_bytes": 377818605
+            },
+            "aarch64-linux-musl": {
+              "artifact": "metanorma-1.18.6-linux-musl-arm64.tfs",
+              "size_bytes": 372470294
+            },
+            "aarch64-macos": {
+              "artifact": "metanorma-1.18.6-macos-arm64.tfs",
+              "size_bytes": 311838985
+            },
+            "x86_64-linux-gnu": {
+              "artifact": "metanorma-1.18.6-linux-gnu-x86_64.tfs",
+              "size_bytes": 373138894
+            },
+            "x86_64-linux-musl": {
+              "artifact": "metanorma-1.18.6-linux-musl-x86_64.tfs",
+              "size_bytes": 370439253
+            },
+            "x86_64-macos": {
+              "artifact": "metanorma-1.18.6-macos-x86_64.tfs",
+              "size_bytes": 311020354
+            },
+            "x86_64-windows-ucrt": {
+              "artifact": "metanorma-1.18.6-windows-ucrt64.tfs",
+              "size_bytes": 397046035
+            }
+          }
+        },
+        "release_ref": "tfs:github:tebako-packages/metanorma:1.18.6-1",
+        "release_url": "https://github.com/tebako-packages/metanorma/releases/tag/1.18.6-1",
+        "signed": true,
+        "entrypoints": [
+          "metanorma",
+          "metanorma-manifest",
+          "asciidoctor",
+          "canon",
+          "coradoc",
+          "expressir",
+          "fontist",
+          "fontisan",
+          "glossarist",
+          "lutaml",
+          "lutaml-model",
+          "lutaml-sysml",
+          "lutaml-wsd2uml",
+          "lutaml-xsd",
+          "lutaml-yaml2uml",
+          "omnizip",
+          "plurimath",
+          "png_conform",
+          "relaton",
+          "reverse_adoc",
+          "suma",
+          "svg_conform",
+          "unitsdb",
+          "vectory",
+          "w2a",
+          "w2m",
+          "cabriolet",
+          "console",
+          "convert2oscalyaml.rb",
+          "dot2ruby",
+          "ea",
+          "ebnf",
+          "emf",
+          "emfsvg",
+          "excavate",
+          "fractor",
+          "fuzzy_match",
+          "gem2gv",
+          "git2gv",
+          "japanese_calendar",
+          "jsonld",
+          "ldiff",
+          "loc-mods",
+          "nokogiri",
+          "premailer",
+          "rdf",
+          "reverse_markdown",
+          "rng",
+          "rougify",
+          "ruby2gv",
+          "setup",
+          "socksify_ruby",
+          "sparql",
+          "sxp2json",
+          "sxp2rdf",
+          "sxp2xml",
+          "sxp2yaml",
+          "thor",
+          "tokenize",
+          "ukiryu",
+          "unibuf",
+          "w3c_api",
+          "xml2gv",
+          "xsdvi"
+        ],
+        "runtime_requirement": {
+          "engine": "ruby",
+          "constraint": "~> 4.0.0"
+        }
+      }
+    },
+    {
+      "name": "tebako-runtime-java-temurin",
+      "kind": "runtime",
+      "engine": "java",
+      "default_version": null,
+      "version_count": 3,
+      "latest": {
+        "version": "21.0.12-2.8.23",
+        "platforms": {
+          "universal": true,
+          "triplets": {}
+        },
+        "release_ref": "tfs:github:tamatebako/tebako-runtime-openjdk:v2.8.23",
+        "release_url": "https://github.com/tamatebako/tebako-runtime-openjdk/releases/tag/v2.8.23",
+        "signed": false,
+        "entrypoints": [],
+        "runtime_requirement": null
+      }
+    },
+    {
+      "name": "tebako-runtime-python",
+      "kind": "runtime",
+      "engine": "python",
+      "default_version": null,
+      "version_count": 4,
+      "latest": {
+        "version": "3.14.7-0.2.7",
+        "platforms": {
+          "universal": true,
+          "triplets": {}
+        },
+        "release_ref": "tfs:github:tamatebako/tebako-runtime-python:v0.2.7",
+        "release_url": "https://github.com/tamatebako/tebako-runtime-python/releases/tag/v0.2.7",
+        "signed": false,
+        "entrypoints": [],
+        "runtime_requirement": null
+      }
+    },
+    {
+      "name": "xml2rfc",
+      "kind": "app",
+      "engine": null,
+      "default_version": "3.34.0",
+      "version_count": 2,
+      "latest": {
+        "version": "3.34.0",
+        "platforms": {
+          "universal": false,
+          "triplets": {
+            "aarch64-linux-gnu": {
+              "artifact": "xml2rfc-3.34.0-linux-gnu-arm64.tfs",
+              "size_bytes": 27490135
+            },
+            "aarch64-linux-musl": {
+              "artifact": "xml2rfc-3.34.0-linux-musl-arm64.tfs",
+              "size_bytes": 27450882
+            },
+            "aarch64-macos": {
+              "artifact": "xml2rfc-3.34.0-macos-arm64.tfs",
+              "size_bytes": 32039202
+            },
+            "x86_64-linux-gnu": {
+              "artifact": "xml2rfc-3.34.0-linux-gnu-x86_64.tfs",
+              "size_bytes": 27910792
+            },
+            "x86_64-linux-musl": {
+              "artifact": "xml2rfc-3.34.0-linux-musl-x86_64.tfs",
+              "size_bytes": 27821886
+            },
+            "x86_64-macos": {
+              "artifact": "xml2rfc-3.34.0-macos-x86_64.tfs",
+              "size_bytes": 26420272
+            }
+          }
+        },
+        "release_ref": "tfs:github:tebako-packages/xml2rfc:3.34.0-1",
+        "release_url": "https://github.com/tebako-packages/xml2rfc/releases/tag/3.34.0-1",
+        "signed": true,
+        "entrypoints": [
+          "xml2rfc"
+        ],
+        "runtime_requirement": {
+          "engine": "python",
+          "constraint": "~> 3.13.0"
+        }
+      }
+    },
+    {
+      "name": "tebako-crypto",
+      "kind": "toolkit",
+      "engine": null,
+      "default_version": "0.18.1",
+      "version_count": 1,
+      "latest": {
+        "version": "0.18.1",
+        "platforms": {
+          "universal": false,
+          "triplets": {
+            "aarch64-macos": {
+              "artifact": "tebako-crypto-0.18.1-aarch64-macos.tfs",
+              "size_bytes": 1872139
+            },
+            "x86_64-linux-gnu": {
+              "artifact": "tebako-crypto-0.18.1-x86_64-linux-gnu.tfs",
+              "size_bytes": 3442039
+            }
+          }
+        },
+        "release_ref": "tfs:github:tebako-packages/tebako-crypto:0.18.1-1",
+        "release_url": "https://github.com/tebako-packages/tebako-crypto/releases/tag/0.18.1-1",
+        "signed": true,
+        "entrypoints": [],
+        "runtime_requirement": null
+      }
+    },
+    {
+      "name": "node",
+      "kind": "runtime",
+      "engine": "node",
+      "default_version": "24.22.2-2.8.75",
+      "version_count": 9,
+      "latest": {
+        "version": "24.22.2-2.8.75",
+        "platforms": {
+          "universal": false,
+          "triplets": {
+            "aarch64-linux-gnu": {
+              "artifact": "tebako-runtime-2.8.75-node-24.22.2-linux-gnu-arm64.tfs",
+              "size_bytes": 87912981
+            },
+            "aarch64-linux-musl": {
+              "artifact": "tebako-runtime-2.8.75-node-24.22.2-linux-musl-arm64.tfs",
+              "size_bytes": 92019203
+            },
+            "aarch64-macos": {
+              "artifact": "tebako-runtime-2.8.75-node-24.22.2-macos-arm64.tfs",
+              "size_bytes": 78908335
+            },
+            "aarch64-windows-ucrt": {
+              "artifact": "tebako-runtime-2.8.75-node-24.22.2-windows-ucrt-arm64.tfs",
+              "size_bytes": 55591537
+            },
+            "x86_64-linux-gnu": {
+              "artifact": "tebako-runtime-2.8.75-node-24.22.2-linux-gnu-x86_64.tfs",
+              "size_bytes": 85982439
+            },
+            "x86_64-linux-musl": {
+              "artifact": "tebako-runtime-2.8.75-node-24.22.2-linux-musl-x86_64.tfs",
+              "size_bytes": 88035448
+            },
+            "x86_64-macos": {
+              "artifact": "tebako-runtime-2.8.75-node-24.22.2-macos-x86_64.tfs",
+              "size_bytes": 74054810
+            },
+            "x86_64-windows-ucrt": {
+              "artifact": "tebako-runtime-2.8.75-node-24.22.2-windows-ucrt64.tfs",
+              "size_bytes": 57135944
+            }
+          }
+        },
+        "release_ref": "tfs:github:tamatebako/tebako-runtime-node:v2.8.75",
+        "release_url": "https://github.com/tamatebako/tebako-runtime-node/releases/tag/v2.8.75",
+        "signed": false,
+        "entrypoints": [],
+        "runtime_requirement": null
+      }
+    },
+    {
+      "name": "bun",
+      "kind": "runtime",
+      "engine": "bun",
+      "default_version": "1.4.4-2.8.75",
+      "version_count": 8,
+      "latest": {
+        "version": "1.4.4-2.8.75",
+        "platforms": {
+          "universal": false,
+          "triplets": {
+            "aarch64-linux-gnu": {
+              "artifact": "tebako-runtime-2.8.75-bun-1.4.4-linux-gnu-arm64.tfs",
+              "size_bytes": 90301949
+            },
+            "aarch64-linux-musl": {
+              "artifact": "tebako-runtime-2.8.75-bun-1.4.4-linux-musl-arm64.tfs",
+              "size_bytes": 90371281
+            },
+            "aarch64-macos": {
+              "artifact": "tebako-runtime-2.8.75-bun-1.4.4-macos-arm64.tfs",
+              "size_bytes": 78976366
+            },
+            "aarch64-windows-ucrt": {
+              "artifact": "tebako-runtime-2.8.75-bun-1.4.4-windows-ucrt-arm64.tfs",
+              "size_bytes": 83087793
+            },
+            "x86_64-linux-gnu": {
+              "artifact": "tebako-runtime-2.8.75-bun-1.4.4-linux-gnu-x86_64.tfs",
+              "size_bytes": 85417558
+            },
+            "x86_64-linux-musl": {
+              "artifact": "tebako-runtime-2.8.75-bun-1.4.4-linux-musl-x86_64.tfs",
+              "size_bytes": 80228250
+            },
+            "x86_64-macos": {
+              "artifact": "tebako-runtime-2.8.75-bun-1.4.4-macos-x86_64.tfs",
+              "size_bytes": 67544143
+            },
+            "x86_64-windows-ucrt": {
+              "artifact": "tebako-runtime-2.8.75-bun-1.4.4-windows-ucrt64.tfs",
+              "size_bytes": 77547685
+            }
+          }
+        },
+        "release_ref": "tfs:github:tamatebako/tebako-runtime-bun:v2.8.75",
+        "release_url": "https://github.com/tamatebako/tebako-runtime-bun/releases/tag/v2.8.75",
+        "signed": false,
+        "entrypoints": [],
+        "runtime_requirement": null
+      }
+    },
+    {
+      "name": "ruby",
+      "kind": "runtime",
+      "engine": "ruby",
+      "default_version": "4.0.9-0.17.15",
+      "version_count": 226,
+      "latest": {
+        "version": "4.0.9-0.17.15",
+        "platforms": {
+          "universal": false,
+          "triplets": {
+            "aarch64-linux-gnu": {
+              "artifact": "tebako-runtime-0.17.15-ruby-4.0.9-linux-gnu-arm64",
+              "size_bytes": 104466592
+            },
+            "aarch64-linux-musl": {
+              "artifact": "tebako-runtime-0.17.15-ruby-4.0.9-linux-musl-arm64",
+              "size_bytes": 71469232
+            },
+            "aarch64-macos": {
+              "artifact": "tebako-runtime-0.17.15-ruby-4.0.9-macos-arm64",
+              "size_bytes": 48701888
+            },
+            "aarch64-windows-ucrt": {
+              "artifact": "tebako-runtime-0.17.15-ruby-4.0.9-windows-ucrt-arm64",
+              "size_bytes": 61240
+            },
+            "x86_64-linux-gnu": {
+              "artifact": "tebako-runtime-0.17.15-ruby-4.0.9-linux-gnu-x86_64",
+              "size_bytes": 105516144
+            },
+            "x86_64-linux-musl": {
+              "artifact": "tebako-runtime-0.17.15-ruby-4.0.9-linux-musl-x86_64",
+              "size_bytes": 73763200
+            },
+            "x86_64-macos": {
+              "artifact": "tebako-runtime-0.17.15-ruby-4.0.9-macos-x86_64",
+              "size_bytes": 52574960
+            },
+            "x86_64-windows-ucrt": {
+              "artifact": "tebako-runtime-0.17.15-ruby-4.0.9-windows-ucrt64",
+              "size_bytes": 98200
+            }
+          }
+        },
+        "release_ref": "tfs:github:tamatebako/tebako-runtime-ruby:v0.17.15",
+        "release_url": "https://github.com/tamatebako/tebako-runtime-ruby/releases/tag/v0.17.15",
+        "signed": false,
+        "entrypoints": [],
+        "runtime_requirement": null
+      }
+    },
+    {
+      "name": "openjdk",
+      "kind": "runtime",
+      "engine": "java",
+      "default_version": "21.0.12",
+      "version_count": 1,
+      "latest": {
+        "version": "21.0.12",
+        "platforms": {
+          "universal": false,
+          "triplets": {
+            "aarch64-linux-gnu": {
+              "artifact": "tebako-runtime-2.8.50-temurin-21.0.12-linux-gnu-arm64.tfs",
+              "size_bytes": 87225815
+            },
+            "aarch64-linux-musl": {
+              "artifact": "tebako-runtime-2.8.50-temurin-21.0.12-linux-musl-arm64.tfs",
+              "size_bytes": 87373721
+            },
+            "aarch64-macos": {
+              "artifact": "tebako-runtime-2.8.50-temurin-21.0.12-macos-arm64.tfs",
+              "size_bytes": 79722432
+            },
+            "aarch64-windows-ucrt": {
+              "artifact": "tebako-runtime-2.8.50-temurin-21.0.12-windows-ucrt-arm64.tfs",
+              "size_bytes": 60258804
+            },
+            "x86_64-linux-gnu": {
+              "artifact": "tebako-runtime-2.8.50-temurin-21.0.12-linux-gnu-x86_64.tfs",
+              "size_bytes": 89232978
+            },
+            "x86_64-linux-musl": {
+              "artifact": "tebako-runtime-2.8.50-temurin-21.0.12-linux-musl-x86_64.tfs",
+              "size_bytes": 87648188
+            },
+            "x86_64-macos": {
+              "artifact": "tebako-runtime-2.8.50-temurin-21.0.12-macos-x86_64.tfs",
+              "size_bytes": 67492803
+            },
+            "x86_64-windows-ucrt": {
+              "artifact": "tebako-runtime-2.8.50-temurin-21.0.12-windows-ucrt64.tfs",
+              "size_bytes": 72394490
+            }
+          }
+        },
+        "release_ref": "tfs:github:tamatebako/tebako-runtime-openjdk:v2.8.50",
+        "release_url": "https://github.com/tamatebako/tebako-runtime-openjdk/releases/tag/v2.8.50",
+        "signed": false,
+        "entrypoints": [],
+        "runtime_requirement": null
+      }
+    },
+    {
+      "name": "openjdk-graalvm",
+      "kind": "runtime",
+      "engine": "java",
+      "default_version": "25.0.4.1",
+      "version_count": 1,
+      "latest": {
+        "version": "25.0.4.1",
+        "platforms": {
+          "universal": false,
+          "triplets": {
+            "aarch64-linux-gnu": {
+              "artifact": "tebako-runtime-2.8.50-graalvm-25.0.4.1-linux-gnu-arm64.tfs",
+              "size_bytes": 419657547
+            },
+            "aarch64-macos": {
+              "artifact": "tebako-runtime-2.8.50-graalvm-25.0.4.1-macos-arm64.tfs",
+              "size_bytes": 435520433
+            },
+            "x86_64-linux-gnu": {
+              "artifact": "tebako-runtime-2.8.50-graalvm-25.0.4.1-linux-gnu-x86_64.tfs",
+              "size_bytes": 454452473
+            },
+            "x86_64-windows-ucrt": {
+              "artifact": "tebako-runtime-2.8.50-graalvm-25.0.4.1-windows-ucrt64.tfs",
+              "size_bytes": 439361948
+            }
+          }
+        },
+        "release_ref": "tfs:github:tamatebako/tebako-runtime-openjdk:v2.8.50",
+        "release_url": "https://github.com/tamatebako/tebako-runtime-openjdk/releases/tag/v2.8.50",
+        "signed": false,
+        "entrypoints": [],
+        "runtime_requirement": null
+      }
+    },
+    {
+      "name": "jruby",
+      "kind": "runtime",
+      "engine": null,
+      "default_version": "10.1.1.0",
+      "version_count": 1,
+      "latest": {
+        "version": "10.1.1.0",
+        "platforms": {
+          "universal": false,
+          "triplets": {
+            "aarch64-linux-gnu": {
+              "artifact": "tebako-runtime-2.8.60-jruby-10.1.1.0-universal.tfs",
+              "size_bytes": 50490024
+            },
+            "aarch64-linux-musl": {
+              "artifact": "tebako-runtime-2.8.60-jruby-10.1.1.0-universal.tfs",
+              "size_bytes": 50490024
+            },
+            "aarch64-macos": {
+              "artifact": "tebako-runtime-2.8.60-jruby-10.1.1.0-universal.tfs",
+              "size_bytes": 50490024
+            },
+            "aarch64-windows-ucrt": {
+              "artifact": "tebako-runtime-2.8.60-jruby-10.1.1.0-universal.tfs",
+              "size_bytes": 50490024
+            },
+            "x86_64-linux-gnu": {
+              "artifact": "tebako-runtime-2.8.60-jruby-10.1.1.0-universal.tfs",
+              "size_bytes": 50490024
+            },
+            "x86_64-linux-musl": {
+              "artifact": "tebako-runtime-2.8.60-jruby-10.1.1.0-universal.tfs",
+              "size_bytes": 50490024
+            },
+            "x86_64-macos": {
+              "artifact": "tebako-runtime-2.8.60-jruby-10.1.1.0-universal.tfs",
+              "size_bytes": 50490024
+            },
+            "x86_64-windows-ucrt": {
+              "artifact": "tebako-runtime-2.8.60-jruby-10.1.1.0-universal.tfs",
+              "size_bytes": 50490024
+            }
+          }
+        },
+        "release_ref": "tfs:github:tamatebako/tebako-runtime-jruby:v2.8.60",
+        "release_url": "https://github.com/tamatebako/tebako-runtime-jruby/releases/tag/v2.8.60",
+        "signed": false,
+        "entrypoints": [],
+        "runtime_requirement": null
+      }
+    },
+    {
+      "name": "truffleruby-jvm",
+      "kind": "runtime",
+      "engine": null,
+      "default_version": "34.0.1",
+      "version_count": 1,
+      "latest": {
+        "version": "34.0.1",
+        "platforms": {
+          "universal": false,
+          "triplets": {
+            "aarch64-macos": {
+              "artifact": "tebako-runtime-2.8.22-34.0.1-macos-arm64.tfs",
+              "size_bytes": 201999595
+            },
+            "x86_64-linux-gnu": {
+              "artifact": "tebako-runtime-2.8.22-34.0.1-linux-gnu-x86_64.tfs",
+              "size_bytes": 216586215
+            }
+          }
+        },
+        "release_ref": "tfs:github:tamatebako/tebako-runtime-truffleruby:v2.8.22",
+        "release_url": "https://github.com/tamatebako/tebako-runtime-truffleruby/releases/tag/v2.8.22",
+        "signed": false,
+        "entrypoints": [],
+        "runtime_requirement": null
+      }
+    },
+    {
+      "name": "truffleruby",
+      "kind": "runtime",
+      "engine": null,
+      "default_version": "34.0.1",
+      "version_count": 1,
+      "latest": {
+        "version": "34.0.1",
+        "platforms": {
+          "universal": false,
+          "triplets": {
+            "aarch64-linux-gnu": {
+              "artifact": "tebako-runtime-2.8.49-truffleruby-34.0.1-linux-gnu-arm64.tfs",
+              "size_bytes": 160394639
+            },
+            "aarch64-macos": {
+              "artifact": "tebako-runtime-2.8.49-truffleruby-34.0.1-macos-arm64.tfs",
+              "size_bytes": 144932188
+            },
+            "x86_64-linux-gnu": {
+              "artifact": "tebako-runtime-2.8.49-truffleruby-34.0.1-linux-gnu-x86_64.tfs",
+              "size_bytes": 164235910
+            }
+          }
+        },
+        "release_ref": "tfs:github:tamatebako/tebako-runtime-truffleruby:v2.8.49",
+        "release_url": "https://github.com/tamatebako/tebako-runtime-truffleruby/releases/tag/v2.8.49",
+        "signed": false,
+        "entrypoints": [],
+        "runtime_requirement": null
+      }
+    },
+    {
+      "name": "python",
+      "kind": "runtime",
+      "engine": "python",
+      "default_version": "3.14.7-0.3.5",
+      "version_count": 84,
+      "latest": {
+        "version": "3.14.7-0.3.5",
+        "platforms": {
+          "universal": false,
+          "triplets": {
+            "aarch64-linux-gnu": {
+              "artifact": "tebako-runtime-0.3.5-python-3.14.7-linux-gnu-arm64.tfs",
+              "size_bytes": 83598969
+            },
+            "aarch64-linux-musl": {
+              "artifact": "tebako-runtime-0.3.5-python-3.14.7-linux-musl-arm64.tfs",
+              "size_bytes": 82120354
+            },
+            "aarch64-macos": {
+              "artifact": "tebako-runtime-0.3.5-python-3.14.7-macos-arm64.tfs",
+              "size_bytes": 55861778
+            },
+            "aarch64-windows-ucrt": {
+              "artifact": "tebako-runtime-0.3.5-python-3.14.7-windows-ucrt-arm64.tfs",
+              "size_bytes": 30605505
+            },
+            "x86_64-linux-gnu": {
+              "artifact": "tebako-runtime-0.3.5-python-3.14.7-linux-gnu-x86_64.tfs",
+              "size_bytes": 85529401
+            },
+            "x86_64-linux-musl": {
+              "artifact": "tebako-runtime-0.3.5-python-3.14.7-linux-musl-x86_64.tfs",
+              "size_bytes": 90588716
+            },
+            "x86_64-macos": {
+              "artifact": "tebako-runtime-0.3.5-python-3.14.7-macos-x86_64.tfs",
+              "size_bytes": 55283865
+            },
+            "x86_64-windows-ucrt": {
+              "artifact": "tebako-runtime-0.3.5-python-3.14.7-windows-ucrt64.tfs",
+              "size_bytes": 34637243
+            }
+          }
+        },
+        "release_ref": "tfs:github:tamatebako/tebako-runtime-python:v0.3.5",
+        "release_url": "https://github.com/tamatebako/tebako-runtime-python/releases/tag/v0.3.5",
+        "signed": false,
+        "entrypoints": [],
+        "runtime_requirement": null
+      }
+    }
+  ]
+}

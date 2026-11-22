@@ -1,0 +1,69 @@
+name: catalog
+
+# Regenerate src/data/catalog.json from the official aggregate registry
+# (tebako-packages/registry's tpkg-registry.yaml). The catalog page
+# renders the checked-in file, so a registry publish lands here as a
+# data-only drift PR; merging it triggers build_deploy, which ships the
+# rendered page.
+#
+# Triggers: the registry's post-publish poke (registry-updated, wired
+# in the registry repo's aggregate workflow), a daily backstop, and
+# manual runs.
+
+on:
+  repository_dispatch:
+    types:
+    - registry-updated
+  schedule:
+  - cron: "41 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Regenerate the catalog data
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run catalog
+
+      # The house pattern for automated drift (the registry repo's
+      # aggregate workflow): main is branch-protected, so the file lands
+      # by PR and auto-merge rides the required checks. A clean tree is
+      # a no-op.
+      - name: Open the drift pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.TEBAKO_CI_PAT_TOKEN || secrets.GITHUB_TOKEN }}
+          branch: catalog/drift
+          add-paths: src/data/catalog.json
+          title: "catalog: regenerate from the aggregate registry"
+          commit-message: "catalog: regenerate from the aggregate registry"
+          body: |
+            Automated catalog-data regeneration: the drift from the official aggregate registry (tebako-packages/registry). Auto-merges when checks go green. The catalog page renders only this checked-in file.
+
+      - name: Auto-merge the drift PR
+        env:
+          GH_TOKEN: ${{ secrets.TEBAKO_CI_PAT_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge --auto --squash catalog/drift || gh pr merge --squash catalog/drift || true

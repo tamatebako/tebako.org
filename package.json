@@ -9,7 +9,9 @@
     "preview": "astro preview",
     "check": "astro check",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "catalog": "node tools/build-catalog.mjs",
+    "catalog:check": "node tools/build-catalog.mjs --check"
   },
   "devDependencies": {
     "@asciidoctor/core": "^4.0.5",

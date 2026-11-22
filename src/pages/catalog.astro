@@ -1,0 +1,182 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import { CATALOG, sortTriplets, tripletLabel, formatSize } from '../lib/catalog'
+import type { CatalogPayload } from '../lib/catalog'
+import { DESCRIPTIONS, KIND_META, KIND_ORDER } from '../config/catalog'
+
+interface KindGroup {
+  kind: string
+  meta: { label: string; plural: string; blurb: string }
+  payloads: CatalogPayload[]
+}
+
+const groups: KindGroup[] = (() => {
+  const byKind = new Map<string, CatalogPayload[]>()
+  for (const p of CATALOG.payloads) {
+    const list = byKind.get(p.kind) ?? []
+    list.push(p)
+    byKind.set(p.kind, list)
+  }
+  for (const list of byKind.values()) list.sort((a, b) => (a.name < b.name ? -1 : 1))
+  const known = (KIND_ORDER as readonly string[]).filter((k) => byKind.has(k))
+  const rest = [...byKind.keys()].filter((k) => !(KIND_ORDER as readonly string[]).includes(k)).sort()
+  return [...known, ...rest].map((kind) => ({
+    kind,
+    meta: KIND_META[kind] ?? { label: kind, plural: kind, blurb: '' },
+    payloads: byKind.get(kind)!,
+  }))
+})()
+
+const generatedLabel = new Date(CATALOG.generated_at).toLocaleDateString('en-US', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+  timeZone: 'UTC',
+})
+---
+
+<BaseLayout
+  title="Payload catalog — Tebako"
+  description="Every payload in the official tebako registry: applications, toolkits, and runtimes with their latest versions, platform coverage, and artifact sizes."
+>
+  <section class="mx-auto max-w-7xl px-6 pb-20 pt-32">
+    <p class="tb-eyebrow tb-animate-rise">玉手箱 CATALOG</p>
+    <h1 class="tb-animate-rise tb-delay-1 mt-3">The payload catalog.</h1>
+    <p class="tb-animate-rise tb-delay-2 mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      Every payload in the official tebako registry: what it is, the version it
+      currently publishes, the platforms it covers, and the size of its
+      artifacts.
+    </p>
+    <p class="tb-animate-rise tb-delay-3 mt-3 max-w-2xl text-sm leading-relaxed text-[var(--tb-c-text-3)]">
+      This page is a window into the official registry at{' '}
+      <a href="https://github.com/tebako-packages/registry" class="text-[var(--tb-c-accent)] hover:underline">tebako-packages/registry</a>.
+      It is not a search chain: tebako has no default registry, and the CLI
+      resolves only the registries you configure.
+    </p>
+    <p class="tb-animate-rise tb-delay-3 mt-6 font-[var(--font-mono)] text-xs uppercase tracking-wider text-[var(--tb-c-text-3)]">
+      {CATALOG.payload_count} payloads · data generated {generatedLabel}
+    </p>
+
+    {groups.map((group) => (
+      <section class="mt-20" aria-labelledby={`catalog-${group.kind}`}>
+        <p class="tb-eyebrow">{group.meta.plural} · {group.payloads.length}</p>
+        <h2 id={`catalog-${group.kind}`} class="mt-2 font-[var(--font-display)] text-3xl font-medium">
+          {group.meta.plural}
+        </h2>
+        {group.meta.blurb && (
+          <p class="mt-3 max-w-2xl leading-relaxed text-[var(--tb-c-text-2)]">{group.meta.blurb}</p>
+        )}
+
+        <div class="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {group.payloads.map((p) => {
+            const desc = DESCRIPTIONS[p.name]
+            const triplets = p.latest.platforms.universal
+              ? []
+              : sortTriplets(Object.keys(p.latest.platforms.triplets))
+            return (
+              <article class="tb-card flex flex-col p-6">
+                <div class="flex items-start justify-between gap-3">
+                  <h3 class="font-[var(--font-mono)] text-lg font-medium leading-snug text-[var(--tb-c-text-1)]">
+                    {p.name}
+                  </h3>
+                  <div class="flex shrink-0 gap-2">
+                    <span class="rounded-full bg-[var(--tb-c-divider)] px-2.5 py-0.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+                      {group.meta.label}
+                    </span>
+                    {p.latest.signed && (
+                      <span class="rounded-full bg-[var(--tb-c-divider)] px-2.5 py-0.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-accent)]">
+                        signed
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {desc && (
+                  <p class="mt-3 text-sm leading-relaxed text-[var(--tb-c-text-2)]">{desc}</p>
+                )}
+
+                <dl class="mt-4 space-y-1.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+                  <div class="flex gap-3">
+                    <dt class="w-24 shrink-0 uppercase tracking-wider">latest</dt>
+                    <dd class="text-[var(--tb-c-text-2)]">
+                      {p.latest.release_url ? (
+                        <a href={p.latest.release_url} class="hover:text-[var(--tb-c-accent)] hover:underline">
+                          {p.latest.version}
+                        </a>
+                      ) : (
+                        p.latest.version
+                      )}
+                    </dd>
+                  </div>
+                  <div class="flex gap-3">
+                    <dt class="w-24 shrink-0 uppercase tracking-wider">versions</dt>
+                    <dd class="text-[var(--tb-c-text-2)]">{p.version_count}</dd>
+                  </div>
+                  {p.latest.entrypoints.length > 0 && (
+                    <div class="flex gap-3">
+                      <dt class="w-24 shrink-0 uppercase tracking-wider">
+                        {p.latest.entrypoints.length === 1 ? 'entrypoint' : 'entrypoints'}
+                      </dt>
+                      <dd class="text-[var(--tb-c-text-2)]">
+                        {p.latest.entrypoints.slice(0, 3).join(', ')}
+                        {p.latest.entrypoints.length > 3 && ` +${p.latest.entrypoints.length - 3} more`}
+                      </dd>
+                    </div>
+                  )}
+                  {p.latest.runtime_requirement && (
+                    <div class="flex gap-3">
+                      <dt class="w-24 shrink-0 uppercase tracking-wider">requires</dt>
+                      <dd class="text-[var(--tb-c-text-2)]">
+                        {p.latest.runtime_requirement.engine}
+                        {p.latest.runtime_requirement.constraint && ` ${p.latest.runtime_requirement.constraint}`}
+                      </dd>
+                    </div>
+                  )}
+                </dl>
+
+                <ul class="mt-4 flex flex-wrap gap-2" aria-label="platforms">
+                  {p.latest.platforms.universal ? (
+                    <li class="rounded-full border border-[var(--tb-c-divider)] px-3 py-1 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-2)]">
+                      universal · every platform
+                    </li>
+                  ) : (
+                    triplets.map((t) => {
+                      const size = p.latest.platforms.triplets[t]?.size_bytes
+                      return (
+                        <li class="rounded-full border border-[var(--tb-c-divider)] px-3 py-1 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-2)]">
+                          {tripletLabel(t)}
+                          {size !== null && size !== undefined && (
+                            <span class="text-[var(--tb-c-text-3)]"> · {formatSize(size)}</span>
+                          )}
+                        </li>
+                      )
+                    })
+                  )}
+                </ul>
+
+                <div class="mt-auto pt-5">
+                  {p.kind === 'runtime' ? (
+                    <p class="text-xs leading-relaxed text-[var(--tb-c-text-3)]">
+                      Fetched on demand into the shared store when a payload requires
+                      {p.engine ? ` the ${p.engine} engine` : ' it'}.
+                    </p>
+                  ) : (
+                    <p class="rounded-lg border border-[var(--tb-c-divider)] bg-[var(--tb-c-bg-soft)] px-3 py-2 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-2)]">
+                      tebako install {p.name}
+                    </p>
+                  )}
+                </div>
+              </article>
+            )
+          })}
+        </div>
+      </section>
+    ))}
+
+    <p class="mt-20 max-w-2xl text-sm leading-relaxed text-[var(--tb-c-text-3)]">
+      The catalog regenerates whenever the aggregate registry publishes, and
+      once a day as a backstop. A payload absent here is absent from the
+      official registry; publishing one is a feedstock away.
+    </p>
+  </section>
+</BaseLayout>
