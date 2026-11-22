@@ -13,7 +13,9 @@
     "catalog": "node tools/build-catalog.mjs",
     "catalog:check": "node tools/build-catalog.mjs --check",
     "perf": "node tools/build-perf.mjs",
-    "perf:check": "node tools/build-perf.mjs --check"
+    "perf:check": "node tools/build-perf.mjs --check",
+    "install-sh": "node tools/sync-install-sh.mjs",
+    "install-sh:check": "node tools/sync-install-sh.mjs --check"
   },
   "devDependencies": {
     "@asciidoctor/core": "^4.0.5",
