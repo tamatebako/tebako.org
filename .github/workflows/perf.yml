@@ -1,0 +1,71 @@
+name: perf
+
+# Regenerate src/data/perf.json from the benchmark covenant
+# (tamatebako/tebako's benchmarks/covenant.yaml) and the bench-history
+# branch the release fan-in publishes (per-release verdicts + the trend
+# feed). The perf page renders the checked-in file, so a benchmark
+# publish lands here as a data-only drift PR; merging it triggers
+# build_deploy, which ships the rendered page.
+#
+# Triggers: the release fan-out's poke (perf-updated), the poke the
+# benchmark fan-in already sends after appending to bench-history
+# (bench-update), a daily backstop, and manual runs.
+
+on:
+  repository_dispatch:
+    types:
+    - perf-updated
+    - bench-update
+  schedule:
+  - cron: "52 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Regenerate the perf data
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run perf
+
+      # The house pattern for automated drift (the registry repo's
+      # aggregate workflow): main is branch-protected, so the file lands
+      # by PR and auto-merge rides the required checks. A clean tree is
+      # a no-op.
+      - name: Open the drift pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.TEBAKO_CI_PAT_TOKEN || secrets.GITHUB_TOKEN }}
+          branch: perf/drift
+          add-paths: src/data/perf.json
+          title: "perf: regenerate from bench-history"
+          commit-message: "perf: regenerate from bench-history"
+          body: |
+            Automated perf-data regeneration: the drift from the benchmark covenant and the bench-history branch (tamatebako/tebako). Auto-merges when checks go green. The perf page renders only this checked-in file.
+
+      - name: Auto-merge the drift PR
+        env:
+          GH_TOKEN: ${{ secrets.TEBAKO_CI_PAT_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge --auto --squash perf/drift || gh pr merge --squash perf/drift || true
