@@ -30,6 +30,19 @@ the registry's `registry-updated` dispatch, daily, and on demand; drift lands by
 auto-merging PR. Descriptions and kind presentation are the authored layer in
 `src/config/catalog.ts`; `tests/catalog.test.ts` pins the data file's invariants.
 
+The performance covenant page (`/perf/`) is the same pattern pointed at the
+benchmark gate. `tools/build-perf.mjs` reads the covenant
+(tamatebako/tebako's `benchmarks/covenant.yaml`) and the bench-history branch
+(the trend feed plus the per-release verdicts), derives per-cell × triplet ×
+release readings with the gate's own selection and worst-leg aggregation, and
+writes `src/data/perf.json` — fail-closed on a malformed feed, and fail-closed
+when the derived latest release disagrees with the verdict the gate published
+(the page and the gate cannot drift). `.github/workflows/perf.yml` regenerates
+it on `perf-updated`/`bench-update` dispatches, daily, and on demand; drift
+lands by auto-merging PR. Axis presentation is the authored layer in
+`src/config/perf.ts`; `tests/perf.test.ts` pins the data file's invariants and
+the sparkline geometry.
+
 ## Writing rules (enforced by CI)
 
 `tests/prose-lint.test.ts` sweeps all content for banned vocabulary and structural violations. The rules:

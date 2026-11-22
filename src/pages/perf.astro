@@ -1,0 +1,439 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import {
+  PERF,
+  boundLabel,
+  formatValue,
+  isOver,
+  latestReading,
+  releaseUrl,
+  sortTriplets,
+  sparkline,
+  stateCounts,
+  tripletLabel,
+  trips,
+} from '../lib/perf'
+import type { PerfCell, PerfVerdictCell } from '../lib/perf'
+import { AXIS_META, AXIS_ORDER, TREND_READING_CAP } from '../config/perf'
+
+interface AxisGroup {
+  axis: string
+  meta: { label: string; blurb: string }
+  cells: PerfCell[]
+}
+
+const groups: AxisGroup[] = (() => {
+  const byAxis = new Map<string, PerfCell[]>()
+  for (const c of PERF.cells) {
+    const list = byAxis.get(c.axis) ?? []
+    list.push(c)
+    byAxis.set(c.axis, list)
+  }
+  const known = (AXIS_ORDER as readonly string[]).filter((a) => byAxis.has(a))
+  const rest = [...byAxis.keys()].filter((a) => !(AXIS_ORDER as readonly string[]).includes(a)).sort()
+  return [...known, ...rest].map((axis) => ({
+    axis,
+    meta: AXIS_META[axis] ?? { label: axis, blurb: '' },
+    cells: byAxis.get(axis)!,
+  }))
+})()
+
+const verdictById = new Map<string, PerfVerdictCell>(PERF.latest.cells.map((c) => [c.id, c]))
+const counts = stateCounts(PERF.latest.cells)
+
+const allTrips = trips(PERF)
+const tripsByCell = new Map<string, number>()
+for (const t of allTrips) tripsByCell.set(t.cell_id, (tripsByCell.get(t.cell_id) ?? 0) + 1)
+const TRIPS_CAP = 24
+
+const gated = PERF.verdicts.filter((v) => v.verdict !== null)
+const failed = gated.filter((v) => v.verdict === 'fail')
+const firstGatedIndex = PERF.verdicts.findIndex((v) => v.verdict !== null)
+const tripOrder = new Map(PERF.verdicts.map((v, i) => [v.release, i]))
+const everyTripPredatesGate =
+  allTrips.length > 0 && allTrips.every((t) => (tripOrder.get(t.release) ?? 0) < firstGatedIndex)
+
+const generatedLabel = new Date(PERF.generated_at).toLocaleDateString('en-US', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+  timeZone: 'UTC',
+})
+
+const driftLabel = (v: number) => `×${v.toFixed(2)}`
+---
+
+<BaseLayout
+  title="Performance covenant — Tebako"
+  description="The benchmark covenant every tebako release must pass: per-cell budgets, the readings behind them across the platform matrix, the current verdict, and every trip — regenerated from the published bench history."
+>
+  <section class="mx-auto max-w-7xl px-6 pb-20 pt-32">
+    <p class="tb-eyebrow tb-animate-rise">玉手箱 PERFORMANCE</p>
+    <h1 class="tb-animate-rise tb-delay-1 mt-3">The performance covenant.</h1>
+    <p class="tb-animate-rise tb-delay-2 mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      Every tebako release is gated on a set of performance budgets: first response, steady-state
+      throughput, filesystem overhead, memory, teardown, and the author loop, measured across the
+      platform matrix on shared CI runners. This page renders the covenant's own record — each
+      budget, the readings behind it, and every trip — regenerated from the published history.
+    </p>
+    <p class="tb-animate-rise tb-delay-3 mt-3 max-w-2xl text-sm leading-relaxed text-[var(--tb-c-text-3)]">
+      The budgets are authored in{' '}
+      <a href="https://github.com/tamatebako/tebako/blob/main/benchmarks/covenant.yaml" class="text-[var(--tb-c-accent)] hover:underline">covenant.yaml</a>;
+      the verdicts and per-leg readings publish to the{' '}
+      <a href={PERF.source.bench_history} class="text-[var(--tb-c-accent)] hover:underline">bench-history branch</a>{' '}
+      after each benchmark run. The full per-workload matrix renders on the{' '}
+      <a href="/benchmarks/" class="text-[var(--tb-c-accent)] hover:underline">benchmarks page</a>.
+    </p>
+
+    <div class="tb-animate-rise tb-delay-3 tb-card mt-10 flex flex-wrap items-center gap-x-8 gap-y-4 p-6">
+      <div class="flex items-center gap-3">
+        <span
+          class:list={[
+            'rounded-full px-4 py-1.5 font-[var(--font-mono)] text-sm font-semibold',
+            PERF.latest.verdict === 'pass'
+              ? 'border border-[var(--tb-c-divider-strong)] text-[var(--tb-c-text-1)]'
+              : 'bg-[var(--tb-c-accent)] text-[var(--color-ink-deep)]',
+          ]}
+        >
+          {PERF.latest.verdict}
+        </span>
+        <div>
+          <p class="font-[var(--font-mono)] text-sm text-[var(--tb-c-text-1)]">
+            <a href={releaseUrl(PERF.latest.release)} class="hover:text-[var(--tb-c-accent)] hover:underline">
+              {PERF.latest.release}
+            </a>
+            {PERF.latest.date && <span class="text-[var(--tb-c-text-3)]"> · {PERF.latest.date}</span>}
+          </p>
+          <p class="text-xs text-[var(--tb-c-text-3)]">the gate's verdict on the latest published run</p>
+        </div>
+      </div>
+      <p class="font-[var(--font-mono)] text-xs uppercase tracking-wider text-[var(--tb-c-text-3)]">
+        {counts.pass} pass · {counts.over} over · {counts.absent} absent · {PERF.cells.length} cells
+      </p>
+      <p class="font-[var(--font-mono)] text-xs uppercase tracking-wider text-[var(--tb-c-text-3)]">
+        {gated.length} verdicts published · {failed.length === 0 ? 'all pass' : `${failed.length} failed`}
+      </p>
+      <p class="font-[var(--font-mono)] text-xs uppercase tracking-wider text-[var(--tb-c-text-3)]">
+        data generated {generatedLabel}
+      </p>
+    </div>
+
+    {counts.absent > 0 && (
+      <p class="mt-4 max-w-2xl text-sm leading-relaxed text-[var(--tb-c-text-3)]">
+        An <span class="font-[var(--font-mono)]">absent</span> cell is a coverage gap the run
+        reported, never a failure: the workloads that produce it have not run yet, and the page
+        shows the gap rather than a silent pass.
+      </p>
+    )}
+
+    {groups.map((group) => (
+      <section class="mt-20" aria-labelledby={`perf-${group.axis}`}>
+        <p class="tb-eyebrow">{group.meta.label}</p>
+        <h2 id={`perf-${group.axis}`} class="mt-2 font-[var(--font-display)] text-3xl font-medium">
+          {group.meta.label}
+        </h2>
+        {group.meta.blurb && (
+          <p class="mt-3 max-w-2xl leading-relaxed text-[var(--tb-c-text-2)]">{group.meta.blurb}</p>
+        )}
+
+        {group.cells.map((cell) => {
+          const vc = verdictById.get(cell.id)
+          const latest = latestReading(PERF, cell)
+          const byTriplet = PERF.trend[cell.id] ?? {}
+          const triplets = sortTriplets(Object.keys(byTriplet))
+          const cellTrips = tripsByCell.get(cell.id) ?? 0
+          const state = vc?.state ?? 'absent'
+          return (
+            <article class="tb-card mt-8 p-6">
+              <div class="flex flex-wrap items-start justify-between gap-3">
+                <h3 class="font-[var(--font-mono)] text-lg font-medium leading-snug text-[var(--tb-c-text-1)]">
+                  {cell.id}
+                </h3>
+                <div class="flex shrink-0 flex-wrap gap-2">
+                  <span class="rounded-full bg-[var(--tb-c-divider)] px-2.5 py-0.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-2)]">
+                    {boundLabel(cell)}
+                  </span>
+                  <span
+                    class:list={[
+                      'rounded-full px-2.5 py-0.5 font-[var(--font-mono)] text-xs',
+                      state === 'pass' && 'border border-[var(--tb-c-divider-strong)] text-[var(--tb-c-text-1)]',
+                      state === 'over' && 'bg-[var(--tb-c-accent)] text-[var(--color-ink-deep)]',
+                      state === 'absent' && 'border border-dashed border-[var(--tb-c-divider-strong)] text-[var(--tb-c-text-3)]',
+                    ]}
+                  >
+                    {state}
+                  </span>
+                  {cellTrips > 0 && (
+                    <a href="#trips" class="rounded-full border border-[var(--tb-c-accent)] px-2.5 py-0.5 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-accent)] hover:underline">
+                      {cellTrips} {cellTrips === 1 ? 'trip' : 'trips'}
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {cell.note && (
+                <p class="mt-3 max-w-3xl text-sm leading-relaxed text-[var(--tb-c-text-2)]">{cell.note}</p>
+              )}
+
+              <dl class="mt-4 flex flex-wrap gap-x-8 gap-y-2 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+                {vc?.measured !== null && vc?.measured !== undefined && (
+                  <div class="flex gap-2">
+                    <dt class="uppercase tracking-wider">judged</dt>
+                    <dd class={isOver(vc.measured, vc.comparison, vc.bound) ? 'font-semibold text-[var(--tb-c-text-accent)]' : 'text-[var(--tb-c-text-2)]'}>
+                      {formatValue(vc.measured, cell.unit)}
+                    </dd>
+                  </div>
+                )}
+                {latest && (
+                  <div class="flex gap-2">
+                    <dt class="uppercase tracking-wider">latest worst leg</dt>
+                    <dd class="text-[var(--tb-c-text-2)]">
+                      {tripletLabel(latest.triplet)} · {latest.reading.workload} · {latest.reading.target}
+                    </dd>
+                  </div>
+                )}
+                {vc?.native_drift !== null && vc?.native_drift !== undefined && (
+                  <div class="flex gap-2">
+                    <dt class="uppercase tracking-wider">native drift</dt>
+                    <dd class="text-[var(--tb-c-text-2)]">{driftLabel(vc.native_drift)}</dd>
+                  </div>
+                )}
+                {vc?.pair_delta !== null && vc?.pair_delta !== undefined && (
+                  <div class="flex gap-2">
+                    <dt class="uppercase tracking-wider">pair delta</dt>
+                    <dd class="text-[var(--tb-c-text-2)]">{driftLabel(vc.pair_delta)}</dd>
+                  </div>
+                )}
+                {vc?.witness && (vc.witness.image_os || vc.witness.image_version) && (
+                  <div class="flex gap-2">
+                    <dt class="uppercase tracking-wider">runner image</dt>
+                    <dd class="text-[var(--tb-c-text-2)]">
+                      {[vc.witness.image_os, vc.witness.image_version].filter(Boolean).join(' / ')}
+                      {vc.witness.image_changed === true && ' (changed)'}
+                    </dd>
+                  </div>
+                )}
+                {vc?.class && (
+                  <div class="flex gap-2">
+                    <dt class="uppercase tracking-wider">class</dt>
+                    <dd class="font-semibold text-[var(--tb-c-text-accent)]">{vc.class}</dd>
+                  </div>
+                )}
+              </dl>
+              {vc?.class_note && (
+                <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-2)]">{vc.class_note}</p>
+              )}
+              {vc?.injected !== null && vc?.injected !== undefined && (
+                <p class="mt-2 text-sm leading-relaxed text-[var(--tb-c-text-3)]">
+                  This run carried an injected breach — the trip proof that exercises the gate on
+                  purpose. The raw reading was {formatValue(vc.injected, cell.unit)}; the gate
+                  judged {vc.measured !== null && vc.measured !== undefined ? formatValue(vc.measured, cell.unit) : '—'}.
+                </p>
+              )}
+
+              {triplets.length === 0 ? (
+                <div class="mt-6 rounded-lg border border-dashed border-[var(--tb-c-divider-strong)] p-5">
+                  <p class="text-sm leading-relaxed text-[var(--tb-c-text-3)]">
+                    No readings yet. The workloads that produce this cell shipped after the latest
+                    published run; the first readings land with the next benchmark run, and the
+                    gate evaluates them from then on.
+                  </p>
+                </div>
+              ) : (
+                <div class="mt-6 grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+                  {triplets.map((t) => {
+                    const list = (byTriplet[t] ?? []).slice(-TREND_READING_CAP)
+                    const sl = sparkline(list, cell.comparison, cell.bound)
+                    const last = list[list.length - 1]
+                    const anyImage = list.some((r) => r.image_os || r.image_version)
+                    return (
+                      <div class="rounded-lg border border-[var(--tb-c-divider)] p-4">
+                        <div class="flex items-baseline justify-between gap-2">
+                          <p class="text-sm font-medium text-[var(--tb-c-text-1)]">{tripletLabel(t)}</p>
+                          <p
+                            class:list={[
+                              'font-[var(--font-mono)] text-sm',
+                              isOver(last.value, cell.comparison, cell.bound)
+                                ? 'font-semibold text-[var(--tb-c-text-accent)]'
+                                : 'text-[var(--tb-c-text-2)]',
+                            ]}
+                          >
+                            {formatValue(last.value, cell.unit)}
+                          </p>
+                        </div>
+                        <svg
+                          viewBox={`0 0 ${sl.width} ${sl.height}`}
+                          class="mt-2 h-14 w-full"
+                          role="img"
+                          aria-label={`${cell.id} on ${tripletLabel(t)}: ${list.length} readings, bound ${boundLabel(cell)}`}
+                        >
+                          <line
+                            x1="7" x2={sl.width - 7} y1={sl.boundY} y2={sl.boundY}
+                            stroke="var(--tb-c-text-3)" stroke-width="1" stroke-dasharray="4 3" opacity="0.75"
+                          />
+                          <polyline points={sl.points} fill="none" stroke="var(--tb-c-text-2)" stroke-width="1.5" />
+                          {sl.dots.map((d) => (
+                            <circle cx={d.x} cy={d.y} r={d.over ? 3 : 2} fill={d.over ? 'var(--tb-c-accent)' : 'var(--tb-c-text-2)'} />
+                          ))}
+                        </svg>
+                        <details class="mt-2">
+                          <summary class="cursor-pointer font-[var(--font-mono)] text-xs uppercase tracking-wider text-[var(--tb-c-text-3)] hover:text-[var(--tb-c-text-1)]">
+                            last {list.length} readings
+                          </summary>
+                          <div class="tb-prose mt-2 overflow-x-auto">
+                            <table class="text-xs" style="margin-top: 0;">
+                              <thead>
+                                <tr>
+                                  <th>Release</th>
+                                  <th>Date</th>
+                                  <th>Value</th>
+                                  <th>Leg</th>
+                                  {anyImage && <th>Runner image</th>}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {[...list].reverse().map((r) => (
+                                  <tr>
+                                    <td class="font-[var(--font-mono)]">
+                                      <a href={releaseUrl(r.release)} class="hover:text-[var(--tb-c-accent)] hover:underline">
+                                        {r.release.replace(/^run-/, '…')}
+                                      </a>
+                                    </td>
+                                    <td>{r.date ?? '—'}</td>
+                                    <td
+                                      class:list={[
+                                        'font-[var(--font-mono)]',
+                                        isOver(r.value, cell.comparison, cell.bound) && 'font-semibold text-[var(--tb-c-text-accent)]',
+                                      ]}
+                                    >
+                                      {formatValue(r.value, cell.unit)}
+                                      {isOver(r.value, cell.comparison, cell.bound) && ' over'}
+                                    </td>
+                                    <td class="font-[var(--font-mono)]">{r.workload} · {r.target}</td>
+                                    {anyImage && (
+                                      <td class="font-[var(--font-mono)]">
+                                        {r.image_os ? `${r.image_os}/${r.image_version ?? '—'}` : '—'}
+                                      </td>
+                                    )}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </details>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </article>
+          )
+        })}
+      </section>
+    ))}
+
+    <section class="mt-20" id="trips" aria-labelledby="trips-heading">
+      <p class="tb-eyebrow">TRIPS</p>
+      <h2 id="trips-heading" class="mt-2 font-[var(--font-display)] text-3xl font-medium">
+        Every reading over the bound.
+      </h2>
+      {allTrips.length === 0 ? (
+        <p class="mt-3 max-w-2xl leading-relaxed text-[var(--tb-c-text-2)]">
+          No reading in the published window breaches its bound.
+        </p>
+      ) : (
+        <>
+          <p class="mt-3 max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
+            {allTrips.length} {allTrips.length === 1 ? 'reading breaches' : 'readings breach'} the
+            current bounds across the published window.
+            {everyTripPredatesGate
+              ? ' Every one predates the gate’s first published verdict — the bounds were calibrated from this history before the gate went live, and every published verdict since is a pass.'
+              : ' The gate fails its release on a trip.'}
+          </p>
+          <div class="tb-prose mt-6 overflow-x-auto">
+            <table>
+              <thead>
+                <tr>
+                  <th>Release</th>
+                  <th>Date</th>
+                  <th>Cell</th>
+                  <th>Platform</th>
+                  <th>Leg</th>
+                  <th>Reading</th>
+                  <th>Bound</th>
+                  <th>Class</th>
+                </tr>
+              </thead>
+              <tbody>
+                {allTrips.slice(0, TRIPS_CAP).map((t) => (
+                  <tr>
+                    <td class="font-[var(--font-mono)]">
+                      <a href={releaseUrl(t.release)} class="hover:text-[var(--tb-c-accent)] hover:underline">
+                        {t.release.replace(/^run-/, '…')}
+                      </a>
+                    </td>
+                    <td>{t.date ?? '—'}</td>
+                    <td class="font-[var(--font-mono)]">{t.cell_id}</td>
+                    <td>{tripletLabel(t.triplet)}</td>
+                    <td class="font-[var(--font-mono)]">{t.workload} · {t.target}</td>
+                    <td class="font-[var(--font-mono)] font-semibold text-[var(--tb-c-text-accent)]">
+                      {formatValue(t.value, PERF.cells.find((c) => c.id === t.cell_id)?.unit ?? null)}
+                    </td>
+                    <td class="font-[var(--font-mono)]">
+                      {t.comparison} {formatValue(t.bound, PERF.cells.find((c) => c.id === t.cell_id)?.unit ?? null)}
+                    </td>
+                    <td class="font-[var(--font-mono)]">{t.class ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {allTrips.length > TRIPS_CAP && (
+            <p class="mt-2 text-sm text-[var(--tb-c-text-3)]">
+              Showing the newest {TRIPS_CAP} of {allTrips.length} trips.
+            </p>
+          )}
+          <p class="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--tb-c-text-3)]">
+            Trips derived from the trend feed carry no classification. When the gate itself trips,
+            the fleet witness classifies the verdict — fleet move, regression, or ambiguous — from
+            the native arm's drift and the pair delta against the cell's rolling history, and the
+            class renders here.
+          </p>
+        </>
+      )}
+    </section>
+
+    <section class="mt-16 border-t border-[var(--tb-c-divider)] pt-8">
+      <h2 class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)]">
+        How this page is built
+      </h2>
+      <div class="mt-3 max-w-3xl space-y-3 text-sm leading-relaxed text-[var(--tb-c-text-3)]">
+        <p>
+          The budgets are the covenant's: authored in the tebako repository, evaluated by the
+          benchmark harness on every release across the platform matrix, and published — verdicts
+          and per-leg readings — to the bench-history branch. A run that breaches a bound fails the
+          gate and its release.
+        </p>
+        <p>
+          This page renders a checked-in data file that regenerates from that history every day
+          and on every benchmark publish. The derivation re-applies the gate's own selection and
+          worst-leg aggregation, and the generator refuses to write a file whose latest release
+          disagrees with the verdict the gate published, so the page and the gate cannot drift
+          apart.
+        </p>
+        <p>
+          Ratio cells read tebako against the same interpreter installed on the system. For the
+          filesystem cell 1.00× is parity and above is overhead; for the steady-state cells the
+          figure is the share of native throughput kept. The fleet witness fields — native-arm
+          drift, pair delta, runner image identity, and the trip class — appear on entries
+          published since the witness landed; older entries render without them.
+        </p>
+        <p>
+          The full per-workload matrix, including the metanorma v1-vs-v2 suite and the unavailable
+          and failed rows, renders on the{' '}
+          <a href="/benchmarks/" class="text-[var(--tb-c-accent)] hover:underline">benchmarks page</a>.
+        </p>
+      </div>
+    </section>
+  </section>
+</BaseLayout>

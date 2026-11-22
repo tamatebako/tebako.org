@@ -11,7 +11,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "catalog": "node tools/build-catalog.mjs",
-    "catalog:check": "node tools/build-catalog.mjs --check"
+    "catalog:check": "node tools/build-catalog.mjs --check",
+    "perf": "node tools/build-perf.mjs",
+    "perf:check": "node tools/build-perf.mjs --check"
   },
   "devDependencies": {
     "@asciidoctor/core": "^4.0.5",
