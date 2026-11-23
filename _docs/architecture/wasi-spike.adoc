@@ -1,0 +1,348 @@
+---
+title: WASI, measured
+heading: WASI, measured.
+lede: >-
+  A wasm32-wasi build would collapse the platform matrix for
+  pure-language payloads into one artifact. A timeboxed spike measured
+  that premise against the shipped system, and this page records what
+  the measurements said: the interpreter runs, the mount fabric mounts
+  real images inside the sandbox, native extensions are the honest
+  constraint, and the economics hold. The verdict is proceed.
+description: >-
+  The WASI spike, recorded: whether ruby.wasm runs a tebako-shaped
+  workload, whether the .tfs mount fabric works inside WASI's
+  capability model, what happens to gems with C extensions, and how
+  the size and latency numbers compare with the native runtime pair —
+  with the commands, their outputs, and the verdict.
+---
+
+// scope: a research verdict, not shipped behavior. Nothing on this page
+// describes a released feature; it describes what a spike measured and
+// what the ecosystem decided from the measurement.
+
+[NOTE]
+====
+This page is a verdict, not a feature. Nothing described here ships
+today. It records a timeboxed experiment, its evidence, and its
+conclusion, so that the question stays answered.
+====
+
+== Why the question exists
+
+Every tebako runtime pair is built per platform: an interpreter
+executable and its environment image for each of eight platform
+triplets. A payload pressed against one triplet's runtime does not run
+on another. For pure-language payloads — application code plus gems
+that are themselves pure Ruby, with no compiled extensions — a
+WebAssembly build of the interpreter would replace the whole matrix
+with one artifact that any wasm host runs anywhere.
+
+The premise could have been false in three places. The interpreter
+might not run the workload. The virtual filesystem that tebako mounts
+images through might not fit inside WASI's sandbox, which grants a
+guest exactly the directories its host preopens and nothing else. And
+the economics might fail: a wasm artifact several times slower and
+twice as large would make one-matrix moot, because the per-platform
+builds would win on their own numbers.
+
+The spike asked four questions and answered each with measurements on
+an arm64 Mac: ruby 4.0.0 compiled to wasm32-wasip1 (the ruby.wasm
+project's full build) under wasmtime 51, against the shipped
+macos-arm64 runtime pair (ruby 4.0.9, exe plus environment image).
+
+== The interpreter runs
+
+The first question is whether a wasm interpreter runs the workload a
+tebako payload presents at all: a script on an explicit load path,
+requiring stdlib the way real applications do. The fixture adds one
+library directory to the load path and requires `json` and `digest`
+from stdlib.
+
+[source,console]
+----
+$ wasmtime run --dir $USR::/usr --dir native::/fixture \
+    ruby.wasm -I /fixture/lib /fixture/main.rb
+hello-runtimes fixture ok: ruby 4.0.0 / world from -I path / 4644bffc2628 / {"ok":true}
+
+$ tebako-runtime-0.17.15-ruby-4.0.9-macos-arm64 -I lib main.rb
+hello-runtimes fixture ok: ruby 4.0.9 / world from -I path / 4644bffc2628 / {"ok":true}
+----
+
+The two lines differ only in the interpreter version. The digest and
+the serialized JSON agree byte for byte, which is the point: the
+computation is the same on both hosts.
+
+The stdlib surface is broad but not complete. JSON, YAML, ERB, zlib,
+and even OpenSSL load and work, because the ruby.wasm full build
+statically links the standard extension libraries into the module.
+Three absences matter for payload selection, and they are absences of
+the preview1 WASI target, not of this interpreter build:
+
+* *Sockets.* `require "socket"` fails, and `net/http` with it. WASI
+  preview1 has no socket API; the preview2 builds that carry one are
+  published for ruby-head only. A payload that fetches from the
+  network cannot run on the preview1 line.
+* *Threads.* `Thread.new` raises `NotImplementedError`, so anything
+  built on threads, including the stdlib `Timeout` library, is
+  unavailable.
+* *Process spawn.* There is no `fork` and no `system()`. A payload
+  that shells out cannot run, which for tebako is a reinforcement: the
+  no-shell-outs rule already excludes that shape.
+
+The answer to the first question is yes, for the pure-language
+workload, with sockets and threads as named gaps on the preview1
+target.
+
+== The mount fabric fits the sandbox
+
+The second question is the one that could have ended the spike. Tebako
+mounts images: the runtime's environment image and each payload image
+are opened, indexed, and served through a mount table with
+longest-prefix dispatch, read-only backends, and an all-or-nothing
+failure rule. WASI's filesystem model is a capability sandbox: the
+guest sees exactly the directories the host preopened, addressed as
+its own filesystem. The natural mapping is that a preopened directory
+is how an image file reaches the guest. The question is whether the
+mount fabric's semantics survive inside that model.
+
+The first step was compilation. The Rust filesystem crate builds for
+wasm32-wasip1 with its default LimniFS backend:
+
+[source,console]
+----
+$ cargo build -p tfs --target wasm32-wasip1 \
+    --no-default-features --features backend-limnifs
+    Finished `dev` profile target(s) in 23.32s
+----
+
+The whole pure-Rust dependency tree compiles untouched: the LimniFS
+reader, the zip and tar backends, the compression fleet, the
+manifest model. Two kinds of change were required, both bounded:
+
+* *The platform gate.* The workspace names its supported platforms in
+  one exhaustive enum, and compiling for any other target is a
+  deliberate compile error. A `wasm32-wasi` variant is the one
+  semantic addition: the new axis entry the follow-on program would
+  own deliberately.
+* *Four small platform shims.* The code assumes every target is either
+  unix or windows, and WASI is neither, so four cfg sites needed a
+  wasi arm: two open-flag constants, one timestamp conversion, one
+  stat field spelling. The platform floor — the directories a jail
+  grants implicitly because the platform itself needs them — is empty
+  under WASI by construction: the preopened directories are the entire
+  world the guest can name, so there is nothing to grant back.
+
+The C-backed backends do not compile for WASI and stay off: the
+dwarfs-t C++ library, the squashfs C library, and the encryption
+transform's vendored crypto. A WASI build is therefore LimniFS-only,
+with the other backends answering the existing named not-supported
+error. LimniFS is the default image format, so the limitation costs
+nothing for first-class artifacts.
+
+The second step was execution. A probe program mounts two real images
+inside wasmtime — the actual environment image of the shipped ruby
+runtime and a published payload image, both reaching the guest through
+preopened directories — then stats and reads files on both mounts:
+
+[source,console]
+----
+$ wasmtime run --dir $RUNTIME::/env --dir $PAYLOAD::/payload probe.wasm \
+    /env/tebako-runtime-0.17.15-ruby-4.0.9-macos-arm64.tfs /payload/3.34.1.tfs
+flag ABI: O_RDONLY=0x4000000 O_ACCMODE=0x1e000000 O_NOFOLLOW=0x1000000
+mount "/env/tebako-runtime-0.17.15-ruby-4.0.9-macos-arm64.tfs" at "/__tfs__": rc=0 handle=0
+mount "/payload/3.34.1.tfs" at "/app": rc=0 handle=1
+stat "/__tfs__/lib/ruby/4.0.0/json.rb": rc=0 size=21960
+read "/__tfs__/lib/ruby/4.0.0/json.rb": 256 bytes; first line: # frozen_string_literal: true
+stat "/app/bin/xml2rfc": rc=0 size=1832
+read "/app/bin/xml2rfc": 256 bytes; first line: #!/usr/bin/env python3
+open outside mounts: fd=-1 (expect <0)
+unmount handle=1: rc=0
+unmount handle=0: rc=0
+PROBE OK
+----
+
+Every semantic the composition model depends on held: two images
+co-mounted at disjoint prefixes, longest-prefix dispatch serving both,
+reads returning the image bytes, a path outside every mount failing,
+and a clean unmount with no partial state. The image never needs to
+be unpacked into the sandbox; the preopen is only how its bytes reach
+the reader. The "extract once, preopen" fallback the spike brief
+anticipated is unnecessary.
+
+One genuine discovery belongs to the port, and it is small. The
+wasi-libc open-flag constants differ from POSIX: `O_RDONLY` is
+`0x04000000`, not zero, and `O_ACCMODE` masks different bits. Code
+that treats literal zero as "open for reading" misclassifies the mode
+under WASI. The driver boundary must translate flags explicitly, the
+same way it already anchors path spelling per platform.
+
+The answer to the second question is yes, cleanly: the mount fabric's
+semantics exist inside the capability model with preopened directories
+as the byte source, and no per-backend hack was required.
+
+== Native extensions: the honest answer
+
+The third question is what happens to gems with C extensions, and the
+honest answer has two halves.
+
+The first half: there is no load-time dynamic linking on this line.
+The ruby.wasm interpreter links its C extensions statically, at build
+time; `fiddle`, the FFI library, does not load, and the extension
+entry points of `RbConfig` are empty. A gem with its own C code —
+nokogiri is the case that matters for the ecosystem's flagship — has
+no module to load into and no loader to load it. The WebAssembly
+component model is the intended answer, and in 2026 its shared-library
+linking is still moving: wasi-libc and the SDK have carried `dlopen`
+for some time, and CPython's WASI port uses it, but the packaging
+layer above the runtime has not settled — there are no WASI wheels on
+PyPI and no gem ABI for wasm. Planning around it today would be
+planning around a moving target.
+
+The second half is more useful: the extension code can be baked into
+the interpreter at factory time. That is already how ruby.wasm ships
+its own stdlib extensions, and it is a shape tebako's factory model
+absorbs naturally — the factories already build interpreters; a wasm
+factory would build one with a payload family's extensions linked in.
+The composition boundary moves from run time to build time: instead of
+a generic runtime plus a payload carrying compiled gems, the runtime
+variant carries the extensions and the payload stays pure. Whether
+that trade is worth making per payload family is a program decision,
+not a spike decision.
+
+Meanwhile the pure-language subset is not theoretical. Asciidoctor is
+a real, useful, pure-Ruby application, and the spike ran it on both
+hosts from the same gem bytes:
+
+[source,console]
+----
+$ tebako-runtime-0.17.15-ruby-4.0.9-macos-arm64 \
+    -I native/gems/gems/asciidoctor-2.0.26/lib native/convert.rb
+asciidoctor 2.0.26 on ruby 4.0.9 +PRISM [arm64-darwin24]
+
+$ wasmtime run --allow-precompiled --dir $USR::/usr --dir $PWD/native::/app \
+    ruby-4.0.cwasm -I /app/gems/gems/asciidoctor-2.0.26/lib \
+    -I /usr/local/lib/ruby/gems/4.0.0/gems/logger-1.7.0/lib /app/convert.rb
+asciidoctor 2.0.26 on ruby 4.0.0 +PRISM [wasm32-wasi]
+----
+
+The generated HTML is byte-identical across the two hosts — 246 bytes,
+same digest. (The `logger` default gem is supplied on the load path
+exactly as a pressed payload would vendor it.) What is out of scope today is equally clear:
+metanorma needs nokogiri's compiled libxml2 bindings, xml2rfc needs
+lxml, and any payload that needs sockets or threads waits for the
+preview2 line.
+
+The answer to the third question is: nothing good happens to
+load-time native extensions until the component model settles, and the
+pure-language subset is still worth shipping, because it demonstrably
+covers real payloads.
+
+== The economics
+
+The fourth question is whether the numbers kill the idea regardless:
+if a wasm runtime were several times slower and twice as large, the
+matrix collapse would fail on economics, not feasibility. Measured on
+the same machine, against the shipped macos-arm64 pair:
+
+[cols="1,2,2"]
+|===
+| Measure | Native pair (ruby 4.0.9) | Wasm (ruby 4.0.0, wasmtime 51)
+
+| Interpreter artifact
+| 48.7 MB executable (19.5 MB gzipped)
+| 37.2 MB module (12.2 MB gzipped)
+
+| Environment content
+| 20.2 MB image
+| 19 MB stdlib tree, image-able
+
+| Boot plus hello, warm
+| 0.142 s median (n=20)
+| 0.143 s median precompiled; 0.322 s JIT-cached
+
+| Boot plus hello, cold
+| 0.28 s
+| 1.14 s with an empty wasmtime cache
+
+| Mixed compute probe
+| 0.529 s
+| 0.478 s
+
+| Resident memory, hello
+| 69.5 MB
+| 341.5 MB
+|===
+
+Size favors the wasm side: the interpreter module compresses smaller
+than the native executable, and one such artifact replaces the whole
+per-platform row. Warm latency is at parity once the host's compiled
+form is warm, and it is the wasmtime cache that makes it so; the cold
+case, roughly a second, is the compile of a 37 MB module and happens
+once per host per module version. Compute throughput is at parity on
+the mixed probe — faster on integer iteration, slower on allocation-
+and string-heavy work, about sixty percent slower on a deep recursion
+bench — rather than uniformly slower.
+
+The one bad number is memory: the wasm host's runtime plus the
+guest's linear memory cost roughly five times the resident set of the
+native pair. For command-line tooling that is a footnote; for dense
+server fleets it would be a real cost.
+
+The answer to the fourth question is that the economics hold: nothing
+approaches twice as large or three times as slow.
+
+== The verdict
+
+All four answers are constructive, so the verdict is *proceed*.
+
+. The interpreter runs the tebako workload, with sockets and threads
+  as named gaps of the preview1 target.
+. The mount fabric fits the capability model — preopened directories
+  as the byte source, every composition semantic intact — with a
+  bounded port: one deliberate platform-axis entry, four small shims,
+  explicit flag translation at the driver boundary.
+. Load-time native extensions are out until the component model
+  settles; factory-time static linking is the available shape; the
+  pure-language lane is proven on a real payload with byte-identical
+  output.
+. The economics hold on size, latency, and throughput, with resident
+  memory the honest cost.
+
+== The shape of the follow-on program
+
+The spike ships knowledge, not code. If the program is picked up, its
+outline falls out of the evidence:
+
+* *A wasm bootstrap form.* The loader for this world is a wasm host —
+  wasmtime or wasmer — driven by a thin embedding shim, native itself,
+  that resolves the runtime pair from the store, preopens the
+  directories, and passes the driver contract through. The driver
+  lives inside the wasm interpreter build and mounts the environment
+  image and payload images through the same mount fabric the probe
+  exercised; the trailer, the store layout, and the resolution
+  machinery are unchanged.
+* *A `wasm32-wasi` triplet.* One new entry on the platform axis,
+  carrying the interpreter module and its environment image as the
+  runtime pair, published by a wasm line of the ruby factory. Pure-
+  language payloads press once for it and run on every host the shim
+  runs on; payloads with native extensions stay per-platform until the
+  component model gives them an answer.
+* *Install-time compile.* The portable module is what ships; each host
+  compiles it once — the wasmtime cache already does this implicitly —
+  so the steady-state cost is the warm number, not the cold one.
+
+== What would reopen the question
+
+A verdict this size is allowed to have an expiry. Three developments
+would justify re-measuring: sockets and threads landing in the
+interpreter's preview2 builds, which would widen the payload lane
+considerably; the component model's shared-library linking stabilizing
+with a packaging layer above it, which would reopen native extensions;
+and a wasm host's memory overhead shrinking toward the native
+interpreter's, which would remove the one bad number. Until then the
+verdict stands: the premise held, and the question is closed.
+
+See also: link:/docs/architecture/runtime-as-image/[the runtime as an
+image] · link:/docs/architecture/vfs/[the VFS model] ·
+link:/docs/architecture/image-formats/[image formats] ·
+link:/docs/architecture/comparisons/[compared, honestly]
