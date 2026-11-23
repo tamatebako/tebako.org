@@ -16,3 +16,9 @@ yarn-debug.log*
 yarn-error.log*
 pagefind/*
 !public/pagefind/
+
+# The Tebako Volume (book/): generated chapter bodies, colophon, compile
+# outputs, and the shipped artifacts — rebuilt by `npm run book` on every
+# docs publish; never committed.
+book/build/
+book/dist/

@@ -1,0 +1,16 @@
+---
+# The Tebako Volume's metanorma configuration. The canonical build is
+# `npm run book` (tools/build-book.mjs): it generates the chapter bodies
+# and colophon under book/build/, then compiles the entry point
+# book/book.adoc. After that generation step this file also makes
+# `metanorma site generate book/` produce the same volume as a metanorma
+# site (cover + documents) — the collection identity below is the
+# volume's own, matching the series identity of the standalone spec
+# rendering in tamatebako/tebako's docs/spec-site/metanorma.yml.
+metanorma:
+  source:
+    files:
+      - book.adoc
+  collection:
+    organization: "Tebako"
+    name: "The Tebako Volume"

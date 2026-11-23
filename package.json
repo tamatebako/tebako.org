@@ -15,7 +15,9 @@
     "perf": "node tools/build-perf.mjs",
     "perf:check": "node tools/build-perf.mjs --check",
     "install-sh": "node tools/sync-install-sh.mjs",
-    "install-sh:check": "node tools/sync-install-sh.mjs --check"
+    "install-sh:check": "node tools/sync-install-sh.mjs --check",
+    "book": "node tools/build-book.mjs",
+    "book:offline": "node tools/build-book.mjs --offline"
   },
   "devDependencies": {
     "@asciidoctor/core": "^4.0.5",

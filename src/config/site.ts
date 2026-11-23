@@ -49,6 +49,7 @@ export const FOOTER_LINKS = {
     { label: 'Payload catalog', href: '/catalog/' },
     { label: 'Performance', href: '/perf/' },
     { label: 'Version catalog', href: '/versions/' },
+    { label: 'The Tebako Volume', href: '/book/' },
   ],
   Community: [
     { label: 'Report an issue', href: `${SITE.github}/issues` },

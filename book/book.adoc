@@ -1,0 +1,180 @@
+= The Tebako Volume
+:edition: 1.0
+:doctype: standard
+:docnumber: TBK VOL 1
+:status: published
+:security: unrestricted
+:committee: Tebako
+:committee-type: technical
+:mn-document-class: ribose
+:mn-output-extensions: xml,html,pdf,rxl
+:fullname: The Tebako Project
+:publisher: The Tebako Project
+:smartquotes: false
+:local-cache-only:
+:data-uri-image:
+:toclevels: 2
+include::build/stamp.adoc[]
+
+// The entry point of the Tebako Volume (book/book.yaml carries the build
+// configuration; tools/build-book.mjs generates the chapter bodies under
+// build/ from the sources named below, stamps :published-date: and the
+// colophon, and compiles this document). Chapters are consumed read-only:
+// spec chapters are the sync'd AsciiDoc twins of docs/spec/*.md in
+// tamatebako/tebako; the architecture chapter is this site's own
+// _docs/architecture page. Section titles, numbering, tables, and code
+// listings inside each chapter are verbatim — "spec 06 §4" resolves the
+// same way against the Markdown source, the standalone series rendering,
+// and this volume.
+
+[%unnumbered]
+== About this volume
+
+The Tebako Volume collects, in one reading order, the normative
+specifications of the tebako packaging ecosystem and the composition
+calculus that states their model formally. It exists to be cited: each
+chapter is one specification, carrying the same TBK SPEC number, the same
+section numbering, and the same text as the standalone series rendering
+and as the Markdown source of truth in the product repository. A reference
+of the form "TBK SPEC 02 §1" resolves identically against all three.
+
+The reading order is the order an implementer meets the machinery. The
+series landing and the system overview set the vocabulary. The wire format
+and the payload manifest define what a package is. The store, the jail,
+and the registry and trust specifications define how packages are cached,
+confined, and believed. The virtual filesystem, the driver contract, and
+the launcher ABI define how a run composes. The operational specifications
+— observability, distribution, audit, transparency, and solving — close
+the series, and the composition calculus states the whole as one small
+formal system.
+
+The volume is built by the ecosystem's own toolchain: the packed metanorma
+payload, installed from the official tebako registry, compiles this
+document, and the PDF is an artifact of every docs publish of tebako.org.
+The provenance of the build you are reading — source revisions, toolchain
+versions, artifact checksums — is recorded in the colophon.
+
+[%unnumbered]
+== TBK SPEC 00 — Tebako Specifications: the series landing
+
+include::build/bodies/spec/index.adoc[leveloffset=+1]
+
+[%unnumbered]
+== TBK SPEC 01 — System overview
+
+include::build/bodies/spec/01-overview.adoc[leveloffset=+1]
+
+[%unnumbered]
+== TBK SPEC 02 — tpkg wire format (L0)
+
+include::build/bodies/spec/02-tpkg-wire-format.adoc[leveloffset=+1]
+
+[%unnumbered]
+== TBK SPEC 03 — Payload manifest (L1)
+
+include::build/bodies/spec/03-payload-manifest.adoc[leveloffset=+1]
+
+[%unnumbered]
+== TBK SPEC 05 — Resolution and machine cache (L3)
+
+include::build/bodies/spec/05-resolution-and-cache.adoc[leveloffset=+1]
+
+[%unnumbered]
+== TBK SPEC 08 — Jails: host-access policy
+
+include::build/bodies/spec/08-jails.adoc[leveloffset=+1]
+
+[%unnumbered]
+== TBK SPEC 04 — References and registries (L3)
+
+include::build/bodies/spec/04-references-and-registry.adoc[leveloffset=+1]
+
+[%unnumbered]
+== TBK SPEC 09 — Trust and signing (authentication)
+
+include::build/bodies/spec/09-trust-and-signing.adoc[leveloffset=+1]
+
+[%unnumbered]
+== TBK SPEC 10 — Encryption (confidentiality)
+
+include::build/bodies/spec/10-encryption.adoc[leveloffset=+1]
+
+[%unnumbered]
+== TBK SPEC 11 — TFS: the virtual filesystem layer
+
+include::build/bodies/spec/11-tfs-vfs-model.adoc[leveloffset=+1]
+
+[%unnumbered]
+== TBK SPEC 17 — The runtime driver contract (any language)
+
+include::build/bodies/spec/17-runtime-driver-contract.adoc[leveloffset=+1]
+
+[%unnumbered]
+== TBK SPEC 06 — Launcher ABI (bootstrap → runtime)
+
+include::build/bodies/spec/06-launcher-abi.adoc[leveloffset=+1]
+
+[%unnumbered]
+== TBK SPEC 07 — Shims and dispatch
+
+include::build/bodies/spec/07-shims-and-dispatch.adoc[leveloffset=+1]
+
+[%unnumbered]
+== TBK SPEC 18 — The Contract Graph
+
+include::build/bodies/spec/18-contract-set.adoc[leveloffset=+1]
+
+[%unnumbered]
+== TBK SPEC 19 — The Bootstrap, Distributed: How Tebako Reaches Your Machine Without a Compiler
+
+include::build/bodies/spec/19-bootstrap-distribution.adoc[leveloffset=+1]
+
+[%unnumbered]
+== TBK SPEC 25 — Trace observability: the interception bus, diagnosis, and coverage
+
+include::build/bodies/spec/25-trace-observability.adoc[leveloffset=+1]
+
+[%unnumbered]
+== TBK SPEC 36 — Release bundles (the runtime publish unit)
+
+include::build/bodies/spec/36-release-bundles.adoc[leveloffset=+1]
+
+[%unnumbered]
+== TBK SPEC 37 — The registry book: federation, aliases, credentials, the official seed
+
+include::build/bodies/spec/37-registry-book.adoc[leveloffset=+1]
+
+[%unnumbered]
+== TBK SPEC 38 — OCI distribution (tfs+oci:)
+
+include::build/bodies/spec/38-oci-distribution.adoc[leveloffset=+1]
+
+[%unnumbered]
+== TBK SPEC 39 — Lazy range-fetch mounting of runtime images
+
+include::build/bodies/spec/39-lazy-range-mount.adoc[leveloffset=+1]
+
+[%unnumbered]
+== TBK SPEC 40 — The audit ledger: queries, the anchor, and the auditor's walk
+
+include::build/bodies/spec/40-audit-ledger.adoc[leveloffset=+1]
+
+[%unnumbered]
+== TBK SPEC 41 — Registry transparency: completeness proofs for the public fabric
+
+include::build/bodies/spec/41-registry-transparency.adoc[leveloffset=+1]
+
+[%unnumbered]
+== TBK SPEC 42 — Tree solving and lockfiles: one answer for a whole composition
+
+include::build/bodies/spec/42-tree-solving.adoc[leveloffset=+1]
+
+[%unnumbered]
+== The composition calculus
+
+include::build/bodies/arch/composition-calculus.adoc[leveloffset=+1]
+
+[%unnumbered]
+== Colophon
+
+include::build/colophon.adoc[]
