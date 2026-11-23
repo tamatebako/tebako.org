@@ -1,5 +1,5 @@
 #!/bin/sh
-# tebako installer (spec 16 §3.2): detect platform → download the tebako
+# tebako installer: detect platform → download the tebako
 # binaries + SHA256SUMS from the tamatebako/tebako release → verify sha256
 # BEFORE installing anything → install to ~/.local/bin (NEVER sudo) →
 # offer the managed PATH block. No dependencies beyond POSIX sh, curl,
@@ -7,13 +7,13 @@
 set -eu
 
 REPO="tamatebako/tebako"
-BINARIES="tebako tebako-pkg tfs tebako-bootstrap"
+BINARIES="tebako tebako-pkg tfs tebako-bootstrap tebako-shim"
 DEST="${TEBAKO_INSTALL_DEST:-$HOME/.local/bin}"
 
 die() { echo "install.sh: $*" >&2; exit 1; }
 
 # ------------------------------------------------------------------------
-# 1. Platform detection (spec 16's four legs; musl builds follow)
+# 1. Platform detection (the four legs, musl included)
 # ------------------------------------------------------------------------
 os="$(uname -s)"
 arch="$(uname -m)"
@@ -40,7 +40,7 @@ esac
 # ------------------------------------------------------------------------
 version="${1:-${TEBAKO_VERSION:-}}"
 if [ -z "$version" ]; then
-  echo "install.sh: resolving the latest release of $REPO…"
+  echo "install.sh: resolving the latest release of ${REPO}…"
   version="$(curl -fsSL -o /dev/null -w '%{url_effective}' "https://github.com/$REPO/releases/latest" | sed 's|.*/||')"
 fi
 [ -n "$version" ] || die "could not resolve the latest release tag"
@@ -60,7 +60,7 @@ done
 curl -fsSL -o "$tmp/SHA256SUMS" "$base/SHA256SUMS" || die "download failed: SHA256SUMS"
 
 # ------------------------------------------------------------------------
-# 4. Verify sha256 BEFORE installing anything (spec 16 §3.2)
+# 4. Verify sha256 BEFORE installing anything
 # ------------------------------------------------------------------------
 if command -v sha256sum >/dev/null 2>&1; then
   S256() { sha256sum "$1" | awk '{print $1}'; }
@@ -75,7 +75,7 @@ for b in $BINARIES; do
   got="$(S256 "$tmp/$b")"
   [ "$got" = "$want" ] || die "SHA256 MISMATCH for $b (want $want, got $got) — refusing to install"
 done
-echo "install.sh: sha256 verified for all four binaries"
+echo "install.sh: sha256 verified for all five binaries"
 
 # ------------------------------------------------------------------------
 # 5. Install to ~/.local/bin (NEVER sudo)
@@ -87,7 +87,7 @@ done
 echo "install.sh: installed $BINARIES → $DEST"
 
 # ------------------------------------------------------------------------
-# 5a. Seed the official registry (spec 37 §6): the just-installed binary
+# 5a. Seed the official registry: the just-installed binary
 # writes the authored, user-removable config entry itself — the seed
 # value lives ONLY in the binary, never a shell-side copy (SSOT).
 # Idempotent. A network hiccup here never fails the install — re-run
@@ -100,7 +100,7 @@ else
 fi
 
 # ------------------------------------------------------------------------
-# 6. PATH: hint or the managed block (spec 16 §3.2, spec 07 §3)
+# 6. PATH: hint or the managed block
 # ------------------------------------------------------------------------
 case ":$PATH:" in
   *":$DEST:"*) echo "install.sh: $DEST is already on PATH" ;;
@@ -116,4 +116,4 @@ esac
 
 echo ""
 echo "  Next: $DEST/tebako --version"
-echo "        $DEST/tebako install tfs:github:tamatebako/hello"
+echo "        $DEST/tebako install hello"
