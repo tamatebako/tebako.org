@@ -13,8 +13,10 @@ const ROOT = resolve(__dirname, '..')
 // '/'                          -> src/pages/index.astro
 // Same-domain paths served by the Pages assembly, not page files in this
 // repo: the versions catalog is built by tamatebako/versions and grafted
-// into the deploy (build_deploy.yml's assemble step).
-const ASSEMBLED_PATHS = new Set(['/versions/'])
+// into the deploy (build_deploy.yml's assemble step); the Tebako Volume is
+// built by the packed metanorma payload in the same workflow and grafted
+// at /book/.
+const ASSEMBLED_PATHS = new Set(['/versions/', '/book/'])
 
 function pageExists(href: string): boolean {
   if (ASSEMBLED_PATHS.has(href)) return true

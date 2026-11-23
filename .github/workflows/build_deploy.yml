@@ -59,6 +59,69 @@ jobs:
         env:
           SITE_URL: https://www.tebako.org
 
+      - name: Setup tebako (the dogfood toolchain)
+        # The volume build proves the toolchain on ourselves: the packed
+        # metanorma payload, installed from the official registry and
+        # dispatched through the shim layer, compiles the spec set + the
+        # composition calculus into the citable volume. The action caches
+        # the ~/.tebako store, so steady-state builds pay no payload
+        # download. The metanorma pin is NOT here — it lives in
+        # book/book.yaml (SSOT) and the install step below reads it.
+        uses: tamatebako/setup-tebako@v1
+        with:
+          version: 2.8.83
+          registries: tfs:github:tebako-packages/registry
+
+      - name: Restore the fontist cache
+        # Font installs and the formulas repo clone are the slow part of a
+        # cold volume build; the cache key tracks the book config (the
+        # declared font set + toolchain pin).
+        uses: actions/cache@v4
+        with:
+          path: ~/.fontist
+          key: ${{ runner.os }}-fontist-book-${{ hashFiles('book/book.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-fontist-book-
+
+      - name: Install the pinned metanorma payload
+        # The pin is read from book/book.yaml — never duplicated in the
+        # workflow. The ambient token gives the resolver's credentials
+        # layer its authenticated tier (anonymous release-API enumeration
+        # is the throttle class that reds cold installs).
+        run: |
+          pin=$(node --input-type=module -e "import YAML from 'yaml'; import { readFileSync } from 'node:fs'; process.stdout.write(YAML.parse(readFileSync('book/book.yaml','utf8')).toolchain.registry_version)")
+          echo "metanorma pin from book/book.yaml: $pin"
+          tebako install "metanorma@$pin"
+        env:
+          TEBAKO_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install fontconfig (the PDF leg's system-font floor)
+        # mn2pdf's FOP passes need fontconfig plus at least one
+        # fontconfig-visible font ("Fontconfig head is null" otherwise).
+        # ubuntu-latest carries both; declared here so the dependency is
+        # the workflow's, not the runner image's ambient state.
+        run: sudo apt-get install -y fontconfig fonts-dejavu-core
+
+      - name: Build the Tebako Volume
+        run: npm run book
+        env:
+          TEBAKO_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Graft the volume into dist/book
+        run: |
+          mkdir -p dist/book
+          cp book/dist/index.html book/dist/tebako-volume.pdf book/dist/build-manifest.json dist/book/
+          test -s dist/book/index.html && test -s dist/book/tebako-volume.pdf
+
+      - name: Upload the volume artifacts
+        # The same bytes that deploy serves at /book/, kept as a workflow
+        # artifact so a publish's volume is inspectable without a redeploy.
+        uses: actions/upload-artifact@v4
+        with:
+          name: tebako-volume
+          path: book/dist/
+          if-no-files-found: error
+
       - name: Assemble versions catalog (/versions)
         # Downloads the latest successful site-dist artifact from
         # tamatebako/versions and grafts it into dist/versions/. Cross-repo
