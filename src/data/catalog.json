@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-23T07:43:21.131Z",
+  "generated_at": "2026-11-23T11:07:04.034Z",
   "source": "https://raw.githubusercontent.com/tebako-packages/registry/main/tpkg-registry.yaml",
-  "payload_count": 27,
+  "payload_count": 30,
   "payloads": [
     {
       "name": "hello",
@@ -1145,6 +1145,132 @@
         "release_url": "https://github.com/tamatebako/tebako-runtime-php/releases/tag/v0.1.0",
         "signed": false,
         "entrypoints": [],
+        "runtime_requirement": null
+      }
+    },
+    {
+      "name": "jq",
+      "kind": "toolkit",
+      "engine": null,
+      "default_version": "1.8.2",
+      "version_count": 1,
+      "latest": {
+        "version": "1.8.2",
+        "platforms": {
+          "universal": false,
+          "triplets": {
+            "aarch64-linux-gnu": {
+              "artifact": "jq-1.8.2-linux-gnu-arm64.tfs",
+              "size_bytes": 1144061
+            },
+            "aarch64-macos": {
+              "artifact": "jq-1.8.2-macos-arm64.tfs",
+              "size_bytes": 456104
+            },
+            "x86_64-linux-gnu": {
+              "artifact": "jq-1.8.2-linux-gnu-x86_64.tfs",
+              "size_bytes": 1332697
+            },
+            "x86_64-macos": {
+              "artifact": "jq-1.8.2-macos-x86_64.tfs",
+              "size_bytes": 495255
+            },
+            "x86_64-windows-ucrt": {
+              "artifact": "jq-1.8.2-windows-ucrt64.tfs",
+              "size_bytes": 612946
+            }
+          }
+        },
+        "release_ref": "tfs:github:tebako-packages/toolkits:0.1.0-1",
+        "release_url": "https://github.com/tebako-packages/toolkits/releases/tag/0.1.0-1",
+        "signed": true,
+        "entrypoints": [
+          "jq"
+        ],
+        "runtime_requirement": null
+      }
+    },
+    {
+      "name": "ripgrep",
+      "kind": "toolkit",
+      "engine": null,
+      "default_version": "16.0.0",
+      "version_count": 1,
+      "latest": {
+        "version": "16.0.0",
+        "platforms": {
+          "universal": false,
+          "triplets": {
+            "aarch64-linux-gnu": {
+              "artifact": "ripgrep-16.0.0-linux-gnu-arm64.tfs",
+              "size_bytes": 3608565
+            },
+            "aarch64-macos": {
+              "artifact": "ripgrep-16.0.0-macos-arm64.tfs",
+              "size_bytes": 3472907
+            },
+            "x86_64-linux-gnu": {
+              "artifact": "ripgrep-16.0.0-linux-gnu-x86_64.tfs",
+              "size_bytes": 3543682
+            },
+            "x86_64-macos": {
+              "artifact": "ripgrep-16.0.0-macos-x86_64.tfs",
+              "size_bytes": 2883581
+            },
+            "x86_64-windows-ucrt": {
+              "artifact": "ripgrep-16.0.0-windows-ucrt64.tfs",
+              "size_bytes": 2879707
+            }
+          }
+        },
+        "release_ref": "tfs:github:tebako-packages/toolkits:0.1.0-1",
+        "release_url": "https://github.com/tebako-packages/toolkits/releases/tag/0.1.0-1",
+        "signed": true,
+        "entrypoints": [
+          "rg"
+        ],
+        "runtime_requirement": null
+      }
+    },
+    {
+      "name": "yq",
+      "kind": "toolkit",
+      "engine": null,
+      "default_version": "4.54.3",
+      "version_count": 1,
+      "latest": {
+        "version": "4.54.3",
+        "platforms": {
+          "universal": false,
+          "triplets": {
+            "aarch64-linux-gnu": {
+              "artifact": "yq-4.54.3-linux-gnu-arm64.tfs",
+              "size_bytes": 8025674
+            },
+            "aarch64-macos": {
+              "artifact": "yq-4.54.3-macos-arm64.tfs",
+              "size_bytes": 8360741
+            },
+            "x86_64-linux-gnu": {
+              "artifact": "yq-4.54.3-linux-gnu-x86_64.tfs",
+              "size_bytes": 8811390
+            },
+            "x86_64-macos": {
+              "artifact": "yq-4.54.3-macos-x86_64.tfs",
+              "size_bytes": 9300623
+            },
+            "x86_64-windows-ucrt": {
+              "artifact": "yq-4.54.3-windows-ucrt64.tfs",
+              "size_bytes": 9297074
+            }
+          }
+        },
+        "release_ref": "tfs:github:tebako-packages/toolkits:0.1.0-1",
+        "release_url": "https://github.com/tebako-packages/toolkits/releases/tag/0.1.0-1",
+        "signed": true,
+        "entrypoints": [
+          "yq"
+        ],
         "runtime_requirement": null
       }
     }
