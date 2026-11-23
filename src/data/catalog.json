@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-23T04:45:24.931Z",
+  "generated_at": "2026-11-23T05:10:55.641Z",
   "source": "https://raw.githubusercontent.com/tebako-packages/registry/main/tpkg-registry.yaml",
-  "payload_count": 25,
+  "payload_count": 27,
   "payloads": [
     {
       "name": "hello",
@@ -1066,6 +1066,83 @@
         },
         "release_ref": "tfs:github:tamatebako/tebako-runtime-python:v0.3.5",
         "release_url": "https://github.com/tamatebako/tebako-runtime-python/releases/tag/v0.3.5",
+        "signed": false,
+        "entrypoints": [],
+        "runtime_requirement": null
+      }
+    },
+    {
+      "name": "pydata",
+      "kind": "app",
+      "engine": null,
+      "default_version": "0.1.0",
+      "version_count": 1,
+      "latest": {
+        "version": "0.1.0",
+        "platforms": {
+          "universal": false,
+          "triplets": {
+            "aarch64-macos": {
+              "artifact": "pydata-0.1.0-macos-arm64.tfs",
+              "size_bytes": 85566942
+            },
+            "x86_64-linux-gnu": {
+              "artifact": "pydata-0.1.0-linux-gnu-x86_64.tfs",
+              "size_bytes": 113064232
+            },
+            "x86_64-windows-ucrt": {
+              "artifact": "pydata-0.1.0-windows-ucrt64.tfs",
+              "size_bytes": 157602233
+            }
+          }
+        },
+        "release_ref": "tfs:github:tebako-packages/pydata:0.1.0-1",
+        "release_url": "https://github.com/tebako-packages/pydata/releases/tag/0.1.0-1",
+        "signed": true,
+        "entrypoints": [
+          "pydata"
+        ],
+        "runtime_requirement": {
+          "engine": "python",
+          "constraint": "~> 3.14.0"
+        }
+      }
+    },
+    {
+      "name": "php",
+      "kind": "runtime",
+      "engine": "php",
+      "default_version": "8.4.28-0.1.0",
+      "version_count": 1,
+      "latest": {
+        "version": "8.4.28-0.1.0",
+        "platforms": {
+          "universal": false,
+          "triplets": {
+            "aarch64-linux-musl": {
+              "artifact": "tebako-runtime-0.1.0-php-8.4.28-linux-musl-arm64.tfs",
+              "size_bytes": 12595703
+            },
+            "aarch64-macos": {
+              "artifact": "tebako-runtime-0.1.0-php-8.4.28-macos-arm64.tfs",
+              "size_bytes": 6866337
+            },
+            "x86_64-linux-gnu": {
+              "artifact": "tebako-runtime-0.1.0-php-8.4.28-linux-gnu-x86_64.tfs",
+              "size_bytes": 11812533
+            },
+            "x86_64-linux-musl": {
+              "artifact": "tebako-runtime-0.1.0-php-8.4.28-linux-musl-x86_64.tfs",
+              "size_bytes": 11689203
+            },
+            "x86_64-macos": {
+              "artifact": "tebako-runtime-0.1.0-php-8.4.28-macos-x86_64.tfs",
+              "size_bytes": 6396221
+            }
+          }
+        },
+        "release_ref": "tfs:github:tamatebako/tebako-runtime-php:v0.1.0",
+        "release_url": "https://github.com/tamatebako/tebako-runtime-php/releases/tag/v0.1.0",
         "signed": false,
         "entrypoints": [],
         "runtime_requirement": null
