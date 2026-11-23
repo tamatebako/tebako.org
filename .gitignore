@@ -19,6 +19,9 @@ pagefind/*
 
 # The Tebako Volume (book/): generated chapter bodies, colophon, compile
 # outputs, and the shipped artifacts — rebuilt by `npm run book` on every
-# docs publish; never committed.
+# docs publish; never committed. The compile runs with book/ as its cwd, so
+# metanorma's log and the relaton cache land beside the entry point.
 book/build/
 book/dist/
+book/book.asciidoc.log.txt
+book/relaton/
