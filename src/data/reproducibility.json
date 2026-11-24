@@ -1,0 +1,237 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-24T07:13:36.886Z",
+  "source": {
+    "doc": "https://github.com/tamatebako/tebako-runtime-ruby/blob/main/docs/reproducible.md",
+    "workflow": "https://github.com/tamatebako/tebako-runtime-ruby/actions/workflows/reproduce.yml",
+    "runs": "https://github.com/tamatebako/tebako-runtime-ruby/actions/runs",
+    "release": {
+      "tag": "v0.17.15",
+      "url": "https://github.com/tamatebako/tebako-runtime-ruby/releases/tag/v0.17.15",
+      "ruby_version": "4.0.9"
+    }
+  },
+  "counts": {
+    "proven": 3,
+    "pending": 5
+  },
+  "legs": [
+    {
+      "id": "linux-gnu-x86_64",
+      "label": "Linux x86-64 (glibc)",
+      "platform": "linux-gnu",
+      "arch": "x86_64",
+      "exe_scope": "published bytes (unsigned)",
+      "status": "proven",
+      "claim": "Byte-identical exe and environment image across two independent runners; the rebuilt exe equals the published v0.17.15 exe byte for byte.",
+      "digests": [
+        {
+          "label": "exe",
+          "value": "4d858ae03cf75373f727414982cd6e6225b377160d8f191a6aeacdff7bda7e59",
+          "complete": true
+        },
+        {
+          "label": "env image",
+          "value": "206081a84330",
+          "complete": false
+        }
+      ],
+      "evidence": {
+        "name": "E2",
+        "runs": [
+          {
+            "id": 44983654950,
+            "url": "https://github.com/tamatebako/tebako-runtime-ruby/actions/runs/44983654950",
+            "sha": "3e25a6a45989351d9776d1855c6327502b85da73",
+            "conclusion": "success"
+          },
+          {
+            "id": 45000701327,
+            "url": "https://github.com/tamatebako/tebako-runtime-ruby/actions/runs/45000701327",
+            "sha": "3e25a6a45989351d9776d1855c6327502b85da73",
+            "conclusion": "success"
+          }
+        ]
+      },
+      "note": null,
+      "verify": {
+        "tag": "v0.17.15",
+        "ruby_version": "4.0.9",
+        "command": "gh workflow run reproduce.yml --repo tamatebako/tebako-runtime-ruby -f tag=v0.17.15 -f ruby_version=4.0.9 -f platform=linux-gnu -f arch=x86_64"
+      }
+    },
+    {
+      "id": "linux-gnu-arm64",
+      "label": "Linux arm64 (glibc)",
+      "platform": "linux-gnu",
+      "arch": "arm64",
+      "exe_scope": "published bytes (unsigned)",
+      "status": "pending",
+      "claim": "No proving twin-run has been dispatched for this leg.",
+      "digests": [],
+      "evidence": null,
+      "note": "The leg builds on the same containerized recipe as the proven linux-gnu × x86_64 leg.",
+      "verify": {
+        "tag": "v0.17.15",
+        "ruby_version": "4.0.9",
+        "command": "gh workflow run reproduce.yml --repo tamatebako/tebako-runtime-ruby -f tag=v0.17.15 -f ruby_version=4.0.9 -f platform=linux-gnu -f arch=arm64"
+      }
+    },
+    {
+      "id": "linux-musl-x86_64",
+      "label": "Linux x86-64 (musl)",
+      "platform": "linux-musl",
+      "arch": "x86_64",
+      "exe_scope": "published bytes (unsigned)",
+      "status": "pending",
+      "claim": "No proving twin-run has been dispatched for this leg.",
+      "digests": [],
+      "evidence": null,
+      "note": null,
+      "verify": {
+        "tag": "v0.17.15",
+        "ruby_version": "4.0.9",
+        "command": "gh workflow run reproduce.yml --repo tamatebako/tebako-runtime-ruby -f tag=v0.17.15 -f ruby_version=4.0.9 -f platform=linux-musl -f arch=x86_64"
+      }
+    },
+    {
+      "id": "linux-musl-arm64",
+      "label": "Linux arm64 (musl)",
+      "platform": "linux-musl",
+      "arch": "arm64",
+      "exe_scope": "published bytes (unsigned)",
+      "status": "pending",
+      "claim": "No proving twin-run has been dispatched for this leg.",
+      "digests": [],
+      "evidence": null,
+      "note": null,
+      "verify": {
+        "tag": "v0.17.15",
+        "ruby_version": "4.0.9",
+        "command": "gh workflow run reproduce.yml --repo tamatebako/tebako-runtime-ruby -f tag=v0.17.15 -f ruby_version=4.0.9 -f platform=linux-musl -f arch=arm64"
+      }
+    },
+    {
+      "id": "macos-x86_64",
+      "label": "macOS x86-64",
+      "platform": "macos",
+      "arch": "x86_64",
+      "exe_scope": "pre-signing digest (codesign rewrites the published exe)",
+      "status": "pending",
+      "claim": "No proving twin-run has been dispatched for this leg.",
+      "digests": [],
+      "evidence": null,
+      "note": "The arm64 twin-run found the rss gemspec’s writer-fingerprint leak (the factory’s issue #384); the fix normalizes the writer fingerprint at deploy (#385), a step every macos leg shares. brew formulae float within a runner image and are recorded, not pinned.",
+      "verify": {
+        "tag": "v0.17.15",
+        "ruby_version": "4.0.9",
+        "command": "gh workflow run reproduce.yml --repo tamatebako/tebako-runtime-ruby -f tag=v0.17.15 -f ruby_version=4.0.9 -f platform=macos -f arch=x86_64"
+      }
+    },
+    {
+      "id": "macos-arm64",
+      "label": "macOS arm64",
+      "platform": "macos",
+      "arch": "arm64",
+      "exe_scope": "pre-signing digest (codesign rewrites the published exe)",
+      "status": "proven",
+      "claim": "Pre-signing-identical exe and byte-identical environment image across two independent runs of the same tree.",
+      "digests": [
+        {
+          "label": "exe (pre-signing)",
+          "value": "7efd761191a2cc7ff26b068d7006c30f307372ef21c79a87711dab39c41d4759",
+          "complete": true
+        },
+        {
+          "label": "env image",
+          "value": "3d162800663476aea902896bc9291a590642ac1ab8165c74756f253806d1d16f",
+          "complete": true
+        }
+      ],
+      "evidence": {
+        "name": "E3",
+        "runs": [
+          {
+            "id": 45138271519,
+            "url": "https://github.com/tamatebako/tebako-runtime-ruby/actions/runs/45138271519",
+            "sha": "3abe8c7d958c710278fdb6412f7e8d5fb0f9a4d3",
+            "conclusion": "success"
+          },
+          {
+            "id": 45138277368,
+            "url": "https://github.com/tamatebako/tebako-runtime-ruby/actions/runs/45138277368",
+            "sha": "3abe8c7d958c710278fdb6412f7e8d5fb0f9a4d3",
+            "conclusion": "success"
+          }
+        ]
+      },
+      "note": "brew formulae float within a runner image and are recorded, not pinned; the resolved versions land in the run’s provenance record.",
+      "verify": {
+        "tag": "v0.17.15",
+        "ruby_version": "4.0.9",
+        "command": "gh workflow run reproduce.yml --repo tamatebako/tebako-runtime-ruby -f tag=v0.17.15 -f ruby_version=4.0.9 -f platform=macos -f arch=arm64"
+      }
+    },
+    {
+      "id": "windows-ucrt64",
+      "label": "Windows x86-64 (UCRT)",
+      "platform": "windows",
+      "arch": "x86_64",
+      "exe_scope": "published bytes (unsigned today; the compare reads the presign record the day Authenticode arms)",
+      "status": "proven",
+      "claim": "Pre-signing-identical exe and byte-identical environment image across two independent runs of the same tree.",
+      "digests": [
+        {
+          "label": "exe (pre-signing)",
+          "value": "8846e4bd75da53e12fab6de1508e7ed9d6dc6e85cbd3aafe601810736f08a566",
+          "complete": true
+        },
+        {
+          "label": "env image",
+          "value": "4083ab3e9f94abc18663b07324cb3c13f749a7390170b55583af92beef7a6906",
+          "complete": true
+        }
+      ],
+      "evidence": {
+        "name": "E4",
+        "runs": [
+          {
+            "id": 45138283413,
+            "url": "https://github.com/tamatebako/tebako-runtime-ruby/actions/runs/45138283413",
+            "sha": "3abe8c7d958c710278fdb6412f7e8d5fb0f9a4d3",
+            "conclusion": "success"
+          },
+          {
+            "id": 45138288574,
+            "url": "https://github.com/tamatebako/tebako-runtime-ruby/actions/runs/45138288574",
+            "sha": "3abe8c7d958c710278fdb6412f7e8d5fb0f9a4d3",
+            "conclusion": "success"
+          }
+        ]
+      },
+      "note": "MSYS2 tracks the rolling repository and is recorded, not pinned: byte-identity is claimed while the recorded pacman resolution stands, and the provenance record carries the resolution’s digest.",
+      "verify": {
+        "tag": "v0.17.15",
+        "ruby_version": "4.0.9",
+        "command": "gh workflow run reproduce.yml --repo tamatebako/tebako-runtime-ruby -f tag=v0.17.15 -f ruby_version=4.0.9 -f platform=windows -f arch=x86_64"
+      }
+    },
+    {
+      "id": "windows-ucrt-arm64",
+      "label": "Windows arm64 (UCRT)",
+      "platform": "windows",
+      "arch": "arm64",
+      "exe_scope": "published bytes (unsigned today; same presign handling)",
+      "status": "pending",
+      "claim": "No proving twin-run has been dispatched for this leg.",
+      "digests": [],
+      "evidence": null,
+      "note": "The same MSYS2 scope applies as on the ucrt64 leg, and the build-log sweep (#385) runs on every windows leg.",
+      "verify": {
+        "tag": "v0.17.15",
+        "ruby_version": "4.0.9",
+        "command": "gh workflow run reproduce.yml --repo tamatebako/tebako-runtime-ruby -f tag=v0.17.15 -f ruby_version=4.0.9 -f platform=windows -f arch=arm64"
+      }
+    }
+  ]
+}

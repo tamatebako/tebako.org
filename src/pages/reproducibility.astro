@@ -1,0 +1,258 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import { REPRO, shortDigest } from '../lib/reproducibility'
+
+const generatedLabel = new Date(REPRO.generated_at).toLocaleDateString('en-US', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+  timeZone: 'UTC',
+})
+---
+
+<BaseLayout
+  title="Reproducibility — Tebako"
+  description="The per-leg reproducibility record of the tebako Ruby runtime: which platform legs carry a byte-identity proof, the twin-runs that prove them, and the dispatch that re-proves any published leg."
+>
+  <section class="mx-auto max-w-7xl px-6 pb-20 pt-32">
+    <p class="tb-eyebrow tb-animate-rise">玉手箱 REPRODUCIBILITY</p>
+    <h1 class="tb-animate-rise tb-delay-1 mt-3">The reproducibility record.</h1>
+    <p class="tb-animate-rise tb-delay-2 mt-4 max-w-2xl text-lg leading-relaxed text-[var(--tb-c-text-2)]">
+      A tebako runtime arrives as two prebuilt artifacts — the interpreter executable and its
+      environment image — and running one means trusting bytes that were compiled on someone else's
+      machine. The Ruby runtime factory answers with a claim that can be checked: for a release tag
+      whose tree carries the reproducible-build pins, two runs of the same tree produce a
+      byte-identical executable, compared before any signing, and a byte-identical environment image.
+    </p>
+    <p class="tb-animate-rise tb-delay-3 mt-3 max-w-2xl text-sm leading-relaxed text-[var(--tb-c-text-3)]">
+      The claim is owned by the factory's{' '}
+      <a href={REPRO.source.doc} class="text-[var(--tb-c-accent)] hover:underline">docs/reproducible.md</a>,
+      and the factory's{' '}
+      <a href={REPRO.source.workflow} class="text-[var(--tb-c-accent)] hover:underline">reproduce.yml</a>{' '}
+      workflow is its public check: one dispatch rebuilds one published leg on the release tag's own
+      pipeline and compares the rebuilt bytes against the published record. This page renders the
+      claim per leg of the{' '}
+      <a href={REPRO.source.release.url} class="text-[var(--tb-c-accent)] hover:underline">{REPRO.source.release.tag}</a>{' '}
+      release line from a checked-in data file whose every cited run is re-verified live on each
+      regeneration.
+    </p>
+
+    <div class="tb-animate-rise tb-delay-3 tb-card mt-10 flex flex-wrap items-center gap-x-8 gap-y-4 p-6">
+      <p class="font-[var(--font-mono)] text-xs uppercase tracking-wider text-[var(--tb-c-text-3)]">
+        {REPRO.counts.proven} proven · {REPRO.counts.pending} pending · {REPRO.legs.length} legs
+      </p>
+      <p class="font-[var(--font-mono)] text-xs uppercase tracking-wider text-[var(--tb-c-text-3)]">
+        release line {REPRO.source.release.tag} · ruby {REPRO.source.release.ruby_version}
+      </p>
+      <p class="font-[var(--font-mono)] text-xs uppercase tracking-wider text-[var(--tb-c-text-3)]">
+        data generated {generatedLabel}
+      </p>
+    </div>
+
+    <section class="mt-20" aria-labelledby="legs-heading">
+      <p class="tb-eyebrow">PER LEG</p>
+      <h2 id="legs-heading" class="mt-2 font-[var(--font-display)] text-3xl font-medium">
+        The claim, leg by leg.
+      </h2>
+      <p class="mt-3 max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
+        One row stands per platform leg of the release line. A proven row names the twin-run that
+        proves it — two builds of the same tree on independent runners, compared byte for byte — and
+        a pending row says pending and points at the dispatch that proves a leg; no row says
+        anything in between.
+      </p>
+      <div class="tb-prose mt-6 overflow-x-auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Leg</th>
+              <th>Status</th>
+              <th>The claim</th>
+              <th>The proof</th>
+            </tr>
+          </thead>
+          <tbody>
+            {REPRO.legs.map((leg) => (
+              <tr>
+                <td class="whitespace-nowrap">
+                  <p class="font-medium text-[var(--tb-c-text-1)]">{leg.label}</p>
+                  <p class="mt-1 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+                    {leg.platform} × {leg.arch}
+                  </p>
+                </td>
+                <td>
+                  <span
+                    class:list={[
+                      'rounded-full px-2.5 py-0.5 font-[var(--font-mono)] text-xs',
+                      leg.status === 'proven' && 'border border-[var(--tb-c-divider-strong)] text-[var(--tb-c-text-1)]',
+                      leg.status === 'pending' && 'border border-dashed border-[var(--tb-c-divider-strong)] text-[var(--tb-c-text-3)]',
+                    ]}
+                  >
+                    {leg.status}
+                  </span>
+                </td>
+                <td>
+                  <p class="text-sm leading-relaxed text-[var(--tb-c-text-2)]">{leg.claim}</p>
+                  <p class="mt-1 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-3)]">
+                    exe scope: {leg.exe_scope}
+                  </p>
+                  {leg.digests.map((d) => (
+                    <p class="mt-1 font-[var(--font-mono)] text-xs text-[var(--tb-c-text-2)]">
+                      {d.label}{' '}
+                      <span title={d.complete ? d.value : undefined}>{shortDigest(d)}</span>
+                    </p>
+                  ))}
+                  {leg.note && (
+                    <p class="mt-2 max-w-md text-xs leading-relaxed text-[var(--tb-c-text-3)]">{leg.note}</p>
+                  )}
+                </td>
+                <td class="whitespace-nowrap">
+                  {leg.evidence ? (
+                    <>
+                      <p class="text-sm text-[var(--tb-c-text-2)]">{leg.evidence.name} twin-run</p>
+                      {leg.evidence.runs.map((r) => (
+                        <p class="mt-1 font-[var(--font-mono)] text-xs">
+                          <a href={r.url} class="text-[var(--tb-c-accent)] hover:underline">
+                            run {r.id}
+                          </a>{' '}
+                          <span class="text-[var(--tb-c-text-3)]" title={r.sha}>· {r.sha.slice(0, 7)}</span>
+                        </p>
+                      ))}
+                    </>
+                  ) : (
+                    <a
+                      href={`#verify-${leg.id}`}
+                      class="font-[var(--font-mono)] text-xs text-[var(--tb-c-accent)] hover:underline"
+                    >
+                      the proving dispatch ↓
+                    </a>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="mt-20" aria-labelledby="scope-heading">
+      <p class="tb-eyebrow">SCOPE</p>
+      <h2 id="scope-heading" class="mt-2 font-[var(--font-display)] text-3xl font-medium">
+        What the claim covers, and what it does not.
+      </h2>
+      <div class="mt-3 max-w-3xl space-y-3 leading-relaxed text-[var(--tb-c-text-2)]">
+        <p>
+          Signing rewrites the executable after the claim's digest is taken: macOS applies codesign
+          today, and Windows applies Authenticode once that signing work arms. A signed artifact is
+          therefore irreproducible per run by design, and the executable claim on the signing
+          platforms is scoped to the pre-signing digest that both builds record in their
+          provenance. The published, signed executable verifies against its own sha256 sidecar,
+          never against a rebuild.
+        </p>
+        <p>
+          Each build records a contract card, which is the build's provenance record: the source
+          archives' digests, the pre-signing executable digest, and the toolchain that ran,
+          including the card's builder <span class="font-[var(--font-mono)] text-sm">os:</span>{' '}
+          field naming the machine that built it. Two proving runs whose{' '}
+          <span class="font-[var(--font-mono)] text-sm">os:</span> fields differ are not a leak in
+          the claim; the field is the provenance record doing its work, and the compared digests
+          are taken from the bytes, not from the machine.
+        </p>
+        <p>
+          Three parts of the toolchain are recorded rather than pinned. On macOS the brew formulae
+          float within a runner image: the Brewfile pins formula names, and the resolved versions
+          land in the toolchain record. On Windows, MSYS2 tracks a rolling repository and no
+          snapshot mirror exists to pin against, so byte-identity on the Windows legs is claimed
+          while the recorded pacman resolution stands, and the resolution's digest is part of the
+          provenance record. The CI runner image floats on the provider's schedule and is recorded
+          in the toolchain record as the suspect to read first when a comparison fails.
+        </p>
+        <p>
+          The pins landed after v0.17.15, and a tag whose tree predates them stamps its image
+          manifests with wall-clock time, so its images can never byte-reproduce. For those tags
+          reproduce.yml verifies the published-integrity floor — the published executable and image
+          download and sha256-verify against their published sidecars — and the identity rows of
+          the verdict light up automatically on the first release whose tree carries the pins.
+        </p>
+      </div>
+    </section>
+
+    <section class="mt-20" id="verify" aria-labelledby="verify-heading">
+      <p class="tb-eyebrow">VERIFY</p>
+      <h2 id="verify-heading" class="mt-2 font-[var(--font-display)] text-3xl font-medium">
+        Re-prove any published leg.
+      </h2>
+      <div class="mt-3 max-w-3xl space-y-3 leading-relaxed text-[var(--tb-c-text-2)]">
+        <p>
+          One dispatch of reproduce.yml verifies one published leg. The workflow checks out the
+          release tag's own tree, dispatches the platform's build on the tag ref with publishing
+          disabled, and renders a verdict whose hard rows compare the rebuilt bytes against the
+          published record: the published executable and image against their sha256 sidecars, and
+          on releases that carry the pins the rebuilt executable and image against the published
+          digests. The workflow holds no write grant, so a verification run can never create,
+          replace, or delete an asset of the release.
+        </p>
+      </div>
+      <div class="tb-prose mt-6 max-w-3xl">
+        <pre><code>gh workflow run reproduce.yml --repo tamatebako/tebako-runtime-ruby \
+  -f tag=&lt;vX.Y.Z&gt; -f ruby_version=&lt;e.g. {REPRO.source.release.ruby_version}&gt; \
+  -f platform=&lt;linux-gnu|linux-musl|macos|windows&gt; -f arch=&lt;x86_64|arm64&gt;</code></pre>
+      </div>
+      <p class="mt-4 max-w-3xl leading-relaxed text-[var(--tb-c-text-2)]">
+        Each leg of the current release line carries its dispatch below. A red verdict names the
+        artifact and both hashes and quotes the published provenance record's toolchain, and the
+        run's machine-readable verdict is downloadable as the run's{' '}
+        <span class="font-[var(--font-mono)] text-sm">reproduce-verdict-*</span> artifact.
+      </p>
+      <div class="tb-prose mt-6 overflow-x-auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Leg</th>
+              <th>The dispatch</th>
+            </tr>
+          </thead>
+          <tbody>
+            {REPRO.legs.map((leg) => (
+              <tr id={`verify-${leg.id}`}>
+                <td class="whitespace-nowrap">
+                  <p class="font-medium text-[var(--tb-c-text-1)]">{leg.label}</p>
+                </td>
+                <td>
+                  <code class="font-[var(--font-mono)] text-xs break-all">{leg.verify.command}</code>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="mt-16 border-t border-[var(--tb-c-divider)] pt-8">
+      <h2 class="font-[var(--font-display)] text-lg font-medium text-[var(--tb-c-text-1)]">
+        How this page is built
+      </h2>
+      <div class="mt-3 max-w-3xl space-y-3 text-sm leading-relaxed text-[var(--tb-c-text-3)]">
+        <p>
+          The claim and its scope are authored in the Ruby runtime factory's docs/reproducible.md,
+          and the evidence of record is the factory's CI. This page renders a checked-in data
+          file, and the site build never fetches.
+        </p>
+        <p>
+          A generator script produces the data file and holds it to the factory's record on every
+          run: the recorded legs and their exe scopes must match the factory's own per-leg table
+          cell for cell, reproduce.yml must still carry the documented dispatch inputs, and every
+          cited run must be completed, green, and on the recorded commit in the GitHub API. The
+          proven unsigned Linux leg is additionally anchored against the published release's
+          sha256 sidecar, so the page cannot drift from the bytes the release actually serves. A
+          failed check fails the regeneration and leaves the committed file untouched.
+        </p>
+        <p>
+          The data file regenerates daily and on dispatch from the factory, and the drift lands as
+          a data-only pull request. A reproduce.yml verdict does not write to this page today;
+          wiring the workflow's verdict feed into the data file is the designed next step, so that
+          a fresh verdict updates the record without a human edit.
+        </p>
+      </div>
+    </section>
+  </section>
+</BaseLayout>
