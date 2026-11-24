@@ -78,6 +78,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
       { label: 'Host packages on your own OCI registry', href: '/docs/guides/oci-registry/', status: 'live' },
       { label: 'Shims & versions', href: '/docs/guides/shims/', status: 'live' },
       { label: 'Set a jail policy', href: '/docs/guides/jails/', status: 'live' },
+      { label: "Run code you don't trust", href: '/docs/guides/untrusted-code/', status: 'live' },
       { label: 'Verify integrity', href: '/docs/guides/verify/', status: 'live' },
       { label: 'Debug & logging', href: '/docs/guides/debug/', status: 'live' },
       { label: 'info & inspect', href: '/docs/guides/info-inspect/', status: 'live' },

@@ -50,6 +50,7 @@ export const FOOTER_LINKS = {
     { label: 'Performance', href: '/perf/' },
     { label: 'Version catalog', href: '/versions/' },
     { label: 'The Tebako Volume', href: '/book/' },
+    { label: "Running code you don't trust", href: '/docs/guides/untrusted-code/' },
   ],
   Community: [
     { label: 'Report an issue', href: `${SITE.github}/issues` },
