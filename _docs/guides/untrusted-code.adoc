@@ -1,0 +1,213 @@
+---
+title: Running code you don't trust
+heading: Running code you don't trust.
+lede: >-
+  An agent harness executes code its operator did not write: generated
+  scripts, third-party tools, downloaded packages. The jail confines what
+  such a run can reach, and the resource axis bounds how much it may
+  consume. This guide assembles both into one invocation profile — fetch,
+  verify, jail, bound — and names exactly what the profile defends
+  against and what it does not.
+description: >-
+  This guide describes the tebako agent-sandbox profile for running
+  untrusted code: fetching and verifying a payload, running it under a
+  deny jail with a workdir grant and the four consumption bounds
+  (cpu_seconds, memory, processes, wall_seconds), the mount quota, the
+  named limits of what is and is not bounded, and the composition with
+  the platform sandbox for adversarial code.
+---
+
+// normative: spec 08 (§1 grammar, §2 semantics, §2.2 resource axis, §5 scope, §7 attack matrix), spec 05 §4 (mount quota), spec 22 §6 (exec-cache attribution) — resources grammar + POSIX arm shipped 2026-11-22 (tebako#1098), windows Job Object arm 2026-11-23 (tebako#1110), mount quotas 2026-11-23 (tebako#1111); the preload-only delivery of the resource axis is planned
+
+== The problem, stated.
+
+A coding agent's tool call is a process the operator did not write and cannot fully review, run on a machine that holds the operator's credentials, files, and network access. Two failure classes follow. The run may _reach_ something it should not — read a private key, write outside its scratch space, open a connection to an ungranted peer. Or it may _consume_ something without limit — and this second class is not hypothetical: the ecosystem's own jail probing once produced a child process that kept running for 1 day 21 hours at 96.9 percent of one central processing unit (CPU) core before anyone noticed, because the jail confined its access and nothing bounded its consumption. A hermetic run is confined and bounded at the same time, and the profile below is the invocation shape that achieves both.
+
+== The invocation profile.
+
+The profile has three steps, and each step is a command that can be pasted into an agent harness unchanged.
+
+*Fetch* is the explicit verb, never a side effect of running. Installing places the payload into the store read-only, hashed and compared against the registry-published digest before it is renamed into place; a mismatch aborts with exit 70 and installs nothing:
+
+[source,console]
+----
+$ tebako add-registry tfs:github:acme/agent-tools
+$ tebako install code-review
+installed code-review 2.4.0 -> ~/.tebako/payloads/code-review/2.4.0.tfs
+shim ~/.tebako/shims/code-review
+----
+
+*Verify* is anchored by the `.sha256` sidecar that lands beside every cached artifact: its presence means the artifact was verified when it was installed, and runs never re-verify. A harness that re-checks on its own schedule uses `tebako inspect --verify`, and a hardened environment sets `TEBAKO_REQUIRE_SIGNED=1`, which makes unsigned artifacts fail closed with exit 71 at fetch and at install. The link:/docs/guides/verify/[Verify integrity] guide covers the anchors and the exit codes.
+
+*Run* is one environment line. `TEBAKO_JAIL` carries the whole policy: the `deny` default, the workdir grant, and the consumption bounds as one directive:
+
+[source,console]
+----
+$ TEBAKO_JAIL="deny;/tmp/agent-work:/tmp/agent-work:rw;resources:cpu_seconds=60,memory=512M,processes=64,wall_seconds=300" \
+    code-review run /tmp/agent-work
+----
+
+Under this policy the payload sees its mounted images, the platform floor (the read-only system surface an interpreter cannot boot without), and `/tmp/agent-work` read-write — nothing else. Every outbound connection is refused, because the invocation grants no `net:` peer. The four bounds hold over the interpreter and every descendant it spawns: at 60 seconds of CPU time the kernel delivers `SIGXCPU`, address-space growth past 512 mebibytes fails in the payload's own allocator, forking past 64 processes is refused, and at 300 seconds of wall clock the driver's watchdog prints its named line, journals `event=jail-resource bound=wall_seconds op=kill cause=wall`, and kills the whole process group. A bounded run's tree dies with its root: the watchdog also fires when the arming process exits, which closes the orphaned-runaway class by construction.
+
+Three grammar notes matter to a harness. The environment form's alphabet excludes spaces and semicolons, so a scratch path containing either belongs in the policy-file form below. A `net:example.com:443` grant added to the same directive opens exactly one peer and port, and DNS resolution itself is never gated — a query leaks a name, never payload bytes. And the `memory` key is enforceable on Linux only: the macOS kernel refuses `RLIMIT_AS` below its address-space floor, so a memory declaration there fails the boot by name with exit 73 rather than silently clamping, and a harness targeting macOS omits `memory` and keeps the other three bounds.
+
+=== The config-file equivalents.
+
+The same policy has a YAML form, which is what a publisher bakes into a package with `tebako press --jail` and what an operator passes per run as a file:
+
+[source,yaml]
+----
+jail:
+  default: deny
+  mounts:
+    - host: /tmp/agent-work
+      mount: /tmp/agent-work
+      access: rw
+  resources:
+    cpu_seconds: 60     # CPU-time ceiling, seconds
+    memory: 512M        # address-space ceiling, bytes (K/M/G suffix, 1024-based)
+    processes: 64       # process-count ceiling
+    wall_seconds: 300   # wall-clock ceiling, seconds
+----
+
+[source,console]
+----
+$ tebako run ./agent-tool --jail ./sandbox.yaml -- run /tmp/agent-work
+----
+
+The user policy always wins by tightening: a package may request access, and the invocation intersects it — `deny` defaults win, and on the resource axis the tighter bound wins per key. A malformed policy never runs half-applied: the run fails closed with exit 73 and nothing mounts.
+
+The store-side bound lives in `~/.tebako/config.yaml` and is written by hand only:
+
+[source,yaml]
+----
+mounts:
+  quota: 512M     # per-mount exec-cache materialization ceiling; absent = 1 GiB; off = no ceiling
+----
+
+The quota bounds what one mount may materialize into the store's exec-cache namespaces. Exhaustion is the named refusal — exit 74 with an `event=quota-exceeded` journal line — and never a silent partial write: the staging artifact is abandoned, and content already installed is never re-gated, because a verified cache hit installs nothing.
+
+== What is bounded, and what is not.
+
+The profile is honest about its edges, and the edges are named rather than implied.
+
+[cols="2,4"]
+|===
+|BOUNDED |THE MECHANISM AND ITS ANSWER AT THE BOUND
+
+|Host filesystem
+|The jail's `deny` default plus explicit grants; a read outside every grant fails `EPERM`, a write against a read-only grant fails `EROFS`, and every denial is journaled. Symlinks are re-validated on each open, so a swapped link resolves to its target and fails.
+
+|Outbound network
+|The `net:<host>[:<port>]` grant grammar; a `connect`, `sendto`, or `sendmsg` to an ungranted peer fails the policy's named refusal and journals the peer. Inbound listeners are not governed: the axis judges outbound peers only.
+
+|CPU time
+|`cpu_seconds`. POSIX: `setrlimit(RLIMIT_CPU)`, death by `SIGXCPU`. Windows: the Job Object per-process user-mode limit, terminated by the kernel at the ceiling.
+
+|Address space
+|`memory`. Linux: `setrlimit(RLIMIT_AS)`, allocation fails in the payload's own allocator. Windows: per-process commit limit in the Job Object. macOS: refused by name at boot, exit 73 — never a silent clamp.
+
+|Process count
+|`processes`. POSIX: `setrlimit(RLIMIT_NPROC)`, a per-real-user-id ceiling, so forking past it fails `EAGAIN`. Windows: `JOB_OBJECT_LIMIT_ACTIVE_PROCESS`, which is per job and therefore genuinely per tree.
+
+|Wall clock
+|`wall_seconds`. The driver's watchdog: a named stderr line, the `event=jail-resource` journal line, then the kill — `SIGKILL` to the process group on POSIX, `TerminateJobObject` at exit 137 on Windows, one observed verdict on both arms. The tree dies with its root on both systems.
+
+|Mount footprint
+|The `mounts.quota` ceiling in `~/.tebako/config.yaml`: per-mount exec-cache materialization is accounted before bytes land, and crossing the ceiling is the named exit-74 refusal with a journal line.
+|===
+
+[cols="2,4"]
+|===
+|NOT BOUNDED |WHY, AND WHAT THE OPERATOR DOES ABOUT IT
+
+|Kernel-level side channels
+|Spectre-class information flow between processes sharing hardware is the kernel's and the silicon's domain; no userland policy instrument speaks to it. Isolating the workload at the virtual-machine boundary is the answer when this class is in scope.
+
+|Graphics processor (GPU) consumption
+|The bounds cover the CPU, memory, process, and wall axes of the host process tree; accelerator time and accelerator memory have no key in the grammar. A harness that exposes a GPU enforces that separately.
+
+|`/proc` and host-network gossip on shared hosts
+|On a shared host, platform surfaces such as `/proc` leak the existence of other processes, and the network axis governs the payload's own connections rather than what it can observe of the host's. The platform sandbox (below) is the layer that closes observation.
+
+|Statically linked hostile binaries
+|The jail enforces by interposition, and a statically linked binary makes direct syscalls with no interposition point — it bypasses the filesystem and network axes entirely. This class is named out of scope, and the platform sandbox is the answer, exactly as it is for any process that escapes the shim.
+
+|DNS resolution
+|Never gated, by decision: a query leaks a name, never payload bytes, and a `net:` grant names hosts whose addresses must resolve. A harness that must gate names needs the platform sandbox's network namespace instead.
+
+|The deliberate `setsid(2)` escape
+|On POSIX, a payload that calls `setsid` leaves the watched process group; userland without cgroups cannot hold a determined escapee. The Windows arm has no such class, because the Job Object grants no breakaway. On POSIX the composition below narrows it.
+
+|Kernel-mode CPU time on Windows
+|The Windows `cpu_seconds` charges user-mode time only, because Windows exposes no user-plus-kernel ceiling; `wall_seconds` is the backstop that still bounds the run.
+|===
+
+== Cooperative code: tebako alone.
+
+For code that is not adversarial — build tools, formatters, linters, test suites, generated scripts that fail by accident rather than by intent — the profile above is the whole answer. The jail gates the filesystem and the outbound network at the one layer every input-output route flows through, the resource axis bounds consumption with kernel primitives, the quota bounds the store's materialization footprint, and every failure surfaces as a named exit code plus a journal line, which is exactly the signal an agent loop can parse. Nothing needs root, nothing needs a daemon, and a run starts in the time the interpreter takes to boot.
+
+== Adversarial code: add the platform sandbox.
+
+For code that may be hostile, the honest statement is the one the tables above make: tebako's filesystem and network enforcement is userland interposition, and the named out-of-scope classes — static binaries, raw `syscall(2)` input-output, observation of the shared host — are the classes an adversary reaches for. The composition for this class is tebako underneath the operating system's own sandbox, with each layer covering the other's named edges:
+
+[source,console]
+----
+# macOS — the seatbelt profile is the harness's own:
+$ sandbox-exec -f agent.sb env TEBAKO_JAIL="deny;…;resources:wall_seconds=300" code-review run /tmp/agent-work
+
+# Linux — bubblewrap's namespaces close observation and the static-binary class:
+$ bwrap --unshare-all --ro-bind / / --bind /tmp/agent-work /tmp/agent-work \
+    env TEBAKO_JAIL="deny;…;resources:cpu_seconds=60,memory=512M,processes=64,wall_seconds=300" \
+    code-review run /tmp/agent-work
+----
+
+On Windows the resource arm already executes inside a Job Object — that is the mechanism, not an addition — and the adversarial class adds an AppContainer token around the launch so the payload's token carries no ambient capabilities. On Linux an AppArmor profile is the standing alternative to bubblewrap for operators who want the mandatory-access-control policy managed by the distribution. The composition is the operator's: tebako neither requires nor configures the outer sandbox, and it claims nothing it does not enforce — the profile remains the inner layer that makes every denial and every kill a named, journaled event the harness can read.
+
+== An agent loop, end to end.
+
+The following shell function is a complete dispatch: one tool call, one scratch directory, the profile applied, and the verdict recovered from the exit status and the journal. It assumes the payload was installed and verified once, up front, and that a first warm-up run has populated the runtime cache, after which `TEBAKO_OFFLINE=1` makes every run a cache hit or a named error with exit 69.
+
+[source,sh]
+----
+#!/bin/sh
+# sandbox-run.sh <shimmed-tool> <workdir> [tool args...]
+set -u
+tool="$1"; work="$2"; shift 2
+export TEBAKO_OFFLINE=1
+
+# macOS harnesses drop memory=512M: the kernel refuses RLIMIT_AS below
+# its floor, and the declaration fails the boot by name (exit 73).
+TEBAKO_JAIL="deny;${work}:${work}:rw;resources:cpu_seconds=60,memory=512M,processes=64,wall_seconds=300" \
+  "$tool" "$@"
+status=$?
+
+case "$status" in
+  0)   : ;;                                   # finished inside its bounds
+  137) echo "killed: the wall-clock bound fired" >&2 ;;        # 128 + SIGKILL
+  152) echo "killed: the CPU-time bound fired" >&2 ;;          # 128 + SIGXCPU
+  73)  echo "refused: the policy could not bind" >&2 ;;
+  74)  echo "refused: the mount quota exhausted" >&2 ;;
+  69)  echo "refused: offline, and the cache missed" >&2 ;;
+esac
+grep 'event=jail-' "${TEBAKO_JAIL_JOURNAL:-$HOME/.tebako/journal.log}" | tail -n 5 >&2
+exit "$status"
+----
+
+The workdir is created fresh per call, granted read-write at its own path, and reviewed by the harness after exit — nothing the tool wrote can land anywhere else, and anything it reached for beyond the grant is a journal line with the path and the operation. A nonzero verdict is data, not a crash: the loop reads the status and the journal, reports the bound that fired to the agent, and decides whether to retry with a wider declaration or to abandon the call.
+
+== The evidence.
+
+The claims on this page are backed by a conformance suite, not by assertion. The jail's attack matrix — every filesystem, network, environment, and resource vector either blocked by a named test or named out of scope with the reason — lives in link:https://github.com/tamatebako/tebako/blob/main/docs/spec/08-jails.md[the jails specification], and the suite that executes the end-to-end arms against a published runtime pair is link:https://github.com/tamatebako/tebako/blob/main/ci/jail-conformance.sh[`ci/jail-conformance.sh`], which runs on every pull request that touches the jail and per release, on the Windows and macOS legs. The resource axis landed in three pull requests, each with its continuous-integration (CI) evidence:
+
+* link:https://github.com/tamatebako/tebako/pull/1098[#1098] — the grammar, the POSIX arm (rlimits and the wall watchdog), and the conformance arms. On the landing host's local pair every resource row held: the infinite looper died at a 4-second wall with the named stderr and journal lines, the CPU burner took `SIGXCPU` at its ceiling, the fork bomb was refused at the process ceiling with its tree reaped, the macOS memory declaration refused the boot by name, and the under-bounds control ran byte-identically to the unbounded run. The CI legs are link:https://github.com/tamatebako/tebako/actions/runs/45041156731[run 45041156731].
+* link:https://github.com/tamatebako/tebako/pull/1110[#1110] — the Windows arm: Job Objects with `JOBOBJECT_EXTENDED_LIMIT_INFORMATION`, the watchdog thread's `TerminateJobObject` verdict at exit 137, and `KILL_ON_JOB_CLOSE` so the kernel reaps the tree when the root exits. The CI legs are link:https://github.com/tamatebako/tebako/actions/runs/45128642226[run 45128642226].
+* link:https://github.com/tamatebako/tebako/pull/1111[#1111] — the mount quotas with named exhaustion: fill-to-the-ceiling tests prove the named refusal and prove the store consistent after it (the flock discipline and the temporary-plus-rename install held under the failure), across 1338 crate tests. The CI run is link:https://github.com/tamatebako/tebako/actions/runs/45162020616[run 45162020616].
+
+One honesty note belongs with the evidence: the pair-conformance suite proves itself against a _published_ runtime pair, and a pair that predates the resource axis makes the resource arms skip by name — the gate reports the skip rather than pretending the row ran. The rows above were held on a locally built pair at landing, and the release gate asserts them against the published pair as the pair moves forward; a regression reddens the release matrix, not a dashboard nobody reads.
+
+See also: link:/docs/guides/jails/[Set a jail policy] ·
+link:/docs/guides/verify/[Verify integrity] ·
+link:/docs/architecture/jails-and-proxying/[Jails and host proxying] ·
+link:/docs/reference/environment/[Environment variables] ·
+link:/docs/reference/exit-codes/[Exit codes].
