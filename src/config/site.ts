@@ -48,6 +48,7 @@ export const FOOTER_LINKS = {
     { label: 'Documentation', href: SITE.docs },
     { label: 'Payload catalog', href: '/catalog/' },
     { label: 'Performance', href: '/perf/' },
+    { label: 'Reproducibility', href: '/reproducibility/' },
     { label: 'Version catalog', href: '/versions/' },
     { label: 'The Tebako Volume', href: '/book/' },
     { label: "Running code you don't trust", href: '/docs/guides/untrusted-code/' },

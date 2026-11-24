@@ -1,0 +1,71 @@
+name: reproducibility
+
+# Regenerate src/data/reproducibility.json, the per-leg reproducibility
+# record of the Ruby runtime factory (tamatebako/tebako-runtime-ruby's
+# docs/reproducible.md plus the live evidence checks). The page renders
+# the checked-in file, so a new proof lands here as a data-only drift
+# PR; merging it triggers build_deploy, which ships the rendered page.
+#
+# Triggers: the factory's poke when its reproducibility record moves
+# (reproducibility-updated), a daily backstop, and manual runs. The
+# regeneration re-verifies every cited run against the GitHub API on
+# each run, so a retracted or expired proof fails closed here rather
+# than on the page.
+
+on:
+  repository_dispatch:
+    types:
+    - reproducibility-updated
+  schedule:
+  - cron: "17 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Regenerate the reproducibility data
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run reproducibility
+
+      # The house pattern for automated drift (the registry repo's
+      # aggregate workflow): main is branch-protected, so the file lands
+      # by PR and auto-merge rides the required checks. A clean tree is
+      # a no-op.
+      - name: Open the drift pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.TEBAKO_CI_PAT_TOKEN || secrets.GITHUB_TOKEN }}
+          branch: reproducibility/drift
+          add-paths: src/data/reproducibility.json
+          title: "reproducibility: regenerate from the factory record"
+          commit-message: "reproducibility: regenerate from the factory record"
+          body: |
+            Automated reproducibility-data regeneration: the drift from the Ruby runtime factory's reproducibility record (tamatebako/tebako-runtime-ruby), with every cited run re-verified against the GitHub API. Auto-merges when checks go green. The reproducibility page renders only this checked-in file.
+
+      - name: Auto-merge the drift PR
+        env:
+          GH_TOKEN: ${{ secrets.TEBAKO_CI_PAT_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge --auto --squash reproducibility/drift || gh pr merge --squash reproducibility/drift || true

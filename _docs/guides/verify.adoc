@@ -75,4 +75,5 @@ Setting `TEBAKO_REQUIRE_SIGNED=1` makes unsigned artifacts fail closed — exit 
 
 See also: link:/docs/guides/publish/[Publish to your own registry] ·
 link:/docs/guides/info-inspect/[info & inspect] ·
-link:/docs/architecture/chain-of-trust/[The chain of trust].
+link:/docs/architecture/chain-of-trust/[The chain of trust] ·
+link:/reproducibility/[The reproducibility record].

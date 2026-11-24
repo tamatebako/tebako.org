@@ -464,4 +464,5 @@ under the loud unverified-first posture described above, with
 `TEBAKO_REQUIRE_SIGNED=1` failing closed for hardened environments.
 
 See also: link:/docs/guides/verify/[Verify integrity] ·
-link:/docs/architecture/store/[The store]
+link:/docs/architecture/store/[The store] ·
+link:/reproducibility/[The reproducibility record]
