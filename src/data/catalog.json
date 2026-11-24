@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-24T06:52:26.919Z",
+  "generated_at": "2026-11-24T09:57:31.619Z",
   "source": "https://raw.githubusercontent.com/tebako-packages/registry/main/tpkg-registry.yaml",
   "payload_count": 30,
   "payloads": [
@@ -436,45 +436,45 @@
       "name": "metanorma",
       "kind": "app",
       "engine": null,
-      "default_version": "1.18.6",
-      "version_count": 10,
+      "default_version": "1.18.7",
+      "version_count": 12,
       "latest": {
-        "version": "1.18.6",
+        "version": "1.18.7",
         "platforms": {
           "universal": false,
           "triplets": {
             "aarch64-linux-gnu": {
-              "artifact": "metanorma-1.18.6-linux-gnu-arm64.tfs",
-              "size_bytes": 377818605
+              "artifact": "metanorma-1.18.7-linux-gnu-arm64.tfs",
+              "size_bytes": 399657742
             },
             "aarch64-linux-musl": {
-              "artifact": "metanorma-1.18.6-linux-musl-arm64.tfs",
-              "size_bytes": 372470294
+              "artifact": "metanorma-1.18.7-linux-musl-arm64.tfs",
+              "size_bytes": 400353555
             },
             "aarch64-macos": {
-              "artifact": "metanorma-1.18.6-macos-arm64.tfs",
-              "size_bytes": 311838985
+              "artifact": "metanorma-1.18.7-macos-arm64.tfs",
+              "size_bytes": 326563203
             },
             "x86_64-linux-gnu": {
-              "artifact": "metanorma-1.18.6-linux-gnu-x86_64.tfs",
-              "size_bytes": 373138894
+              "artifact": "metanorma-1.18.7-linux-gnu-x86_64.tfs",
+              "size_bytes": 395875183
             },
             "x86_64-linux-musl": {
-              "artifact": "metanorma-1.18.6-linux-musl-x86_64.tfs",
-              "size_bytes": 370439253
+              "artifact": "metanorma-1.18.7-linux-musl-x86_64.tfs",
+              "size_bytes": 395271480
             },
             "x86_64-macos": {
-              "artifact": "metanorma-1.18.6-macos-x86_64.tfs",
-              "size_bytes": 311020354
+              "artifact": "metanorma-1.18.7-macos-x86_64.tfs",
+              "size_bytes": 325921785
             },
             "x86_64-windows-ucrt": {
-              "artifact": "metanorma-1.18.6-windows-ucrt64.tfs",
-              "size_bytes": 397046035
+              "artifact": "metanorma-1.18.7-windows-ucrt64.tfs",
+              "size_bytes": 425791263
             }
           }
         },
-        "release_ref": "tfs:github:tebako-packages/metanorma:1.18.6-1",
-        "release_url": "https://github.com/tebako-packages/metanorma/releases/tag/1.18.6-1",
+        "release_ref": "tfs:github:tebako-packages/metanorma:1.18.7-1",
+        "release_url": "https://github.com/tebako-packages/metanorma/releases/tag/1.18.7-1",
         "signed": true,
         "entrypoints": [
           "metanorma",
@@ -506,7 +506,6 @@
           "cabriolet",
           "console",
           "convert2oscalyaml.rb",
-          "dot2ruby",
           "ea",
           "ebnf",
           "emf",
@@ -514,8 +513,6 @@
           "excavate",
           "fractor",
           "fuzzy_match",
-          "gem2gv",
-          "git2gv",
           "japanese_calendar",
           "jsonld",
           "ldiff",
@@ -526,7 +523,6 @@
           "reverse_markdown",
           "rng",
           "rougify",
-          "ruby2gv",
           "setup",
           "socksify_ruby",
           "sparql",
@@ -539,7 +535,6 @@
           "ukiryu",
           "unibuf",
           "w3c_api",
-          "xml2gv",
           "xsdvi"
         ],
         "runtime_requirement": {
