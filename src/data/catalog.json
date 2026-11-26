@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-26T17:27:26.752Z",
+  "generated_at": "2026-11-26T17:30:57.092Z",
   "source": "https://raw.githubusercontent.com/tebako-packages/registry/main/tpkg-registry.yaml",
   "payload_count": 30,
   "payloads": [
@@ -818,49 +818,49 @@
       "name": "openjdk",
       "kind": "runtime",
       "engine": "java",
-      "default_version": "21.0.12",
-      "version_count": 1,
+      "default_version": "21.0.12.1",
+      "version_count": 2,
       "latest": {
-        "version": "21.0.12",
+        "version": "21.0.12.1",
         "platforms": {
           "universal": false,
           "triplets": {
             "aarch64-linux-gnu": {
-              "artifact": "tebako-runtime-2.8.50-temurin-21.0.12-linux-gnu-arm64.tfs",
-              "size_bytes": 87225815
+              "artifact": "tebako-runtime-2.8.85-temurin-21.0.12.1-linux-gnu-arm64.tfs",
+              "size_bytes": 89491101
             },
             "aarch64-linux-musl": {
-              "artifact": "tebako-runtime-2.8.50-temurin-21.0.12-linux-musl-arm64.tfs",
-              "size_bytes": 87373721
+              "artifact": "tebako-runtime-2.8.85-temurin-21.0.12.1-linux-musl-arm64.tfs",
+              "size_bytes": 89575630
             },
             "aarch64-macos": {
-              "artifact": "tebako-runtime-2.8.50-temurin-21.0.12-macos-arm64.tfs",
-              "size_bytes": 79722432
+              "artifact": "tebako-runtime-2.8.85-temurin-21.0.12.1-macos-arm64.tfs",
+              "size_bytes": 79610762
             },
             "aarch64-windows-ucrt": {
-              "artifact": "tebako-runtime-2.8.50-temurin-21.0.12-windows-ucrt-arm64.tfs",
-              "size_bytes": 60258804
+              "artifact": "tebako-runtime-2.8.85-temurin-21.0.12.1-windows-ucrt-arm64.tfs",
+              "size_bytes": 60257449
             },
             "x86_64-linux-gnu": {
-              "artifact": "tebako-runtime-2.8.50-temurin-21.0.12-linux-gnu-x86_64.tfs",
-              "size_bytes": 89232978
+              "artifact": "tebako-runtime-2.8.85-temurin-21.0.12.1-linux-gnu-x86_64.tfs",
+              "size_bytes": 89726656
             },
             "x86_64-linux-musl": {
-              "artifact": "tebako-runtime-2.8.50-temurin-21.0.12-linux-musl-x86_64.tfs",
-              "size_bytes": 87648188
+              "artifact": "tebako-runtime-2.8.85-temurin-21.0.12.1-linux-musl-x86_64.tfs",
+              "size_bytes": 89660846
             },
             "x86_64-macos": {
-              "artifact": "tebako-runtime-2.8.50-temurin-21.0.12-macos-x86_64.tfs",
-              "size_bytes": 67492803
+              "artifact": "tebako-runtime-2.8.85-temurin-21.0.12.1-macos-x86_64.tfs",
+              "size_bytes": 68866798
             },
             "x86_64-windows-ucrt": {
-              "artifact": "tebako-runtime-2.8.50-temurin-21.0.12-windows-ucrt64.tfs",
-              "size_bytes": 72394490
+              "artifact": "tebako-runtime-2.8.85-temurin-21.0.12.1-windows-ucrt64.tfs",
+              "size_bytes": 72364553
             }
           }
         },
-        "release_ref": "tfs:github:tamatebako/tebako-runtime-openjdk:v2.8.50",
-        "release_url": "https://github.com/tamatebako/tebako-runtime-openjdk/releases/tag/v2.8.50",
+        "release_ref": "tfs:github:tamatebako/tebako-runtime-openjdk:v2.8.85",
+        "release_url": "https://github.com/tamatebako/tebako-runtime-openjdk/releases/tag/v2.8.85",
         "signed": false,
         "entrypoints": [],
         "runtime_requirement": null
@@ -878,25 +878,25 @@
           "universal": false,
           "triplets": {
             "aarch64-linux-gnu": {
-              "artifact": "tebako-runtime-2.8.50-graalvm-25.0.4.1-linux-gnu-arm64.tfs",
-              "size_bytes": 419657547
+              "artifact": "tebako-runtime-2.8.85-graalvm-25.0.4.1-linux-gnu-arm64.tfs",
+              "size_bytes": 421330958
             },
             "aarch64-macos": {
-              "artifact": "tebako-runtime-2.8.50-graalvm-25.0.4.1-macos-arm64.tfs",
-              "size_bytes": 435520433
+              "artifact": "tebako-runtime-2.8.85-graalvm-25.0.4.1-macos-arm64.tfs",
+              "size_bytes": 436500129
             },
             "x86_64-linux-gnu": {
-              "artifact": "tebako-runtime-2.8.50-graalvm-25.0.4.1-linux-gnu-x86_64.tfs",
-              "size_bytes": 454452473
+              "artifact": "tebako-runtime-2.8.85-graalvm-25.0.4.1-linux-gnu-x86_64.tfs",
+              "size_bytes": 455710058
             },
             "x86_64-windows-ucrt": {
-              "artifact": "tebako-runtime-2.8.50-graalvm-25.0.4.1-windows-ucrt64.tfs",
+              "artifact": "tebako-runtime-2.8.85-graalvm-25.0.4.1-windows-ucrt64.tfs",
               "size_bytes": 439361948
             }
           }
         },
-        "release_ref": "tfs:github:tamatebako/tebako-runtime-openjdk:v2.8.50",
-        "release_url": "https://github.com/tamatebako/tebako-runtime-openjdk/releases/tag/v2.8.50",
+        "release_ref": "tfs:github:tamatebako/tebako-runtime-openjdk:v2.8.85",
+        "release_url": "https://github.com/tamatebako/tebako-runtime-openjdk/releases/tag/v2.8.85",
         "signed": false,
         "entrypoints": [],
         "runtime_requirement": null
