@@ -79,8 +79,18 @@ execs the real path with the original argv/env; a covered path the mounts do
 not hold answers ENOENT, so a libc PATH loop simply moves to its next
 candidate. A VFS binary that itself spawns children re-enters the same
 interposition, and children of materialized binaries keep the VFS view,
-never a silent host fallback. A bare command name also resolves with no
-payload code learning tebako: **the driver prepends every co-mounted
+never a silent host fallback. A materialized FILE operand can also need
+what its consumer addresses relative to the operand's own host path — a
+platform component probing `<name>.runtimeconfig.json` beside its entry
+dll is the canonical shape. The exec surface answers that by mount kind,
+with one discipline for both conventions (extract-once, never fatal to
+the operand, quota-accounted): a data-file operand (no load-module
+magic) carries its parent directory's FILES, non-recursive and capped;
+a HELD FILE operand under an app-kind mount (`identity.kind: app`)
+carries its parent directory's SUBTREE — the app dir is the
+application's install prefix, the payload analog of the runtime's home
+annotation, which still wins where both apply. A bare command name also
+resolves with no payload code learning tebako: **the driver prepends every co-mounted
 dependency image's declared bin dirs to PATH in the handoff env**; the image
 declares, and the driver flows. The explicit, windows-safe, shell-free
 reference surface is `TEBAKO_MOUNT_<SLUG>` per dependency mount, where the
@@ -128,6 +138,10 @@ segregation contractual and its contents an implementation detail; POSIX
 materializations are per-process and reaped at exit, while windows DLLs are
 OS-locked, so they are leave-in-place, content-keyed, and reaped by the
 store's cache maintenance); the materialized-resource convention; the
+home annotation's whole-tree materialization and its payload-side
+sibling, the app-dir rule (a HELD FILE operand under an
+`identity.kind: app` mount carries its parent directory's subtree onto
+the host beside the twin); the
 `TEBAKO_MOUNT_<SLUG>` discovery surface; and the dependency PATH wiring.
 Everything else, the mount table layout, the closure-walk order, and the
 cache's on-disk naming, is implementation detail and may change between
