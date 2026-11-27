@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-27T13:12:43.676Z",
+  "generated_at": "2026-11-27T16:48:24.402Z",
   "source": {
     "covenant": "https://raw.githubusercontent.com/tamatebako/tebako/main/benchmarks/covenant.yaml",
     "trend": "https://raw.githubusercontent.com/tamatebako/tebako/bench-history/latest/trend.json",
@@ -9,14 +9,14 @@
   },
   "release_count": 20,
   "latest": {
-    "release": "run-44204925939",
-    "date": "2026-11-18",
+    "release": "run-46021539170",
+    "date": "2026-11-27",
     "verdict": "pass",
     "cells": [
       {
         "id": "first-response.cold.median",
         "state": "pass",
-        "measured": 2.031079879,
+        "measured": 2.4762781255000004,
         "bound": 3,
         "comparison": "<=",
         "injected": null,
@@ -24,116 +24,208 @@
         "pair_delta": null,
         "class": null,
         "class_note": null,
-        "witness": null
+        "witness": {
+          "triplet": "macos-x86_64",
+          "workload": "java-boot",
+          "target": "tebako-java",
+          "mode": "cold",
+          "image_os": "macos15",
+          "image_version": "20260824.0482.1",
+          "history_entries": 11,
+          "note": "no reference arm for java-boot/tebako-java — the workload ran no baseline cell, the witness has nothing to compare against"
+        }
       },
       {
         "id": "first-response.warm.median",
         "state": "pass",
-        "measured": 2.059431027,
+        "measured": 2.187258727,
         "bound": 3,
         "comparison": "<=",
         "injected": null,
-        "native_drift": null,
-        "pair_delta": null,
+        "native_drift": 0.9114445333918829,
+        "pair_delta": 1.3290359010854658,
         "class": null,
         "class_note": null,
-        "witness": null
+        "witness": {
+          "triplet": "macos-x86_64",
+          "workload": "java-boot",
+          "target": "tebako-java",
+          "mode": "warm",
+          "reference": "on-system-java",
+          "native_drift": 0.9114445333918829,
+          "pair_delta": 1.3290359010854658,
+          "image_os": "macos15",
+          "image_version": "20260824.0482.1",
+          "history_entries": 11
+        }
       },
       {
         "id": "steady.cpu.throughput",
         "state": "pass",
-        "measured": 0.8422461586630724,
-        "bound": 0.8,
+        "measured": 0.4938206159127222,
+        "bound": 0.35,
         "comparison": ">=",
         "injected": null,
-        "native_drift": null,
-        "pair_delta": null,
+        "native_drift": 38.75969433934441,
+        "pair_delta": 0.7401122109496063,
         "class": null,
         "class_note": null,
-        "witness": null
+        "witness": {
+          "triplet": "macos-x86_64",
+          "workload": "python-fib",
+          "target": "tebako-python",
+          "mode": "warm",
+          "reference": "on-system-python",
+          "native_drift": 38.75969433934441,
+          "pair_delta": 0.7401122109496063,
+          "image_os": "macos15",
+          "image_version": "20260824.0482.1",
+          "history_entries": 7
+        }
       },
       {
         "id": "steady.io.throughput",
         "state": "pass",
-        "measured": 0.3783844458067013,
+        "measured": 0.36211134203434364,
         "bound": 0.2,
         "comparison": ">=",
         "injected": null,
-        "native_drift": null,
-        "pair_delta": null,
+        "native_drift": 0.9456091903368302,
+        "pair_delta": 1.0888050565923748,
         "class": null,
         "class_note": null,
-        "witness": null
+        "witness": {
+          "triplet": "linux-musl-arm64",
+          "workload": "ruby-ioread",
+          "target": "tebako-ruby",
+          "mode": "warm",
+          "reference": "on-system-ruby",
+          "native_drift": 0.9456091903368302,
+          "pair_delta": 1.0888050565923748,
+          "image_os": "ubuntu24-arm64",
+          "image_version": "20261122.193.1",
+          "history_entries": 11
+        }
       },
       {
         "id": "filesystem.stat.median",
         "state": "pass",
-        "measured": 12.339898327925761,
+        "measured": 20.592285586865433,
         "bound": 26,
         "comparison": "<=",
         "injected": null,
-        "native_drift": null,
-        "pair_delta": null,
+        "native_drift": 0.6161602214042946,
+        "pair_delta": 2.1234395733389047,
         "class": null,
         "class_note": null,
-        "witness": null
+        "witness": {
+          "triplet": "linux-musl-x86_64",
+          "workload": "ruby-statloop",
+          "target": "tebako-ruby",
+          "mode": "warm",
+          "reference": "on-system-ruby",
+          "native_drift": 0.6161602214042946,
+          "pair_delta": 2.1234395733389047,
+          "image_os": "ubuntu24",
+          "image_version": "20261122.23.1",
+          "history_entries": 11
+        }
       },
       {
         "id": "memory.rss.peak",
         "state": "pass",
-        "measured": 498962432,
+        "measured": 498880512,
         "bound": 671088640,
         "comparison": "<=",
         "injected": null,
         "native_drift": null,
-        "pair_delta": null,
+        "pair_delta": 0.9401077993385913,
         "class": null,
         "class_note": null,
-        "witness": null
+        "witness": {
+          "triplet": "windows-ucrt64",
+          "workload": "java-statloop",
+          "target": "tebako-java",
+          "mode": "warm",
+          "reference": "on-system-java",
+          "pair_delta": 0.9401077993385913,
+          "image_os": "win25-vs2026",
+          "image_version": "20261123.321.1",
+          "history_entries": 19,
+          "note": "history too thin for on-system-java on windows-ucrt64: 0 published entries (need 3)"
+        }
       },
       {
         "id": "teardown.exit_seconds",
-        "state": "absent",
-        "measured": null,
+        "state": "pass",
+        "measured": 0.020341455000000064,
         "bound": 0.5,
         "comparison": "<=",
         "injected": null,
-        "native_drift": null,
-        "pair_delta": null,
+        "native_drift": 1.2216321787658826,
+        "pair_delta": 1.2777152784262815,
         "class": null,
         "class_note": null,
-        "witness": null
+        "witness": {
+          "triplet": "macos-x86_64",
+          "workload": "python-boot",
+          "target": "tebako-python",
+          "mode": "warm",
+          "reference": "on-system-python",
+          "native_drift": 1.2216321787658826,
+          "pair_delta": 1.2777152784262815,
+          "image_os": "macos15",
+          "image_version": "20260824.0482.1",
+          "history_entries": 7
+        }
       },
       {
         "id": "teardown.materialize_vs_extract",
-        "state": "absent",
-        "measured": null,
-        "bound": 1,
+        "state": "pass",
+        "measured": 2.8314470528096027,
+        "bound": 3.7,
         "comparison": "<=",
         "injected": null,
         "native_drift": null,
         "pair_delta": null,
         "class": null,
         "class_note": null,
-        "witness": null
+        "witness": {
+          "triplet": "linux-gnu-arm64",
+          "workload": "ruby-spawn",
+          "target": "tebako-ruby",
+          "mode": "warm",
+          "reference": "extract-ruby",
+          "image_os": "ubuntu24-arm64",
+          "image_version": "20261122.193.1",
+          "history_entries": 0,
+          "note": "history too thin for extract-ruby on linux-gnu-arm64: 0 published entries (need 3); history too thin for tebako-ruby on linux-gnu-arm64: 0 published entries (need 3)"
+        }
       },
       {
         "id": "author-loop.repress.median",
-        "state": "absent",
-        "measured": null,
-        "bound": 6,
+        "state": "pass",
+        "measured": 6.463463721,
+        "bound": 8.5,
         "comparison": "<=",
         "injected": null,
         "native_drift": null,
         "pair_delta": null,
         "class": null,
         "class_note": null,
-        "witness": null
+        "witness": {
+          "triplet": "linux-musl-arm64",
+          "workload": "author-repress",
+          "target": "v2-tools",
+          "mode": "warm",
+          "history_entries": 0,
+          "note": "no reference arm for author-repress/v2-tools — the workload ran no baseline cell, the witness has nothing to compare against"
+        }
       },
       {
         "id": "author-loop.first_run.median",
-        "state": "absent",
-        "measured": null,
+        "state": "pass",
+        "measured": 1.835329125,
         "bound": 2.5,
         "comparison": "<=",
         "injected": null,
@@ -141,7 +233,16 @@
         "pair_delta": null,
         "class": null,
         "class_note": null,
-        "witness": null
+        "witness": {
+          "triplet": "macos-arm64",
+          "workload": "author-first-run",
+          "target": "v2-tools",
+          "mode": "warm",
+          "image_os": "macos15",
+          "image_version": "20261118.0550.1",
+          "history_entries": 0,
+          "note": "no reference arm for author-first-run/v2-tools — the workload ran no baseline cell, the witness has nothing to compare against"
+        }
       }
     ]
   },
@@ -238,12 +339,6 @@
     }
   ],
   "verdicts": [
-    {
-      "release": "run-40997872967",
-      "date": "2026-10-30",
-      "verdict": null,
-      "over": []
-    },
     {
       "release": "run-41097260939",
       "date": "2026-10-30",
@@ -357,20 +452,17 @@
       "date": "2026-11-18",
       "verdict": "pass",
       "over": []
+    },
+    {
+      "release": "run-46021539170",
+      "date": "2026-11-27",
+      "verdict": "pass",
+      "over": []
     }
   ],
   "trend": {
     "first-response.cold.median": {
       "linux-gnu-arm64": [
-        {
-          "release": "run-40997872967",
-          "date": "2026-10-30",
-          "value": 0.340652627,
-          "workload": "python-boot",
-          "target": "tebako-python",
-          "image_os": null,
-          "image_version": null
-        },
         {
           "release": "run-41097260939",
           "date": "2026-10-30",
@@ -532,18 +624,18 @@
           "target": "tebako-java",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.7333989464999999,
+          "workload": "java-boot",
+          "target": "tebako-java",
+          "image_os": "ubuntu24-arm64",
+          "image_version": "20261122.193.1"
         }
       ],
       "linux-gnu-x86_64": [
-        {
-          "release": "run-40997872967",
-          "date": "2026-10-30",
-          "value": 0.570334286,
-          "workload": "java-boot",
-          "target": "tebako-java",
-          "image_os": null,
-          "image_version": null
-        },
         {
           "release": "run-41097260939",
           "date": "2026-10-30",
@@ -705,6 +797,15 @@
           "target": "tebako-java",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.706917316,
+          "workload": "java-boot",
+          "target": "tebako-java",
+          "image_os": "ubuntu24",
+          "image_version": "20261122.23.1"
         }
       ],
       "linux-musl-arm64": [
@@ -806,6 +907,15 @@
           "target": "tebako-java",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.983887188,
+          "workload": "java-boot",
+          "target": "tebako-java",
+          "image_os": "ubuntu24-arm64",
+          "image_version": "20261122.193.1"
         }
       ],
       "linux-musl-x86_64": [
@@ -907,18 +1017,18 @@
           "target": "tebako-java",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 1.2645072085,
+          "workload": "java-boot",
+          "target": "tebako-java",
+          "image_os": "ubuntu24",
+          "image_version": "20261122.23.1"
         }
       ],
       "macos-arm64": [
-        {
-          "release": "run-40997872967",
-          "date": "2026-10-30",
-          "value": 0.6541426455,
-          "workload": "java-boot",
-          "target": "tebako-java",
-          "image_os": null,
-          "image_version": null
-        },
         {
           "release": "run-41097260939",
           "date": "2026-10-30",
@@ -1044,18 +1154,18 @@
           "target": "tebako-java",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 1.1434614165,
+          "workload": "java-boot",
+          "target": "tebako-java",
+          "image_os": "macos15",
+          "image_version": "20261118.0550.1"
         }
       ],
       "macos-x86_64": [
-        {
-          "release": "run-40997872967",
-          "date": "2026-10-30",
-          "value": 0.5557040915,
-          "workload": "python-boot",
-          "target": "tebako-python",
-          "image_os": null,
-          "image_version": null
-        },
         {
           "release": "run-41097260939",
           "date": "2026-10-30",
@@ -1208,18 +1318,18 @@
           "target": "tebako-java",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 2.4762781255000004,
+          "workload": "java-boot",
+          "target": "tebako-java",
+          "image_os": "macos15",
+          "image_version": "20260824.0482.1"
         }
       ],
       "windows-ucrt64": [
-        {
-          "release": "run-40997872967",
-          "date": "2026-10-30",
-          "value": 0.60534625,
-          "workload": "java-boot",
-          "target": "tebako-java",
-          "image_os": null,
-          "image_version": null
-        },
         {
           "release": "run-41097260939",
           "date": "2026-10-30",
@@ -1381,20 +1491,20 @@
           "target": "tebako-java",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.76191265,
+          "workload": "java-boot",
+          "target": "tebako-java",
+          "image_os": "win25-vs2026",
+          "image_version": "20261123.321.1"
         }
       ]
     },
     "first-response.warm.median": {
       "linux-gnu-arm64": [
-        {
-          "release": "run-40997872967",
-          "date": "2026-10-30",
-          "value": 0.339589103,
-          "workload": "python-boot",
-          "target": "tebako-python",
-          "image_os": null,
-          "image_version": null
-        },
         {
           "release": "run-41097260939",
           "date": "2026-10-30",
@@ -1556,18 +1666,18 @@
           "target": "tebako-java",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.742406928,
+          "workload": "java-boot",
+          "target": "tebako-java",
+          "image_os": "ubuntu24-arm64",
+          "image_version": "20261122.193.1"
         }
       ],
       "linux-gnu-x86_64": [
-        {
-          "release": "run-40997872967",
-          "date": "2026-10-30",
-          "value": 0.565974392,
-          "workload": "java-boot",
-          "target": "tebako-java",
-          "image_os": null,
-          "image_version": null
-        },
         {
           "release": "run-41097260939",
           "date": "2026-10-30",
@@ -1729,6 +1839,15 @@
           "target": "tebako-java",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.706603145,
+          "workload": "java-boot",
+          "target": "tebako-java",
+          "image_os": "ubuntu24",
+          "image_version": "20261122.23.1"
         }
       ],
       "linux-musl-arm64": [
@@ -1830,6 +1949,15 @@
           "target": "tebako-java",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.949871064,
+          "workload": "java-boot",
+          "target": "tebako-java",
+          "image_os": "ubuntu24-arm64",
+          "image_version": "20261122.193.1"
         }
       ],
       "linux-musl-x86_64": [
@@ -1931,18 +2059,18 @@
           "target": "tebako-java",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 1.2694827069999999,
+          "workload": "java-boot",
+          "target": "tebako-java",
+          "image_os": "ubuntu24",
+          "image_version": "20261122.23.1"
         }
       ],
       "macos-arm64": [
-        {
-          "release": "run-40997872967",
-          "date": "2026-10-30",
-          "value": 0.76902275,
-          "workload": "java-boot",
-          "target": "tebako-java",
-          "image_os": null,
-          "image_version": null
-        },
         {
           "release": "run-41097260939",
           "date": "2026-10-30",
@@ -2068,18 +2196,18 @@
           "target": "tebako-java",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 1.2016580000000001,
+          "workload": "java-boot",
+          "target": "tebako-java",
+          "image_os": "macos15",
+          "image_version": "20261118.0550.1"
         }
       ],
       "macos-x86_64": [
-        {
-          "release": "run-40997872967",
-          "date": "2026-10-30",
-          "value": 0.601647023,
-          "workload": "python-boot",
-          "target": "tebako-python",
-          "image_os": null,
-          "image_version": null
-        },
         {
           "release": "run-41097260939",
           "date": "2026-10-30",
@@ -2232,18 +2360,18 @@
           "target": "tebako-java",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 2.187258727,
+          "workload": "java-boot",
+          "target": "tebako-java",
+          "image_os": "macos15",
+          "image_version": "20260824.0482.1"
         }
       ],
       "windows-ucrt64": [
-        {
-          "release": "run-40997872967",
-          "date": "2026-10-30",
-          "value": 0.6143095,
-          "workload": "java-boot",
-          "target": "tebako-java",
-          "image_os": null,
-          "image_version": null
-        },
         {
           "release": "run-41097260939",
           "date": "2026-10-30",
@@ -2405,20 +2533,20 @@
           "target": "tebako-java",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.7797094,
+          "workload": "java-boot",
+          "target": "tebako-java",
+          "image_os": "win25-vs2026",
+          "image_version": "20261123.321.1"
         }
       ]
     },
     "steady.cpu.throughput": {
       "linux-gnu-arm64": [
-        {
-          "release": "run-40997872967",
-          "date": "2026-10-30",
-          "value": 0.4478253187647877,
-          "workload": "python-fib",
-          "target": "tebako-python",
-          "image_os": null,
-          "image_version": null
-        },
         {
           "release": "run-41097260939",
           "date": "2026-10-30",
@@ -2580,18 +2708,18 @@
           "target": "tebako-ruby",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.9016428566923588,
+          "workload": "ruby-fib",
+          "target": "tebako-ruby",
+          "image_os": "ubuntu24-arm64",
+          "image_version": "20261122.193.1"
         }
       ],
       "linux-gnu-x86_64": [
-        {
-          "release": "run-40997872967",
-          "date": "2026-10-30",
-          "value": 0.09267860127292395,
-          "workload": "java-fib",
-          "target": "tebako-java",
-          "image_os": null,
-          "image_version": null
-        },
         {
           "release": "run-41097260939",
           "date": "2026-10-30",
@@ -2753,6 +2881,15 @@
           "target": "tebako-ruby",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.9218160347765809,
+          "workload": "ruby-fib",
+          "target": "tebako-ruby",
+          "image_os": "ubuntu24",
+          "image_version": "20261122.23.1"
         }
       ],
       "linux-musl-arm64": [
@@ -2854,6 +2991,15 @@
           "target": "tebako-ruby",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.8721416138249248,
+          "workload": "ruby-fib",
+          "target": "tebako-ruby",
+          "image_os": "ubuntu24-arm64",
+          "image_version": "20261122.193.1"
         }
       ],
       "linux-musl-x86_64": [
@@ -2955,18 +3101,18 @@
           "target": "tebako-java",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.878977795958679,
+          "workload": "ruby-fib",
+          "target": "tebako-ruby",
+          "image_os": "ubuntu24",
+          "image_version": "20261122.23.1"
         }
       ],
       "macos-arm64": [
-        {
-          "release": "run-40997872967",
-          "date": "2026-10-30",
-          "value": 0.09621736190126468,
-          "workload": "java-fib",
-          "target": "tebako-java",
-          "image_os": null,
-          "image_version": null
-        },
         {
           "release": "run-41097260939",
           "date": "2026-10-30",
@@ -3092,18 +3238,18 @@
           "target": "tebako-python",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.8500674554398818,
+          "workload": "python-fib",
+          "target": "tebako-python",
+          "image_os": "macos15",
+          "image_version": "20261118.0550.1"
         }
       ],
       "macos-x86_64": [
-        {
-          "release": "run-40997872967",
-          "date": "2026-10-30",
-          "value": 0.3651458187551627,
-          "workload": "python-fib",
-          "target": "tebako-python",
-          "image_os": null,
-          "image_version": null
-        },
         {
           "release": "run-41097260939",
           "date": "2026-10-30",
@@ -3256,18 +3402,18 @@
           "target": "tebako-java",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.49382061591272214,
+          "workload": "python-fib",
+          "target": "tebako-python",
+          "image_os": "macos15",
+          "image_version": "20260824.0482.1"
         }
       ],
       "windows-ucrt64": [
-        {
-          "release": "run-40997872967",
-          "date": "2026-10-30",
-          "value": 0.1287812958750248,
-          "workload": "java-fib",
-          "target": "tebako-java",
-          "image_os": null,
-          "image_version": null
-        },
         {
           "release": "run-41097260939",
           "date": "2026-10-30",
@@ -3429,20 +3575,20 @@
           "target": "tebako-java",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.9500048118385787,
+          "workload": "java-fib",
+          "target": "tebako-java",
+          "image_os": "win25-vs2026",
+          "image_version": "20261123.321.1"
         }
       ]
     },
     "steady.io.throughput": {
       "linux-gnu-arm64": [
-        {
-          "release": "run-40997872967",
-          "date": "2026-10-30",
-          "value": 0.048934222466233995,
-          "workload": "python-ioread",
-          "target": "tebako-python",
-          "image_os": null,
-          "image_version": null
-        },
         {
           "release": "run-41097260939",
           "date": "2026-10-30",
@@ -3604,18 +3750,18 @@
           "target": "tebako-ruby",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.5485167700235214,
+          "workload": "ruby-ioread",
+          "target": "tebako-ruby",
+          "image_os": "ubuntu24-arm64",
+          "image_version": "20261122.193.1"
         }
       ],
       "linux-gnu-x86_64": [
-        {
-          "release": "run-40997872967",
-          "date": "2026-10-30",
-          "value": 0.042593244004620306,
-          "workload": "python-ioread",
-          "target": "tebako-python",
-          "image_os": null,
-          "image_version": null
-        },
         {
           "release": "run-41097260939",
           "date": "2026-10-30",
@@ -3777,6 +3923,15 @@
           "target": "tebako-ruby",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.6603757314972278,
+          "workload": "java-ioread",
+          "target": "tebako-java",
+          "image_os": "ubuntu24",
+          "image_version": "20261122.23.1"
         }
       ],
       "linux-musl-arm64": [
@@ -3878,6 +4033,15 @@
           "target": "tebako-ruby",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.36211134203434364,
+          "workload": "ruby-ioread",
+          "target": "tebako-ruby",
+          "image_os": "ubuntu24-arm64",
+          "image_version": "20261122.193.1"
         }
       ],
       "linux-musl-x86_64": [
@@ -3979,18 +4143,18 @@
           "target": "tebako-ruby",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.47501229334674017,
+          "workload": "java-ioread",
+          "target": "tebako-java",
+          "image_os": "ubuntu24",
+          "image_version": "20261122.23.1"
         }
       ],
       "macos-arm64": [
-        {
-          "release": "run-40997872967",
-          "date": "2026-10-30",
-          "value": 0.08462282165549906,
-          "workload": "java-ioread",
-          "target": "tebako-java",
-          "image_os": null,
-          "image_version": null
-        },
         {
           "release": "run-41097260939",
           "date": "2026-10-30",
@@ -4116,18 +4280,18 @@
           "target": "tebako-java",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.5770673757591059,
+          "workload": "java-ioread",
+          "target": "tebako-java",
+          "image_os": "macos15",
+          "image_version": "20261118.0550.1"
         }
       ],
       "macos-x86_64": [
-        {
-          "release": "run-40997872967",
-          "date": "2026-10-30",
-          "value": 0.10596571029478336,
-          "workload": "python-ioread",
-          "target": "tebako-python",
-          "image_os": null,
-          "image_version": null
-        },
         {
           "release": "run-41097260939",
           "date": "2026-10-30",
@@ -4280,6 +4444,15 @@
           "target": "tebako-java",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.5435153280387535,
+          "workload": "java-ioread",
+          "target": "tebako-java",
+          "image_os": "macos15",
+          "image_version": "20260824.0482.1"
         }
       ],
       "windows-ucrt64": [
@@ -4390,20 +4563,20 @@
           "target": "tebako-ruby",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 1.1698238551021956,
+          "workload": "ruby-ioread",
+          "target": "tebako-ruby",
+          "image_os": "win25-vs2026",
+          "image_version": "20261123.321.1"
         }
       ]
     },
     "filesystem.stat.median": {
       "linux-gnu-arm64": [
-        {
-          "release": "run-40997872967",
-          "date": "2026-10-30",
-          "value": 8.419343211680312,
-          "workload": "python-statloop",
-          "target": "tebako-python",
-          "image_os": null,
-          "image_version": null
-        },
         {
           "release": "run-41097260939",
           "date": "2026-10-30",
@@ -4565,18 +4738,18 @@
           "target": "tebako-ruby",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 11.415953772081084,
+          "workload": "ruby-statloop",
+          "target": "tebako-ruby",
+          "image_os": "ubuntu24-arm64",
+          "image_version": "20261122.193.1"
         }
       ],
       "linux-gnu-x86_64": [
-        {
-          "release": "run-40997872967",
-          "date": "2026-10-30",
-          "value": 7.5951239651037366,
-          "workload": "python-statloop",
-          "target": "tebako-python",
-          "image_os": null,
-          "image_version": null
-        },
         {
           "release": "run-41097260939",
           "date": "2026-10-30",
@@ -4738,6 +4911,15 @@
           "target": "tebako-ruby",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 9.106051677817343,
+          "workload": "ruby-statloop",
+          "target": "tebako-ruby",
+          "image_os": "ubuntu24",
+          "image_version": "20261122.23.1"
         }
       ],
       "linux-musl-arm64": [
@@ -4839,6 +5021,15 @@
           "target": "tebako-ruby",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 11.835595955984344,
+          "workload": "ruby-statloop",
+          "target": "tebako-ruby",
+          "image_os": "ubuntu24-arm64",
+          "image_version": "20261122.193.1"
         }
       ],
       "linux-musl-x86_64": [
@@ -4940,18 +5131,18 @@
           "target": "tebako-ruby",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 20.592285586865433,
+          "workload": "ruby-statloop",
+          "target": "tebako-ruby",
+          "image_os": "ubuntu24",
+          "image_version": "20261122.23.1"
         }
       ],
       "macos-arm64": [
-        {
-          "release": "run-40997872967",
-          "date": "2026-10-30",
-          "value": 7.855500431385441,
-          "workload": "java-statloop",
-          "target": "tebako-java",
-          "image_os": null,
-          "image_version": null
-        },
         {
           "release": "run-41097260939",
           "date": "2026-10-30",
@@ -5077,18 +5268,18 @@
           "target": "tebako-ruby",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 8.11572827462786,
+          "workload": "ruby-statloop",
+          "target": "tebako-ruby",
+          "image_os": "macos15",
+          "image_version": "20261118.0550.1"
         }
       ],
       "macos-x86_64": [
-        {
-          "release": "run-40997872967",
-          "date": "2026-10-30",
-          "value": 5.067474939556333,
-          "workload": "python-statloop",
-          "target": "tebako-python",
-          "image_os": null,
-          "image_version": null
-        },
         {
           "release": "run-41097260939",
           "date": "2026-10-30",
@@ -5241,18 +5432,18 @@
           "target": "tebako-ruby",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 6.209705902707794,
+          "workload": "ruby-statloop",
+          "target": "tebako-ruby",
+          "image_os": "macos15",
+          "image_version": "20260824.0482.1"
         }
       ],
       "windows-ucrt64": [
-        {
-          "release": "run-40997872967",
-          "date": "2026-10-30",
-          "value": 4.439681658362112,
-          "workload": "java-statloop",
-          "target": "tebako-java",
-          "image_os": null,
-          "image_version": null
-        },
         {
           "release": "run-41097260939",
           "date": "2026-10-30",
@@ -5414,20 +5605,20 @@
           "target": "tebako-java",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 1.114078900632223,
+          "workload": "java-statloop",
+          "target": "tebako-java",
+          "image_os": "win25-vs2026",
+          "image_version": "20261123.321.1"
         }
       ]
     },
     "memory.rss.peak": {
       "linux-gnu-arm64": [
-        {
-          "release": "run-40997872967",
-          "date": "2026-10-30",
-          "value": 193347584,
-          "workload": "python-ioread",
-          "target": "tebako-python",
-          "image_os": null,
-          "image_version": null
-        },
         {
           "release": "run-41097260939",
           "date": "2026-10-30",
@@ -5589,18 +5780,18 @@
           "target": "tebako-java",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 210784256,
+          "workload": "java-ioread",
+          "target": "tebako-java",
+          "image_os": "ubuntu24-arm64",
+          "image_version": "20261122.193.1"
         }
       ],
       "linux-gnu-x86_64": [
-        {
-          "release": "run-40997872967",
-          "date": "2026-10-30",
-          "value": 202379264,
-          "workload": "python-ioread",
-          "target": "tebako-python",
-          "image_os": null,
-          "image_version": null
-        },
         {
           "release": "run-41097260939",
           "date": "2026-10-30",
@@ -5762,6 +5953,15 @@
           "target": "tebako-java",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 217313280,
+          "workload": "java-ioread",
+          "target": "tebako-java",
+          "image_os": "ubuntu24",
+          "image_version": "20261122.23.1"
         }
       ],
       "linux-musl-arm64": [
@@ -5863,6 +6063,15 @@
           "target": "tebako-java",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 214339584,
+          "workload": "java-ioread",
+          "target": "tebako-java",
+          "image_os": "ubuntu24-arm64",
+          "image_version": "20261122.193.1"
         }
       ],
       "linux-musl-x86_64": [
@@ -5964,18 +6173,18 @@
           "target": "tebako-java",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 219541504,
+          "workload": "java-ioread",
+          "target": "tebako-java",
+          "image_os": "ubuntu24",
+          "image_version": "20261122.23.1"
         }
       ],
       "macos-arm64": [
-        {
-          "release": "run-40997872967",
-          "date": "2026-10-30",
-          "value": 208240640,
-          "workload": "python-ioread",
-          "target": "tebako-python",
-          "image_os": null,
-          "image_version": null
-        },
         {
           "release": "run-41097260939",
           "date": "2026-10-30",
@@ -6101,18 +6310,18 @@
           "target": "tebako-ruby",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 283508736,
+          "workload": "ruby-ioread",
+          "target": "tebako-ruby",
+          "image_os": "macos15",
+          "image_version": "20261118.0550.1"
         }
       ],
       "macos-x86_64": [
-        {
-          "release": "run-40997872967",
-          "date": "2026-10-30",
-          "value": 204398592,
-          "workload": "python-ioread",
-          "target": "tebako-python",
-          "image_os": null,
-          "image_version": null
-        },
         {
           "release": "run-41097260939",
           "date": "2026-10-30",
@@ -6265,18 +6474,18 @@
           "target": "tebako-java",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 241512448,
+          "workload": "java-ioread",
+          "target": "tebako-java",
+          "image_os": "macos15",
+          "image_version": "20260824.0482.1"
         }
       ],
       "windows-ucrt64": [
-        {
-          "release": "run-40997872967",
-          "date": "2026-10-30",
-          "value": 495116288,
-          "workload": "java-statloop",
-          "target": "tebako-java",
-          "image_os": null,
-          "image_version": null
-        },
         {
           "release": "run-41097260939",
           "date": "2026-10-30",
@@ -6438,12 +6647,234 @@
           "target": "tebako-java",
           "image_os": null,
           "image_version": null
+        },
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 498880512,
+          "workload": "java-statloop",
+          "target": "tebako-java",
+          "image_os": "win25-vs2026",
+          "image_version": "20261123.321.1"
         }
       ]
     },
-    "teardown.exit_seconds": {},
-    "teardown.materialize_vs_extract": {},
-    "author-loop.repress.median": {},
-    "author-loop.first_run.median": {}
+    "teardown.exit_seconds": {
+      "linux-gnu-arm64": [
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.011023879000000014,
+          "workload": "java-boot",
+          "target": "tebako-java",
+          "image_os": "ubuntu24-arm64",
+          "image_version": "20261122.193.1"
+        }
+      ],
+      "linux-gnu-x86_64": [
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.006282612000000021,
+          "workload": "python-boot",
+          "target": "tebako-python",
+          "image_os": "ubuntu24",
+          "image_version": "20261122.23.1"
+        }
+      ],
+      "linux-musl-arm64": [
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.008331340999999992,
+          "workload": "ruby-boot",
+          "target": "tebako-ruby",
+          "image_os": "ubuntu24-arm64",
+          "image_version": "20261122.193.1"
+        }
+      ],
+      "linux-musl-x86_64": [
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.00927807199999986,
+          "workload": "java-boot",
+          "target": "tebako-java",
+          "image_os": "ubuntu24",
+          "image_version": "20261122.23.1"
+        }
+      ],
+      "macos-arm64": [
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.0020445000000002267,
+          "workload": "java-boot",
+          "target": "tebako-java",
+          "image_os": "macos15",
+          "image_version": "20261118.0550.1"
+        }
+      ],
+      "macos-x86_64": [
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.020341455000000064,
+          "workload": "python-boot",
+          "target": "tebako-python",
+          "image_os": "macos15",
+          "image_version": "20260824.0482.1"
+        }
+      ],
+      "windows-ucrt64": [
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.0014378000000000446,
+          "workload": "java-boot",
+          "target": "tebako-java",
+          "image_os": "win25-vs2026",
+          "image_version": "20261123.321.1"
+        }
+      ]
+    },
+    "teardown.materialize_vs_extract": {
+      "linux-gnu-arm64": [
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 2.8314470528096027,
+          "workload": "ruby-spawn",
+          "target": "tebako-ruby",
+          "image_os": "ubuntu24-arm64",
+          "image_version": "20261122.193.1"
+        }
+      ],
+      "linux-gnu-x86_64": [
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 2.4224565901960817,
+          "workload": "ruby-spawn",
+          "target": "tebako-ruby",
+          "image_os": "ubuntu24",
+          "image_version": "20261122.23.1"
+        }
+      ],
+      "macos-arm64": [
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.46694582158504644,
+          "workload": "ruby-spawn",
+          "target": "tebako-ruby",
+          "image_os": "macos15",
+          "image_version": "20261118.0550.1"
+        }
+      ],
+      "macos-x86_64": [
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.4716449051826384,
+          "workload": "ruby-spawn",
+          "target": "tebako-ruby",
+          "image_os": "macos15",
+          "image_version": "20260824.0482.1"
+        }
+      ]
+    },
+    "author-loop.repress.median": {
+      "linux-musl-arm64": [
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 6.463463721,
+          "workload": "author-repress",
+          "target": "v2-tools",
+          "image_os": null,
+          "image_version": null
+        }
+      ],
+      "linux-musl-x86_64": [
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 5.94714176,
+          "workload": "author-repress",
+          "target": "v2-tools",
+          "image_os": null,
+          "image_version": null
+        }
+      ]
+    },
+    "author-loop.first_run.median": {
+      "linux-gnu-arm64": [
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.733474432,
+          "workload": "author-first-run",
+          "target": "v2-tools",
+          "image_os": "ubuntu24-arm64",
+          "image_version": "20261122.193.1"
+        }
+      ],
+      "linux-gnu-x86_64": [
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.585246335,
+          "workload": "author-first-run",
+          "target": "v2-tools",
+          "image_os": "ubuntu24",
+          "image_version": "20261122.23.1"
+        }
+      ],
+      "linux-musl-arm64": [
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.248851584,
+          "workload": "author-first-run",
+          "target": "v2-tools",
+          "image_os": null,
+          "image_version": null
+        }
+      ],
+      "linux-musl-x86_64": [
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 0.297396512,
+          "workload": "author-first-run",
+          "target": "v2-tools",
+          "image_os": null,
+          "image_version": null
+        }
+      ],
+      "macos-arm64": [
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 1.835329125,
+          "workload": "author-first-run",
+          "target": "v2-tools",
+          "image_os": "macos15",
+          "image_version": "20261118.0550.1"
+        }
+      ],
+      "macos-x86_64": [
+        {
+          "release": "run-46021539170",
+          "date": "2026-11-27",
+          "value": 1.821402424,
+          "workload": "author-first-run",
+          "target": "v2-tools",
+          "image_os": "macos15",
+          "image_version": "20260824.0482.1"
+        }
+      ]
+    }
   }
 }
