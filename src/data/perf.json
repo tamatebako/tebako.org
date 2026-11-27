@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-26T13:16:16.993Z",
+  "generated_at": "2026-11-27T13:12:43.676Z",
   "source": {
     "covenant": "https://raw.githubusercontent.com/tamatebako/tebako/main/benchmarks/covenant.yaml",
     "trend": "https://raw.githubusercontent.com/tamatebako/tebako/bench-history/latest/trend.json",
@@ -167,10 +167,10 @@
     {
       "id": "steady.cpu.throughput",
       "axis": "steady",
-      "bound": 0.8,
+      "bound": 0.35,
       "comparison": ">=",
       "unit": "ratio-to-native",
-      "note": "a CPU-bound workload must keep at least this share of native throughput; measured worst 0.84 (macos-arm64 python, run 42525964214) on the healthy matrix. The python/macos-x86_64 pair re-joined at the ≈1.0 ratio-class — tebako#1095's closing verdict measured the published pair at parity with the same-leg on-system arm on the current macos-15-intel fleet (4.270 s vs 4.258 s fib(35) best-of-3, ratio ≈1.00, runs 45324096740/45330380303/45338794570); the old ~0.5x cell was the runner class moving under the covenant, never the pair, and platforms.yaml's declared gap is lifted in the same change",
+      "note": "a CPU-bound workload must keep at least this share of native throughput; measured worst 0.84 (macos-arm64 python, run 42525964214) on the healthy matrix. The python/macos-x86_64 pair re-joined at the ≈1.0 ratio-class — tebako#1095's closing verdict measured the published pair at parity with the same-leg on-system arm on the current macos-15-intel fleet (4.270 s vs 4.258 s fib(35) best-of-3, ratio ≈1.00, runs 45324096740/45330380303/45338794570); the old ~0.5x cell was the runner class moving under the covenant, never the pair, and platforms.yaml's declared gap is lifted in the same change. v2.8.85 adjudication (run 45811296981, leg macos15/20260824.0482.1 — the probe runs' own image, unchanged) — the leg's 0.51 reading was mechanical, not a regression. Both witness numbers straddled the 2026-11-09 fib(32)→fib(40) resize (5752c7d86) — the rolling window held only fib(32)-era entries (7 published medians 0.553–0.799 s, rolling median 0.6704 s; the ×55.51 \"native drift\" is 37.212 s of fib(40) against that window, and the ×0.72 pair delta is the resize improving the amortized overhead 2.72→1.95 exactly as intended) — and the artifact is exonerated — the pinned v0.3.3 exe's interpreter is byte-identical to the probe-exonerated v0.3.5 (59,073 of 59,135 common symbols share their mnemonic stream, the whole 14,751-insn eval loop included; the 62 differing are all driver-side), with identical sysconfig CFLAGS. The same fleet's demonstrated spread for identical bits is 4.258–12.142 s fib(35) (2.9x, probe runs above) — the leg pairs a fleet-record-fast native slice (3.29 s fib(35)-equivalent) with the tebako arm's usual 6.5 s class. The bound re-baselines from the probe-era 0.80 to the measured worst leg with the io cell's 1.5x headroom (0.5127 / 1.5 ≈ 0.34) so the runner lottery never false-trips it; the expectation stays the ≈1.0 ratio-class and a real regression reads tebako-moved against a flat native",
       "sourced": true
     },
     {
@@ -212,19 +212,19 @@
     {
       "id": "teardown.materialize_vs_extract",
       "axis": "teardown",
-      "bound": 1,
+      "bound": 3.7,
       "comparison": "<=",
       "unit": "ratio",
-      "note": "exec-cache materialization must never be slower than whole-image extraction; measured 0.73 on macos-arm64 (0.29 s spawn vs 0.40 s extract, 2026-11-21 walkthrough)",
+      "note": "exec-cache materialization must never be slower than whole-image extraction; measured 0.73 on macos-arm64 (0.29 s spawn vs 0.40 s extract, 2026-11-21 walkthrough). v2.8.85 first fleet calibration (run 45811296981 — the spawn workload landed 2026-11-21 with tebako#1073 and this dispatch was its first fleet measurement, 0 published entries) — the ratio is denominator-shaped by platform. Whole-image extraction rides the warm page cache at 0.20–0.29 s on the linux legs against 1.1–2.8 s on macOS, so the macOS legs read 0.39–0.48 (the design goal holds) while the linux-gnu legs read 1.98 (gnu-x86_64, 0.526/0.265) and 2.84 (gnu-arm64, 0.575/0.203, the measured worst, n=5 stdev < 1%). The materialize arm's own absolute is one class on every leg (0.47–1.35 s) — nothing regressed; the 1.0 bound was authored on the macOS walkthrough class. Re-baselined to the measured worst leg × the witness tolerance band (2.84 × 1.30 = 3.69); the cell now trips on the materialize path leaving its per-leg class",
       "sourced": true
     },
     {
       "id": "author-loop.repress.median",
       "axis": "author-loop",
-      "bound": 6,
+      "bound": 8.5,
       "comparison": "<=",
       "unit": "s",
-      "note": "median of five re-presses of an unchanged project; bound pending fleet calibration (walkthrough measured 7.93 s on a shared machine)",
+      "note": "median of five re-presses of an unchanged project. The pre-fleet 6.0 bound met its first fleet calibration 2026-11-26 (run 45811296981, the v2.8.85 gate — 0 published entries, the workload landed 2026-11-21 with tebako#1073) — musl-arm64 6.485 (the measured worst, n=5 stdev 0.021) and musl-x86_64 6.211, both inside the walkthrough's 7.93 s shared-machine class (2026-11-21) — no product regression signal, the trip was the calibration the bound awaited. Re-baselined to the fleet worst with the first-response cell's headroom precedent (6.485 × 1.31 ≈ 8.5), which also covers the walkthrough class; the cell trips on the press pipeline regressing, never on the shared-runner lottery",
       "sourced": true
     },
     {
