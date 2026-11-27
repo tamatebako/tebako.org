@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-27T13:07:39.084Z",
+  "generated_at": "2026-11-27T21:20:53.898Z",
   "source": "https://raw.githubusercontent.com/tebako-packages/registry/main/tpkg-registry.yaml",
   "payload_count": 30,
   "payloads": [
@@ -445,36 +445,36 @@
           "triplets": {
             "aarch64-linux-gnu": {
               "artifact": "metanorma-1.18.7-linux-gnu-arm64.tfs",
-              "size_bytes": 399657742
+              "size_bytes": 399657650
             },
             "aarch64-linux-musl": {
               "artifact": "metanorma-1.18.7-linux-musl-arm64.tfs",
-              "size_bytes": 400353555
+              "size_bytes": 400353465
             },
             "aarch64-macos": {
               "artifact": "metanorma-1.18.7-macos-arm64.tfs",
-              "size_bytes": 326563203
+              "size_bytes": 326546363
             },
             "x86_64-linux-gnu": {
               "artifact": "metanorma-1.18.7-linux-gnu-x86_64.tfs",
-              "size_bytes": 395875183
+              "size_bytes": 395875085
             },
             "x86_64-linux-musl": {
               "artifact": "metanorma-1.18.7-linux-musl-x86_64.tfs",
-              "size_bytes": 395271480
+              "size_bytes": 395271394
             },
             "x86_64-macos": {
               "artifact": "metanorma-1.18.7-macos-x86_64.tfs",
-              "size_bytes": 325921785
+              "size_bytes": 325904375
             },
             "x86_64-windows-ucrt": {
               "artifact": "metanorma-1.18.7-windows-ucrt64.tfs",
-              "size_bytes": 425791263
+              "size_bytes": 425791136
             }
           }
         },
-        "release_ref": "tfs:github:tebako-packages/metanorma:1.18.7-1",
-        "release_url": "https://github.com/tebako-packages/metanorma/releases/tag/1.18.7-1",
+        "release_ref": "tfs:github:tebako-packages/metanorma:1.18.7-2",
+        "release_url": "https://github.com/tebako-packages/metanorma/releases/tag/1.18.7-2",
         "signed": true,
         "entrypoints": [
           "metanorma",
@@ -766,49 +766,49 @@
       "name": "ruby",
       "kind": "runtime",
       "engine": "ruby",
-      "default_version": "4.0.9-0.17.15",
-      "version_count": 226,
+      "default_version": "4.0.9-0.17.16",
+      "version_count": 231,
       "latest": {
-        "version": "4.0.9-0.17.15",
+        "version": "4.0.9-0.17.16",
         "platforms": {
           "universal": false,
           "triplets": {
             "aarch64-linux-gnu": {
-              "artifact": "tebako-runtime-0.17.15-ruby-4.0.9-linux-gnu-arm64",
-              "size_bytes": 104466592
+              "artifact": "tebako-runtime-0.17.16-ruby-4.0.9-linux-gnu-arm64",
+              "size_bytes": 104642048
             },
             "aarch64-linux-musl": {
-              "artifact": "tebako-runtime-0.17.15-ruby-4.0.9-linux-musl-arm64",
-              "size_bytes": 71469232
+              "artifact": "tebako-runtime-0.17.16-ruby-4.0.9-linux-musl-arm64",
+              "size_bytes": 71669128
             },
             "aarch64-macos": {
-              "artifact": "tebako-runtime-0.17.15-ruby-4.0.9-macos-arm64",
-              "size_bytes": 48701888
+              "artifact": "tebako-runtime-0.17.16-ruby-4.0.9-macos-arm64",
+              "size_bytes": 48808224
             },
             "aarch64-windows-ucrt": {
-              "artifact": "tebako-runtime-0.17.15-ruby-4.0.9-windows-ucrt-arm64",
+              "artifact": "tebako-runtime-0.17.16-ruby-4.0.9-windows-ucrt-arm64",
               "size_bytes": 61240
             },
             "x86_64-linux-gnu": {
-              "artifact": "tebako-runtime-0.17.15-ruby-4.0.9-linux-gnu-x86_64",
-              "size_bytes": 105516144
+              "artifact": "tebako-runtime-0.17.16-ruby-4.0.9-linux-gnu-x86_64",
+              "size_bytes": 105695552
             },
             "x86_64-linux-musl": {
-              "artifact": "tebako-runtime-0.17.15-ruby-4.0.9-linux-musl-x86_64",
-              "size_bytes": 73763200
+              "artifact": "tebako-runtime-0.17.16-ruby-4.0.9-linux-musl-x86_64",
+              "size_bytes": 73939464
             },
             "x86_64-macos": {
-              "artifact": "tebako-runtime-0.17.15-ruby-4.0.9-macos-x86_64",
-              "size_bytes": 52574960
+              "artifact": "tebako-runtime-0.17.16-ruby-4.0.9-macos-x86_64",
+              "size_bytes": 52686880
             },
             "x86_64-windows-ucrt": {
-              "artifact": "tebako-runtime-0.17.15-ruby-4.0.9-windows-ucrt64",
+              "artifact": "tebako-runtime-0.17.16-ruby-4.0.9-windows-ucrt64",
               "size_bytes": 98200
             }
           }
         },
-        "release_ref": "tfs:github:tamatebako/tebako-runtime-ruby:v0.17.15",
-        "release_url": "https://github.com/tamatebako/tebako-runtime-ruby/releases/tag/v0.17.15",
+        "release_ref": "tfs:github:tamatebako/tebako-runtime-ruby:v0.17.16",
+        "release_url": "https://github.com/tamatebako/tebako-runtime-ruby/releases/tag/v0.17.16",
         "signed": false,
         "entrypoints": [],
         "runtime_requirement": null
