@@ -14,7 +14,7 @@ description: >-
   per-gem code.
 ---
 
-// normative: spec 22 (§1 taxonomy, §2 class L + §2.1 phase-W, §3 class E + §3.1 matrix + §3.2 PATH wiring, §4 class R, §5 error model, §6 the documented interface, §7 migration)
+// normative: spec 22 (§1 taxonomy, §2 class L + §2.1 phase-W, §3 class E + §3.1 matrix + §3.2 PATH wiring + §3.5 child libc surface + vfork contract, §4 class R, §5 error model, §6 the documented interface, §7 migration)
 
 [NOTE]
 ====
@@ -109,6 +109,23 @@ reserved and exports nothing.
 # The JVM boots under the jail: platform floor (automatic) + the JRE
 # tree (an authored ro grant) + the user domain (an authored home read).
 ----
+
+The interposition guarantees also hold against libc behaviors that no
+path routing reaches, because a delivered child runs the shim inside a
+binary tebako did not compile. A path the interpreter canonicalizes
+answers with the mount spelling, never the host's symlink-resolved one,
+and the process working directory contract holds across spawn. Ruby
+applies a spawn's `chdir:` option child-side, and an unprivileged spawn
+shares the parent's address space before exec, so the shim gates its
+virtual working directory bookkeeping on the process identity: a child
+in its pre-exec window can neither write a phantom working directory
+into the spawning thread nor inherit one. `getcwd(NULL, 0)`, the
+allocate-for-me form Ruby's own `Dir.getwd` uses, answers a caller-owned
+copy of the recorded working directory rather than an out-of-range
+error. The deliberate trade-off is that a forked child no longer
+inherits its parent's in-image working directory; before exec the child
+sees the host only, which is the same namespace the fork-child guard
+already enforces for every other entry into the engine.
 
 == Class R: declarative boot materialization
 
