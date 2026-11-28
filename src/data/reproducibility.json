@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-27T13:52:06.038Z",
+  "generated_at": "2026-11-28T12:59:06.786Z",
   "source": {
     "doc": "https://github.com/tamatebako/tebako-runtime-ruby/blob/main/docs/reproducible.md",
     "workflow": "https://github.com/tamatebako/tebako-runtime-ruby/actions/workflows/reproduce.yml",
