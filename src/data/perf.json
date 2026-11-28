@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-27T16:48:24.402Z",
+  "generated_at": "2026-11-28T12:28:23.927Z",
   "source": {
     "covenant": "https://raw.githubusercontent.com/tamatebako/tebako/main/benchmarks/covenant.yaml",
     "trend": "https://raw.githubusercontent.com/tamatebako/tebako/bench-history/latest/trend.json",
